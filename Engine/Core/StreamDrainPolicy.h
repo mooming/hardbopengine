@@ -25,6 +25,7 @@ namespace hbe
 /// @note Not thread-safe by design: the owning stream thread makes every decision and takes every charge.
 ///       Reads of counters for reporting are exposed as separate const accessors and are only meaningful
 ///       from the owning thread.
+/// API reference: docs/Core/StreamDrainPolicy/index.html
 class StreamDrainPolicy final
 {
 public:

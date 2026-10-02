@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TaskProvider::~TaskProvider — Core module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a class="current" href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Core</a> /
+  <a href="index.html">TaskProvider</a> / ~TaskProvider
+</p>
+
+<h1><span class="fn">~TaskProvider</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::TaskProvider</span>
+  <span class="tag">Engine/Core/TaskProvider.cpp</span>
+  Assert that no live stream still holds this provider's pointer, which R37 makes a destruction requirement.
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>virtual ~TaskProvider()</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  Defined in <code>Engine/Core/TaskProvider.cpp</code> as <code>TaskProvider::~TaskProvider()</code>; the body is a single assert.
+</p>
+
+<pre><code>Assert(registeredCount == 0, "TaskProvider ", name, " was destroyed while it still fed ", registeredCount,
+       " live stream(s). A stream holds this object's pointer, so destroy it only after DetachFrom or DetachAll.");</code></pre>
+
+<p class="meta">From Engine/Core/TaskProvider.cpp</p>
+
+<p>
+  Virtual, because a provider is owned and destroyed through a base pointer by whoever built it — an app's provider, a subsystem's provider —
+  and the class has a pure virtual entry already. Its whole work is the check: a stream's lane list holds this object's address, so a
+  provider destroyed while still registered leaves a dead pointer in a list a worker thread iterates every drain.
+</p>
+
+<div class="note">
+  <strong>The rule counts registrations, not recorded attachments, and the difference is deliberate.</strong> "An attachment naming a stream
+  the engine does not have puts nothing anywhere, so it cannot dangle and must not be fatal"
+  (<code>Engine/Core/TaskProvider.h</code>). <a href="registeronstream.html">RegisterOnStream</a> increments the count only when the real
+  stream accepted the provider, so a probe attached to an index nothing owns dies clean — which is how the unit probes are written.
+</div>
+
+<div class="gap">
+  <strong>In a Dev or Release build the assert is not there.</strong> <code>Assert</code> compiles to nothing unless
+  <code>__DEBUG__</code> is defined, and the build defines it only for the Debug configuration
+  (<code>CMakeLists.txt</code>, <code>Engine/CMakeLists.txt</code>). Outside Debug this destructor is empty, and the failure it describes —
+  a lane list naming a destroyed provider — surfaces later as a call through that pointer from
+  <code>TaskStream::DrainProvidersLocked</code>, on whichever worker drains next, with nothing left to name the provider that was lost.
+</div>
+
+<div class="gap">
+  <strong>A destructor assert cannot see a drain in progress, which is why detaching takes a lock and this does not.</strong>
+  "A destructor assert alone cannot see a drain in progress, which is why <code>DetachFrom</code> and <code>DetachAll</code> take the target
+  stream's lock rather than clearing flags here" (<code>Engine/Core/TaskProvider.h</code>). The correct teardown is therefore
+  <a href="detachall.html">DetachAll</a> — which waits — and then destruction, not destruction with a hope that the count is zero.
+</div>
+
+<div class="note">
+  <strong>Nothing else is released here.</strong> No <a href="detachall.html">DetachAll</a> call, no
+  <a href="stop.html">Stop</a>, no log. A provider that dies quietly stops being a producer only in the sense that it can no longer answer
+  <a href="produce.html">Produce</a>; the streams attached to it keep whatever they were handed, and the ones registered on it keep a pointer
+  they will keep using.
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<p>None.</p>
+
+<h2 id="return">Return value</h2>
+
+<p>Nothing. It is not <code>noexcept</code> — a destructor of a type whose derived classes may hold resources makes no stronger promise than the standard already imposes.</p>
+
+<h2 id="example">Examples</h2>
+
+<p class="meta">From Engine/Core/TaskProvider.cpp, TaskProviderTest</p>
+
+<pre><code>DrainObservation deadRuns;
+DrainingProvider deadProvider("DeadItemProbe", taskSystem, deadRuns);
+deadProvider.releaseImmediately = true;
+deadProvider.AttachTo(worker, StreamDrainPolicy::ELane::Fifo);
+
+const bool askedForDead = WaitFor([&amp;]() { return deadProvider.GetAsks() &gt;= 4; }, 500);
+
+deadProvider.DetachAll();</code></pre>
+
+<p>
+  The shape every owner must copy: attach, let the stream ask, then <a href="detachall.html">DetachAll</a> while the provider is still alive,
+  so the destructor is reached with <code>registeredCount</code> back at zero. The tests then assert the bookkeeping rather than trusting the
+  assert — the assert that would catch a violation exists only in the Debug configuration, and where a probe deliberately names a stream the
+  engine does not have, the count stays zero and the destructor stays silent, which is the R37 distinction working as intended
+  (<code>Engine/Core/TaskProvider.h</code>).
+</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; TaskProvider</a></span>
+  <span><a href="index.html#methods">All TaskProvider methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

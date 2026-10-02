@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TaskProduceContext — Core module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a class="current" href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This class</h3>
+  <ul>
+    <li><a href="#description">Class description</a></li>
+    <li><a href="#template">Template parameters</a></li>
+    <li><a href="#properties">Class properties</a></li>
+    <li><a href="#methods">Class methods</a></li>
+    <li><a href="#non-member">Non-member helper functions</a></li>
+    <li><a href="#coverage">Coverage</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Core</a> /
+  TaskProduceContext
+</p>
+
+<h1>TaskProduceContext</h1>
+<p class="subtitle">
+  <span class="tag">Engine/Core/TaskProvider.h</span>
+  The two facts a stream hands its providers: which stream is asking, and when.
+</p>
+
+<h2 id="description">Class description</h2>
+
+<p>
+  <code>struct TaskProduceContext final</code> at <code>Engine/Core/TaskProvider.h</code>: everything a stream hands its providers on a
+  <code>Produce</code> call, which is deliberately two facts — which stream is asking, and the instant of the drain.
+</p>
+
+<table>
+  <tr><th>Field</th><th>Why it is here</th></tr>
+  <tr><td><code>stream</code></td><td>A provider attached to several streams must know which one is asking — "it is the only way a provider can aim a successor task back at the right place" (<code>Engine/Core/TaskProvider.h</code>)</td></tr>
+  <tr><td><code>now</code></td><td>Passed rather than pulled, so every provider in one drain reasons about the same instant and none reaches for a global to find out what time it is</td></tr>
+</table>
+
+<div class="note">
+  <strong>It carries no remaining budget, by decision.</strong> "The stream alone decides whether to call Produce at all; a provider also
+  gating on the same figure creates two authorities over one quantity, and when they disagree exactly one of them is right while both look
+  authoritative" (<code>Engine/Core/TaskProvider.h</code>). A provider that wants to stop being asked has
+  <code>Stop</code> and <code>DetachFrom</code>; reading a budget it does not own is not among its options.
+</div>
+
+<div class="note">
+  <strong><code>now</code> is an instant, not a duration</strong> — a <code>time::TEngineTimePoint</code>, which is a
+  <code>std::chrono::time_point&lt;std::chrono::steady_clock&gt;</code>, the same clock the engine epoch is taken from
+  (<code>Engine/Core/Time.h</code>). Comparing two of them is valid arithmetic; subtracting two independently anchored durations is not. To
+  turn this instant into an elapsed span, subtract <code>time::GetEngineEpoch()</code>.
+</div>
+
+<div class="gap">
+  <strong>Both fields have defaults, so a context can be built that describes no drain.</strong>
+  <code>TaskProduceContext{}</code> is well-formed C++ and means "stream 0, at the clock's zero time point" — and a provider that compares
+  <code>now</code> against an item's stamp would compute an age of the whole uptime of the process. The
+  <a href="forstream.html">ForStream</a> factory is the convention, not a gate: the struct is aggregate-initialisable, and nothing detects
+  a hand-built context. The header's own reasoning for the factory is the counter-argument to building one any other way — two providers in
+  one drain would then reason about two different times, and a caller could not tell a scheduling effect from a clock effect.
+</div>
+
+<div class="note">
+  <strong>How the engine builds one.</strong> <code>TaskStream::DrainProvidersLocked()</code> calls
+  <a href="forstream.html">ForStream</a> once per drain and hands the same context to every provider on that lane, returning the first item
+  produced (<code>Engine/Core/TaskStream.cpp</code>). The context is a parameter, never stored: a provider that keeps it across calls is
+  holding an instant that has already passed.
+</div>
+
+<h2 id="template">Template parameters</h2>
+
+<p>None. <code>TaskProduceContext</code> is a concrete <code>final</code> aggregate.</p>
+
+<h2 id="properties">Class properties</h2>
+
+<table>
+  <tr><th>Type + Name</th><th>Default Value</th><th>Description</th></tr>
+  <tr><td><code>TStreamIndex stream = 0;</code> <span class="badge">public</span></td><td><code>0</code></td><td>The stream asking, which is also the stream a successor task should be aimed at. <code>TStreamIndex</code> is <code>int</code>, and the same value names a stream from every direction — attachment, production and result delivery (<code>Engine/Core/TaskStreamIndex.h</code>)</td></tr>
+  <tr><td><code>time::TEngineTimePoint now{};</code> <span class="badge">public</span></td><td><code>{}</code> — the clock's zero point</td><td>The instant of this drain, shared by every provider asked in it. Zero is not "beginning of the engine" but the steady clock's own origin, so a default-constructed context's age arithmetic is meaningless rather than merely stale</td></tr>
+</table>
+
+<h2 id="methods">Class methods</h2>
+
+<table class="methods">
+  <tr><th>Name</th><th>Signature</th><th>What a caller depends on</th></tr>
+  <tr><td><a href="forstream.html"><code>ForStream</code></a></td><td class="sig">[[nodiscard]] static TaskProduceContext ForStream(TStreamIndex streamIndex) noexcept</td><td>Builds the context for one drain of one stream, taking the clock reading once for the whole drain.</td></tr>
+</table>
+
+<h2 id="non-member">Non-member helper functions</h2>
+
+<p>
+  None, and no operators: the context is copied by reference into <code>Produce</code> and compared by nobody. Its two fields are public
+  because the type is a value passed for reading, and a provider reads them directly — this is the only place in the provider interface
+  where a stream's state arrives without a getter.
+</p>
+
+<h2 id="coverage">Coverage</h2>
+
+<table>
+  <tr><th>Not documented here</th><th>Why</th></tr>
+  <tr><td>The engine epoch, its clock choice, and what happens before anything sets it</td>
+    <td>Time's contract, at <code>Engine/Core/Time.h</code>; this page states only what a provider may do with the instant it is
+    handed</td></tr>
+  <tr><td>What a provider is allowed to do while <code>Produce</code> runs, and which lock is held</td>
+    <td><code>TaskProvider::Produce</code>'s contract (R40); the context is the input to that call, not the rule governing it</td></tr>
+  <tr><td>Which streams exist, and which indices mean something</td>
+    <td><code>TaskSystem</code> owns the stream table; an index a stream table does not hold is legal to name here, because a provider
+    may attach to an index nothing owns</td></tr>
+</table>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; TaskProduceContext</a></span>
+  <span><a href="index.html#methods">All TaskProduceContext methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

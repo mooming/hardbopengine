@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TaskStreamAffinityBase — Core module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a class="current" href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This class</h3>
+  <ul>
+    <li><a href="#description">Class description</a></li>
+    <li><a href="#template">Template parameters</a></li>
+    <li><a href="#properties">Class properties</a></li>
+    <li><a href="#methods">Class methods</a></li>
+    <li><a href="#non-member">Non-member helper functions</a></li>
+    <li><a href="#coverage">Coverage</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Core</a> /
+  TaskStreamAffinityBase
+</p>
+
+<h1>TaskStreamAffinityBase</h1>
+<p class="subtitle">
+  <span class="tag">Engine/Core/TaskStreamAffinity.h</span>
+  <span class="tag">namespace hbe</span>
+  <span class="tag">final</span>
+  which streams a piece of work may run on, as a bitmask stored inverted: a zero bit permits, a one bit excludes
+</p>
+
+<h2 id="description">Class description</h2>
+
+<p>
+  <code>template &lt;unsigned int NumBits&gt; class TaskStreamAffinityBase final</code> at
+  <code>Engine/Core/TaskStreamAffinity.h</code>: a bitmask of which task streams a piece of work may run on, one bit per
+  stream index, densely packed — bit <code>i</code> lives in word <code>i / 64</code> at shift <code>i % 64</code>. The
+  engine uses the <code>NumBits = 64</code> instantiation, aliased at namespace scope as <code>TaskStreamAffinity</code>,
+  and embeds it in <a href="../WorkItem/index.html">WorkItem</a>, which is why the type's width is paid once per queued
+  item.
+</p>
+
+<div class="gap">
+  <strong>The mask is stored inverted: a zero bit means permitted, a one bit means excluded.</strong> The names describe the
+  <em>permitted set</em>, not the bits, so <code>Unset(i)</code> <strong>excludes</strong> stream <code>i</code> and
+  <code>Set(i)</code> permits it again. The field's own label in the header says so — "Bit 0: set / Bit 1: unset" — and
+  <a href="get.html">Get</a> returns the inversion back: it answers <code>true</code> when the stored bit is 0. A reader
+  who assumes one bit means one permitted stream will get this type exactly backwards, and every symptom of that is a task
+  refusing the only stream it was allowed to run on.
+</div>
+
+<p>
+  One writer and one reader in the shipping engine, and they are one page apart.
+  <code>WorkItem::WorkItem()</code> (<code>Engine/Core/WorkItem.cpp</code>) takes two streams away from every item it
+  builds — the base stream and the IO stream, the two executors with no thread of their own — and
+  <code>TaskSystem::Dequeue()</code> (<code>Engine/Core/TaskSystem.cpp</code>) consults the mask before lifting an item out
+  of the general queue.
+</p>
+
+<pre><code>affinity.Unset(TaskSystem::GetBaseTaskStreamIndex());
+affinity.Unset(TaskSystem::GetIOTaskStreamIndex());</code></pre>
+
+<p class="meta">From Engine/Core/WorkItem.cpp, WorkItem::WorkItem()</p>
+
+<p>
+  A fresh mask is a fresh permission set: the constructor zeroes every word, so a default-constructed mask permits every
+  in-range stream index, and narrowing it is the caller's first act. The width is pinned by a test in this module's
+  collection (<em>A mask reserves one word per 64 bits and not one per 8</em>,
+  <code>Engine/Core/TaskStreamAffinity.cpp</code>) because the type's previous encoding was internally consistent: its word
+  count was derived from bytes per word where the division needed bits per word, which made the buffer eight times as long
+  as it needed — 64 bytes for a 64-stream mask — while still behaving correctly.
+</p>
+
+<div class="note">
+  <strong>The 64-bit instantiation is a ceiling the engine does not enforce.</strong>
+  <code>TaskStreamAffinity</code> is <code>TaskStreamAffinityBase&lt;64&gt;</code>, while the stream count comes from
+  <code>TaskSystem::GetNumHardwareThreads()</code> with no cap. On an engine with more than 64 streams, every index from 64
+  up is out of range for a work item's mask, and out of range <a href="get.html">Get</a> answers "not permitted" — so the
+  general queue would refuse such a stream permanently rather than admitting it. The template itself has no such limit
+  (the tests instantiate 517 bits); it is the alias the engine uses that is 64 wide.
+</div>
+
+<h2 id="template">Template parameters</h2>
+
+<table>
+  <tr><th>Parameter</th><th>Kind</th><th>What it fixes</th></tr>
+  <tr><td><code>NumBits</code></td><td><code>unsigned int</code> non-type parameter</td><td>How many stream indices the mask addresses. Storage is rounded up to whole 64-bit words — <code>(NumBits + 63) / 64</code> of them — and every method treats an index at or above <code>NumBits</code> as out of range</td></tr>
+</table>
+
+<h2 id="properties">Class properties</h2>
+
+<table>
+  <tr><th>Type + Name</th><th>Default Value</th><th>Description</th></tr>
+  <tr><td><code>using TBitArrayUnit = uint64_t;</code> <span class="badge">private</span></td><td><span class="muted">not applicable</span></td><td>The word the bits are packed into — one word per 64 stream indices</td></tr>
+  <tr><td><code>static constexpr size_t BitArrayUnitBytes = sizeof(TBitArrayUnit);</code> <span class="badge">private</span></td><td><code>sizeof(TBitArrayUnit)</code></td><td>8. Kept because both this constant and <code>BitsPerUnit</code> feed the word count — the defect this type fixed came from using this one where the bits figure belonged</td></tr>
+  <tr><td><code>static constexpr size_t BitsPerUnit = BitArrayUnitBytes * 8;</code> <span class="badge">private</span></td><td><code>BitArrayUnitBytes * 8</code></td><td>64 — the divisor that must be used for both the word index and the shift, and the figure the old formula should have used</td></tr>
+  <tr><td><code>static constexpr size_t BitsArraySize = (NumBits + BitsPerUnit - 1) / BitsPerUnit;</code> <span class="badge">private</span></td><td><code>(NumBits + BitsPerUnit - 1) / BitsPerUnit</code></td><td>Words of storage: 1 for the engine's 64-bit alias, 9 for the 517-bit instantiation the tests use</td></tr>
+  <tr><td><code>TBitArrayUnit bitBuffer[BitsArraySize];</code> <span class="badge">private</span></td><td><span class="muted">none in the header</span></td><td>The mask itself — 0 bit means permitted, 1 bit means excluded; zeroed by the <a href="constructors.html">constructor</a>, so a new mask permits everything in range</td></tr>
+</table>
+
+<h2 id="methods">Class methods</h2>
+
+<table class="methods">
+  <tr><th>Name</th><th>Signature</th><th>What a caller depends on</th></tr>
+  <tr><td><a href="getnumbits.html"><code>GetNumBits</code></a></td><td class="sig">[[nodiscard]] static constexpr auto GetNumBits() noexcept</td><td>The template argument itself — the count of stream indices this mask addresses, readable without an object.</td></tr>
+  <tr><td><a href="constructors.html"><code>TaskStreamAffinityBase</code></a></td><td class="sig">TaskStreamAffinityBase()</td><td>Zeroes every word, which in this encoding means "permitted on every stream in range" — not "permitted nowhere".</td></tr>
+  <tr><td><a href="unset.html"><code>Unset</code></a></td><td class="sig">void Unset(unsigned int bitIndex) noexcept</td><td>Sets the bit, which <em>excludes</em> that stream. An index at or past <code>NumBits</code> is ignored silently.</td></tr>
+  <tr><td><a href="set.html"><code>Set</code></a></td><td class="sig">void Set(unsigned int bitIndex) noexcept</td><td>Clears the bit, which <em>permits</em> that stream again. An index at or past <code>NumBits</code> is ignored silently.</td></tr>
+  <tr><td><a href="get.html"><code>Get</code></a></td><td class="sig">[[nodiscard]] bool Get(unsigned int bitIndex) const noexcept</td><td>Whether this stream may run the work; out-of-range answers <code>false</code>, which is the safe direction.</td></tr>
+  <tr><td><a href="getbitsarrayindexof.html"><code>GetBitsArrayIndexOf</code></a></td><td class="sig">[[nodiscard]] unsigned int GetBitsArrayIndexOf(unsigned int bitIndex) const noexcept</td><td>Private: which word holds a bit. Both this and <code>BitsPerUnit</code> must divide by the same figure, and once they divided by different ones.</td></tr>
+</table>
+
+<h2 id="non-member">Non-member helper functions</h2>
+
+<p>None. What the header declares at namespace scope is the alias the engine actually uses:</p>
+
+<pre><code>using TaskStreamAffinity = TaskStreamAffinityBase&lt;64&gt;;</code></pre>
+
+<p class="meta">From Engine/Core/TaskStreamAffinity.h, namespace hbe</p>
+
+<table>
+  <tr><th>Type + Name</th><th>Default Value</th><th>Description</th></tr>
+  <tr><td><code>using TaskStreamAffinity = TaskStreamAffinityBase&lt;64&gt;;</code> <span class="badge">alias</span></td><td><span class="muted">not applicable</span></td><td>8 bytes, one word, 64 stream indices — the type <a href="../WorkItem/index.html">WorkItem</a> embeds as its <code>affinity</code> field</td></tr>
+</table>
+
+<h2 id="coverage">Coverage</h2>
+
+<table>
+  <tr><th>Not documented here</th><th>Why</th></tr>
+  <tr><td>What a refusal costs the queue</td>
+    <td>That is <code>TaskSystem</code>'s contract; see
+    <a href="../TaskSystem/dequeue.html">TaskSystem::Dequeue</a>. Note that the page there describes the refusing stream
+    recording its own permission in the queued item, and the source cannot do that — it edits a copy. Recorded under
+    <a href="set.html">Set</a> and reported rather than rewritten here</td></tr>
+  <tr><td>Why the base and IO streams are the two an item excludes by construction</td>
+    <td>A scheduling decision belonging to the task system and to <code>docs/TaskSystemRedesign.md</code>; this entry
+    documents the mechanism, not the reason</td></tr>
+  <tr><td>Thread-safety of a mask living inside a queued item</td>
+    <td>The mask itself has no synchronisation — it is plain words — and the rules about who may hold an item are the
+    queue's and the stream's, not this type's. Nothing in <code>Engine/</code> states that contract for a mask, so none is
+    claimed here</td></tr>
+  <tr><td><code>TaskStreamAffinityTest</code>, in <code>#ifdef __UNIT_TEST__</code> at the end of the header</td>
+    <td>Test-only; it owns a Coverage row on the module ledger rather than a page. Its assertions are quoted where they pin
+    a contract, because they are the only executable statement of the width and the out-of-range rules</td></tr>
+</table>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; TaskStreamAffinityBase</a></span>
+  <span><a href="index.html#methods">All TaskStreamAffinityBase methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

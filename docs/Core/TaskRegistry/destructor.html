@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TaskRegistry::~TaskRegistry — Core module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a class="current" href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Core</a> /
+  <a href="index.html">TaskRegistry</a> / ~TaskRegistry
+</p>
+
+<h1><span class="fn">~TaskRegistry</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::TaskRegistry</span>
+  <span class="tag">Engine/Core/TaskRegistry.cpp</span>
+  Destroys and returns every bank; tracked tasks are not released first.
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>~TaskRegistry() noexcept</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  Defined in <code>Engine/Core/TaskRegistry.cpp</code> as <code>TaskRegistry::~TaskRegistry()</code>.
+</p>
+
+<pre><code>const std::size_t allocatedBanks = bankCount.load(std::memory_order::relaxed);
+for (std::size_t bank = 0; bank &lt; allocatedBanks; ++bank)
+{
+    DeallocateBank(banks[bank]);
+}
+
+bankCount.store(0, std::memory_order::relaxed);</code></pre>
+
+<p class="meta">From Engine/Core/TaskRegistry.cpp</p>
+
+<p>
+  It walks the banks that were published and hands each to <a href="deallocatebank.html">DeallocateBank</a>, which destroys the
+  records' lifetimes and returns the bytes to the allocator they came from. The relaxed loads are adequate here because nothing else may
+  be touching this registry at destruction time — the destructor is not a synchronisation point, and the ordering that matters was
+  established when the banks were published.
+</p>
+
+<div class="gap">
+  <strong>Tracked tasks are not released, notified, or even counted on the way out.</strong> There is no pass over live records, no
+  abandoned notice, and no log line: whatever was created and never
+  <a href="release.html">Release</a>d simply stops existing with the table. That is the registry's half of a shutdown obligation — the
+  engine's half is the task system's close path, which is what drains and reports before the registry is taken apart
+  (<code>Engine/Core/TaskSystem.cpp</code>).
+</div>
+
+<div class="gap">
+  <strong>Every bank is destroyed at the size the table currently believes, not at the size it was allocated with.</strong>
+  <a href="deallocatebank.html">DeallocateBank</a> computes <code>recordsPerBank * sizeof(Record)</code> from the field, and
+  <a href="initialize.html">Initialize</a> is free to change that field. A second <a href="initialize.html">Initialize</a> with a
+  different grow-by therefore makes the destructor destroy and free a count that does not match what
+  <a href="allocatebank.html">AllocateBank</a> constructed for the earlier banks. The header's rule — call
+  <a href="initialize.html">Initialize</a> once, from the task system's own <code>Initialize</code> and nowhere else
+  (<code>Engine/Core/TaskRegistry.h</code>) — is what keeps this unreachable, not any check in the code.
+</div>
+
+<div class="note">
+  <strong>Any thread still inside <a href="find.html">Find</a> when this runs is a use-after-free.</strong> The lookup path takes no lock
+  precisely so that it never delays a creating thread, so there is no handshake here to wait for it. A
+  <a href="find.html">Find</a> result is valid memory for the life of the registry — and this is where that life ends. The engine's
+  registry outlives every stream because it is owned by the task system, which is why the rule is satisfiable.
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<p>None.</p>
+
+<h2 id="return">Return value</h2>
+
+<p>Nothing, and no count of what was still tracked. The destructor is <code>noexcept</code>: a bank whose allocator refuses to free it would terminate rather than propagate.</p>
+
+<h2 id="example">Examples</h2>
+
+<p class="meta">From Engine/Core/ResultPacket.cpp, ResultPacketTest</p>
+
+<pre><code>TaskRegistry registry;
+registry.Initialize("PacketTest", 8, 4);
+
+const auto firstID = registry.Create("PacketFirstOccupant", PacketTestRunnable(), nullptr);
+auto* firstTask = registry.Find(firstID);</code></pre>
+
+<p>
+  A stack registry the test walks away from, cleaned up by this destructor at scope exit. It is safe here for the reason the header makes
+  a rule of elsewhere: the table is dead, nothing else holds an ID into it, and no thread is inside
+  <a href="find.html">Find</a>.
+</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; TaskRegistry</a></span>
+  <span><a href="index.html#methods">All TaskRegistry methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>StreamDrainPolicy::CommitTake — Core module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a class="current" href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Core</a> /
+  <a href="index.html">StreamDrainPolicy</a> / CommitTake
+</p>
+
+<h1><span class="fn">CommitTake</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::StreamDrainPolicy</span>
+  <span class="tag">Engine/Core/StreamDrainPolicy.cpp</span>
+  Spends one unit of that lane's rotation credit at the take.
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>void CommitTake(ELane lane) noexcept</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  Defined in <code>Engine/Core/StreamDrainPolicy.cpp</code> as <code>StreamDrainPolicy::CommitTake()</code>.
+</p>
+
+<pre><code>if (lane == ELane::Fifo)
+{
+    --fifoCredit;
+}
+else if (lane == ELane::Priority)
+{
+    --priorityCredit;
+}
+
+if (fifoCredit &lt;= 0 &amp;&amp; priorityCredit &lt;= 0)
+{
+    fifoCredit += static_cast&lt;int64_t&gt;(fifoWeight);
+    priorityCredit += static_cast&lt;int64_t&gt;(priorityWeight);
+}</code></pre>
+
+<p class="meta">From Engine/Core/StreamDrainPolicy.cpp, StreamDrainPolicy::CommitTake()</p>
+
+<p>
+  One unit of rotation credit is spent for the lane that was actually taken from. Replenishment is joint: it fires only when
+  <em>both</em> credits are at or below zero, and then each side gains its own weight. That is what keeps a light lane alive
+  — its credit is not compared against zero alone, but against the heavy lane's, and the heavy lane must have run out too
+  before the light one is topped up.
+</p>
+
+<div class="note">
+  <strong>Credit is spent on the take, not on the charge, and the header explains why.</strong> A stream with no allowance
+  configured never charges anything (<a href="chargefifo.html">ChargeFifo</a> would accumulate CPU time that
+  <a href="chooselane.html">ChooseLane</a> ignores), so spending credit in the charge path would starve the lighter lane for
+  the rest of the stream's life once its opening credit ran out
+  (<code>Engine/Core/StreamDrainPolicy.h</code>).
+</div>
+
+<div class="gap">
+  <strong><code>ELane::None</code> spends nothing, and the replenishment check runs anyway.</strong> Passing
+  <code>None</code> is harmless but not free of effect: if both credits happen to be at or below zero, the call replenishes
+  them without any lane having been served. The shipping call sites never do this —
+  <code>TaskStream::Update()</code> commits only inside the <code>Fifo</code> and <code>Priority</code> arms of its switch
+  (<code>Engine/Core/TaskStream.cpp</code>) — and the same is true of the provider path, which commits only after
+  <code>DrainProvidersLocked</code> handed back an item.
+</div>
+
+<div class="note">
+  <strong>Credit only matters in the unlimited mode.</strong> With an allowance configured,
+  <a href="chooselane.html">ChooseLane</a> decides on CPU shares and never reads the credits, so a stream that is budgeted
+  spends credit pointlessly. It costs nothing and harms nothing: the counters are replenished by
+  <a href="endround.html">EndRound</a> as well.
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<table>
+  <tr><th>Parameter</th><th>Type</th><th>Requirement</th></tr>
+  <tr><td><code>lane</code></td><td><code>ELane</code></td><td>The lane an item was actually taken from — not the lane that was merely offered</td></tr>
+</table>
+
+<h2 id="return">Return value</h2>
+
+<p><code>void</code>. The credits are not exposed: <a href="fifocredit.html">FifoCredit</a> and <a href="prioritycredit.html">PriorityCredit</a> are private and have no caller.</p>
+
+<h2 id="example">Examples</h2>
+
+<p class="meta">From Engine/Core/TaskStream.cpp, TaskStream::Dequeue()</p>
+
+<pre><code>if (!priorityQueue.IsEmpty())
+{
+    outTask = priorityQueue.Pop();
+    drainPolicy.CommitTake(StreamDrainPolicy::ELane::Priority);
+    return;
+}
+
+if (!fifoQueue.IsEmpty())
+{
+    outTask = fifoQueue.Front();
+    fifoQueue.PopFront();
+    drainPolicy.CommitTake(StreamDrainPolicy::ELane::Fifo);
+    return;
+}</code></pre>
+
+<p>
+  A second consumer of the lanes — the dequeue a caller drives directly rather than the stream's own pass — commits the lane
+  it served even though it chose that lane on emptiness alone. Every take is booked, whichever path took it.
+</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; StreamDrainPolicy</a></span>
+  <span><a href="index.html#methods">All StreamDrainPolicy methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

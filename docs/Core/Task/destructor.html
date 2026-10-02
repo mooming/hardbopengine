@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Task::~Task — Core module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a class="current" href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Core</a> /
+  <a href="index.html">Task</a> / ~Task
+</p>
+
+<h1><span class="fn">~Task</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::Task</span>
+  <span class="tag">Engine/Core/Task.h</span>
+  defaulted and trivial: a task releases nothing, because a task owns nothing
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>~Task() = default</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  Declared defaulted in <code>Engine/Core/Task.h</code> as <code>Task::~Task()</code>. It releases nothing, because a
+  task owns nothing that outlives it: <code>userData</code>, <code>abandonedUserData</code> and <code>name</code> are
+  borrowed, and the result packet is a member rather than memory the task allocated.
+</p>
+
+<p>
+  Being defaulted, it is trivial — verified with <code>std::is_trivially_destructible_v&lt;hbe::Task&gt;</code>, which
+  is true. A task's <em>end</em> is therefore not an event: nothing is freed and no state is reset when one dies. When
+  a record is reused, the previous task's fields are still in place until
+  <a href="loadintorecord.html">LoadIntoRecord</a> overwrites them, which is why that call reloads <em>every</em> field
+  rather than only the ones it was handed.
+</p>
+
+<div class="note">
+  <strong>The class is neither copy-assignable nor copy-constructible.</strong> <code>numFinishedSubTasks</code> is a
+  <code>std::atomic</code> member, and the implicitly-declared copy operations are deleted because of it — verified with
+  <code>std::is_copy_assignable_v&lt;hbe::Task&gt;</code> and <code>std::is_copy_constructible_v&lt;hbe::Task&gt;</code>,
+  both false. That is why the registry has a fill-in-place call at all: <code>TaskRegistry</code> cannot assign one task
+  over another, so <a href="loadintorecord.html">LoadIntoRecord</a> sets the fields where the record sits.
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<p>None.</p>
+
+<h2 id="return">Return value</h2>
+
+<p>None.</p>
+
+<h2 id="example">Examples</h2>
+
+<p class="meta">From Engine/Core/TaskRegistry.cpp, TaskRegistry::DeallocateBank()</p>
+
+<pre><code>for (std::size_t record = 0; record &lt; recordsPerBank; ++record)
+{
+    bank[record].~Record();
+}
+
+MemoryManager::GetInstance().Deallocate(bankAllocatorID, bank, recordsPerBank * sizeof(Record));</code></pre>
+
+<p>
+  Records are placement-new'd into a raw block (<code>TaskRegistry::AllocateBank()</code>), so the registry ends them
+  explicitly, one per record, and then returns the block to its allocator. The call is what
+  <code>~Task()</code> makes cheap: destroying a record runs an empty destructor, and the loop exists because the
+  records were constructed by hand, not because a task holds anything to release.
+</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; Task</a></span>
+  <span><a href="index.html#methods">All Task methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

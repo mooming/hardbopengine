@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>StreamDrainPolicy::ChargeFifo — Core module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a class="current" href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Core</a> /
+  <a href="index.html">StreamDrainPolicy</a> / ChargeFifo
+</p>
+
+<h1><span class="fn">ChargeFifo</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::StreamDrainPolicy</span>
+  <span class="tag">Engine/Core/StreamDrainPolicy.cpp</span>
+  Adds a task's CPU time to the FIFO lane's accumulation for this round.
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>void ChargeFifo(std::chrono::nanoseconds spent) noexcept</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  Defined in <code>Engine/Core/StreamDrainPolicy.cpp</code> as <code>StreamDrainPolicy::ChargeFifo()</code>; the body is
+  <code>fifoUsed += spent;</code>. One accumulation, no clamping, no mode check: the amount is added whether or not an
+  allowance is configured, and <a href="chooselane.html">ChooseLane</a> only consults the accumulation when there is one.
+</p>
+
+<p>
+  The charge belongs <em>after</em> the task ran. <code>TaskStream::Update()</code> brackets the item's execution in a
+  <code>time::ScopedTime</code>, asks the CPU budget how much it accumulated, and charges that difference to the lane the
+  item came from (<code>Engine/Core/TaskStream.cpp</code>) — so the figure is measured CPU time attributed through the
+  budget, not wall-clock duration of the pass.
+</p>
+
+<div class="gap">
+  <strong>A lane overshoots its share by the length of its longest task.</strong> A task cannot be stopped once taken, so this
+  call is how the overshoot gets recorded rather than prevented: the shares gate <em>acquiring</em>, never execution.
+  Reading <code>fifoUsed</code> as "nothing from this lane is in flight" is the mistake the header warns a caller must not
+  make.
+</div>
+
+<div class="note">
+  <strong>Charges accumulate until <a href="endround.html">EndRound</a>.</strong> They are per round, not per pass, and a
+  stream whose window never advances never reopens its shares — the accumulations then keep growing and
+  <a href="chooselane.html">ChooseLane</a> keeps answering <code>None</code>.
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<table>
+  <tr><th>Parameter</th><th>Type</th><th>Requirement</th></tr>
+  <tr><td><code>spent</code></td><td><code>std::chrono::nanoseconds</code></td><td>CPU time the task consumed. A negative value would move the accumulation backwards; nothing here rejects one</td></tr>
+</table>
+
+<h2 id="return">Return value</h2>
+
+<p><code>void</code>. Read it back with <a href="getfifoused.html">GetFifoUsed</a>, on the owning thread.</p>
+
+<h2 id="example">Examples</h2>
+
+<p class="meta">From Engine/Core/TaskStream.cpp, TaskStream::Update()</p>
+
+<pre><code>const auto spent = budget.GetAccumulated() - chargedBefore;
+if (lane == StreamDrainPolicy::ELane::Priority)
+{
+    drainPolicy.ChargePriority(spent);
+}
+else
+{
+    drainPolicy.ChargeFifo(spent);
+}</code></pre>
+
+<p>
+  The charge is conditional on the stream actually carrying a budget — the surrounding code only brackets the run with
+  <code>budget.BeginTask()</code> / <code>EndTask()</code> when an allowance is set. An unbudgeted stream therefore charges
+  nothing, which is consistent with its shares being unlimited anyway.
+</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; StreamDrainPolicy</a></span>
+  <span><a href="index.html#methods">All StreamDrainPolicy methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

@@ -40,6 +40,7 @@ namespace hbe
 /// @note __Growing__ is only legal while no lookup is in flight, which in practice means between frames on whoever
 ///       owns the registry. Nothing grows it from a task: an allocation that lands on the path a task runs makes
 ///       the task, and not the caller, pay for a table it had no part in sizing.
+/// API reference: docs/Core/TaskRegistry/index.html
 class TaskRegistry final
 {
 	using TIndex = Task::TIndex;

@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CPUBudget::GetAccumulated — Core module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a class="current" href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Core</a> /
+  <a href="index.html">CPUBudget</a> / GetAccumulated
+</p>
+
+<h1><span class="fn">GetAccumulated</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::CPUBudget</span>
+  <span class="tag">Engine/Core/CPUBudget.cpp</span>
+  CPU time charged since the last reset - the one figure any thread may read.
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>[[nodiscard]] std::chrono::nanoseconds GetAccumulated() const noexcept</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  Defined in <code>Engine/Core/CPUBudget.cpp</code> as <code>CPUBudget::GetAccumulated()</code>; the body is
+  <code>return std::chrono::nanoseconds{accumulatedNanos.load(std::memory_order_relaxed)};</code>. The one figure on this budget that
+  any thread may read, because the field behind it is atomic.
+</p>
+
+<div class="note">
+  <strong>Well-defined does not mean current.</strong> The accumulation is written only by the owning stream thread, so a reader
+  elsewhere sees the value as of the last task that thread finished — including the task in flight right now, which is not yet
+  counted (<code>Engine/Core/TaskStream.h</code>, <code>GetAccumulatedCPUTime</code>). It is a diagnostic reading, not a lock on the
+  budget.
+</div>
+
+<div class="gap">
+  <strong>Zero has two meanings and the counter cannot tell them apart.</strong> It is zero when nothing has been charged and when
+  nothing has been <em>measured</em>: a stream with no allowance never calls <a href="begintask.html">BeginTask</a>, so its
+  accumulation stays at zero however much CPU its tasks consumed. Reading zero as "this stream is idle" is the mistake the header
+  calls out by name.
+</div>
+
+<p>
+  Its in-class use is more interesting than its reporting use: <code>TaskStream::Update()</code> reads it before and after a run and
+  charges the difference to the drain policy lane that produced the item, which turns a running total into a per-task figure without
+  any per-task state (<code>Engine/Core/TaskStream.cpp</code>, and
+  <a href="../StreamDrainPolicy/chargefifo.html">ChargeFifo</a> on the receiving end).
+</p>
+
+<h2 id="parameters">Parameters</h2>
+
+<p>None.</p>
+
+<h2 id="return">Return value</h2>
+
+<table>
+  <tr><th>Type</th><th>What you get</th></tr>
+  <tr><td><code>std::chrono::nanoseconds</code></td><td>CPU time charged since the last <a href="reset.html">Reset</a>. It can be negative only through a failed clock reading in <a href="endtask.html">EndTask</a>, which subtracts rather than adds</td></tr>
+</table>
+
+<h2 id="example">Examples</h2>
+
+<p class="meta">From Engine/Core/TaskStream.cpp, TaskStream::GetAccumulatedCPUTime()</p>
+
+<pre><code>std::chrono::nanoseconds TaskStream::GetAccumulatedCPUTime() const noexcept
+{
+    return budget.GetAccumulated();
+}</code></pre>
+
+<p>
+  The stream's public reporting hook, documented as readable from any thread. A caller comparing two reads to measure a task's cost
+  must accept that a window <a href="reset.html">Reset</a> between them makes the difference negative — the reason the shipping
+  caller brackets the read with its own budget check rather than subtracting across arbitrary points.
+</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; CPUBudget</a></span>
+  <span><a href="index.html#methods">All CPUBudget methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

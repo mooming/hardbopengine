@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TaskStream — Core module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a class="current" href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This class</h3>
+  <ul>
+    <li><a href="#description">Class description</a></li>
+    <li><a href="#template">Template parameters</a></li>
+    <li><a href="#properties">Class properties</a></li>
+    <li><a href="#methods">Class methods</a></li>
+    <li><a href="#non-member">Non-member helper functions</a></li>
+    <li><a href="#coverage">Coverage</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Core</a> /
+  TaskStream
+</p>
+
+<h1>TaskStream</h1>
+<p class="subtitle">
+  <span class="tag">Engine/Core/TaskStream.h</span>
+  One stream's two lanes and everything that makes them runnable: the queues, the drain policy, the CPU budget, the provider lists and the posted-task pump.
+</p>
+
+<h2 id="description">Class description</h2>
+
+<p>
+  <code>class TaskStream final</code> at <code>Engine/Core/TaskStream.h</code>: one lane pair — a FIFO lane and a priority lane — plus the lock,
+  condition variable, CPU budget, drain policy, provider lists and posted-task queue that make those lanes runnable by a thread. It is where work
+  is taken, and the class the task system spends most of its rules arguing about.
+</p>
+
+<div class="note">
+  <strong>Two lanes, one policy, one budget — and the three books are kept separately on purpose.</strong>
+  <code>fifoQueue</code> and <code>priorityQueue</code> hold work; <a href="../StreamDrainPolicy/index.html">StreamDrainPolicy</a> decides which
+  lane to serve next from per-lane time shares and a staleness ceiling; <a href="../CPUBudget/index.html">CPUBudget</a> decides whether the stream
+  may take work at all. The header insists on reading both throttles: "the engine throttles from two books, and a watch that reads only one cannot
+  see work held by the other" (<code>Engine/Core/TaskStream.h</code>).
+</div>
+
+<div class="note">
+  <strong>A stream may be threaded or driven, and both paths run the same <code>Update</code>.</strong> A worker stream owns a
+  <code>std::thread</code> and parks on <code>cv</code> between passes; the engine's own streams are pumped by whoever owns that thread, which is
+  why <code>taskSystem</code> is "recorded rather than looked up: <code>Update</code> may run on a thread that outlives the engine, so it cannot
+  resolve the task system through the live engine the way a thread-owned loop can" (<code>Engine/Core/TaskStream.h</code>).
+  <code>drivenPassCount</code> and <code>drivenByShutdownPump</code> exist for the driven case.
+</div>
+
+<div class="gap">
+  <strong>Posted work lives on the stream, beside the lanes, rather than next to the stream that posted it.</strong>
+  <code>postedTasks</code> is a <a href="../MainThreadTaskQueue/index.html">MainThreadTaskQueue</a>, and the header records the bug that fixed:
+  "a wait that drives the stream then cannot fail to reach posted work, which was a real deadlock and not a hypothetical one"
+  (<code>Engine/Core/TaskStream.h</code>). One pump reaching everything is the invariant; <code>isPumping</code> and
+  <code>nestedPumpAllowed</code> are what stop a pump from nesting inside itself.
+</div>
+
+<div class="gap">
+  <strong>Shutdown is a drain with a deadline, and the deadline differs by stream.</strong>
+  <code>isDrainingForShutdown</code> suspends provider probing — a stream on the way out finishes what it holds and asks nobody new — while
+  <code>shutdownDrainDeadline</code> bounds the attempt. The default is 2000 ms, and the base and IO streams get none: "'run until the queues are
+  empty' is not what closing them means: the IO stream's work is the log buffer, and writing a line re-posts the drain task, so draining it to
+  emptiness is a loop that ends only at the deadline - measured at over 2.6 million passes and the full window for no work but its own"
+  (<code>Engine/Core/TaskStream.h</code>).
+</div>
+
+<div class="note">
+  <strong>Every refusal is counted, because a stream that declines work looks identical to one with nothing to do.</strong>
+  <code>generalQueueRefusals</code> (allowance spent, work left in the general queue), <code>laneWorkRefusals</code> (a pass found lane work and the
+  policy returned no lane), <code>providerAsksWhileSpent</code> ("It must stay zero: a spent stream that still manufactures work will run work it
+  has no right to"), <code>agedOutWorkCount</code> and <code>abandonedWorkNoticeCount</code>. The last two are the observable form of the two
+  failures a queue can commit against a caller's work: dropping it for age, and abandoning it at shutdown
+  (<code>Engine/Core/TaskStream.h</code>).
+</div>
+
+<h2 id="template">Template parameters</h2>
+
+<p>None. <code>TaskStream</code> is <code>final</code> and not a template; the variability a stream carries is in the policy, budget and lane weights it is configured with.</p>
+
+<h2 id="properties">Class properties</h2>
+
+<table>
+  <tr><th>Type + Name</th><th>Default Value</th><th>Description</th></tr>
+  <tr><td><code>static constexpr TIndex MaxProvidersPerLane = 8;</code> <span class="badge">public static</span></td><td><code>8</code></td><td>Ceiling on producers feeding one lane; "a bound to keep the list inline rather than a limit anyone is expected to reach", overflow refused by <a href="attachprovider.html">AttachProvider</a> and reported by the provider that asked</td></tr>
+  <tr><td><code>StaticString name;</code> / <code>TThreadID threadID;</code> / <code>TStreamIndex streamIndex;</code></td><td>constructor arguments</td><td>Identity used in every log line, the OS thread id once <code>Start</code> has run, and the index other types route by</td></tr>
+  <tr><td><code>std::uint64_t loopCount;</code></td><td><code>0</code></td><td>Passes run by this stream's own loop; read by <code>GetLoopCount</code></td></tr>
+  <tr><td><code>MultiPoolAllocator allocator;</code></td><td>—</td><td>Per-stream allocator, so a stream's own allocations do not contend with another's</td></tr>
+  <tr><td><code>TaskSystem* taskSystem = nullptr;</code> <span class="badge">private</span></td><td><code>nullptr</code></td><td>Recorded at <code>Start</code> rather than resolved per pass, for the reason quoted above</td></tr>
+  <tr><td><code>HVector&lt;WorkItem&gt; readdingFifo;</code> / <code>readdingPriority;</code></td><td>empty</td><td>Scratch held as members so a lane sweep does not allocate every pass</td></tr>
+  <tr><td><code>CPUBudget budget;</code></td><td>unlimited until configured</td><td>This stream's measured CPU allowance, charged as tasks finish and consulted by <a href="maytakenewwork.html">MayTakeNewWork</a> and the drain gate</td></tr>
+  <tr><td><code>std::mutex queueLock;</code> / <code>std::condition_variable cv;</code> / <code>std::thread thread;</code></td><td>—</td><td>The one lock guarding both lanes and both provider lists, the wake-up channel, and the worker thread — which is why a provider call under <code>queueLock</code> cannot re-enter the stream (R40)</td></tr>
+  <tr><td><code>Deque&lt;WorkItem&gt; fifoQueue;</code></td><td>empty</td><td>FIFO lane; arrival order, no item ceiling</td></tr>
+  <tr><td><code>BoundedPriorityQueue&lt;WorkItem&gt; priorityQueue;</code></td><td>empty</td><td>Priority lane: 256 levels, buckets created on first use and released when dry, highest number first</td></tr>
+  <tr><td><code>StreamDrainPolicy drainPolicy;</code></td><td>1:1, unlimited</td><td>Per-lane time book, lane choice, allowance shares and the staleness ceiling</td></tr>
+  <tr><td><code>std::array&lt;LaneProviders, 2&gt; laneProviders;</code></td><td>both empty</td><td>The lists the drain reads (R38), one per lane, each up to <code>MaxProvidersPerLane</code> raw pointers in registration order</td></tr>
+  <tr><td><code>std::atomic&lt;bool&gt; windowAdvanceRequested{false};</code></td><td><code>false</code></td><td>Signalled by the base stream's pass, cleared by this stream's own thread, "which is what keeps every write to the budget on the thread whose CPU it charges"</td></tr>
+  <tr><td><code>std::atomic&lt;bool&gt; closeRequested{false};</code> / <code>isClosed{false};</code></td><td><code>false</code></td><td>Requested and achieved. Independent of every other stream</td></tr>
+  <tr><td><code>MainThreadTaskQueue postedTasks;</code></td><td>empty</td><td>Callables posted to the thread this stream drives; drained by the same pump that drains the lanes</td></tr>
+  <tr><td><code>bool isPumping = false;</code> / <code>nestedPumpAllowed = false;</code></td><td><code>false</code></td><td>Re-entrancy guard on the pump, and the opt-in that lets a driven stream pump from inside a task</td></tr>
+  <tr><td><code>bool isDrainingForShutdown = false;</code></td><td><code>false</code></td><td>Set while this stream runs its own remaining work on the way out, which suspends provider probing</td></tr>
+  <tr><td><code>std::chrono::milliseconds shutdownDrainDeadline{2000};</code></td><td><code>2000</code> ms</td><td>How long the shutdown drain may spend before what is left is reported abandoned</td></tr>
+  <tr><td><code>std::atomic&lt;unsigned&gt; generalQueueRefusals{0};</code> / <code>laneWorkRefusals{0};</code> / <code>providerAsksWhileSpent{0};</code></td><td><code>0</code></td><td>The three throttle witnesses: budget gate, lane gate, and the R39 invariant made countable so it holds where the assert is compiled out</td></tr>
+  <tr><td><code>std::atomic&lt;std::size_t&gt; abandonedWorkNoticeCount{0};</code> / <code>agedOutWorkCount{0};</code></td><td><code>0</code></td><td>Work given up on: abandoned at close, and dropped for exceeding the stream's max age</td></tr>
+</table>
+
+<h2 id="methods">Class methods</h2>
+
+<p>
+  The six entries documented by this pass are linked; the rest of the class is named without a link and listed in
+  <a href="#coverage">Coverage</a>.
+</p>
+
+<table class="methods">
+  <tr><th>Name</th><th>Signature</th><th>What a caller depends on</th></tr>
+  <tr><td><a href="enqueuefifo.html"><code>EnqueueFifo</code></a></td><td class="sig">void EnqueueFifo(const WorkItem&amp; task) noexcept</td><td>Queue an item on the FIFO lane; cannot fail, and the item's liveness is checked at the dequeue.</td></tr>
+  <tr><td><a href="enqueuepriority.html"><code>EnqueuePriority</code></a></td><td class="sig">void EnqueuePriority(const WorkItem&amp; task) noexcept</td><td>Queue an item on the priority lane: highest byte first, oldest first within a tie.</td></tr>
+  <tr><td><a href="attachprovider.html"><code>AttachProvider</code></a></td><td class="sig">bool AttachProvider(TaskProvider&amp; provider, StreamDrainPolicy::ELane lane) noexcept</td><td>Add a producer to one lane; false if it is already there or the eight slots are full.</td></tr>
+  <tr><td><a href="detachprovider.html"><code>DetachProvider</code></a></td><td class="sig">bool DetachProvider(TaskProvider&amp; provider, StreamDrainPolicy::ELane lane) noexcept</td><td>Remove a producer, waiting out a <code>Produce</code> already running under the same lock.</td></tr>
+  <tr><td><a href="maytakenewwork.html"><code>MayTakeNewWork</code></a></td><td class="sig">[[nodiscard]] bool MayTakeNewWork() const noexcept</td><td>Whether the budget permits work right now; advisory, and wired in front of the general queue only.</td></tr>
+  <tr><td><a href="drainproviderslocked.html"><code>DrainProvidersLocked</code></a></td><td class="sig">std::optional&lt;WorkItem&gt; DrainProvidersLocked(StreamDrainPolicy::ELane lane) noexcept</td><td>Private: ask one lane's producers under the queue lock and return the first item.</td></tr>
+  <tr><td><code>TaskStream</code> / <code>~TaskStream</code></td><td class="sig">TaskStream(); explicit TaskStream(StaticString name, TStreamIndex streamIndex); ~TaskStream() = default</td><td>Names the stream and fixes its index; the destructor is defaulted, so shutdown is driven by <code>RequestClose</code> rather than by scope exit.</td></tr>
+  <tr><td><code>Start</code> / <code>Update</code> / <code>RunLoop</code> / <code>WaitForWork</code> / <code>WakeUp</code> / <code>Join</code></td><td class="sig">see header</td><td>The life of the stream: bind to a system, run one pass, run the loop, park between passes, and wait for the thread.</td></tr>
+  <tr><td><code>ConfigureRate</code> / <code>SetMaxAge</code> / <code>GetMaxAge</code> / <code>GetFifoWeight</code> / <code>GetPriorityWeight</code></td><td class="sig">see header</td><td>The lane policy's knobs, forwarded to <a href="../StreamDrainPolicy/index.html">StreamDrainPolicy</a>.</td></tr>
+  <tr><td><code>ConfigureBudget</code> / <code>RequestBudget</code> / <code>RequestWindowAdvance</code> / <code>GetAccumulatedCPUTime</code></td><td class="sig">see header</td><td>The budget's window, its allowance and what has been charged to it.</td></tr>
+  <tr><td><code>RequestClose</code> / <code>IsCloseRequested</code> / <code>IsClosed</code> / <code>DrainForShutdown</code> / <code>AbandonHeldWork</code> / <code>CloseDrivenStream</code></td><td class="sig">see header</td><td>How a stream stops, how far it drains, and what is reported when it cannot finish.</td></tr>
+  <tr><td><code>DispatchPostedTasks</code> / <code>ProcessPostedTasks</code> / <code>HasPostedTasks</code> / <code>SetNestedPumpAllowed</code> / <code>IsDrivenByShutdownPump</code> / <code>SetDrivenByShutdownPump</code></td><td class="sig">see header</td><td>The posted-task pump and the rules about who may pump and from where.</td></tr>
+  <tr><td><code>CountPendingItems</code> / <code>GetLoopCount</code> / <code>GetDrivenPassCount</code> / <code>GetLaneWorkRefusalCount</code> / <code>GetProviderAskWhileSpentCount</code> / <code>GetGeneralQueueRefusalCount</code> / <code>GetAgedOutWorkCount</code> / <code>GetAbandonedWorkNoticeCount</code></td><td class="sig">see header</td><td>The counters, which are the only way to see a stream that is being throttled rather than idle.</td></tr>
+  <tr><td><code>GetName</code> / <code>GetStreamIndex</code> / <code>GetThreadID</code> / <code>GetThread</code> / <code>IsProviderAttached</code></td><td class="sig">see header</td><td>Identity and the one provider query.</td></tr>
+  <tr><td><code>ReportReleasedTask</code> / <code>ReportAgedOutWorkItem</code> / <code>FireAbandonedNotice</code> / <code>ReportGeneralQueueRefusal</code></td><td class="sig">see header</td><td>Private reporting of the four ways work goes missing.</td></tr>
+</table>
+
+<h2 id="non-member">Non-member helper functions</h2>
+
+<p>
+  One file-local helper, in an anonymous namespace in <code>Engine/Core/TaskStream.cpp</code>:
+  <code>constexpr size_t ProviderSlot(StreamDrainPolicy::ELane lane)</code> maps FIFO to 0, Priority to 1 and <code>ELane::None</code> to 2 —
+  "an out-of-range index when the lane is <code>None</code>" — so each of the three provider calls rejects a no-lane request with the same bounds
+  test against a two-element array.
+</p>
+
+<h2 id="coverage">Coverage</h2>
+
+<p>
+  This page is partial. The class has 53 documented method entries and 6 have their own page; the names below are still undocumented and are
+  listed so the gap is visible rather than implied away. The list uses the page stems
+  <code>docs_methods.py</code> reports for <code>Engine/Core/TaskStream.h</code>.
+</p>
+
+<table>
+  <tr><th>Gap</th><th>Detail</th></tr>
+  <tr>
+    <td>Method pages not yet written</td>
+    <td><code>constructors</code>, <code>destructor</code>, <code>start</code>, <code>update</code>, <code>runloop</code>, <code>waitforwork</code>, <code>wakeup</code>, <code>join</code>, <code>configurerate</code>, <code>setmaxage</code>, <code>getmaxage</code>, <code>getfifoweight</code>, <code>getpriorityweight</code>, <code>configurebudget</code>, <code>requestbudget</code>, <code>requestwindowadvance</code>, <code>getaccumulatedcputime</code>, <code>requestclose</code>, <code>iscloserequested</code>, <code>isclosed</code>, <code>drainforshutdown</code>, <code>closedrivenstream</code>, <code>abandonheldwork</code>, <code>setdrivenbyshutdownpump</code>, <code>isdrivenbyshutdownpump</code>, <code>dispatchpostedtasks</code>, <code>processpostedtasks</code>, <code>haspostedtasks</code>, <code>setnestedpumpallowed</code>, <code>dequeue</code>, <code>isproviderattached</code>, <code>countpendingitems</code>, <code>getloopcount</code>, <code>getdrivenpasscount</code>, <code>getlaneworkrefusalcount</code>, <code>getprovideraskwhilespentcount</code>, <code>getgeneralqueuerefusalcount</code>, <code>getagedoutworkcount</code>, <code>getabandonedworknoticecount</code>, <code>getname</code>, <code>getstreamindex</code>, <code>getthreadid</code>, <code>getthread</code>, <code>reportreleasedtask</code>, <code>reportagedoutworkitem</code>, <code>fireabandonednotice</code>, <code>reportgeneralqueuerefusal</code></td>
+  </tr>
+  <tr>
+    <td><code>Update</code> in particular</td>
+    <td>The drain pass itself — lane choice, dequeue, budget charge, provider probe, queue sweep, posted-task pump — is the single most
+      consequential function in the module and has no page yet. Until it does, this class is documented at its edges
+      (<code>Engine/Core/TaskStream.cpp</code>)</td>
+  </tr>
+  <tr>
+    <td>Threading contract as a whole</td>
+    <td>Which fields are written only by the owning thread, which are atomic, and why the budget is written only by the thread whose CPU it charges
+      is stated per field above; there is no consolidated thread-safety page for the class yet</td>
+  </tr>
+</table>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; TaskStream</a></span>
+  <span><a href="index.html#methods">All TaskStream methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

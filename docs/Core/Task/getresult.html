@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Task::GetResult — Core module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a class="current" href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Core</a> /
+  <a href="index.html">Task</a> / GetResult
+</p>
+
+<h1><span class="fn">GetResult</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::Task</span>
+  <span class="tag">Engine/Core/Task.h</span>
+  this task's own 128-byte packet, cleared when the record was issued
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>[[nodiscard]] ResultPacket&amp; GetResult() noexcept
+
+[[nodiscard]] const ResultPacket&amp; GetResult() const noexcept</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  Both overloads are defined in the header <code>Engine/Core/Task.h</code> as <code>Task::GetResult()</code>; each body
+  is <code>return result;</code>. The packet is an <em>embedded member</em> — 128 bytes living inside the task, and
+  therefore inside the registry record — not a buffer a stream owns. There is no per-stream result arena, no capacity to
+  admit against, and nothing to free: the result lives exactly as long as the task is tracked.
+</p>
+
+<p>
+  It starts empty. <a href="loadintorecord.html">LoadIntoRecord</a> calls <code>ResultPacket::Clear()</code> when the
+  registry issues the record (<code>Engine/Core/Task.cpp</code>), so a recycled record cannot report its previous
+  occupant's answer, and <code>ResultPacket::KindNoResult</code> is the state a reader stops at.
+</p>
+
+<p>
+  Two writers, both engine-side. The task's own runnable writes it through the task it was given, and
+  <code>TaskSystem::RunSplit()</code> stamps the packet's destination byte when the split names a successor
+  (<code>Engine/Core/TaskSystem.cpp</code>).
+</p>
+
+<div class="gap">
+  <strong>A packet is copied by the delivery path.</strong> The header's note says nothing in the engine copies this
+  packet; the source disagrees. <code>TaskSystem::DispatchSuccessor()</code> assigns the finished task's packet onto its
+  successor before queueing the successor's item, so the successor inherits the producer's kind byte <em>and</em> the
+  producer's destination byte along with the payload.
+</div>
+
+<pre><code>successor-&gt;GetResult() = packet;
+
+streams[destination].EnqueueFifo(successor-&gt;GenerateSubTask(0, 1));</code></pre>
+
+<p class="meta">From Engine/Core/TaskSystem.cpp, TaskSystem::DispatchSuccessor()</p>
+
+<div class="note">
+  <strong>Anything bigger than 120 bytes of payload is the task's problem.</strong> The engine's knowledge of results
+  stops at this packet: a task with more output than the payload holds keeps that output in memory it owns and puts a
+  handle to it in the payload. The engine neither allocates, nor copies out, nor frees that memory — see
+  <code>ResultPacket::PayloadBytes</code> in <code>Engine/Core/ResultPacket.h</code>.
+</div>
+
+<div class="note">
+  <strong>A mutable reference to this is a write the reader cannot see coming.</strong> The packet is not synchronised:
+  one task writes it while it runs, and the reader arrives after the join closed. Writing it while another thread reads
+  the same packet is a bug in whoever declared the result, and nothing here detects it.
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<p>None.</p>
+
+<h2 id="return">Return value</h2>
+
+<table>
+  <tr><th>Type</th><th>What you get</th></tr>
+  <tr><td><code>ResultPacket&amp;</code> / <code>const ResultPacket&amp;</code></td><td>This task's own packet, valid for as long as the record holds this task. A reader that reaches the task by <a href="../TaskSystem/find-task.html">identity</a> is refused by the registry's generation check if the record has been reused</td></tr>
+</table>
+
+<h2 id="example">Examples</h2>
+
+<p class="meta">From Engine/Core/TaskSystem.cpp, TaskSystem::RunSplit()</p>
+
+<pre><code>if (!successor.IsNull())
+{
+    SetSuccessor(taskID, successor);
+    task-&gt;GetResult().SetDestinationStreamIndex(static_cast&lt;std::uint8_t&gt;(successorStream));
+}</code></pre>
+
+<p>
+  A split has no producer runnable that could route its own outcome, so this is where the packet's destination byte
+  comes from — and a byte left unwritten is why <code>DispatchSuccessor()</code> refuses a chain with an error naming
+  both records.
+</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; Task</a></span>
+  <span><a href="index.html#methods">All Task methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

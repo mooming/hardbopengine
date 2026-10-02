@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Task::NumSubTasks — Core module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a class="current" href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Core</a> /
+  <a href="index.html">Task</a> / NumSubTasks
+</p>
+
+<h1><span class="fn">NumSubTasks</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::Task</span>
+  <span class="tag">Engine/Core/Task.h</span>
+  the declared join size — the number the join is compared against, and 0 is a refusal
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>[[nodiscard]] auto NumSubTasks() const noexcept</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  Defined in the header <code>Engine/Core/Task.h</code> as <code>Task::NumSubTasks()</code>; the body is
+  <code>return numSubTasks;</code> and the deduced return type is <code>TNumSubTasks</code>. It reports what was
+  <em>declared</em> by <a href="reservesubtasks.html">ReserveSubTasks</a>, not what has run, not what is queued, and not
+  what the splitter intended — those are three different numbers, and this is the first one.
+</p>
+
+<p>
+  It is the denominator of the join: <a href="reportfinishedsubtask.html">ReportFinishedSubTask</a> compares against it
+  and <a href="hasdone.html">HasDone</a> compares against it. Outside the class it has one reader in the engine, and that
+  reader treats zero as a refusal.
+</p>
+
+<div class="note">
+  <strong>Zero means "nothing was ever declared", and that is a refusal.</strong>
+  <code>TaskSystem::DispatchSuccessor()</code> checks this before queueing anything for a successor
+  (<code>Engine/Core/TaskSystem.cpp</code>): an outcome is delivered as one item covering the successor's whole range,
+  and a successor with no reserved subtask has no join for that item to close, so the dispatch is refused with a log
+  line naming the record.
+</div>
+
+<div class="gap">
+  <strong>Read plain, with no ordering against the write.</strong> <code>numSubTasks</code> is an ordinary byte, so this
+  accessor has no synchronisation with the <a href="reservesubtasks.html">reserve</a> that set it. That is safe under the
+  rule the reserve page states — reserve once, before the first item is queued — and unsafe for a task whose count is
+  being written while other threads read it. For a progress figure that survives concurrency, read
+  <a href="numfinishedsubtasks.html">NumFinishedSubTasks</a>, which is the atomic half.
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<p>None.</p>
+
+<h2 id="return">Return value</h2>
+
+<table>
+  <tr><th>Type</th><th>What you get</th></tr>
+  <tr><td><code>TNumSubTasks</code> (<code>uint8_t</code>)</td><td>The declared join size, 0 to 255</td></tr>
+</table>
+
+<h2 id="example">Examples</h2>
+
+<p class="meta">From Engine/Core/TaskSystem.cpp, TaskSystem::DispatchSuccessor()</p>
+
+<pre><code>if (successor-&gt;NumSubTasks() == 0)
+{
+    auto log = Logger::Get(GetName());
+    log.OutError([successorID](auto&amp; ls)
+    {
+        ls &lt;&lt; "Record " &lt;&lt; successorID.index &lt;&lt; " generation " &lt;&lt; successorID.generation
+           &lt;&lt; " is named as a successor but reserved no subtask, so there is no work item to queue for it: an"
+           &lt;&lt; " outcome is delivered as one item covering the successor's whole range, which is one reserved"
+           &lt;&lt; " subtask. Nothing was dispatched. ";
+    });
+    return;
+}</code></pre>
+
+<p>
+  The check is not paranoia about a strange value: a successor is created by a caller that has not queued it, so the
+  reservation is the only evidence that anybody intends the successor to run at all.
+</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; Task</a></span>
+  <span><a href="index.html#methods">All Task methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

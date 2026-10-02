@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TaskRegistry::DeallocateBank — Core module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a class="current" href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Core</a> /
+  <a href="index.html">TaskRegistry</a> / DeallocateBank
+</p>
+
+<h1><span class="fn">DeallocateBank</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::TaskRegistry</span>
+  <span class="tag">Engine/Core/TaskRegistry.cpp</span>
+  Destroys a bank's records and returns its bytes to the same allocator.
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>void DeallocateBank(TBank bank) noexcept</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  Defined in <code>Engine/Core/TaskRegistry.cpp</code> as <code>TaskRegistry::DeallocateBank()</code>. Private, and with one caller:
+  <a href="destructor.html">the destructor</a>, once per bank it finds published. There is no shrink path, so nothing returns a bank to the
+  allocator while the registry is in service.
+</p>
+
+<pre><code>if (bank == nullptr)
+{
+    return;
+}
+
+for (std::size_t record = 0; record &lt; recordsPerBank; ++record)
+{
+    bank[record].~Record();
+}
+
+MemoryManager::GetInstance().Deallocate(bankAllocatorID, bank, recordsPerBank * sizeof(Record));</code></pre>
+
+<p class="meta">From Engine/Core/TaskRegistry.cpp</p>
+
+<p>
+  Two halves that must stay paired: every record's lifetime is ended explicitly, because the storage came from
+  <code>MemoryManager::GetInstance().Allocate</code> and not from a constructing operator, and then the bytes go back to the
+  <em>same</em> allocator they came from — <code>bankAllocatorID</code>, not whatever is ambient now. That symmetry is why
+  <a href="allocatebank.html">AllocateBank</a> captured an allocator identity at <a href="initialize.html">Initialize</a> instead of
+  allocating from the current one.
+</p>
+
+<div class="gap">
+  <strong>The null test exists for a partially-initialised table, and it is the only safety this function has.</strong>
+  <a href="initialize.html">Initialize</a> stops its loop at the first failed bank, and <a href="destructor.html">the destructor</a> walks
+  <code>bankCount</code> entries — but a registry that was constructed and never initialised holds 1024 null pointers, and a stray
+  <code>nullptr</code> in a walked range would otherwise reach the loop below it. What the guard does <em>not</em> check is whether the
+  records in the bank were ever constructed, or how many.
+</div>
+
+<div class="gap">
+  <strong>Bank size is taken from today's <code>recordsPerBank</code>, not from what the bank was built with.</strong> Both the destructor
+  loop and the byte count are computed from the field, which <a href="initialize.html">Initialize</a> is free to overwrite. A second
+  <a href="initialize.html">Initialize</a> with a different grow-by therefore makes this function destroy the wrong number of objects and
+  hand the allocator a size it did not give out — the concrete cost behind the header's "call this once" rule
+  (<code>Engine/Core/TaskRegistry.h</code>). See <a href="destructor.html">~TaskRegistry</a> for the same hazard from the other side.
+</div>
+
+<div class="note">
+  <strong>No tracked task is consulted on the way out.</strong> This function does not look at <code>inUse</code>, so a bank whose records
+  are live is torn down anyway. Correctness depends entirely on the caller: <a href="destructor.html">the destructor</a> runs when nothing
+  can be creating or finding tasks any more, and the task system's close path is what makes that true before the registry is taken apart
+  (<code>Engine/Core/TaskSystem.cpp</code>).
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<table>
+  <tr><th>Parameter</th><th>Type</th><th>Requirement</th></tr>
+  <tr><td><code>bank</code></td><td><code>TBank</code> (<code>Record*</code>)</td><td>A bank this registry allocated and has not yet freed; <code>nullptr</code> is accepted and ignored</td></tr>
+</table>
+
+<h2 id="return">Return value</h2>
+
+<p><code>void</code>. No count of records destroyed, no report from the allocator, and no indication that the bank's size disagreed with <a href="getgrowby.html">GetGrowBy</a>.</p>
+
+<h2 id="example">Examples</h2>
+
+<p class="meta">From Engine/Core/TaskRegistry.cpp, TaskRegistry::~TaskRegistry()</p>
+
+<pre><code>const std::size_t allocatedBanks = bankCount.load(std::memory_order::relaxed);
+for (std::size_t bank = 0; bank &lt; allocatedBanks; ++bank)
+{
+    DeallocateBank(banks[bank]);
+}</code></pre>
+
+<p>
+  Walking the published count rather than the table's full 1024 entries is what keeps this correct for a registry that grew one bank and
+  then died — and the relaxed load is adequate because a registry being destroyed has no other thread publishing anything.
+</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; TaskRegistry</a></span>
+  <span><a href="index.html#methods">All TaskRegistry methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

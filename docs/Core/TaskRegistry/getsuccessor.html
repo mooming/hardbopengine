@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TaskRegistry::GetSuccessor — Core module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a class="current" href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Core</a> /
+  <a href="index.html">TaskRegistry</a> / GetSuccessor
+</p>
+
+<h1><span class="fn">GetSuccessor</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::TaskRegistry</span>
+  <span class="tag">Engine/Core/TaskRegistry.cpp</span>
+  The recorded successor, or a null ID when nobody is waiting.
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>[[nodiscard]] TaskID GetSuccessor(TaskID task) noexcept</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  Defined in <code>Engine/Core/TaskRegistry.cpp</code> as <code>TaskRegistry::GetSuccessor()</code>; the body is a conditional over the
+  same record lookup the mutating calls use.
+</p>
+
+<pre><code>const Record* record = FindLiveRecord(task);
+
+return record == nullptr ? TaskID{} : record-&gt;successor;</code></pre>
+
+<p class="meta">From Engine/Core/TaskRegistry.cpp</p>
+
+<p>
+  One call answers both questions a dispatcher asks: is this task still the one I recorded, and is anybody waiting on its join. A null ID
+  covers "never recorded", "recorded as null", and "the record is gone or re-issued" — the last case being the one the generation exists to
+  catch, since a recycled record's cleared successor would otherwise dispatch the new occupant's waiter.
+</p>
+
+<div class="gap">
+  <strong>The read is unguarded and the field is not atomic.</strong> <a href="findliverecord.html">FindLiveRecord</a> takes no lock and
+  reads its flags relaxed, and what this returns is a copy of a plain 16-byte <code>TaskID</code> that
+  <a href="setsuccessor.html">SetSuccessor</a> may be writing on another thread at the same moment. A torn read of two 8-byte halves is
+  possible in principle; what matters in practice is that a value read here is not ordered against
+  <a href="create.html">Create</a>'s clearing of the same field. The pages for those two calls carry the details.
+</div>
+
+<div class="note">
+  <strong>Its one shipping reader is the join-close path, on a worker thread.</strong>
+  <code>TaskSystem::DispatchSuccessor()</code> calls <a href="find.html">Find</a> on the completing task, then this, then reads the result
+  packet's destination byte — so the whole dispatch decision is made from lock-free reads
+  (<code>Engine/Core/TaskSystem.cpp</code>). That is the performance intent: closing a join must not queue behind task creation.
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<table>
+  <tr><th>Parameter</th><th>Type</th><th>Requirement</th></tr>
+  <tr><td><code>task</code></td><td><code>TaskID</code></td><td>The identity whose successor is wanted; a null ID yields a null ID without touching memory</td></tr>
+</table>
+
+<h2 id="return">Return value</h2>
+
+<table>
+  <tr><th>Type</th><th>What you get</th></tr>
+  <tr><td><code>TaskID</code></td><td>The recorded successor, or a null ID when the task is not tracked or nobody is waiting. Not a reference and not a claim that the successor is still live — the caller must resolve it separately</td></tr>
+</table>
+
+<h2 id="example">Examples</h2>
+
+<p class="meta">From Engine/Core/TaskSystem.cpp, TaskSystem::DispatchSuccessor()</p>
+
+<pre><code>const TaskID successorID = taskRegistry.GetSuccessor(finishedTask);
+if (successorID.IsNull())
+{
+    return;
+}</code></pre>
+
+<p>
+  The common answer is null: most tasks end their join with nobody waiting, and the early return is what keeps the join path free of
+  logging. The interesting failure is the opposite one — a successor recorded with no destination byte in the result packet — which is
+  reported by the next few lines of that function rather than here.
+</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; TaskRegistry</a></span>
+  <span><a href="index.html#methods">All TaskRegistry methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

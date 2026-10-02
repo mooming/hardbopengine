@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TaskHandle::RequestStop — Core module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a class="current" href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Core</a> /
+  <a href="index.html">TaskHandle</a> / RequestStop
+</p>
+
+<h1><span class="fn">RequestStop</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::TaskHandle</span>
+  <span class="tag">Engine/Core/TaskProvider.h</span>
+  Const and idempotent; doing nothing on an empty token keeps teardown guard-free.
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>void RequestStop() const noexcept</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  Defined in <code>Engine/Core/TaskProvider.cpp</code> as <code>TaskHandle::RequestStop()</code>.
+</p>
+
+<pre><code>if (provider != nullptr)
+{
+    provider-&gt;Stop();
+}</code></pre>
+
+<p class="meta">From Engine/Core/TaskProvider.cpp</p>
+
+<p>
+  One guarded forward. <code>const</code> because stopping does not alter the token: "any copy of it can issue the same request, and a token
+  that became unusable once used would have to be kept mutable everywhere" (<code>Engine/Core/TaskProvider.h</code>). The effect lands on
+  the provider's atomic flag, where every copy of the token and the provider itself will see it through
+  <a href="isstoprequested.html">IsStopRequested</a>.
+</p>
+
+<div class="note">
+  <strong>Doing nothing on an empty token is deliberate.</strong> "So that a registry entry that was never filled can be stopped on a
+  teardown path without a caller-side guard" (<code>Engine/Core/TaskProvider.h</code>). This is the call a teardown loop should make
+  unconditionally — over every slot of a table, empty or not — and the reason
+  <a href="operator-bool.html">the boolean test</a> is not a prerequisite of it.
+</div>
+
+<div class="gap">
+  <strong>"Request" is the accurate word, and the gap is in the drain path rather than in this call.</strong> The provider's own contract
+  states what a stop means: "Stop is not cancellation. Tasks already taken run to completion - the task system cannot stop one - so
+  'stopped' means no further Produce calls, not no further work" (<code>Engine/Core/TaskProvider.h</code>). The page for
+  <code>TaskProvider::Stop</code> records what the shipping drain path does with the flag this sets — and it is worth reading before
+  relying on a stop as a way to quiet a producer.
+</div>
+
+<div class="note">
+  <strong>Safe from any thread, and it does not wait for anything.</strong> The store is a release store on an atomic, and nothing here takes
+  a lock, joins a thread, or touches a stream's provider list — which is the point: a caller on an arbitrary thread has no right to edit a
+  container another thread is iterating (<code>Engine/Core/TaskProvider.h</code>). A caller that needs the producer actually removed from a
+  stream needs <code>DetachFrom</code>, and that is a call on the provider, not on a token.
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<p>None. There is no "stop after N items" or "stop and drop" variant; the request is one bit with no parameters to negotiate.</p>
+
+<h2 id="return">Return value</h2>
+
+<p><code>void</code>. Nothing reports whether the token was empty, whether a stop had already been requested, or whether anybody will act on it. Read <a href="isstoprequested.html">IsStopRequested</a> for the first two.</p>
+
+<h2 id="example">Examples</h2>
+
+<p class="meta">From Engine/Core/TaskProvider.cpp, TaskProviderTest</p>
+
+<pre><code>RecordingProvider other("ProviderStopProbe2", System());
+const auto otherHandle = other.GetHandle();
+otherHandle.RequestStop();
+if (!other.IsStopRequested())
+{
+    ls &lt;&lt; "RequestStop through a handle did not reach the provider." &lt;&lt; lferr;
+}</code></pre>
+
+<p>
+  The request asked to be visible on the provider, which is the whole obligation this call has. The token's lifetime rule still applies at
+  the call: a handle whose provider has already been destroyed reaches this code's one pointer dereference, and nothing here can notice
+  (<code>Engine/Core/TaskProvider.h</code>).
+</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; TaskHandle</a></span>
+  <span><a href="index.html#methods">All TaskHandle methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

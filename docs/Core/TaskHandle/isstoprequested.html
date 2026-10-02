@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TaskHandle::IsStopRequested — Core module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a class="current" href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Core</a> /
+  <a href="index.html">TaskHandle</a> / IsStopRequested
+</p>
+
+<h1><span class="fn">IsStopRequested</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::TaskHandle</span>
+  <span class="tag">Engine/Core/TaskProvider.h</span>
+  Any thread; an empty token answers false, which is not the same as not stopped.
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>[[nodiscard]] bool IsStopRequested() const noexcept
+
+[[nodiscard]] bool IsStopRequested() const noexcept</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  Defined in <code>Engine/Core/TaskProvider.cpp</code> as <code>TaskHandle::IsStopRequested()</code>.
+</p>
+
+<pre><code>return provider != nullptr &amp;&amp; provider-&gt;IsStopRequested();</code></pre>
+
+<p class="meta">From Engine/Core/TaskProvider.cpp</p>
+
+<p>
+  Two reads in one expression: the stored pointer, then the provider's atomic stop flag — a
+  <code>std::atomic&lt;bool&gt;</code> loaded with acquire semantics by <code>TaskProvider::IsStopRequested</code>. Safe from any thread, and
+  it is the only question about a provider that a token holder may ask from anywhere without leaving the provider's own contract
+  (<code>Engine/Core/TaskProvider.h</code>).
+</p>
+
+<div class="gap">
+  <strong>An empty token answers <code>false</code>, and <code>false</code> here has two causes.</strong> Short-circuiting on a null pointer
+  and a provider that has not been stopped produce the same answer, and this call cannot tell them apart. Use
+  <a href="operator-bool.html">the boolean test</a> first when the distinction matters — for instance when reporting that a teardown had
+  nothing to stop.
+</div>
+
+<div class="note">
+  <strong>The answer is a moment, and the state it reports is one-way.</strong> A stop request is never cleared: nothing writes
+  <code>false</code> back to the flag, so once this reads <code>true</code> it will keep reading <code>true</code> for as long as the
+  provider lives (<code>Engine/Core/TaskProvider.h</code>). The reverse is not a promise — a <code>true</code> says somebody asked, not that
+  any stream has stopped calling <code>Produce</code>. The stream that drains a provider is the party that has to act on the flag, and the
+  page for <code>TaskProvider::Stop</code> records what the shipping drain path does with it.
+</div>
+
+<div class="note">
+  <strong>Every copy of a token reports the same answer.</strong> The flag lives on the provider, not the token, so issuing
+  <a href="requeststop.html">RequestStop</a> through one copy is visible through all of them and through
+  <code>TaskProvider::IsStopRequested</code> called directly. That is what makes <a href="requeststop.html">RequestStop</a>
+  <code>const</code>: the token is a name for the provider, not a resource it owns.
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<p>None.</p>
+
+<h2 id="return">Return value</h2>
+
+<table>
+  <tr><th>Type</th><th>What you get</th></tr>
+  <tr><td><code>bool</code></td><td><code>true</code> only when the token is non-empty and its provider has been asked to stop. <code>false</code> covers "empty token" and "not stopped" together</td></tr>
+</table>
+
+<h2 id="example">Examples</h2>
+
+<p class="meta">From Engine/Core/TaskProvider.cpp, TaskProviderTest</p>
+
+<pre><code>provider.Stop();
+if (!handle.IsStopRequested())
+{
+    ls &lt;&lt; "Provider::Stop was invisible to the handle for it." &lt;&lt; lferr;
+}</code></pre>
+
+<p>
+  The pairing the type exists for: a stop issued on the provider must be visible through a token that knows nothing but the address, because
+  both reads reach the same atomic on the same object. The test asserts the same equality in the other direction as well — a request made
+  through a second provider's handle must not appear on the first
+  (<code>Engine/Core/TaskProvider.cpp</code>).
+</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; TaskHandle</a></span>
+  <span><a href="index.html#methods">All TaskHandle methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

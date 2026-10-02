@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TaskProvider::GetAttachedCount — Core module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a class="current" href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Core</a> /
+  <a href="index.html">TaskProvider</a> / GetAttachedCount
+</p>
+
+<h1><span class="fn">GetAttachedCount</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::TaskProvider</span>
+  <span class="tag">Engine/Core/TaskProvider.h</span>
+  How many streams this provider currently feeds.
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>[[nodiscard]] TStreamIndex GetAttachedCount() const noexcept</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  Declared and defined in the header <code>Engine/Core/TaskProvider.h</code>; there is no counterpart in
+  <code>Engine/Core/TaskProvider.cpp</code>. One read of the number of slots in use — streams, not lanes, since one stream attached on both
+  lanes still counts once.
+</p>
+
+<div class="gap">
+  <strong>It counts recorded attachments, not registrations, and the two can differ.</strong>
+  The number that decides whether this object may be destroyed is <code>registeredCount</code>, and
+  <a href="registeronstream.html">RegisterOnStream</a> moves it only when a real stream accepted the provider. A provider attached to an index
+  the engine does not have reports a count here and a registration count of zero — the R37 distinction that keeps such a probe legal to
+  destroy (<code>Engine/Core/TaskProvider.h</code>). Read this number as "how many streams I asked to feed", not as "how many streams hold my
+  address".
+</div>
+
+<div class="note">
+  <strong>No lock, because the class has none.</strong> The field is a plain <code>TStreamIndex</code> written by
+  <a href="attachto.html">AttachTo</a> and <a href="detachfrom.html">DetachFrom</a>, so a read from another thread while either runs races it.
+  The header's only thread-safety claim on this class is on <a href="isstoprequested.html">IsStopRequested</a>; everything else here, reads
+  included, belongs to the owner's thread.
+</div>
+
+<div class="note">
+  <strong>The tests read this rather than trusting a call's effect.</strong> Attaching one stream on two lanes must leave 1, attaching the same
+  lane twice must leave 1, and filling the table must stop at <code>MaxAttachedStreams</code>
+  (<code>Engine/Core/TaskProvider.cpp</code>) — each of those is a statement about the merge rule in
+  <a href="attachto.html">AttachTo</a>, observable nowhere else.
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<p>None.</p>
+
+<h2 id="return">Return value</h2>
+
+<table>
+  <tr><th>Type</th><th>What you get</th></tr>
+  <tr><td><code>TStreamIndex</code> (<code>int</code>)</td><td>Streams currently recorded as fed by this provider, from 0 to <code>MaxAttachedStreams</code>. It is not a count of streams that will actually ask, and it is not the figure the destructor asserts on</td></tr>
+</table>
+
+<h2 id="example">Examples</h2>
+
+<p class="meta">From Engine/Core/TaskProvider.cpp, TaskProviderTest</p>
+
+<pre><code>if (provider.GetAttachedCount() != 1)
+{
+    ls &lt;&lt; "Attaching stream 3 on two lanes took " &lt;&lt; provider.GetAttachedCount()
+       &lt;&lt; " slots, so one stream must not own two entries." &lt;&lt; lferr;
+}</code></pre>
+
+<p>
+  The one-slot-per-stream rule pinned by a count rather than by reading the array, which is the only way the rule can be tested at all from
+  outside the class (<code>Engine/Core/TaskProvider.cpp</code>).
+</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; TaskProvider</a></span>
+  <span><a href="index.html#methods">All TaskProvider methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TaskStreamAffinityBase::Get — Core module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a class="current" href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Core</a> /
+  <a href="index.html">TaskStreamAffinityBase</a> / Get
+</p>
+
+<h1><span class="fn">Get</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::TaskStreamAffinityBase</span>
+  <span class="tag">Engine/Core/TaskStreamAffinity.h</span>
+  whether this stream may run the work — out-of-range answers no, which is the safe direction
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>[[nodiscard]] bool Get(unsigned int bitIndex) const noexcept</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  Defined in the header <code>Engine/Core/TaskStreamAffinity.h</code> as <code>TaskStreamAffinityBase::Get()</code>; the
+  body ends with the inversion that makes this type readable despite its storage:
+</p>
+
+<pre><code>if (bitIndex &gt;= NumBits)
+{
+    return false;
+}
+
+const auto index = GetBitsArrayIndexOf(bitIndex);
+auto value = bitBuffer[index];
+const auto numShift = bitIndex - (index * BitsPerUnit);
+value = value &gt;&gt; numShift;
+
+return (value &amp; 1) == 0;</code></pre>
+
+<p class="meta">From Engine/Core/TaskStreamAffinity.h, TaskStreamAffinityBase::Get()</p>
+
+<p>
+  The answer is permission: <code>true</code> means this stream may run the work. Two directions of the design are worth
+  holding on to. A zero bit means permitted, so a fresh, untouched mask
+  (<a href="constructors.html">constructor</a>) answers <code>true</code> for every in-range index. And an out-of-range index
+  answers <code>false</code>, which is the safe direction: the padding bits of a partially filled last word are unreachable,
+  and their stored 0 — which this encoding would otherwise read as permission — can never become permission to run
+  something.
+</p>
+
+<div class="note">
+  <strong>An index that is not a stream index is refused for the same reason.</strong>
+  <code>TaskSystem::Dequeue()</code> asks with <code>GetCurrentStreamIndex()</code>, whose "no stream" value
+  (<code>TaskSystem::NonStreamIndex</code>) is negative and therefore far outside the mask — a thread that claimed no stream
+  cannot take anything from the general queue. The relationship is asserted rather than assumed:
+  <code>static_assert(TaskSystem::NonStreamIndex &gt;= TaskStreamAffinity::GetNumBits());</code>
+  (<code>Engine/Core/TaskSystem.cpp</code>).
+</div>
+
+<div class="gap">
+  <strong>Permission to run is not permission to be honest about the queue.</strong> This is a one-bit answer with no
+  history: it cannot say whether the stream was excluded deliberately, excluded by a caller whose index was out of range
+  (<a href="unset.html">Unset</a> reports nothing), or simply never mentioned because the index is past
+  <a href="getnumbits.html">GetNumBits</a>(). The one place the shipping engine reads it is the guard in
+  <code>TaskSystem::Dequeue()</code>, and what a refusal costs the queue is that class's contract, not this one.
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<table>
+  <tr><th>Parameter</th><th>Type</th><th>Requirement</th></tr>
+  <tr><td><code>bitIndex</code></td><td><code>unsigned int</code></td><td>The stream index to ask about. Any value is accepted; at or above <a href="getnumbits.html">GetNumBits</a>() the answer is <code>false</code></td></tr>
+</table>
+
+<h2 id="return">Return value</h2>
+
+<table>
+  <tr><th>Type</th><th>What you get</th></tr>
+  <tr><td><code>bool</code></td><td><code>true</code> when this stream is permitted (stored bit 0), <code>false</code> when it is excluded (stored bit 1) or when the index is out of range</td></tr>
+</table>
+
+<h2 id="example">Examples</h2>
+
+<p class="meta">From Engine/Core/TaskSystem.cpp, TaskSystem::Dequeue()</p>
+
+<pre><code>const WorkItem&amp; workItem = workItemOpt.value();
+const unsigned int streamIndex = GetCurrentStreamIndex();
+
+auto&amp; affinity = workItem.affinity;
+if (!affinity.Get(streamIndex))
+{
+    affinity.Set(streamIndex);
+    return;
+}
+
+outTask = workItem;
+(void) taskQueue.Pop();</code></pre>
+
+<p>
+  The only shipping reader of a mask. The item was copied out of the queue by <code>Top()</code> before the question was
+  asked, which is why the <code>Set</code> on refusal cannot record anything — see <a href="set.html">Set</a>.
+</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; TaskStreamAffinityBase</a></span>
+  <span><a href="index.html#methods">All TaskStreamAffinityBase methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

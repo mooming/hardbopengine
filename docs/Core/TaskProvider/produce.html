@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TaskProvider::Produce — Core module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a class="current" href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Core</a> /
+  <a href="index.html">TaskProvider</a> / Produce
+</p>
+
+<h1><span class="fn">Produce</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::TaskProvider</span>
+  <span class="tag">Engine/Core/TaskProvider.h</span>
+  Pure virtual: hand the draining stream its next item, or report that there is none.
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>virtual std::optional&lt;WorkItem&gt; Produce(const TaskProduceContext&amp; context) noexcept = 0</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  Pure virtual, declared in <code>Engine/Core/TaskProvider.h</code>: the whole producer interface, and the only way work enters a stream's
+  lanes from outside that stream. The stream asks, the provider answers with an item or with nothing, and the answer ends the lane's drain
+  for that pass.
+</p>
+
+<div class="note">
+  <strong>Called on the draining stream's thread with that stream's queue lock held (R40), and the header draws three lines from that
+  fact.</strong> "do not enqueue into that stream from here - <code>EnqueueFifo</code>/<code>EnqueuePriority</code> take the same
+  non-recursive mutex and would deadlock; do not block; and do not touch another stream's queue"
+  (<code>Engine/Core/TaskProvider.h</code>). What <em>is</em> expected is building a task
+  (<code>TaskSystem::CreateTask</code>) and declaring its join (<code>Task::ReserveSubTasks</code>), "since the task registry has its own
+  lock and takes it before the stream does nowhere".
+</div>
+
+<div class="gap">
+  <strong>Blocking here does not stall one stream politely — it holds a lock every producer of that queue is waiting on.</strong>
+  The lock is the stream's <code>queueLock</code>, which <code>TaskStream::EnqueueFifo</code> and <code>EnqueuePriority</code> take from any
+  thread that wants to put work on that stream (<code>Engine/Core/TaskStream.cpp</code>). An implementation that waits on anything — a latch,
+  an allocator that might block, a subsystem lock held by a task that wants to enqueue — converts a local wait into a stalled producer path
+  for the whole stream, and the deadlock case is the same call made back into the stream it was called from.
+</div>
+
+<div class="note">
+  <strong>The answer decides the drain, and "nothing right now" is not an error and not a way to quit.</strong>
+  "<code>nullopt</code> ends this lane's drain for the pass - the provider is asked again on a later pass, so reporting nothing is never a way
+  to stop being asked (that is what <code>Stop</code> and <code>DetachFrom</code> are for)"
+  (<code>Engine/Core/TaskProvider.h</code>). The cost of that design is one call per drain per provider, which is the price the class pays
+  for having no <code>HasWork</code> predicate to go stale.
+</div>
+
+<div class="gap">
+  <strong>The stream asks its lane's providers in registration order and stops at the first item, so a provider that always has work hides
+  the ones behind it.</strong> <code>TaskStream::DrainProvidersLocked</code> walks the list from the front and returns the first
+  <code>has_value()</code> it gets (<code>Engine/Core/TaskStream.cpp</code>). There is no rotation and no round-robin cursor, so with the
+  per-lane list holding up to eight providers, one permanently productive provider at the head means the seven behind it are asked only while
+  it is refusing. Placement in the list is therefore scheduling, and nothing in the interface says where a provider will land.
+</div>
+
+<div class="note">
+  <strong>Asking is itself budget-gated, and that gate is asserted rather than assumed (R39).</strong>
+  <code>TaskStream::Update()</code> drains providers only for an empty lane, only when not shutting down, and only while
+  <code>budget.CanTakeWork()</code> — with an <code>Assert</code> at the ask repeating the condition, because "a spent stream would otherwise
+  keep manufacturing work it has no right to run" (<code>Engine/Core/TaskStream.cpp</code>). A provider therefore cannot starve itself by
+  producing eagerly: the stream stops asking before the provider has to say no.
+</div>
+
+<div class="gap">
+  <strong>Hand back an item from <code>Task::GenerateSubTask</code>, and expect the stream to re-check the task.</strong>
+  "An item naming a task that was released in between is dropped by the stream with the usual warning, so a provider cannot smuggle dead work
+  past the liveness check" (<code>Engine/Core/TaskProvider.h</code>). The convenience that builds a correct item — index range, priority and
+  reserved count agreeing with the task — is <a href="makewholeitem.html">MakeWholeItem</a>, kept protected so only providers can reach it.
+</div>
+
+<div class="gap">
+  <strong>Returning <a href="stop.html">Stop</a>ped is not a way to be left alone.</strong> The flag a stop sets is not read by the shipping
+  drain path (<a href="stop.html">Stop</a> records the detail), so an implementation that expects the asking to cease after a stop request
+  will keep being asked. <a href="detachfrom.html">DetachFrom</a> is the call that ends the asking, and it waits for a drain in flight rather
+  than racing it.
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<table>
+  <tr><th>Parameter</th><th>Type</th><th>Requirement</th></tr>
+  <tr><td><code>context</code></td><td><code>const TaskProduceContext&amp;</code></td><td>Which stream is asking, and one shared instant for the whole drain. A reference to a value that is dead when this call returns: do not store it. See <a href="../TaskProduceContext/index.html">TaskProduceContext</a></td></tr>
+</table>
+
+<h2 id="return">Return value</h2>
+
+<table>
+  <tr><th>Type</th><th>What you get</th></tr>
+  <tr><td><code>std::optional&lt;WorkItem&gt;</code></td><td>The item to run, or <code>std::nullopt</code>. An item is a value the stream takes onto a lane; producing the same item twice is a real duplicate, because nothing here compares what it is handed</td></tr>
+</table>
+
+<h2 id="example">Examples</h2>
+
+<p class="meta">From Engine/Core/TaskProvider.cpp, RecordingProvider (unit-test probe)</p>
+
+<pre><code>std::optional&lt;hbe::WorkItem&gt; Produce(const hbe::TaskProduceContext&amp; context) noexcept override
+{
+    ++produceCalls;
+    lastStream = context.stream;
+    lastNow = context.now;
+
+    if (!produceResult)
+    {
+        return std::nullopt;
+    }
+
+    return itemToHand;
+}</code></pre>
+
+<p>
+  The probe exists to make the interface observable rather than assumed: it records the stream index and the instant it was handed, and can
+  be switched between "produced something" and "nothing right now". A real implementation's cheapest correct form is the same shape with the
+  decision replaced by real state — and the header's requirement that an implementation "must be cheap enough to call when idle" is what keeps
+  that shape small (<code>Engine/Core/TaskProvider.h</code>).
+</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; TaskProvider</a></span>
+  <span><a href="index.html#methods">All TaskProvider methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

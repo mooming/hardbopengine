@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>StreamDrainPolicy::GetFifoUsed — Core module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a class="current" href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Core</a> /
+  <a href="index.html">StreamDrainPolicy</a> / GetFifoUsed
+</p>
+
+<h1><span class="fn">GetFifoUsed</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::StreamDrainPolicy</span>
+  <span class="tag">Engine/Core/StreamDrainPolicy.cpp</span>
+  CPU time the FIFO lane has spent this round; reporting only.
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>[[nodiscard]] std::chrono::nanoseconds GetFifoUsed() const noexcept</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  Defined in <code>Engine/Core/StreamDrainPolicy.cpp</code> as <code>StreamDrainPolicy::GetFifoUsed()</code>; the body is
+  <code>return fifoUsed;</code>. CPU time charged to the FIFO lane in the current round — nothing else, and nothing since the
+  last <a href="endround.html">EndRound</a>.
+</p>
+
+<p>
+  It is one of the reporting accessors the header exposes deliberately as <code>const</code> reads rather than folding into
+  the decision: "reads of counters for reporting are exposed as separate const accessors and are only meaningful from the
+  owning thread" (<code>Engine/Core/StreamDrainPolicy.h</code>).
+</p>
+
+<div class="gap">
+  <strong>Nothing in the repository reads it.</strong> A grep of <code>Engine/</code> and <code>Applications/</code> finds the
+  declaration and the definition and no call site — not even in this class's own tests, which assert behaviour
+  (<a href="chooselane.html">ChooseLane</a>, <a href="isroundexhausted.html">IsRoundExhausted</a>) rather than the counters
+  behind them. The number exists to be looked at, so the honest expectation is a diagnostic or a test that has not been
+  written yet.
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<p>None.</p>
+
+<h2 id="return">Return value</h2>
+
+<table>
+  <tr><th>Type</th><th>What you get</th></tr>
+  <tr><td><code>std::chrono::nanoseconds</code></td><td>CPU time charged to the FIFO lane this round by <a href="chargefifo.html">ChargeFifo</a>. Zero for an unbudgeted stream, which charges nothing, and zero immediately after <a href="endround.html">EndRound</a></td></tr>
+</table>
+
+<h2 id="example">Examples</h2>
+
+<p class="note">Illustrative — no call site for this exists in the repository.</p>
+
+<pre><code>ls &lt;&lt; "lane use fifo=" &lt;&lt; drainPolicy.GetFifoUsed().count() &lt;&lt; "ns priority="
+   &lt;&lt; drainPolicy.GetPriorityUsed().count() &lt;&lt; "ns of "
+   &lt;&lt; std::chrono::duration_cast&lt;std::chrono::nanoseconds&gt;(drainPolicy.GetFifoShare()
+      + drainPolicy.GetPriorityShare()).count() &lt;&lt; "ns";</code></pre>
+
+<p>
+  The reading this accessor was built for, and the rule that makes it valid: call it on the stream's own thread, because the
+  field it returns is written by that thread with no synchronisation, and a report built from another thread's view of it is
+  a race that happens to print something.
+</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; StreamDrainPolicy</a></span>
+  <span><a href="index.html#methods">All StreamDrainPolicy methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

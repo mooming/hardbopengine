@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TaskRegistry::ReportNoRoom — Core module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a class="current" href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Core</a> /
+  <a href="index.html">TaskRegistry</a> / ReportNoRoom
+</p>
+
+<h1><span class="fn">ReportNoRoom</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::TaskRegistry</span>
+  <span class="tag">Engine/Core/TaskRegistry.cpp</span>
+  The error line for a refused task, naming the task, capacity and ceiling.
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>void ReportNoRoom(StaticString taskName) noexcept</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  Defined in <code>Engine/Core/TaskRegistry.cpp</code> as <code>TaskRegistry::ReportNoRoom()</code>. Private, and called from exactly one
+  place: the branch in <a href="create.html">Create</a> that finds the free chain empty.
+</p>
+
+<pre><code>auto log = Logger::Get(name);
+log.OutError([name = name, taskName, capacity = GetCapacity(), maxCapacity = maxCapacityRecords](auto&amp; ls)
+{
+    ls &lt;&lt; name.c_str() &lt;&lt; " refused to track " &lt;&lt; taskName.c_str() &lt;&lt; " because all " &lt;&lt; capacity
+       &lt;&lt; " task records are in use. The task was not tracked and will not run; growing the registry is the"
+       &lt;&lt; " fix, and its ceiling is " &lt;&lt; (maxCapacity == 0 ? 0 : maxCapacity)
+       &lt;&lt; " records, where 0 means no ceiling. ";
+});</code></pre>
+
+<p class="meta">From Engine/Core/TaskRegistry.cpp</p>
+
+<p>
+  The whole function is a log line, and the line is the diagnosis: which registry refused, which task went untracked, how many records exist,
+  and what the ceiling is — the four facts that decide whether the fix is <a href="grow.html">Grow</a>, a
+  <a href="setmaxcapacity.html">raised ceiling</a>, or a leak investigation. Everything is captured before the log callback runs, so the
+  figures printed are the ones at the moment of refusal rather than whatever the table looks like when the log thread gets to it.
+</p>
+
+<div class="note">
+  <strong>It is <code>OutError</code>, and the level is the point.</strong> "A task that silently never runs is indistinguishable from one
+  still waiting" (<code>Engine/Core/TaskRegistry.h</code>). A warning would be read as a tuning note; this is a task that will never run, on
+  a path where the caller may not check the null identity it was handed.
+</div>
+
+<div class="gap">
+  <strong>The sentence "all N task records are in use" is true of the free chain, not necessarily of the tasks.</strong> The chain is empty
+  because every record is live, and a record stays live until <a href="release.html">Release</a> returns it — so a workload that finishes
+  tasks without releasing them reaches this line with the table full of finished work. The count to compare against is
+  <a href="getcount.html">GetCount</a> over time, not <a href="getcapacity.html">GetCapacity</a> at one instant.
+</div>
+
+<div class="note">
+  <strong>One refusal, one line.</strong> There is no suppression, no counter and no rate limit, so a caller in a loop that creates tasks
+  without checking identities will emit one error per attempt. That is deliberate for a condition this serious, and it is the difference
+  between this and the task streams' one-per-pass reporting of budget refusals
+  (<code>Engine/Core/TaskStream.cpp</code>).
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<table>
+  <tr><th>Parameter</th><th>Type</th><th>Requirement</th></tr>
+  <tr><td><code>taskName</code></td><td><code>StaticString</code></td><td>The task that was refused, captured by value into the log callback — the only trace the task ever gets, since it was never tracked and so has no record to name it</td></tr>
+</table>
+
+<h2 id="return">Return value</h2>
+
+<p><code>void</code>. It reports and returns; the refusal decision and the null identity are <a href="create.html">Create</a>'s, not this function's.</p>
+
+<h2 id="example">Examples</h2>
+
+<p class="meta">From Engine/Core/TaskRegistry.cpp, TaskRegistry::Create()</p>
+
+<pre><code>if (freeRecordHead == TaskID::NullIndex)
+{
+    ReportNoRoom(taskName);
+    return {};
+}</code></pre>
+
+<p>
+  The pair of lines that makes a full registry a reported condition instead of a silent one, and the reason the class can promise that
+  <a href="create.html">Create</a> never grows: refusing loudly is acceptable precisely because the refusal cannot be missed
+  (<code>Engine/Core/TaskRegistry.h</code>).
+</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; TaskRegistry</a></span>
+  <span><a href="index.html#methods">All TaskRegistry methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

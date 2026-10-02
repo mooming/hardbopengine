@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TaskRegistry — Core module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a class="current" href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This class</h3>
+  <ul>
+    <li><a href="#description">Class description</a></li>
+    <li><a href="#template">Template parameters</a></li>
+    <li><a href="#properties">Class properties</a></li>
+    <li><a href="#methods">Class methods</a></li>
+    <li><a href="#non-member">Non-member helper functions</a></li>
+    <li><a href="#coverage">Coverage</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Core</a> /
+  TaskRegistry
+</p>
+
+<h1>TaskRegistry</h1>
+<p class="subtitle">
+  <span class="tag">Engine/Core/TaskRegistry.h</span>
+  Holds every tracked task and issues the identity that replaces a task address.
+</p>
+
+<h2 id="description">Class description</h2>
+
+<p>
+  <code>class TaskRegistry final</code> at <code>Engine/Core/TaskRegistry.h</code>: the table that holds every task the engine knows
+  about, and the issuer of the identity that replaces a task's address. A task lives in a <em>record</em>; the identity handed out is
+  the record's index plus a <a href="../TaskID/index.html">generation</a> that changes each time the record is issued again, so a
+  reference to a task that has been released is recognised as stale and dropped instead of being followed into whatever task now
+  occupies the record.
+</p>
+
+<table>
+  <tr><th>Decision</th><th>Shape in this class</th><th>What it buys</th></tr>
+  <tr><td>Storage</td><td>Banks of <code>recordsPerBank</code> records, allocated one at a time, never moved</td><td>A <a href="find.html">Find</a> pointer stays valid memory for the registry's life; an index stays meaningful across growth; a task holds an atomic counter and so needs no move constructor</td></tr>
+  <tr><td>Record size</td><td><code>RecordSizeBytes = 256</code>, asserted, cache-line aligned by a 24-byte reserved tail</td><td>Two streams writing results into neighbouring records do not invalidate each other through a shared line (R28)</td></tr>
+  <tr><td>Capacity</td><td>Initial 4096 records (1 MiB), grow-by 4096, ceiling 0 meaning none</td><td>Growth is exact and knowable where the registry is configured, not a doubling surprise</td></tr>
+  <tr><td>Threading</td><td><a href="create.html">Create</a>, <a href="release.html">Release</a> and <a href="grow.html">Grow</a> under one lock; <a href="find.html">Find</a> lock-free on atomics</td><td>Tasks are created from whatever thread the caller is on — the logger does — while lookups never wait</td></tr>
+</table>
+
+<div class="note">
+  <strong>A task is never constructed into a record and never destroyed while tracked.</strong>
+  <a href="constructors.html">The registry's own constructor</a> default-constructs records on demand
+  (<code>new (&amp;records[record]) Record()</code> in <a href="allocatebank.html">AllocateBank</a>) and
+  <a href="create.html">Create</a> fills one in place with <code>Task::LoadIntoRecord</code>. The consequence for a caller is that a
+  record's memory never moves and its identity is the only handle — there is no reference into the table that outlives a
+  <a href="release.html">Release</a> safely.
+</div>
+
+<div class="note">
+  <strong><a href="create.html">Create</a> never grows the table.</strong> A caller that runs out of records gets a null
+  <a href="../TaskID/index.html">TaskID</a> and an error log naming the task and the capacity
+  (<a href="reportnoroom.html">ReportNoRoom</a>), because growing on the creating path would make the task — not the caller — pay for
+  a table it had no part in sizing. Growth is an explicit <a href="grow.html">Grow</a>, made between frames by whoever owns the
+  registry (<code>Engine/Core/TaskRegistry.h</code>).
+</div>
+
+<div class="note">
+  <strong>A refused task is a task that never runs, and that is indistinguishable from one still waiting.</strong> This is why the
+  refusal is logged as an error rather than returned quietly, and why a null return from the task system's create path is checked:
+  <code>ParallelFor</code> logs "the split was not queued. The registry is at its capacity." when the record is refused
+  (<code>Engine/Core/TaskSystem.cpp</code>).
+</div>
+
+<div class="gap">
+  <strong><a href="setsuccessor.html">SetSuccessor</a> and <a href="getsuccessor.html">GetSuccessor</a> reach a record without the
+  registry lock, on whatever thread the caller is on.</strong> Both go through
+  <a href="findliverecord.html">FindLiveRecord</a> and then touch <code>Record::successor</code>, a plain (non-atomic) 16-byte
+  <code>TaskID</code>. <a href="create.html">Create</a> writes that same field under the lock, so a chain set from one thread while
+  another recycles the record is a data race on a field nothing here protects
+  (<code>Engine/Core/TaskRegistry.cpp</code>). The lock-free path that <em>is</em> carefully built is
+  <a href="find.html">Find</a>, which takes no lock and reads acquire-ordered atomics; the successor pair has no equivalent
+  discipline, and the pages for those two calls state exactly what a caller inherits.
+</div>
+
+<div class="gap">
+  <strong>Records are cheap and permanent: the default table is 1 MiB before any task exists.</strong> 4096 records at
+  <code>RecordSizeBytes</code> = 256 bytes. That is the price of tracking a task at all — identity, generation, a result packet, a
+  successor, and a cache line of its own — and it is why an engine that tracks one task still pays a megabyte
+  (<code>Engine/Core/TaskRegistry.h</code>, and the test that prints the arithmetic in
+  <code>Engine/Core/TaskRegistry.cpp</code>).
+</div>
+
+<h2 id="template">Template parameters</h2>
+
+<p>None. <code>TaskRegistry</code> is a concrete <code>final</code> class, one instance owned by <code>TaskSystem</code>.</p>
+
+<h2 id="properties">Class properties</h2>
+
+<table>
+  <tr><th>Type + Name</th><th>Default Value</th><th>Description</th></tr>
+  <tr><td><code>using TIndex = Task::TIndex;</code> <span class="badge">public</span></td><td><span class="muted">not applicable</span></td><td>The record index type, shared with <a href="../Task/index.html">Task</a> so an index and a sub-task count cannot disagree about width</td></tr>
+  <tr><td><code>struct Record final</code> <span class="badge">private nested</span></td><td><span class="muted">not applicable</span></td><td>One tracked task: <code>Task task</code>, <code>TaskID successor</code>, <code>std::atomic&lt;TGeneration&gt; generation</code>, <code>std::atomic&lt;bool&gt; inUse</code>, <code>std::size_t nextFreeRecord</code>, and <code>std::byte reservedToCacheLine[24]</code> — 256 bytes, asserted twice in the header</td></tr>
+  <tr><td><code>using TBank = Record*;</code> <span class="badge">private nested</span></td><td><span class="muted">not applicable</span></td><td>One allocation of <code>recordsPerBank</code> records; the bank table is an array of these so growing publishes a pointer without reallocating anything a lookup may be reading</td></tr>
+  <tr><td><code>static constexpr std::size_t DefaultInitialCapacityRecords = 4096;</code> <span class="badge">public static</span></td><td><code>4096</code></td><td>Records a registry starts with — one bank of 1 MiB, sized for what a game dispatches rather than for this tree's one tracked task</td></tr>
+  <tr><td><code>static constexpr std::size_t DefaultGrowByRecords = DefaultInitialCapacityRecords;</code> <span class="badge">public static</span></td><td><code>4096</code></td><td>Records per <a href="grow.html">Grow</a>; growth is exact, not a doubling policy, so the next bank's cost is knowable at configuration time</td></tr>
+  <tr><td><code>static constexpr std::size_t DefaultMaxCapacityRecords = 0;</code> <span class="badge">public static</span></td><td><code>0</code></td><td>Ceiling, where zero means none — the same convention as a stream's result ceiling, so one rule covers both growables</td></tr>
+  <tr><td><code>static constexpr std::size_t MaxBanks = 1024;</code> <span class="badge">public static</span></td><td><code>1024</code></td><td>How far the grow-by may be taken; past it <a href="grow.html">Grow</a> is refused with a log line naming the limit rather than being silently wrong</td></tr>
+  <tr><td><code>static constexpr std::size_t RecordSizeBytes = sizeof(Record);</code> <span class="badge">public static</span></td><td><code>256</code>, asserted</td><td>The multiplier behind every capacity figure here — exposed because "4096 records" is not a memory figure until this is read</td></tr>
+  <tr><td><code>std::mutex registryLock;</code> <span class="badge">private</span></td><td><span class="muted">unlocked</span></td><td>Serialises <a href="create.html">Create</a>, <a href="release.html">Release</a>, <a href="grow.html">Grow</a> and <a href="initialize.html">Initialize</a>; not held by the lock-free lookup path</td></tr>
+  <tr><td><code>StaticString name;</code> <span class="badge">private</span></td><td><code>"None"</code></td><td>Names the registry in every log line it produces, so a refusal says which registry refused</td></tr>
+  <tr><td><code>TBank banks[MaxBanks];</code> <span class="badge">private</span></td><td>all <code>nullptr</code></td><td>Fixed-size pointer table; its fixedness is what lets a bank be published without moving anything a reader holds</td></tr>
+  <tr><td><code>std::atomic&lt;std::size_t&gt; bankCount;</code> <span class="badge">private</span></td><td><code>0</code></td><td>How many banks are readable; published with release semantics after the bank's contents exist, and read with acquire by <a href="find.html">Find</a></td></tr>
+  <tr><td><code>std::size_t recordsPerBank;</code> <span class="badge">private</span></td><td><code>DefaultGrowByRecords</code></td><td>The divisor and multiplier of every index computation; set by <a href="initialize.html">Initialize</a></td></tr>
+  <tr><td><code>std::size_t maxCapacityRecords;</code> <span class="badge">private</span></td><td><code>DefaultMaxCapacityRecords</code></td><td>The ceiling <a href="grow.html">Grow</a> checks; read without a lock by the grow path, so it is set where the registry is built</td></tr>
+  <tr><td><code>std::size_t freeRecordHead;</code> <span class="badge">private</span></td><td><code>TaskID::NullIndex</code></td><td>Head of the free-record chain, which lives inside the records themselves via <code>nextFreeRecord</code>; guarded by <code>registryLock</code></td></tr>
+  <tr><td><code>std::atomic&lt;std::size_t&gt; usedRecords;</code> <span class="badge">private</span></td><td><code>0</code></td><td>Live-record count, read by <a href="getcount.html">GetCount</a>; a number to look at, not a value to decide on</td></tr>
+  <tr><td><code>TAllocatorID bankAllocatorID;</code> <span class="badge">private</span></td><td>the allocator in scope at construction</td><td>Which allocator every bank comes from, captured so a later change of the ambient allocator cannot strand a bank</td></tr>
+</table>
+
+<h2 id="methods">Class methods</h2>
+
+<table class="methods">
+  <tr><th>Name</th><th>Signature</th><th>What a caller depends on</th></tr>
+  <tr><td><a href="constructors.html"><code>TaskRegistry</code></a></td><td class="sig">TaskRegistry() noexcept</td><td>Builds an empty registry that takes no memory; call <a href="initialize.html">Initialize</a> to give it records.</td></tr>
+  <tr><td><a href="destructor.html"><code>~TaskRegistry</code></a></td><td class="sig">~TaskRegistry() noexcept</td><td>Destroys and returns every bank; tracked tasks are not released or notified first.</td></tr>
+  <tr><td><a href="initialize.html"><code>Initialize</code></a></td><td class="sig">void Initialize(StaticString registryName, std::size_t initialCapacityRecords, std::size_t growByRecords) noexcept</td><td>Takes the initial banks now; call once, before any task is created.</td></tr>
+  <tr><td><a href="setsuccessor.html"><code>SetSuccessor</code></a></td><td class="sig">void SetSuccessor(TaskID task, TaskID successor) noexcept</td><td>Records the task to dispatch when this one's join closes; untracked names are reported and change nothing.</td></tr>
+  <tr><td><a href="getsuccessor.html"><code>GetSuccessor</code></a></td><td class="sig">[[nodiscard]] TaskID GetSuccessor(TaskID task) noexcept</td><td>The recorded successor, or a null ID when nobody is waiting.</td></tr>
+  <tr><td><a href="create.html"><code>Create</code></a></td><td class="sig">[[nodiscard]] TaskID Create(StaticString taskName, TRunnable func, void* userData) noexcept</td><td>Tracks a task under the lock and never grows; a full table returns a null ID and logs.</td></tr>
+  <tr><td><a href="find.html"><code>Find</code></a></td><td class="sig">[[nodiscard]] Task* Find(TaskID id) noexcept</td><td>Lock-free lookup that validates generation; the pointer is valid memory, never a lease.</td></tr>
+  <tr><td><a href="release.html"><code>Release</code></a></td><td class="sig">void Release(TaskID id) noexcept</td><td>Stops tracking a task and returns its record to the free chain; a stale ID is reported.</td></tr>
+  <tr><td><a href="grow.html"><code>Grow</code></a></td><td class="sig">[[nodiscard]] bool Grow() noexcept</td><td>Adds one bank; false when a ceiling or <code>MaxBanks</code> refuses it.</td></tr>
+  <tr><td><a href="getcapacity.html"><code>GetCapacity</code></a></td><td class="sig">[[nodiscard]] std::size_t GetCapacity() const noexcept</td><td>Records the table holds without growing — banks times bank size.</td></tr>
+  <tr><td><a href="getcount.html"><code>GetCount</code></a></td><td class="sig">[[nodiscard]] std::size_t GetCount() const noexcept</td><td>Live records, read relaxed; the last completed count, not a snapshot.</td></tr>
+  <tr><td><a href="getgrowby.html"><code>GetGrowBy</code></a></td><td class="sig">[[nodiscard]] std::size_t GetGrowBy() const noexcept</td><td>Records each <a href="grow.html">Grow</a> adds.</td></tr>
+  <tr><td><a href="getmaxcapacity.html"><code>GetMaxCapacity</code></a></td><td class="sig">[[nodiscard]] std::size_t GetMaxCapacity() const noexcept</td><td>The ceiling; zero means no ceiling.</td></tr>
+  <tr><td><a href="setmaxcapacity.html"><code>SetMaxCapacity</code></a></td><td class="sig">void SetMaxCapacity(std::size_t maxRecords) noexcept</td><td>Caps growth without reserving anything; set it where the registry is built.</td></tr>
+  <tr><td><a href="allocatebank.html"><code>AllocateBank</code></a></td><td class="sig">TBank AllocateBank() noexcept</td><td>Private: takes one bank from the named allocator, constructs its records, and links them into the free chain.</td></tr>
+  <tr><td><a href="deallocatebank.html"><code>DeallocateBank</code></a></td><td class="sig">void DeallocateBank(TBank bank) noexcept</td><td>Private: destroys a bank's records and returns its bytes to the same allocator.</td></tr>
+  <tr><td><a href="getrecord.html"><code>GetRecord</code></a></td><td class="sig">[[nodiscard]] Record&amp; GetRecord(std::size_t recordIndex) noexcept</td><td>Private: index to record with no validity check at all — the caller has already proved the index.</td></tr>
+  <tr><td><a href="findliverecord.html"><code>FindLiveRecord</code></a></td><td class="sig">[[nodiscard]] Record* FindLiveRecord(TaskID id) noexcept</td><td>Private: the generation-checked lookup behind the mutating calls, reading every flag relaxed.</td></tr>
+  <tr><td><a href="reportnoroom.html"><code>ReportNoRoom</code></a></td><td class="sig">void ReportNoRoom(StaticString taskName) noexcept</td><td>Private: the error line for a refused task, naming the task, the capacity and the ceiling.</td></tr>
+  <tr><td><a href="reportrefusedgrowth.html"><code>ReportRefusedGrowth</code></a></td><td class="sig">void ReportRefusedGrowth(std::size_t requestedCapacity) noexcept</td><td>Private: the error line for a refused bank, naming the ceiling and the bank limit.</td></tr>
+</table>
+
+<h2 id="non-member">Non-member helper functions</h2>
+
+<p>
+  None. The copy constructor and copy assignment are deleted in the public section, which is a statement about identity rather than a
+  helper: a second registry would issue identities nothing else can validate, and its banks would be a second table that
+  <a href="find.html">Find</a> cannot see (<code>Engine/Core/TaskRegistry.h</code>).
+</p>
+
+<h2 id="coverage">Coverage</h2>
+
+<table>
+  <tr><th>Not documented here</th><th>Why</th></tr>
+  <tr><td>How a result reaches a successor's stream once the join closes</td>
+    <td><code>TaskSystem::DispatchSuccessor</code> owns that path and its refusal cases; the registry only stores the successor and
+    answers <a href="getsuccessor.html">GetSuccessor</a></td></tr>
+  <tr><td>What <a href="../Task/loadintorecord.html">Task::LoadIntoRecord</a> resets, and what a task's own fields mean</td>
+    <td><a href="../Task/index.html">Task</a>'s contract; this class states only that a record's task is filled in place</td></tr>
+  <tr><td>The generation arithmetic inside <a href="../TaskID/index.html">TaskID</a>, and why <code>NullIndex</code> is
+    <code>std::numeric_limits&lt;TIndex&gt;::max()</code></td>
+    <td><a href="../TaskID/isnull.html">TaskID::IsNull</a> owns that; the registry only uses the sentinel as its free-list end</td></tr>
+  <tr><td>Why a record costs 256 bytes and what the rejected alternatives were</td>
+    <td>A pricing decision (R28) recorded in the header's <code>static_assert</code> commentary and in
+    <code>docs/TaskSystemRedesign.md</code>; the pages state the cost a caller inherits</td></tr>
+  <tr><td>Whether <a href="initialize.html">Initialize</a> may be called twice</td>
+    <td>Answered on its page as the header states it: once, before any task is created, because a second call leaks what the table
+    already had</td></tr>
+</table>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; TaskRegistry</a></span>
+  <span><a href="index.html#methods">All TaskRegistry methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

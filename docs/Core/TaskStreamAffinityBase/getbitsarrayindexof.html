@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TaskStreamAffinityBase::GetBitsArrayIndexOf — Core module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a class="current" href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Core</a> /
+  <a href="index.html">TaskStreamAffinityBase</a> / GetBitsArrayIndexOf
+</p>
+
+<h1><span class="fn">GetBitsArrayIndexOf</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::TaskStreamAffinityBase</span>
+  <span class="tag">Engine/Core/TaskStreamAffinity.h</span>
+  private: which word holds a bit, and the divisor both halves of the addressing must share
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>[[nodiscard]] unsigned int GetBitsArrayIndexOf(unsigned int bitIndex) const noexcept</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  Private; defined in the header <code>Engine/Core/TaskStreamAffinity.h</code> as
+  <code>TaskStreamAffinityBase::GetBitsArrayIndexOf()</code>.
+</p>
+
+<pre><code>return bitIndex / BitsPerUnit;</code></pre>
+
+<p class="meta">From Engine/Core/TaskStreamAffinity.h, TaskStreamAffinityBase::GetBitsArrayIndexOf()</p>
+
+<p>
+  Which word of <code>bitBuffer</code> holds a bit, and the reason the three private constants have to agree with each
+  other. The caller pairs this index with the shift it computes itself —
+  <code>bitIndex - (index * BitsPerUnit)</code> — in all three of <a href="unset.html">Unset</a>,
+  <a href="set.html">Set</a> and <a href="get.html">Get</a>, so the divisor belongs to both halves: divide by bits per word
+  here and by bytes per word there, and two streams land on the same bit.
+</p>
+
+<div class="gap">
+  <strong>Both halves of this arithmetic once divided by the same wrong figure, and the type still worked.</strong> The word
+  count was derived from <code>BitArrayUnitBytes</code> — bytes per word where the division needed <em>bits</em> per word —
+  which made the buffer eight times as long as it needed while leaving each 64-bit word holding only 8 usable bits, because
+  this helper divided by the same figure. Both halves agreed with each other, so the encoding was correct and merely fat: a
+  queued work item paid 64 bytes for a 64-stream mask. No behavioural test can tell the two encodings apart, which is
+  precisely why the defect survived; the fix is pinned by a test in this module's collection
+  (<em>A mask reserves one word per 64 bits and not one per 8</em>, <code>Engine/Core/TaskStreamAffinity.cpp</code>) that
+  checks <code>sizeof</code> for the 64-bit alias and for a 517-bit instantiation.
+</div>
+
+<div class="note">
+  <strong>No range check here, and none is needed.</strong> Every caller has already rejected an index at or above
+  <a href="getnumbits.html">GetNumBits</a>() before asking this question, so the division cannot land outside
+  <code>bitBuffer</code>. Move this helper somewhere a caller can reach it without that guard and the guarantee goes with
+  it.
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<table>
+  <tr><th>Parameter</th><th>Type</th><th>Requirement</th></tr>
+  <tr><td><code>bitIndex</code></td><td><code>unsigned int</code></td><td>A bit index already known to be below <code>NumBits</code> — the precondition every public method establishes before calling</td></tr>
+</table>
+
+<h2 id="return">Return value</h2>
+
+<table>
+  <tr><th>Type</th><th>What you get</th></tr>
+  <tr><td><code>unsigned int</code></td><td>Which word of <code>bitBuffer</code> to touch: 0 for the engine's 64-bit alias, 0 to 8 for the 517-bit instantiation used in the tests</td></tr>
+</table>
+
+<h2 id="example">Examples</h2>
+
+<p class="meta">From Engine/Core/TaskStreamAffinity.h, TaskStreamAffinityBase::Get()</p>
+
+<pre><code>const auto index = GetBitsArrayIndexOf(bitIndex);
+auto value = bitBuffer[index];
+const auto numShift = bitIndex - (index * BitsPerUnit);
+value = value &gt;&gt; numShift;</code></pre>
+
+<p>
+  The whole of the addressing: this helper picks the word, the caller picks the bit inside it, and both use
+  <code>BitsPerUnit</code> so that the pair cannot drift apart again.
+</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; TaskStreamAffinityBase</a></span>
+  <span><a href="index.html#methods">All TaskStreamAffinityBase methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

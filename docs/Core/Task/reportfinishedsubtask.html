@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Task::ReportFinishedSubTask — Core module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a class="current" href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Core</a> /
+  <a href="index.html">Task</a> / ReportFinishedSubTask
+</p>
+
+<h1><span class="fn">ReportFinishedSubTask</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::Task</span>
+  <span class="tag">Engine/Core/Task.h</span>
+  true to exactly one caller, the one that closed the join — and that caller owes the successor a dispatch
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>bool ReportFinishedSubTask() noexcept</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  Defined in the header <code>Engine/Core/Task.h</code> as <code>Task::ReportFinishedSubTask()</code>.
+</p>
+
+<pre><code>const auto finishedBefore = numFinishedSubTasks.fetch_add(1, std::memory_order::seq_cst);
+
+return finishedBefore + 1 == numSubTasks;</code></pre>
+
+<p class="meta">From Engine/Core/Task.h, Task::ReportFinishedSubTask()</p>
+
+<p>
+  Three things are decided by those two lines. The increment is <strong>sequential consistency</strong>, which is what
+  orders everything the finished task wrote — including its result packet — before the completion another thread is about
+  to observe. The comparison is an <strong>equality</strong>, not a threshold, so a caller past the last item is told it
+  did not win. And the return value is a <strong>claim of ownership</strong>: exactly one caller of this function gets
+  <code>true</code> for a given join, and that thread is the one that completed the task.
+</p>
+
+<div class="gap">
+  <strong>The winner owes a dispatch.</strong> Nothing else delivers an outcome.
+  <code>TaskStream::TryExecuteWorkItem()</code> (<code>Engine/Core/TaskStream.cpp</code>) runs the item through
+  <a href="../WorkItem/run.html">WorkItem::Run</a>, and only on <code>true</code> calls
+  <a href="../TaskSystem/dispatch-successor.html">TaskSystem::DispatchSuccessor</a> — which copies the result packet onto
+  the successor and queues the successor's item. A caller that swallows the <code>true</code> ends the chain silently: no
+  symptom until something downstream waits for a task that will never run.
+</div>
+
+<div class="gap">
+  <strong>A join closes only if every reserved item reports.</strong> Fewer reports than
+  <a href="numsubtasks.html">NumSubTasks</a> means the equality never matches, and <em>no</em> caller ever learns the task
+  is finished — the failure mode of a task whose items were dropped, aged out or never queued. Both are counted rather
+  than assumed here: dropped work is reported by the stream that dropped it
+  (<code>TaskStream::ReportAgedOutWorkItem()</code>, <code>TaskStream::FireAbandonedNotice()</code>), and the count of
+  items a stream abandoned is readable there.
+</div>
+
+<div class="note">
+  <strong>Both numbers are 8 bits.</strong> <code>numFinishedSubTasks</code> is an atomic <code>uint8_t</code>, so the
+  counter wraps modulo 256 while the comparison is computed in <code>int</code>. The equality therefore fires once under
+  any sane reservation, and fires a <em>second</em> time if the finished count wraps all the way back to the reserved
+  figure — which needs 256 further reports on a single task, i.e. an item generator that ignored its reservation
+  entirely. The guard that was meant to catch that is documented as inert on
+  <a href="generatesubtask.html">GenerateSubTask</a>.
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<p>None.</p>
+
+<h2 id="return">Return value</h2>
+
+<table>
+  <tr><th>Type</th><th>What you get</th></tr>
+  <tr><td><code>bool</code></td><td><code>true</code> to the one call whose increment reached the reserved count — that call is the thread that closed the join, and it must dispatch the successor. <code>false</code> for every other item, including any report past the reservation</td></tr>
+</table>
+
+<h2 id="example">Examples</h2>
+
+<p class="meta">From Engine/Core/WorkItem.cpp, WorkItem::Run()</p>
+
+<pre><code>if (!HasFinished())
+{
+    return false;
+}
+
+return task.ReportFinishedSubTask();</code></pre>
+
+<p>
+  The report happens once per item, and only after that item consumed its whole range — a runnable that returns part of
+  its range is re-queued and does <em>not</em> count as a finished item. In
+  <code>Engine/Core/TaskRegistry.cpp</code> (<code>TaskRegistryTest</code>) the same call is driven by hand to pin the
+  rule down: three reserved items produce <code>false, false, true</code>, and a fourth report produces
+  <code>false</code>.
+</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; Task</a></span>
+  <span><a href="index.html#methods">All Task methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

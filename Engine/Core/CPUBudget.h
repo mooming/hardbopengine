@@ -27,6 +27,7 @@ namespace hbe
 /// @note The accumulated figure is a separate case and is atomic, because it is read for diagnosis from
 ///       threads that do not own the budget. That makes the read well-defined; it does not make BeginTask
 ///       and EndTask portable to another thread, and the total is only ever written by the owner.
+/// API reference: docs/Core/CPUBudget/index.html
 class CPUBudget
 {
 private:

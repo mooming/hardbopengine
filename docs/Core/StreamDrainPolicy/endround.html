@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>StreamDrainPolicy::EndRound — Core module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a class="current" href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Core</a> /
+  <a href="index.html">StreamDrainPolicy</a> / EndRound
+</p>
+
+<h1><span class="fn">EndRound</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::StreamDrainPolicy</span>
+  <span class="tag">Engine/Core/StreamDrainPolicy.cpp</span>
+  Reopens the round: both accumulations zeroed, both credits restored to the weights.
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>void EndRound() noexcept</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  Defined in <code>Engine/Core/StreamDrainPolicy.cpp</code> as <code>StreamDrainPolicy::EndRound()</code>.
+</p>
+
+<pre><code>fifoUsed = std::chrono::nanoseconds::zero();
+priorityUsed = std::chrono::nanoseconds::zero();
+fifoCredit = static_cast&lt;int64_t&gt;(fifoWeight);
+priorityCredit = static_cast&lt;int64_t&gt;(priorityWeight);</code></pre>
+
+<p class="meta">From Engine/Core/StreamDrainPolicy.cpp, StreamDrainPolicy::EndRound()</p>
+
+<p>
+  Four stores, and they reset both mechanisms at once: the two CPU accumulations that the limited mode compares against
+  shares, and both rotation credits, restored to the configured weights rather than merely cleared. After this call a
+  budgeted stream is as fresh as it was at the start of the window, and an unbudgeted one has a full round of credit again.
+</p>
+
+<div class="note">
+  <strong>Nothing is carried over, deliberately.</strong> A round is a fresh division of the allowance, not an amortisation of
+  what was unused: a lane that ran nothing last round gets no bigger a share this one, because the share is derived from the
+  rate and the allowance every time
+  (<a href="getfifoshare.html">GetFifoShare</a>). What is not reset by this call is the age ceiling
+  (<a href="setmaxage.html">SetMaxAge</a>) or the weights (<a href="configurerate.html">ConfigureRate</a>) — configuration
+  survives rounds; measurement does not.
+</div>
+
+<div class="gap">
+  <strong>The stream calls this when a budget window advances, not when the round runs out.</strong>
+  <code>TaskStream::Update()</code> clears its window request and then resets the budget and ends the drain round
+  (<code>Engine/Core/TaskStream.cpp</code>), so the cadence of a stream's shares is the cadence of
+  <code>TaskSystem::RunBudgetWindowPass</code>. A stream whose window never advances keeps a closed round: its accumulations
+  stay spent and <a href="chooselane.html">ChooseLane</a> keeps answering <code>None</code>.
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<p>None.</p>
+
+<h2 id="return">Return value</h2>
+
+<p><code>void</code>. No indication is given whether anything had been spent.</p>
+
+<h2 id="example">Examples</h2>
+
+<p class="meta">From Engine/Core/TaskStream.cpp, TaskStream::Update()</p>
+
+<pre><code>if (windowAdvanceRequested.exchange(false, std::memory_order_relaxed))
+{
+    budget.Reset();
+    drainPolicy.EndRound();
+}</code></pre>
+
+<p>
+  The exchange is the reason this is safe on a driven stream: one request, one reset, whichever thread asked for the window to
+  move. The same pairing — budget reset and drain round reset — is what keeps a stream's CPU allowance and its lane shares
+  reopening on the same beat.
+</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; StreamDrainPolicy</a></span>
+  <span><a href="index.html#methods">All StreamDrainPolicy methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

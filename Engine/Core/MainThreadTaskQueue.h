@@ -23,6 +23,7 @@ namespace hbe
 ///       moment it did.
 /// @note isRunning stays outside queueLock: it is only ever touched as an atomic and guards nothing, so
 ///       pulling it into the critical section would widen the lock for no protection.
+/// API reference: docs/Core/MainThreadTaskQueue/index.html
 class MainThreadTaskQueue final
 {
 public:

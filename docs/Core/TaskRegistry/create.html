@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TaskRegistry::Create — Core module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a class="current" href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Core</a> /
+  <a href="index.html">TaskRegistry</a> / Create
+</p>
+
+<h1><span class="fn">Create</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::TaskRegistry</span>
+  <span class="tag">Engine/Core/TaskRegistry.cpp</span>
+  Tracks a task under the lock and never grows; a full table returns a null ID.
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>[[nodiscard]] TaskID Create(StaticString taskName, TRunnable func, void* userData) noexcept</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  Defined in <code>Engine/Core/TaskRegistry.cpp</code> as <code>TaskRegistry::Create()</code>: the one path that issues identity, and the
+  one path that must never allocate.
+</p>
+
+<pre><code>std::scoped_lock&lt;std::mutex&gt; lock(registryLock);
+
+if (freeRecordHead == TaskID::NullIndex)
+{
+    ReportNoRoom(taskName);
+    return {};
+}
+
+const std::size_t recordIndex = freeRecordHead;
+Record&amp; record = GetRecord(recordIndex);
+freeRecordHead = record.nextFreeRecord;
+
+const TaskID::TGeneration generation = record.generation.load(std::memory_order::relaxed) + 1;
+record.generation.store(generation, std::memory_order::relaxed);
+record.successor = {};
+record.task.LoadIntoRecord(TaskID{recordIndex, generation}, taskName, func, userData);
+record.inUse.store(true, std::memory_order::release);
+usedRecords.fetch_add(1, std::memory_order::relaxed);
+
+return TaskID{recordIndex, generation};</code></pre>
+
+<p class="meta">From Engine/Core/TaskRegistry.cpp</p>
+
+<p>
+  The order of the last four statements is the publication protocol, and it is the whole reason
+  <a href="find.html">Find</a> can be lock-free. The generation is bumped first, the task is filled in place, and only then is
+  <code>inUse</code> released true — so a reader that acquires <code>inUse</code> and sees it set is guaranteed to see the task fields this
+  thread wrote before it. Releasing <a href="release.html">Release</a> then <a href="create.html">Create</a> the same record yields a
+  different generation, which is what makes a stale <a href="../TaskID/index.html">TaskID</a> detectable rather than merely dangerous.
+</p>
+
+<div class="note">
+  <strong>A new identity always carries a fresh generation, and the successor is cleared on the way in.</strong>
+  A recycled record cannot inherit either its predecessor's identity or its chain: <code>record.successor = {}</code> is stored before
+  publication, so a join that closed on the previous occupant cannot dispatch the new one.
+</div>
+
+<div class="gap">
+  <strong>It never grows the table, and the refusal is the caller's problem to solve elsewhere.</strong>
+  "Call Grow where memory may be taken - between frames, on the owner - and treat a refusal here as a sizing problem to fix there"
+  (<code>Engine/Core/TaskRegistry.h</code>). The reason is a latency argument: the thread that runs out of records is not the thread that
+  should pay for a megabyte bank in the middle of whatever it is doing. The refusal path is
+  <a href="reportnoroom.html">ReportNoRoom</a>, an error log naming the task, the capacity and the ceiling.
+</div>
+
+<div class="note">
+  <strong>The return value must be checked, and the engine's own callers check it.</strong> A null
+  <a href="../TaskID/index.html">TaskID</a> means the task was not tracked and will not run — and a task that never runs looks exactly
+  like a task still waiting. <code>TaskSystem</code>'s split path logs "ParallelFor could not get a record for task ..., so the split was
+  not queued. The registry is at its capacity." when this returns null (<code>Engine/Core/TaskSystem.cpp</code>).
+</div>
+
+<div class="gap">
+  <strong><code>func</code> and <code>userData</code> are stored, not inspected.</strong> Nothing validates the runnable, and nothing owns
+  the context pointer: the task that eventually runs receives the same pointer it was given, on whichever stream takes it. The registry
+  guarantees only that the record is live and its identity is current while the task is tracked.
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<table>
+  <tr><th>Parameter</th><th>Type</th><th>Requirement</th></tr>
+  <tr><td><code>taskName</code></td><td><code>StaticString</code></td><td>Copied into the record; it is what the refusal log and every later diagnostic print</td></tr>
+  <tr><td><code>func</code></td><td><code>TRunnable</code></td><td>The work; stored as given, never called from this class</td></tr>
+  <tr><td><code>userData</code></td><td><code>void*</code></td><td>Context handed to <code>func</code>. Its lifetime must cover every run of the task, which is the caller's obligation until <a href="release.html">Release</a></td></tr>
+</table>
+
+<h2 id="return">Return value</h2>
+
+<table>
+  <tr><th>Type</th><th>What you get</th></tr>
+  <tr><td><code>TaskID</code></td><td>The new identity — record index plus the generation just written — or a null ID when no record was free. The record is not touched on the refusal path, so a retry after a <a href="grow.html">Grow</a> issues a fresh identity rather than a half-built one</td></tr>
+</table>
+
+<h2 id="example">Examples</h2>
+
+<p class="meta">From Engine/Core/ResultPacket.cpp, ResultPacketTest</p>
+
+<pre><code>const auto firstID = registry.Create("PacketFirstOccupant", PacketTestRunnable(), nullptr);
+auto* firstTask = registry.Find(firstID);
+if (firstTask == nullptr)
+{
+    ls &lt;&lt; "A registry with room did not issue a task, so nothing here can be checked." &lt;&lt; lferr;
+    return;
+}</code></pre>
+
+<p>
+  The check that belongs on every call, written out. The same pair — <a href="create.html">Create</a> then
+  <a href="find.html">Find</a>, with the null case handled — is how <code>TaskSystem::CreateTask</code> and every registry test in
+  <code>Engine/Core/TaskRegistry.cpp</code> begin.
+</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; TaskRegistry</a></span>
+  <span><a href="index.html#methods">All TaskRegistry methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

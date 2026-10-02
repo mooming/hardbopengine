@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TaskProvider::GetAttachedStream — Core module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a class="current" href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Core</a> /
+  <a href="index.html">TaskProvider</a> / GetAttachedStream
+</p>
+
+<h1><span class="fn">GetAttachedStream</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::TaskProvider</span>
+  <span class="tag">Engine/Core/TaskProvider.cpp</span>
+  The attached stream at a position in attachment order; out of range asserts and returns 0.
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>[[nodiscard]] TStreamIndex GetAttachedStream(TStreamIndex index) const noexcept</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  Defined in <code>Engine/Core/TaskProvider.cpp</code> as <code>TaskProvider::GetAttachedStream()</code>: the accessor that makes the slot list
+  walkable from outside the class.
+</p>
+
+<pre><code>Assert(index &gt;= 0 &amp;&amp; index &lt; attachedCount, "TaskProvider ", name, " asked for attachment ", index, " of ",
+       attachedCount);
+if (index &lt; 0 || index &gt;= attachedCount)
+{
+    return 0;
+}
+
+return attached[static_cast&lt;size_t&gt;(index)];</code></pre>
+
+<p class="meta">From Engine/Core/TaskProvider.cpp</p>
+
+<p>
+  Assert and then refuse, rather than either alone: the assert is the loud signal in a Debug build that a caller's arithmetic is wrong, and the
+  return keeps the same mistake from reading past the array in a build where the assert is compiled away
+  (<code>CMakeLists.txt</code> defines <code>__DEBUG__</code> for Debug only). The header states the contract as one line: "Out-of-range
+  asserts and returns 0" (<code>Engine/Core/TaskProvider.h</code>).
+</p>
+
+<div class="gap">
+  <strong>Zero is both a valid stream index and the out-of-range answer, so the sentinel is ambiguous.</strong>
+  <code>TaskSystem::BaseStreamIndex</code> is 0 (<code>Engine/Core/TaskSystem.h</code>), so a walk that stops on a zero return can stop early at
+  the base stream, and a caller
+  that treats a zero as "out of range" cannot tell it from the base stream. Drive the loop from
+  <a href="getattachedcount.html">GetAttachedCount</a> and index within that bound — the accessor's bound check is a guard against a bug, not a
+  loop terminator.
+</div>
+
+<div class="gap">
+  <strong>Positions are not stable, because <a href="detachfrom.html">DetachFrom</a> shift-compacts the array.</strong>
+  Detaching a stream that sat before this one moves every later entry down a slot, so an index held across a detach names a different stream —
+  and returns it without complaint, since it is still in range
+  (<code>Engine/Core/TaskProvider.cpp</code>). A walk must be completed, or the list re-read, before it is acted upon.
+</div>
+
+<div class="note">
+  <strong>What an entry means depends on the registration, not on this number.</strong> An index here is a stream this provider asked to feed;
+  whether that stream ever accepted the provider is <a href="registeronstream.html">RegisterOnStream</a>'s answer, reported as a warning when
+  the engine has no such stream. Pair this with <a href="getattachedlanes.html">GetAttachedLanes</a> to see which lanes of that stream were
+  named.
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<table>
+  <tr><th>Parameter</th><th>Type</th><th>Requirement</th></tr>
+  <tr><td><code>index</code></td><td><code>TStreamIndex</code> (<code>int</code>)</td><td>Position in attachment order, 0-based, below <a href="getattachedcount.html">GetAttachedCount</a>(). Negative and over-bound both assert and return 0</td></tr>
+</table>
+
+<h2 id="return">Return value</h2>
+
+<table>
+  <tr><th>Type</th><th>What you get</th></tr>
+  <tr><td><code>TStreamIndex</code></td><td>The stream at that position, or 0 out of range — a value that also names the base stream, which is why the count is the loop bound</td></tr>
+</table>
+
+<h2 id="example">Examples</h2>
+
+<p class="note">Illustrative — no call site outside the class uses this accessor; the provider tests read the count rather than walk the list.</p>
+
+<pre><code>for (TStreamIndex index = 0; index &lt; provider.GetAttachedCount(); ++index)
+{
+    ls &lt;&lt; "feeds stream " &lt;&lt; provider.GetAttachedStream(index)
+       &lt;&lt; " on lanes " &lt;&lt; unsigned(provider.GetAttachedLanes(provider.GetAttachedStream(index)));
+}</code></pre>
+
+<p>
+  Bound by the count, resolved per entry, and paired with the lane mask — the shape the three reporting accessors are designed to be used in.
+  Doing it while a drain may be detaching is the one arrangement to avoid, for the reason above.
+</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; TaskProvider</a></span>
+  <span><a href="index.html#methods">All TaskProvider methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

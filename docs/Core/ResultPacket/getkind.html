@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ResultPacket::GetKind — Core module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a class="current" href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Core</a> /
+  <a href="index.html">ResultPacket</a> / GetKind
+</p>
+
+<h1><span class="fn">GetKind</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::ResultPacket</span>
+  <span class="tag">Engine/Core/ResultPacket.h</span>
+  what the result is — the producer's choice, and the one byte the engine agrees not to interpret
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>[[nodiscard]] std::uint8_t GetKind() const noexcept</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  Defined in the header <code>Engine/Core/ResultPacket.h</code> as <code>ResultPacket::GetKind()</code>; the body is
+  <code>return header[KindByteIndex];</code>. It reads byte 0 of the header — the one byte that says what the payload
+  means, and the one byte the engine agrees not to interpret.
+</p>
+
+<p>
+  Two ranges share the byte. Below <code>FirstApplicationKind</code> (64) is the engine's range; from 64 up belongs to the
+  application, so the engine cannot allocate an application's kind by accident. The split is a boundary rather than a
+  table: nothing in the engine dispatches on it, and whoever sets a kind decides which side of it they are on. The value
+  <code>KindNoResult</code> (0) is reserved and means "no result" — it is the value
+  <a href="hasresult.html">HasResult</a> tests for, so setting kind 0 is how a producer takes a result back.
+</p>
+
+<div class="note">
+  <strong>The engine's own routing does not read this byte.</strong>
+  <code>TaskSystem::DispatchSuccessor()</code> routes on the destination byte
+  (<a href="getdestinationstreamindex.html">GetDestinationStreamIndex</a>) and never on the kind
+  (<code>Engine/Core/TaskSystem.cpp</code>), so a kind is a message between the task that wrote it and the task that reads
+  it. Every call site of this function in the repository is a test.
+</div>
+
+<div class="gap">
+  <strong>Reading the kind is not a synchronisation point.</strong> The packet has no atomics and no lock. The ordering
+  that makes a finished task's writes visible to another thread belongs to
+  <a href="../Task/reportfinishedsubtask.html">Task::ReportFinishedSubTask</a>, whose sequential-consistency increment is
+  what closes a join; reading this byte from a third thread while the producing task is still running is a race on an
+  ordinary byte.
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<p>None.</p>
+
+<h2 id="return">Return value</h2>
+
+<table>
+  <tr><th>Type</th><th>What you get</th></tr>
+  <tr><td><code>std::uint8_t</code></td><td>The kind byte as written — 0 for "no result", 1 to 63 the engine's range, 64 and up the application's</td></tr>
+</table>
+
+<h2 id="example">Examples</h2>
+
+<p class="meta">From Engine/Core/TaskSystem.cpp, RunStageThree() (unit-test region)</p>
+
+<pre><code>Task* task = fixture.taskSystem-&gt;FindTask(fixture.self);
+if (task != nullptr)
+{
+    fixture.deliveredKind.store(task-&gt;GetResult().GetKind(), std::memory_order_relaxed);
+    fixture.deliveredPayload.store(task-&gt;GetResult().GetPayload()[0], std::memory_order_relaxed);
+}</code></pre>
+
+<p>
+  Read through the successor's <em>own</em> identity: the producer wrote its own packet, and
+  <code>TaskSystem::DispatchSuccessor()</code> assigned that packet to the successor's before queueing it, which the same
+  test calls "the delivery, not a courtesy". The reader never touches the producer's record.
+</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; ResultPacket</a></span>
+  <span><a href="index.html#methods">All ResultPacket methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

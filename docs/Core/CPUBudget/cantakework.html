@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CPUBudget::CanTakeWork — Core module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a class="current" href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Core</a> /
+  <a href="index.html">CPUBudget</a> / CanTakeWork
+</p>
+
+<h1><span class="fn">CanTakeWork</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::CPUBudget</span>
+  <span class="tag">Engine/Core/CPUBudget.cpp</span>
+  Whether the allowance still permits acquiring another task; always true when unlimited.
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>[[nodiscard]] bool CanTakeWork() const noexcept</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  Defined in <code>Engine/Core/CPUBudget.cpp</code> as <code>CPUBudget::CanTakeWork()</code>.
+</p>
+
+<pre><code>if (allowance.count() &lt;= 0.0)
+{
+    return true;
+}
+
+return GetAccumulated() &lt; std::chrono::duration_cast&lt;std::chrono::nanoseconds&gt;(allowance);</code></pre>
+
+<p class="meta">From Engine/Core/CPUBudget.cpp, CPUBudget::CanTakeWork()</p>
+
+<p>
+  The first branch is the common one: an unlimited budget — which is every budget in a shipping build, since nothing configures an
+  allowance — answers true without consulting the counter at all. When an allowance is set, the comparison is against the whole
+  accumulated figure, so the answer flips the moment spending reaches it and does not flip back until a
+  <a href="reset.html">Reset</a>.
+</p>
+
+<div class="note">
+  <strong>This is a gate on acquiring work, never on running work already held.</strong> The rule is stated on
+  <code>TaskStream::MayTakeNewWork()</code>: the gate belongs in front of draining a provider and in front of taking from the general
+  queue, and refusing to finish work in flight "would turn a budget into a way to strand results, which is the failure this whole
+  design is careful not to have" (<code>Engine/Core/TaskStream.h</code>). A task already running overshoots by its own length.
+</div>
+
+<div class="gap">
+  <strong>It reads an unsynchronised field, so "readable from any thread" is a claim this class does not make.</strong>
+  <a href="configure.html">Configure</a> documents that only the owning stream thread may write <code>allowance</code> "because
+  <code>CanTakeWork</code> reads it once per pass on that thread" (<code>Engine/Core/CPUBudget.h</code>), and the counter it reads is
+  atomic while the allowance is not. Yet <code>TaskStream::MayTakeNewWork()</code>, which is this call forwarded unchanged, is marked
+  <code>@threadsafe Readable from any thread</code> and is called from a test thread in
+  <code>Engine/Core/TaskSystem.cpp</code>. The two statements cannot both hold for a budgeted stream; the reading this class supports
+  is that the answer is advisory from any thread and only the owner may act on it.
+</div>
+
+<div class="note">
+  <strong>It is consulted twice per pass on purpose, and the second reading is defended in a comment.</strong>
+  <code>TaskStream::Update()</code> asks before asking a provider for work, then asserts the answer again at the provider ask, with the
+  reasoning that "this is the owning thread, the only thread ever allowed to read that unsynchronised field"
+  (<code>Engine/Core/TaskStream.cpp</code>). Asking a provider while spent is the failure the assert exists to catch: a spent stream
+  that keeps manufacturing work it has no right to run.
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<p>None.</p>
+
+<h2 id="return">Return value</h2>
+
+<table>
+  <tr><th>Type</th><th>What you get</th></tr>
+  <tr><td><code>bool</code></td><td><code>true</code> while the allowance is not spent, always <code>true</code> for an unlimited or negatively-configured budget; <code>false</code> once charged CPU time has reached the allowance, until the next <a href="reset.html">Reset</a></td></tr>
+</table>
+
+<h2 id="example">Examples</h2>
+
+<p class="meta">From Engine/Core/TaskStream.cpp, TaskStream::Update()</p>
+
+<pre><code>if (!workItem.has_value())
+{
+    if (budget.CanTakeWork())
+    {
+        taskSys.Dequeue(workItem);
+    }
+    else
+    {
+        ReportGeneralQueueRefusal();
+    }
+}</code></pre>
+
+<p>
+  The gate in front of the general queue — the one place the engine refuses work on budget grounds, and the place where a spent stream
+  says so out loud instead of going quiet. The provider probe a little earlier applies the same rule with an
+  <code>Assert</code> attached, and both are inside the queue lock on the owning thread.
+</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; CPUBudget</a></span>
+  <span><a href="index.html#methods">All CPUBudget methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>StreamDrainPolicy::ConfigureAllowance — Core module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a class="current" href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Core</a> /
+  <a href="index.html">StreamDrainPolicy</a> / ConfigureAllowance
+</p>
+
+<h1><span class="fn">ConfigureAllowance</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::StreamDrainPolicy</span>
+  <span class="tag">Engine/Core/StreamDrainPolicy.cpp</span>
+  Chooses the mode: a positive allowance divides CPU time, zero or less means unlimited.
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>void ConfigureAllowance(std::chrono::duration&lt;double&gt; streamAllowance) noexcept</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  Defined in <code>Engine/Core/StreamDrainPolicy.cpp</code> as <code>StreamDrainPolicy::ConfigureAllowance()</code>.
+</p>
+
+<pre><code>allowance = newAllowance.count() &gt; 0.0 ? newAllowance : std::chrono::duration&lt;double&gt;{};</code></pre>
+
+<p class="meta">From Engine/Core/StreamDrainPolicy.cpp, StreamDrainPolicy::ConfigureAllowance()</p>
+
+<p>
+  One line, and it is the line that chooses the mode. A strictly positive duration turns on the CPU-share mode:
+  <a href="getfifoshare.html">GetFifoShare</a> and
+  <a href="getpriorityshare.html">GetPriorityShare</a> become non-zero, <a href="chooselane.html">ChooseLane</a> begins
+  refusing when the total reaches the allowance, and <a href="isroundexhausted.html">IsRoundExhausted</a> can become true.
+  Zero — and a negative figure, which is clamped to zero rather than stored — means unlimited: shares read zero, the round
+  never exhausts, and the decision falls through to the credit rotation.
+</p>
+
+<div class="note">
+  <strong>Zero means unlimited, not "run nothing".</strong> The same convention as the stream's CPU budget and the registry's
+  capacity ceiling: the inert value is the default, and a limit is something a caller opts into knowingly. An <code>Assert</code>
+  in <code>TaskStream::Update()</code> leans on that — a provider is asked for work only while the budget permits taking work,
+  and a spent stream must not manufacture more (<code>Engine/Core/TaskStream.cpp</code>).
+</div>
+
+<div class="note">
+  <strong>The allowance is not charged against by this call.</strong> Existing accumulations stay exactly where they were, so
+  raising an allowance mid-round can immediately re-open a round that had closed, and lowering it below what has already been
+  spent makes <a href="chooselane.html">ChooseLane</a> answer <code>None</code> at once.
+  <code>TaskStream::Update()</code> applies a requested allowance on the owning thread for exactly this reason: the field is
+  that thread's to write.
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<table>
+  <tr><th>Parameter</th><th>Type</th><th>Requirement</th></tr>
+  <tr><td><code>streamAllowance</code></td><td><code>std::chrono::duration&lt;double&gt;</code></td><td>CPU time this stream may spend per round. Any value at or below zero is stored as zero, i.e. unlimited</td></tr>
+</table>
+
+<h2 id="return">Return value</h2>
+
+<p><code>void</code>. The mode change is not reported; read the shares, or <a href="isroundexhausted.html">IsRoundExhausted</a>, to see which mode is in force.</p>
+
+<h2 id="example">Examples</h2>
+
+<p class="meta">From Engine/Core/TaskStream.cpp, TaskStream::ConfigureBudget()</p>
+
+<pre><code>budget.Configure(allowance);
+drainPolicy.ConfigureAllowance(allowance);</code></pre>
+
+<p>
+  The two figures are deliberately the same number: the CPU budget decides whether this stream may take work at all, and the
+  drain policy divides that same allowance between the two lanes. The pass that carries a
+  <a href="configureallowance.html">requested</a> allowance applies it the same way — <code>TaskStream::Update()</code> calls
+  this on <code>budget.ApplyRequestedAllowance()</code>'s result rather than letting another thread store the field.
+</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; StreamDrainPolicy</a></span>
+  <span><a href="index.html#methods">All StreamDrainPolicy methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

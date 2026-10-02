@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ResultPacket::GetDestinationStreamIndex — Core module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a class="current" href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Core</a> /
+  <a href="index.html">ResultPacket</a> / GetDestinationStreamIndex
+</p>
+
+<h1><span class="fn">GetDestinationStreamIndex</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::ResultPacket</span>
+  <span class="tag">Engine/Core/ResultPacket.h</span>
+  the byte routing reads: where this outcome is delivered, or why the chain stopped
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>[[nodiscard]] std::uint8_t GetDestinationStreamIndex() const noexcept</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  Defined in the header <code>Engine/Core/ResultPacket.h</code> as <code>ResultPacket::GetDestinationStreamIndex()</code>;
+  the body is <code>return header[DestinationByteIndex];</code> — byte 1 of the header. It is the only field of this type
+  the engine acts on: the destination byte decides where a finished task's outcome is delivered.
+</p>
+
+<p>
+  The value is a stream index in the same numbering every other stream reference uses, held in one byte, with
+  <code>NoDestinationStream</code> (<code>0xFF</code>) meaning "addressed to nobody". Two legitimate states use that
+  sentinel: work that reports nothing to anyone, and a caller that reads its own result through its own identity instead of
+  being handed it.
+</p>
+
+<div class="gap">
+  <strong>An unwritten destination byte stops a chain, and the log line says so.</strong>
+  <code>TaskSystem::DispatchSuccessor()</code> reads this byte and refuses to dispatch when it still says
+  <code>NoDestinationStream</code> (<code>Engine/Core/TaskSystem.cpp</code>) — even when a successor was recorded and the
+  join closed. A split cannot lean on a producer's runnable to write the byte, which is why
+  <code>TaskSystem::RunSplit()</code> writes it itself when the call names a successor
+  (<a href="setdestinationstreamindex.html">SetDestinationStreamIndex</a>).
+</div>
+
+<div class="note">
+  <strong>The byte is read as a stream index, and it is a byte.</strong> A stream index elsewhere in the engine is a
+  signed integer; this one is 8 bits wide, so a destination above 255 cannot be expressed here at all. What the delivery
+  path does with the value it reads is checked (<code>TaskSystem::HasStream</code>), so an out-of-range destination is
+  refused and logged rather than used — see <a href="setdestinationstreamindex.html">SetDestinationStreamIndex</a> for
+  where the two widths meet.
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<p>None.</p>
+
+<h2 id="return">Return value</h2>
+
+<table>
+  <tr><th>Type</th><th>What you get</th></tr>
+  <tr><td><code>std::uint8_t</code></td><td>The stream this result is addressed to, or <code>NoDestinationStream</code> (0xFF) when it is addressed to nobody</td></tr>
+</table>
+
+<h2 id="example">Examples</h2>
+
+<p class="meta">From Engine/Core/TaskSystem.cpp, TaskSystem::DispatchSuccessor()</p>
+
+<pre><code>const ResultPacket&amp; packet = finished-&gt;GetResult();
+const std::uint8_t destination = packet.GetDestinationStreamIndex();
+if (destination == ResultPacket::NoDestinationStream)
+{</code></pre>
+
+<p>
+  The one shipping call site of this function, and the reason the sentinel exists: a chain that stops here has no symptom
+  until something downstream waits, so the refusal is logged with both record indices and both generations.
+</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; ResultPacket</a></span>
+  <span><a href="index.html#methods">All ResultPacket methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

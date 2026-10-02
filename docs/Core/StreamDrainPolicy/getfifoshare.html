@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>StreamDrainPolicy::GetFifoShare — Core module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a class="current" href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Core</a> /
+  <a href="index.html">StreamDrainPolicy</a> / GetFifoShare
+</p>
+
+<h1><span class="fn">GetFifoShare</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::StreamDrainPolicy</span>
+  <span class="tag">Engine/Core/StreamDrainPolicy.cpp</span>
+  allowance x fifoWeight / total weight, derived on every call.
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>[[nodiscard]] std::chrono::duration&lt;double&gt; GetFifoShare() const noexcept</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  Defined in <code>Engine/Core/StreamDrainPolicy.cpp</code> as <code>StreamDrainPolicy::GetFifoShare()</code>.
+</p>
+
+<pre><code>if (allowance.count() &lt;= 0.0)
+{
+    return std::chrono::duration&lt;double&gt;{};
+}
+
+return allowance * (static_cast&lt;double&gt;(fifoWeight) / static_cast&lt;double&gt;(fifoWeight + priorityWeight));</code></pre>
+
+<p class="meta">From Engine/Core/StreamDrainPolicy.cpp, StreamDrainPolicy::GetFifoShare()</p>
+
+<p>
+  Derived on every call and never stored: change the rate or the allowance and the next read is the new share, with no round
+  boundary in between. The two shares add up to the allowance exactly — the test <em>Shares add up to the allowance</em>
+  requires 1500 µs and 500 µs from a 3:1 rate over 2 ms (<code>Engine/Core/StreamDrainPolicy.cpp</code>) — so a share is a
+  claim on the same CPU time the other lane is claiming, not an independent budget.
+</p>
+
+<div class="note">
+  <strong>Zero means "no shares exist", not "this lane gets nothing".</strong> With no allowance configured the answer is zero
+  for both lanes, and <a href="chooselane.html">ChooseLane</a> ignores shares entirely in that mode, deciding on credit
+  instead. There is no configuration in which a share of zero starves a lane: a zero weight is rewritten to one by
+  <a href="configurerate.html">ConfigureRate</a> long before it could divide out to zero.
+</div>
+
+<div class="note">
+  <strong>The unit is <code>duration&lt;double&gt;</code>, and the comparison is not.</strong>
+  <a href="chooselane.html">ChooseLane</a> casts this to <code>std::chrono::nanoseconds</code> before comparing against the
+  accumulation, so sub-nanosecond fractions are truncated at the comparison and not in the value returned here. A caller
+  printing this figure sees more precision than the decision used.
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<p>None.</p>
+
+<h2 id="return">Return value</h2>
+
+<table>
+  <tr><th>Type</th><th>What you get</th></tr>
+  <tr><td><code>std::chrono::duration&lt;double&gt;</code></td><td>allowance × fifoWeight / (fifoWeight + priorityWeight), or zero when the stream is unlimited</td></tr>
+</table>
+
+<h2 id="example">Examples</h2>
+
+<p class="meta">From Engine/Core/StreamDrainPolicy.cpp, StreamDrainPolicyTest</p>
+
+<pre><code>policy.ConfigureRate(3, 1);
+policy.ConfigureAllowance(std::chrono::duration&lt;double, std::milli&gt;{2});
+
+const auto fifoMicros = std::chrono::duration_cast&lt;std::chrono::microseconds&gt;(policy.GetFifoShare()).count();
+const auto priorityMicros =
+        std::chrono::duration_cast&lt;std::chrono::microseconds&gt;(policy.GetPriorityShare()).count();</code></pre>
+
+<p>
+  1500 and 500 — the assertion that keeps the normalisation honest, since a formula that divided by the FIFO weight instead
+  of the total would still produce two numbers that look plausible.
+</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; StreamDrainPolicy</a></span>
+  <span><a href="index.html#methods">All StreamDrainPolicy methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

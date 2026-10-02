@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TaskProvider::GetHandle — Core module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a class="current" href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Core</a> /
+  <a href="index.html">TaskProvider</a> / GetHandle
+</p>
+
+<h1><span class="fn">GetHandle</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::TaskProvider</span>
+  <span class="tag">Engine/Core/TaskProvider.h</span>
+  A token that can request this provider's stop from code that was not given the provider.
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>[[nodiscard]] TaskHandle GetHandle() noexcept</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  Declared and defined in the header <code>Engine/Core/TaskProvider.h</code>; there is no counterpart in
+  <code>Engine/Core/TaskProvider.cpp</code>. Wraps this object's address in the one token type that can ask a provider to stop, so a caller can
+  hand out the ability to wind a producer down without handing out the producer.
+</p>
+
+<div class="note">
+  <strong>What the token can do is exactly two things, and both are cheap.</strong> See
+  <a href="../TaskHandle/index.html">TaskHandle</a>: <code>TaskHandle::RequestStop</code> forwards to <a href="stop.html">Stop</a>, and
+  <code>TaskHandle::IsStopRequested</code> forwards to <a href="isstoprequested.html">IsStopRequested</a>. It cannot detach, cannot cancel, and
+  cannot create work — the handle is a wind-down signal with a read-back, which is all the provider contract offers
+  (<code>Engine/Core/TaskHandle.cpp</code>).
+</div>
+
+<div class="gap">
+  <strong>The handle is a raw pointer with no lifetime claim, so it is only valid while the provider is.</strong>
+  <code>TaskHandle::GetProvider</code> documents "No ownership - valid while the provider is", and nothing here registers or unregisters
+  handles: a token outliving its provider is a dangling pointer whose two methods both dereference it
+  (<code>Engine/Core/TaskHandle.cpp</code>). The safe pattern is to hand the handle to something that will finish before the provider is
+  destroyed, and to obey the destruction rule with <a href="detachall.html">DetachAll</a> rather than relying on a Debug-only assert.
+</div>
+
+<div class="note">
+  <strong>It is not <code>const</code>, and that is load-bearing for the handle's purpose.</strong>
+  <a href="stop.html">Stop</a> mutates the provider's atomic, so a handle built from a const provider would be a handle that could not do the
+  one thing it exists for. A provider reached through a const reference can still be inspected with
+  <a href="getname.html">GetName</a> and the attachment accessors, which are <code>const</code>
+  (<code>Engine/Core/TaskProvider.h</code>).
+</div>
+
+<div class="gap">
+  <strong>Nothing mints handles except this call, and nothing tracks how many are outstanding.</strong> There is no registry of live handles, so
+  a provider cannot see or wait for its token holders — meaning a stop request cannot be used to synchronise with code that holds one. What it
+  does give is a value type small enough to store anywhere a request needs to outlive the caller's scope
+  (<code>Engine/Core/TaskHandle.cpp</code>).
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<p>None. The handle always names the provider it was taken from; there is no way to take a handle for another provider.</p>
+
+<h2 id="return">Return value</h2>
+
+<table>
+  <tr><th>Type</th><th>What you get</th></tr>
+  <tr><td><a href="../TaskHandle/index.html"><code>TaskHandle</code></a></td><td>A token holding this provider's address, never null — <code>TaskHandle{}</code> is the empty handle, and this function cannot produce one</td></tr>
+</table>
+
+<h2 id="example">Examples</h2>
+
+<p class="note">Illustrative — no shipping code takes a handle yet, because no shipping code builds a provider either.</p>
+
+<pre><code>const auto handle = provider.GetHandle();
+handle.RequestStop();
+
+if (!provider.IsStopRequested())
+{
+    // A token holder's request failed to reach the provider it names.
+}</code></pre>
+
+<p>
+  Round trip through the token, which is the assertion the unit test makes directly on the provider instead
+  (<code>Engine/Core/TaskProvider.cpp</code>): a request made through a handle is visible on the provider with no other involvement from the
+  owner.
+</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; TaskProvider</a></span>
+  <span><a href="index.html#methods">All TaskProvider methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

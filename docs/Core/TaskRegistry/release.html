@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TaskRegistry::Release — Core module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a class="current" href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Core</a> /
+  <a href="index.html">TaskRegistry</a> / Release
+</p>
+
+<h1><span class="fn">Release</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::TaskRegistry</span>
+  <span class="tag">Engine/Core/TaskRegistry.cpp</span>
+  Stops tracking a task and returns its record; a stale ID is reported.
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>void Release(TaskID id) noexcept</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  Defined in <code>Engine/Core/TaskRegistry.cpp</code> as <code>TaskRegistry::Release()</code>: the creating lock taken again, the identity
+  validated, and the record pushed onto the free chain.
+</p>
+
+<pre><code>std::scoped_lock&lt;std::mutex&gt; lock(registryLock);
+
+Record* record = id.IsNull() ? nullptr : FindLiveRecord(id);
+if (record == nullptr)
+{
+    ...ReportError...
+    return;
+}
+
+record-&gt;inUse.store(false, std::memory_order::release);
+record-&gt;nextFreeRecord = freeRecordHead;
+freeRecordHead = id.index;
+usedRecords.fetch_sub(1, std::memory_order::relaxed);</code></pre>
+
+<p class="meta">From Engine/Core/TaskRegistry.cpp (the elided block is the error log described below)</p>
+
+<p>
+  <code>inUse</code> is cleared <em>before</em> the record joins the free list, so a lock-free <a href="find.html">Find</a> that races this
+  call reports the task as gone rather than handing out a task that is about to be re-issued. The task object itself is not destroyed and
+  not cleared: its fields keep their last values until <a href="create.html">Create</a> overwrites them, which is why a
+  <a href="find.html">Find</a> result is "whatever they held", not a guarantee.
+</p>
+
+<div class="note">
+  <strong>A stale ID is reported as an error, not tolerated quietly.</strong> The log names the index and generation and states the two
+  possible causes: "this is either a double release or an ID from a registry that did not issue it"
+  (<code>Engine/Core/TaskRegistry.cpp</code>). The header explains the stakes — a double release that went unnoticed would link one
+  record into the free chain twice and hand it to two tasks, giving two live identities the same record
+  (<code>Engine/Core/TaskRegistry.h</code>).
+</div>
+
+<div class="gap">
+  <strong>The generation is what saves a racing release, and it is checked before anything is freed.</strong>
+  Releasing an ID whose record has since been re-issued fails the generation test in
+  <a href="findliverecord.html">FindLiveRecord</a> and is refused, so a task that finished twice, or a caller holding an old copy of an
+  ID, cannot release somebody else's task. Without the generation this call would be a use-after-free generator.
+</div>
+
+<div class="gap">
+  <strong>Releasing does not run, cancel, or notify the task.</strong> Nothing inspects <code>Record::successor</code>, so a chain whose
+  head is released here simply never dispatches: <code>TaskSystem::DispatchSuccessor</code> refuses a successor whose task cannot be
+  found, and the registry's close-path tests assert that the live count drops when work whose task was released is dropped
+  (<code>Engine/Core/TaskSystem.cpp</code>, <code>Engine/Core/TaskRegistry.cpp</code>). If a caller owes somebody a completion, it owes
+  it before calling this.
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<table>
+  <tr><th>Parameter</th><th>Type</th><th>Requirement</th></tr>
+  <tr><td><code>id</code></td><td><code>TaskID</code></td><td>The identity <a href="create.html">Create</a> issued. A null ID is accepted and reported; a foreign registry's ID is refused by index or generation, and reported</td></tr>
+</table>
+
+<h2 id="return">Return value</h2>
+
+<p><code>void</code>. Nothing reports whether anything was freed; a caller that needs to know asks <a href="getcount.html">GetCount</a> on both sides of the call, accepting that the count is not a snapshot.</p>
+
+<h2 id="example">Examples</h2>
+
+<p class="meta">From Engine/Core/ResultPacket.cpp, ResultPacketTest</p>
+
+<pre><code>registry.Release(firstID);
+
+const auto reusedID = registry.Create("PacketSecondOccupant", PacketTestRunnable(), nullptr);
+auto* reusedTask = registry.Find(reusedID);</code></pre>
+
+<p>
+  The recycle the identity design is built around: the freed record is the next one issued, so <code>reusedID.index</code> equals
+  <code>firstID.index</code> while the generations differ — and the older identity now reads as nothing at all through
+  <a href="find.html">Find</a>.
+</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; TaskRegistry</a></span>
+  <span><a href="index.html#methods">All TaskRegistry methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

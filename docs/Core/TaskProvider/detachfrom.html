@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TaskProvider::DetachFrom — Core module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a class="current" href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Core</a> /
+  <a href="index.html">TaskProvider</a> / DetachFrom
+</p>
+
+<h1><span class="fn">DetachFrom</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::TaskProvider</span>
+  <span class="tag">Engine/Core/TaskProvider.cpp</span>
+  Stop feeding one stream, on every lane it held, and wait for a drain already in flight.
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>void DetachFrom(TStreamIndex stream) noexcept</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  Defined in <code>Engine/Core/TaskProvider.cpp</code> as <code>TaskProvider::DetachFrom()</code>: find the stream's slot, unregister each
+  lane it held, then remove the slot and shift the array down.
+</p>
+
+<pre><code>const std::uint8_t held = lanes[static_cast&lt;size_t&gt;(index)];
+
+if ((held &amp; LaneBitFifo) != 0)
+{
+    UnregisterFromStream(stream, StreamDrainPolicy::ELane::Fifo);
+}
+
+if ((held &amp; LaneBitPriority) != 0)
+{
+    UnregisterFromStream(stream, StreamDrainPolicy::ELane::Priority);
+}
+
+for (TStreamIndex shift = index; shift + 1 &lt; attachedCount; ++shift)
+{
+    ...
+}
+
+attached[static_cast&lt;size_t&gt;(attachedCount - 1)] = 0;
+lanes[static_cast&lt;size_t&gt;(attachedCount - 1)] = 0;
+--attachedCount;
+return;</code></pre>
+
+<p class="meta">From Engine/Core/TaskProvider.cpp (the elided loop copies each later slot down one)</p>
+
+<p>
+  One call removes the stream from every lane it was attached to — the mask decides which, so a provider attached to both lanes is unregistered
+  from both. The lane unregistration is the part that matters for safety: it enters the stream, and that is where the stream's queue lock is
+  taken.
+</p>
+
+<div class="note">
+  <strong>It waits for a drain already in flight, which is the reason the call exists at all.</strong>
+  "Takes the stream's lock per lane, so a <code>Produce</code> still running has handed over (or refused) its item before this returns, and no
+  item can arrive afterwards" (<code>Engine/Core/TaskProvider.h</code>). Without that wait, a detach would either drop an item a provider had
+  already produced or leave a pointer in a list a worker is walking — and R37's destructor assert is exactly the check this call keeps
+  satisfied.
+</div>
+
+<div class="gap">
+  <strong>It is silent about a stream it does not find.</strong> Falling off the end of the search loop returns without a log
+  (<code>Engine/Core/TaskProvider.cpp</code>) — unlike <a href="attachto.html">AttachTo</a>, which reports every refusal. That is defensible
+  for a teardown path that over-unregisters, but it means "detached" and "was never attached" are indistinguishable here; ask
+  <a href="isattachedto.html">IsAttachedTo</a> before and after if the difference matters to the report.
+</div>
+
+<div class="gap">
+  <strong>Positions are not stable across a detach.</strong> The array is shift-compacted, so every attachment recorded after this stream moves
+  down one. A caller holding an index from <a href="getattachedstream.html">GetAttachedStream</a> across a detach is reading a different
+  stream's entry — which is why the accessor's contract is a walk, not a handle.
+</div>
+
+<div class="note">
+  <strong>What it does not do: stop anything.</strong> No <a href="stop.html">Stop</a>, no cancellation, no notice to a successor. Work this
+  provider already handed to the stream stays on its lane and runs; work it has not handed over simply stops being asked for, because the
+  stream's list no longer names this provider. A provider detached and then re-attached is the same object with a clean slate, and
+  <a href="registeronstream.html">RegisterOnStream</a> counts the new registration separately.
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<table>
+  <tr><th>Parameter</th><th>Type</th><th>Requirement</th></tr>
+  <tr><td><code>stream</code></td><td><code>TStreamIndex</code> (<code>int</code>)</td><td>The stream to stop feeding. An index recorded but never registered is still removed from the slot list; an index never recorded is ignored</td></tr>
+</table>
+
+<h2 id="return">Return value</h2>
+
+<p><code>void</code>. Nothing reports whether anything was detached, and nothing reports how many lanes were unregistered — read <a href="getattachedcount.html">GetAttachedCount</a> for the first.</p>
+
+<h2 id="example">Examples</h2>
+
+<p class="meta">From Engine/Core/TaskProvider.cpp, RecordingProvider::~RecordingProvider()</p>
+
+<pre><code>~RecordingProvider() override
+{
+    DetachAll();
+}</code></pre>
+
+<p>
+  The probes detach in their destructors, "because the contract R37 now enforces is detach-before-destruction... A test double that cleans up
+  after itself keeps that rule strict for everyone else" (<code>Engine/Core/TaskProvider.cpp</code>). <a href="detachall.html">DetachAll</a> is
+  this function applied to each recorded stream, so the wait-for-drain property holds for every stream the provider fed.
+</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; TaskProvider</a></span>
+  <span><a href="index.html#methods">All TaskProvider methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

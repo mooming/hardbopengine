@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TaskRegistry::Initialize — Core module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a class="current" href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Core</a> /
+  <a href="index.html">TaskRegistry</a> / Initialize
+</p>
+
+<h1><span class="fn">Initialize</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::TaskRegistry</span>
+  <span class="tag">Engine/Core/TaskRegistry.cpp</span>
+  Takes the initial banks now; call once, before any task is created.
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>void Initialize(StaticString registryName, std::size_t initialCapacityRecords, std::size_t growByRecords) noexcept</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  Defined in <code>Engine/Core/TaskRegistry.cpp</code> as <code>TaskRegistry::Initialize()</code>. It stores the name, the grow-by (with
+  a zero replaced by <code>DefaultGrowByRecords</code>), a reset ceiling, a reset free list, and the allocator currently in scope; then it
+  allocates <code>initialCapacityRecords / recordsPerBank</code> banks, stopping at the first refusal, and logs what the table ended up
+  holding.
+</p>
+
+<pre><code>recordsPerBank = growByRecords &gt; 0 ? growByRecords : DefaultGrowByRecords;
+maxCapacityRecords = DefaultMaxCapacityRecords;
+freeRecordHead = TaskID::NullIndex;
+bankAllocatorID = MemoryManager::GetCurrentAllocatorID();</code></pre>
+
+<p class="meta">From Engine/Core/TaskRegistry.cpp</p>
+
+<div class="note">
+  <strong>The ceiling is reset to "no ceiling", whatever <a href="setmaxcapacity.html">SetMaxCapacity</a> had been told.</strong>
+  <a href="setmaxcapacity.html">SetMaxCapacity</a> is therefore only meaningful <em>after</em> this call. The order the task system uses —
+  <a href="initialize.html">Initialize</a>, then any ceiling — is the only order that survives.
+</div>
+
+<div class="gap">
+  <strong>A partial bank is asserted in a debug build and accepted silently in every build.</strong> The header says
+  <code>initialCapacityRecords</code> "is rounded down to a whole number of banks of growByRecords, and GetCapacity reports what the table
+  really holds", and the loop's <code>initialCapacityRecords / recordsPerBank</code> does exactly that. But the line above it
+  <code>Assert</code>s that the division is exact — "which is not a whole number of banks of N so it holds fewer than that"
+  (<code>Engine/Core/TaskRegistry.cpp</code>). A configuration that asks for 10000 records with a grow-by of 4096 is a bug in a debug
+  build and a quiet 8192-record table in a shipping one. Reading <a href="getcapacity.html">GetCapacity</a> after this call is the only
+  check that works in both.
+</div>
+
+<div class="gap">
+  <strong>Call it once, before any task is created.</strong> "Calling it again while records are in use leaks the banks it already had,
+  which is why the task system calls it from its own Initialize and nowhere else" (<code>Engine/Core/TaskRegistry.h</code>). The code
+  explains why the header is understating it: <code>bankCount</code> and <code>usedRecords</code> are <em>not</em> reset, while
+  <code>freeRecordHead</code> is, so a second call abandons the previous free chain — the old records stay pointed at by
+  <code>banks[]</code> and are still freed by <a href="destructor.html">the destructor</a>, but with a
+  <code>recordsPerBank</code> that may no longer match how they were built.
+</div>
+
+<div class="note">
+  <strong>Allocation failure is not fatal and not silent.</strong> A bank that the allocator refuses ends the loop, leaving the table at
+  whatever it managed to take, and the log line reports the capacity actually achieved — "is initialized with N task records"
+  (<code>Engine/Core/TaskRegistry.cpp</code>). A caller that treats this call as a promise should compare
+  <a href="getcapacity.html">GetCapacity</a> with what it asked for.
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<table>
+  <tr><th>Parameter</th><th>Type</th><th>Requirement</th></tr>
+  <tr><td><code>registryName</code></td><td><code>StaticString</code></td><td>Names this registry in every log line it produces, including the refusal lines that decide whether a task ran</td></tr>
+  <tr><td><code>initialCapacityRecords</code></td><td><code>std::size_t</code></td><td>Records wanted now, rounded down to whole banks; at 256 bytes each, 4096 records is 1 MiB</td></tr>
+  <tr><td><code>growByRecords</code></td><td><code>std::size_t</code></td><td>Records per later <a href="grow.html">Grow</a>; zero is replaced by <code>DefaultGrowByRecords</code> and also trips an <code>Assert</code></td></tr>
+</table>
+
+<h2 id="return">Return value</h2>
+
+<p><code>void</code>. Success is not reported as such; read <a href="getcapacity.html">GetCapacity</a>, <a href="getgrowby.html">GetGrowBy</a> and the log line.</p>
+
+<h2 id="example">Examples</h2>
+
+<p class="meta">From Engine/Core/ResultPacket.cpp, ResultPacketTest</p>
+
+<pre><code>TaskRegistry registry;
+registry.Initialize("PacketTest", 8, 4);</code></pre>
+
+<p>
+  Two banks of four records for a test that needs two — the shape of every call in the tree, and the reason the
+  <a href="getcapacity.html">GetCapacity</a> reading rather than the requested figure is the one worth trusting. The engine's own registry
+  is sized with the decided defaults, which the test <em>The engine's registry is sized by the decided figures</em> pins by writing the
+  numbers out instead of comparing them to the constants that produced them
+  (<code>Engine/Core/TaskRegistry.cpp</code>).
+</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; TaskRegistry</a></span>
+  <span><a href="index.html#methods">All TaskRegistry methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

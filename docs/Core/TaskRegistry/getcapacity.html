@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TaskRegistry::GetCapacity — Core module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a class="current" href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Core</a> /
+  <a href="index.html">TaskRegistry</a> / GetCapacity
+</p>
+
+<h1><span class="fn">GetCapacity</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::TaskRegistry</span>
+  <span class="tag">Engine/Core/TaskRegistry.cpp</span>
+  Records the table holds without growing - banks times bank size.
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>[[nodiscard]] std::size_t GetCapacity() const noexcept</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  Defined in <code>Engine/Core/TaskRegistry.cpp</code> as <code>TaskRegistry::GetCapacity()</code>; the body is one line.
+</p>
+
+<pre><code>return bankCount.load(std::memory_order::relaxed) * recordsPerBank;</code></pre>
+
+<p class="meta">From Engine/Core/TaskRegistry.cpp</p>
+
+<p>
+  Capacity is derived rather than stored, which is why it can never disagree with the banks that actually exist: it is the published bank
+  count times the figure that names every bank's size. Multiply by <code>RecordSizeBytes</code> and it is also the registry's memory
+  footprint, which is how the registry's own test prints the price of the table.
+</p>
+
+<div class="note">
+  <strong>It reports what the table holds, which is not what was asked for.</strong>
+  <a href="initialize.html">Initialize</a> rounds a request down to whole banks, an allocation failure stops the loop early, and a
+  <a href="grow.html">Grow</a> refusal changes nothing — this is the reading that reflects all three
+  (<code>Engine/Core/TaskRegistry.h</code>: "GetCapacity reports what the table really holds").
+</div>
+
+<div class="gap">
+  <strong>It is not a count of what is in use, and it is not a limit.</strong> Live tasks are counted by
+  <a href="getcount.html">GetCount</a>, and the ceiling that stops growth is <a href="getmaxcapacity.html">GetMaxCapacity</a> — a table can
+  sit far below its ceiling and still refuse work if every record it holds is busy, which is exactly the message
+  <a href="reportnoroom.html">ReportNoRoom</a> prints.
+</div>
+
+<div class="gap">
+  <strong>Both factors can change after records exist, and this reading moves with them.</strong>
+  <code>recordsPerBank</code> is written by <a href="initialize.html">Initialize</a> and <code>bankCount</code> by
+  <a href="allocatebank.html">AllocateBank</a>; neither is read under a lock here. In the intended lifecycle both happen before any task is
+  created, so the number is stable exactly when it matters — as the basis of an index computation in
+  <a href="find.html">Find</a>.
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<p>None.</p>
+
+<h2 id="return">Return value</h2>
+
+<table>
+  <tr><th>Type</th><th>What you get</th></tr>
+  <tr><td><code>std::size_t</code></td><td>Records issuable without growing. Zero for a constructed-but-uninitialised registry, 4096 for one built with the engine's defaults</td></tr>
+</table>
+
+<h2 id="example">Examples</h2>
+
+<p class="meta">From Engine/Core/TaskRegistry.cpp, TaskRegistryTest</p>
+
+<pre><code>ls &lt;&lt; "Engine registry: capacity = " &lt;&lt; registry.GetCapacity() &lt;&lt; ", growing by " &lt;&lt; registry.GetGrowBy()
+   &lt;&lt; ", ceiling = " &lt;&lt; registry.GetMaxCapacity() &lt;&lt; ", record = " &lt;&lt; TaskRegistry::RecordSizeBytes
+   &lt;&lt; " bytes, so the table costs " &lt;&lt; (registry.GetCapacity() * TaskRegistry::RecordSizeBytes) / 1024
+   &lt;&lt; " KiB." &lt;&lt; lf;
+
+if (registry.GetCapacity() != decidedInitialRecords)
+{
+    ls &lt;&lt; "The engine's registry holds " &lt;&lt; registry.GetCapacity() &lt;&lt; " task records, not "
+       &lt;&lt; decidedInitialRecords &lt;&lt; ", so the size R22 decided is not the size being built." &lt;&lt; lferr;
+}</code></pre>
+
+<p>
+  The sizing contract as the tests hold it: the figures are written out rather than read back from the constants that produced them,
+  because "a comparison against the constant that produced the value cannot fail"
+  (<code>Engine/Core/TaskRegistry.cpp</code>). The capacity check is what pins the R22 decision, and a registry that came out at 8192
+  because someone rounded a request down would be caught here rather than in a lookup that fails.
+</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; TaskRegistry</a></span>
+  <span><a href="index.html#methods">All TaskRegistry methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TaskRegistry::TaskRegistry — Core module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a class="current" href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Core</a> /
+  <a href="index.html">TaskRegistry</a> / TaskRegistry
+</p>
+
+<h1><span class="fn">TaskRegistry</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::TaskRegistry</span>
+  <span class="tag">Engine/Core/TaskRegistry.cpp</span>
+  Builds an empty registry that takes no memory; Initialize gives it records.
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>TaskRegistry() noexcept
+
+TaskRegistry(const TaskRegistry&amp;) = delete</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  Defined in <code>Engine/Core/TaskRegistry.cpp</code> as <code>TaskRegistry::TaskRegistry()</code>. It initialiser-lists everything
+  that has a value worth establishing and zeroes the bank table in the body:
+</p>
+
+<pre><code>: name("None")
+, bankCount(0)
+, recordsPerBank(DefaultGrowByRecords)
+, maxCapacityRecords(DefaultMaxCapacityRecords)
+, freeRecordHead(TaskID::NullIndex)
+, usedRecords(0)
+, bankAllocatorID(MemoryManager::GetCurrentAllocatorID())
+{
+    for (auto&amp; bank : banks)
+    {
+        bank = nullptr;
+    }
+}</code></pre>
+
+<p class="meta">From Engine/Core/TaskRegistry.cpp</p>
+
+<p>
+  No bank is allocated, so a default-constructed registry costs nothing but its own inline state — the 1024-entry pointer table and the
+  mutex. <code>freeRecordHead</code> starts at <code>TaskID::NullIndex</code>, which is the free chain's "no records" marker, so
+  <a href="create.html">Create</a> on an uninitialised registry refuses immediately rather than dereferencing a null bank.
+</p>
+
+<div class="note">
+  <strong>Construction and sizing are separate on purpose.</strong> "A registry lives inside the task system, which is itself
+  default-constructed and sized later, and because the allocator the banks come from is only known once the engine has chosen it"
+  (<code>Engine/Core/TaskRegistry.h</code>). That is why <a href="initialize.html">Initialize</a> exists as a call rather than as
+  constructor arguments, and why the constructor captures <code>bankAllocatorID</code> eagerly — the later call refreshes it, and
+  <a href="allocatebank.html">AllocateBank</a> uses whatever it holds.
+</div>
+
+<div class="gap">
+  <strong>A constructed-but-never-initialised registry is a live object that can only refuse.</strong>
+  <a href="getcapacity.html">GetCapacity</a> reports zero, <a href="create.html">Create</a> logs an error naming a capacity of zero, and
+  <a href="grow.html">Grow</a> is the only way to give it records — using <code>recordsPerBank</code> as it stands,
+  <code>DefaultGrowByRecords</code>. So a registry that was forgotten rather than configured fails loudly on first use instead of
+  silently tracking nothing.
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<p>None. Capacity, grow-by and name all arrive through <a href="initialize.html">Initialize</a>.</p>
+
+<h2 id="return">Return value</h2>
+
+<p>Nothing: construction allocates no memory and therefore cannot fail. <code>noexcept</code> states the same claim.</p>
+
+<h2 id="example">Examples</h2>
+
+<p class="meta">From Engine/Core/TaskRegistry.cpp, TaskRegistryTest</p>
+
+<pre><code>registry.Initialize("PacketTest", 8, 4);</code></pre>
+
+<p>
+  The pair as the tests use it — a default-constructed <code>TaskRegistry</code> on the stack, then a sizing call
+  (<code>Engine/Core/ResultPacket.cpp</code>). The engine's own registry is the same object owned by <code>TaskSystem</code>, sized from
+  its <code>Initialize</code> and reachable through <code>TaskSystem::GetRegistry()</code>.
+</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; TaskRegistry</a></span>
+  <span><a href="index.html#methods">All TaskRegistry methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

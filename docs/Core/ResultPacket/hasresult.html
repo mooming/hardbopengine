@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ResultPacket::HasResult — Core module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a class="current" href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Core</a> /
+  <a href="index.html">ResultPacket</a> / HasResult
+</p>
+
+<h1><span class="fn">HasResult</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::ResultPacket</span>
+  <span class="tag">Engine/Core/ResultPacket.h</span>
+  one byte decides it: a producer declared a result, whether or not the payload means anything
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>[[nodiscard]] bool HasResult() const noexcept</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  Defined in the header <code>Engine/Core/ResultPacket.h</code> as <code>ResultPacket::HasResult()</code>; the body is
+  <code>return header[KindByteIndex] != KindNoResult;</code>. One byte decides it. The payload is not consulted, so bytes
+  written without a kind do not count as a result, and a kind set without a payload does.
+</p>
+
+<div class="gap">
+  <strong>The delivery path never asks.</strong>
+  <code>TaskSystem::DispatchSuccessor()</code> decides whether to dispatch from the successor's identity, the packet's
+  destination byte and the successor's reserved count — never from this predicate
+  (<code>Engine/Core/TaskSystem.cpp</code>). A producer that set a destination and wrote no result still delivers a
+  successor: the successor runs with a packet whose kind is <code>KindNoResult</code> and whose payload is what
+  <a href="clear.html">Clear</a> left there. Its only call sites in this repository are the tests in
+  <code>Engine/Core/ResultPacket.cpp</code>.
+</div>
+
+<div class="note">
+  <strong>This is the reader's guard, not the writer's.</strong> A reader that arrives between a producer writing the
+  payload and the producer calling <a href="setkind.html">SetKind</a> sees <code>false</code> and stops — which is why the
+  write order matters and is stated on that page. A reader that sees <code>true</code> has learned a producer declared a
+  result of some kind; it has not learned that the payload is complete, because nothing in this type is atomic.
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<p>None.</p>
+
+<h2 id="return">Return value</h2>
+
+<table>
+  <tr><th>Type</th><th>What you get</th></tr>
+  <tr><td><code>bool</code></td><td><code>true</code> when the kind byte holds anything other than <code>KindNoResult</code></td></tr>
+</table>
+
+<h2 id="example">Examples</h2>
+
+<p class="meta">From Engine/Core/ResultPacket.cpp, ResultPacketTest</p>
+
+<pre><code>if (packet.HasResult())
+{
+    ls &lt;&lt; "A task that has run nothing already reports a result of kind " &lt;&lt; static_cast&lt;int&gt;(packet.GetKind())
+       &lt;&lt; ", so a reader would act on the previous occupant of this"
+       &lt;&lt; " record." &lt;&lt; lferr;
+}</code></pre>
+
+<p>
+  The check that a freshly issued record is empty. It is the only executable statement of the rule a reused record must
+  obey, because the registry's generation check protects stale readers and says nothing about new ones.
+</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; ResultPacket</a></span>
+  <span><a href="index.html#methods">All ResultPacket methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

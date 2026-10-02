@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Task::LoadIntoRecord — Core module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a class="current" href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Core</a> /
+  <a href="index.html">Task</a> / LoadIntoRecord
+</p>
+
+<h1><span class="fn">LoadIntoRecord</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::Task</span>
+  <span class="tag">Engine/Core/Task.h</span>
+  private: fill a recycled record, reloading every field including the previous tenant's notice
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>void LoadIntoRecord(TaskID newID, StaticString taskName, TRunnable newFunc, void* newUserData) noexcept</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  Private; defined in <code>Engine/Core/Task.cpp</code> as <code>Task::LoadIntoRecord()</code>, and its one caller is
+  <code>TaskRegistry::Create()</code> (<code>Engine/Core/TaskRegistry.cpp</code>). It fills this task where it sits,
+  because <code>Task</code> cannot be assigned: the <code>std::atomic</code> join counter deletes the implicit copy and
+  move assignment (proved on <a href="destructor.html">the destructor page</a>), so the registry has no assignment to
+  lean on when it recycles a record.
+</p>
+
+<pre><code>id = newID;
+name = taskName;
+numSubTasks = 0;
+numGeneratedSubTasks = 0;
+result.Clear();
+numFinishedSubTasks.store(0, std::memory_order::relaxed);
+func = newFunc;
+userData = newUserData;
+abandonedNotice = nullptr;
+abandonedUserData = nullptr;
+offerTime = std::chrono::duration_cast&lt;std::chrono::nanoseconds&gt;(time::ElapsedSinceEngineEpoch());</code></pre>
+
+<p class="meta">From Engine/Core/Task.cpp, Task::LoadIntoRecord()</p>
+
+<p>
+  Every field is reloaded, including the three the caller was not given. That is not tidiness: the record this task lives
+  in belonged to another task until a moment ago, and a notice left behind by that previous tenant would fire the old
+  requestor's callback with its stale context pointer for work this task never asked about. The in-class initialisers on
+  those fields run once, when the record is first constructed
+  (<code>TaskRegistry::AllocateBank()</code> placement-news a whole bank), so a reused record depends entirely on this
+  call to be clean.
+</p>
+
+<div class="note">
+  <strong>The age clock starts here, not on the work item.</strong> <code>offerTime</code> is stamped once, at record
+  issue, and each <a href="../WorkItem/index.html">WorkItem</a> copies it in its constructor. A task that splits late, or
+  whose runnable returns part of its range and is re-queued, therefore stays exactly as old as it was — which is the
+  point: stamping the item instead would let a task postpone a stream's max age by not finishing in one call. See
+  <code>StreamDrainPolicy::IsOverAge</code> in <code>Engine/Core/StreamDrainPolicy.h</code> for the reader.
+</div>
+
+<div class="note">
+  <strong>The join and the result both start empty.</strong> <code>numSubTasks</code> and
+  <code>numFinishedSubTasks</code> go to 0, so <a href="hasdone.html">HasDone</a> is false and no successor can be
+  dispatched on a task that has not declared anything. <code>result.Clear()</code> puts the packet back to
+  <code>KindNoResult</code>, so a reused record cannot report its previous occupant's answer.
+</div>
+
+<div class="gap">
+  <strong>The identity is published before the record is marked in use.</strong> The caller stores the new generation,
+  calls this, and only then marks the record live
+  (<code>TaskRegistry::Create()</code>), so a lookup that sees the record as in use sees a task whose
+  <a href="getid.html">GetID</a> already matches the ID being issued. Passing an ID that does not name this record would
+  break that invariant for every item built from it — this call is the only place the two are joined, and nothing checks
+  that they agree.
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<table>
+  <tr><th>Parameter</th><th>Type</th><th>Requirement</th></tr>
+  <tr><td><code>newID</code></td><td><code>TaskID</code></td><td>The identity being issued for this record — index of this record, generation one past what the record held</td></tr>
+  <tr><td><code>taskName</code></td><td><code>StaticString</code></td><td>Pointer identity into static storage; must outlive the task</td></tr>
+  <tr><td><code>newFunc</code></td><td><code>TRunnable</code></td><td>The function every item of this task calls; <code>nullptr</code> is stored without complaint and reported at run time</td></tr>
+  <tr><td><code>newUserData</code></td><td><code>void*</code></td><td>Opaque context for that function; its lifetime is the creator's problem</td></tr>
+</table>
+
+<h2 id="return">Return value</h2>
+
+<p><code>void</code>. Nothing is refused and nothing is reported: the caller has already reserved the record.</p>
+
+<h2 id="example">Examples</h2>
+
+<p class="meta">From Engine/Core/TaskRegistry.cpp, TaskRegistry::Create()</p>
+
+<pre><code>const TaskID::TGeneration generation = record.generation.load(std::memory_order::relaxed) + 1;
+record.generation.store(generation, std::memory_order::relaxed);
+record.successor = {};
+record.task.LoadIntoRecord(TaskID{recordIndex, generation}, taskName, func, userData);
+record.inUse.store(true, std::memory_order::release);</code></pre>
+
+<p>
+  Three things happen around this call, and their order is the design: the generation advances first, so an ID issued for
+  the previous occupant stops resolving; the successor is cleared, so a recycled record does not inherit routing
+  (<code>TaskRegistryTest</code> in <code>Engine/Core/TaskRegistry.cpp</code> pins that); and the record is published as
+  in use last, with release ordering, so no thread can find a record before the task inside it says who it is.
+</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; Task</a></span>
+  <span><a href="index.html#methods">All Task methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TaskStream::EnqueueFifo — Core module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a class="current" href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Core</a> /
+  <a href="index.html">TaskStream</a> / EnqueueFifo
+</p>
+
+<h1><span class="fn">EnqueueFifo</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::TaskStream</span>
+  <span class="tag">Engine/Core/TaskStream.cpp</span>
+  Queue a work item on this stream's FIFO lane.
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>void EnqueueFifo(const WorkItem&amp; task) noexcept</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  Declared in <code>Engine/Core/TaskStream.h</code>, defined in <code>Engine/Core/TaskStream.cpp</code> as
+  <code>TaskStream::EnqueueFifo()</code>.
+</p>
+
+<pre><code>std::scoped_lock&lt;std::mutex&gt; lock(queueLock);
+fifoQueue.PushBack(task);
+cv.notify_one();</code></pre>
+
+<p class="meta">From Engine/Core/TaskStream.cpp</p>
+
+<p>
+  Three lines, and they are the whole public door into a stream's FIFO lane: take the queue lock, append the item, wake whoever waits on the
+  stream. The item is copied into the lane and the caller keeps its own value — nothing here keeps a reference to the caller's memory.
+</p>
+
+<div class="note">
+  <strong>The header calls the operation unfailable, and records what used to make it failable.</strong> "Cannot fail. A task is queued or it is
+  not, and the only reason a stream ever refused one was a declared result count it could not fit - a question that stopped existing when the
+  result moved into the task's own record." (<code>Engine/Core/TaskStream.h</code>) <code>fifoQueue</code> is a
+  <code>Deque&lt;WorkItem&gt;</code>, so the lane has no item ceiling to refuse against
+  (<code>Engine/Core/TaskStream.h</code>).
+</div>
+
+<div class="gap">
+  <strong>Liveness is checked at the dequeue, not here.</strong> An item names a task by <code>TaskID</code>, and a task released between
+  enqueue and dequeue is caught when the stream takes the item out and looks the id up — reported by
+  <code>ReportReleasedTask</code> as one warning per dropped sub-task. A caller may therefore enqueue an item whose task is already gone and see
+  nothing at the call site; the diagnosis appears on the stream's name
+  (<code>Engine/Core/TaskStream.cpp</code>).
+</div>
+
+<div class="note">
+  <strong>The lock is the same one a provider call is made under, and R40 is the trap that follows.</strong>
+  <code>TaskStream::DrainProvidersLocked</code> runs <a href="../TaskProvider/produce.html">Produce</a> with <code>queueLock</code> held, and
+  the mutex is not recursive, so a provider that calls this on the stream draining it deadlocks itself
+  (<code>Engine/Core/TaskProvider.h</code>). Enqueueing into <em>another</em> stream from a provider is permitted but discouraged; the task
+  registry's lock is the one a provider is told to feel free to take.
+</div>
+
+<div class="gap">
+  <strong>One notify per enqueue, with no predicate and no batch form.</strong> A caller that pushes a hundred items notifies a hundred times;
+  a waiting thread wakes, sees one item available, and takes it — the extra wakes are cheap but not free
+  (<code>Engine/Core/TaskStream.cpp</code>). There is no range form here, unlike the priority lane's internal re-adding, which uses
+  <code>PushRange</code> during compaction (<code>Engine/Core/TaskStream.cpp</code>).
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<table>
+  <tr><th>Parameter</th><th>Type</th><th>Requirement</th></tr>
+  <tr><td><code>task</code></td><td><code>const WorkItem&amp;</code></td><td> Copied onto the lane; index range, priority and task id travel with it. A priority byte on a FIFO item affects the drain only if the item is later re-added to the priority lane</td></tr>
+</table>
+
+<h2 id="return">Return value</h2>
+
+<p><code>void</code>, because there is no refusal to report. The lane grows as needed, so the only cost of a producer that outruns the stream is memory and queue age — and age is what the stream's max-age rule eventually drops (<code>StreamDrainPolicy::SetMaxAge</code>).</p>
+
+<h2 id="example">Examples</h2>
+
+<p class="meta">From Engine/Core/TaskSystem.cpp, TaskSystem::DispatchSuccessor()</p>
+
+<pre><code>successor-&gt;GetResult() = packet;
+
+streams[destination].EnqueueFifo(successor-&gt;GenerateSubTask(0, 1));</code></pre>
+
+<p>
+  The engine's own producer: a finished task's result is written into its successor's record and the successor's whole item goes onto that
+  stream's FIFO lane, in that order, so the item cannot be taken before the result it waits for exists
+  (<code>Engine/Core/TaskSystem.cpp</code>). Note the enqueue takes an item built inline from the task — the caller never holds a pointer into the
+  lane.
+</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; TaskStream</a></span>
+  <span><a href="index.html#methods">All TaskStream methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

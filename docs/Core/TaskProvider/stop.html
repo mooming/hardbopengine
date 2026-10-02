@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TaskProvider::Stop — Core module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a class="current" href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Core</a> /
+  <a href="index.html">TaskProvider</a> / Stop
+</p>
+
+<h1><span class="fn">Stop</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::TaskProvider</span>
+  <span class="tag">Engine/Core/TaskProvider.h</span>
+  Request that this producer wind down; not cancellation, and the shipping drain does not yet read the flag.
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>void Stop() noexcept</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  Declared and defined in the header <code>Engine/Core/TaskProvider.h</code>; there is no counterpart in
+  <code>Engine/Core/TaskProvider.cpp</code>. One release store of a flag that is never cleared — the entire mechanism, and it is worth being
+  precise about what that buys.
+</p>
+
+<div class="note">
+  <strong>The header's own framing is blunt about what this is not.</strong> "Stop is not cancellation. Tasks already taken run to completion -
+  the task system cannot stop one - so 'stopped' means no further Produce calls, not no further work"
+  (<code>Engine/Core/TaskProvider.h</code>). The unit of control in this design is the drain, and a task in flight has no stop input at all.
+</div>
+
+<div class="gap">
+  <strong>No shipping code reads the flag, so "no further Produce calls" is not what happens today.</strong>
+  Searching <code>Engine/</code> and <code>Applications/</code> for readers of the flag finds only
+  <a href="isstoprequested.html">IsStopRequested</a> itself and the handle that forwards to it; the drain path
+  <code>TaskStream::DrainProvidersLocked</code> asks every provider on its lane whatever the flag says
+  (<code>Engine/Core/TaskStream.cpp</code>). What a caller can rely on right now is therefore narrower than the contract: a stopped provider
+  that checks its own flag can decline to produce, and code outside the engine can see the request. The stream will keep asking
+  (<code>Engine/Core/TaskProvider.h</code>).
+</div>
+
+<div class="note">
+  <strong>It removes nothing, so it is not a teardown step.</strong> The provider stays on the stream's lane list and stays registered; the
+  destructor's R37 assert is unaffected, and calling this before destroying a provider satisfies nothing. <a href="detachfrom.html">DetachFrom</a>
+  is the call that removes the registration and waits for a drain in flight
+  (<code>Engine/Core/TaskProvider.h</code>).
+</div>
+
+<div class="gap">
+  <strong>The flag is one-way and the class offers no reset.</strong> Nothing clears <code>stopRequested</code> — not
+  <a href="attachto.html">AttachTo</a>, not destruction of a successor, nothing — so a provider stopped once reports stopped forever, and a
+  "resume" has to be a new provider object. That is a deliberate asymmetry: a request that can be withdrawn would need a second flag to
+  distinguish it from a new request racing the withdrawal.
+</div>
+
+<div class="note">
+  <strong>A release store with no paired value, because the flag carries no other data.</strong> The acquire in
+  <a href="isstoprequested.html">IsStopRequested</a> is what makes a reader that sees <code>true</code> also see everything the requesting
+  thread published before calling this — which is the only reason a provider that inspects its own flag inside
+  <a href="produce.html">Produce</a> can act on state the requester set first.
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<p>None. There is no reason string, no drain timeout, and no per-stream variant: the request is per provider, and every stream feeding it sees the same flag.</p>
+
+<h2 id="return">Return value</h2>
+
+<p><code>void</code>. It cannot fail — there is no state to reject and no queue to notify — and it does not report whether anything was already stopped.</p>
+
+<h2 id="example">Examples</h2>
+
+<p class="meta">From Engine/Core/TaskHandle.cpp, TaskHandle::RequestStop()</p>
+
+<pre><code>if (provider != nullptr)
+{
+    provider-&gt;Stop();
+}</code></pre>
+
+<p>
+  The handle's forwarding is the whole call chain: a token holder asks, the provider records, and the answer is visible to anyone who asks
+  afterwards. Which is also the shape of the gap — the last step of the promise, the stream ceasing to ask, is the step no shipping code
+  performs (<code>Engine/Core/TaskStream.cpp</code>).
+</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; TaskProvider</a></span>
+  <span><a href="index.html#methods">All TaskProvider methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

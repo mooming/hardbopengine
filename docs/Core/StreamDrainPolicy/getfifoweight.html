@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>StreamDrainPolicy::GetFifoWeight — Core module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a class="current" href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Core</a> /
+  <a href="index.html">StreamDrainPolicy</a> / GetFifoWeight
+</p>
+
+<h1><span class="fn">GetFifoWeight</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::StreamDrainPolicy</span>
+  <span class="tag">Engine/Core/StreamDrainPolicy.cpp</span>
+  The configured FIFO weight, not the normalised share.
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>[[nodiscard]] uint32_t GetFifoWeight() const noexcept</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  Defined in <code>Engine/Core/StreamDrainPolicy.cpp</code> as <code>StreamDrainPolicy::GetFifoWeight()</code>; the body is
+  <code>return fifoWeight;</code>. The FIFO side of the rate exactly as <a href="configurerate.html">ConfigureRate</a> stored
+  it — which means a zero that was passed in comes back as one, and nothing records that the substitution happened.
+</p>
+
+<p>
+  It exists so a borrowed stream can be handed back: the header names "the read half of a change-then-restore" as the reason
+  (<code>Engine/Core/StreamDrainPolicy.h</code>), and a share
+  (<a href="getfifoshare.html">GetFifoShare</a>) cannot be fed back into <a href="configurerate.html">ConfigureRate</a>, so
+  the weight is the only restorable form of a rate.
+</p>
+
+<div class="gap">
+  <strong>Both weights are summed before the division, in <code>uint32_t</code>.</strong> The share is
+  <code>allowance * (fifoWeight / double(fifoWeight + priorityWeight))</code>, and the addition happens in the wider type only
+  after it — so a pair whose sum overflows 32 bits (for instance 0xFFFFFFFF and 1) wraps and produces a share that bears no
+  relation to the intended ratio. No configuration in the repository comes near this; a caller that derives weights from
+  measured load should still keep their sum inside 31 bits.
+</div>
+
+<div class="gap">
+  <strong>No shipping code configures a rate, so every stream runs the default 1:1.</strong> The only callers of
+  <code>TaskStream::ConfigureRate()</code> in <code>Engine/</code> and <code>Applications/</code> sit in the
+  <code>#ifdef __UNIT_TEST__</code> region of <code>Engine/Core/TaskSystem.cpp</code>, which reads both weights, sets a test
+  rate, and restores them. This accessor therefore has exactly one kind of user today: a test that borrows the base stream.
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<p>None.</p>
+
+<h2 id="return">Return value</h2>
+
+<table>
+  <tr><th>Type</th><th>What you get</th></tr>
+  <tr><td><code>uint32_t</code></td><td>The configured FIFO weight, minimum 1, default 1. Pair it with <a href="getpriorityweight.html">GetPriorityWeight</a> to describe a rate — one number alone means nothing</td></tr>
+</table>
+
+<h2 id="example">Examples</h2>
+
+<p class="meta">From Engine/Core/TaskSystem.cpp, TaskSystemTest (unit-test region)</p>
+
+<pre><code>const uint32_t fifoWeightFound = baseStream.GetFifoWeight();
+const uint32_t priorityWeightFound = baseStream.GetPriorityWeight();
+
+baseStream.ConfigureRate(8, 1);
+
+// ... drive the stream and observe which lane it serves ...
+
+baseStream.ConfigureRate(fifoWeightFound, priorityWeightFound);</code></pre>
+
+<p>
+  The change-then-restore the accessor is built for, and the reason both halves must be read: restoring only the lane a test
+  experimented with would leave the other side of the ratio at whatever the test happened to leave, which is a different rate
+  than the one found.
+</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; StreamDrainPolicy</a></span>
+  <span><a href="index.html#methods">All StreamDrainPolicy methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

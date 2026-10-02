@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TaskRegistry::GetMaxCapacity — Core module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a class="current" href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Core</a> /
+  <a href="index.html">TaskRegistry</a> / GetMaxCapacity
+</p>
+
+<h1><span class="fn">GetMaxCapacity</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::TaskRegistry</span>
+  <span class="tag">Engine/Core/TaskRegistry.h</span>
+  The ceiling in records; zero means no ceiling.
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>[[nodiscard]] std::size_t GetMaxCapacity() const noexcept</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  Declared and defined in the header <code>Engine/Core/TaskRegistry.h</code>; there is no counterpart in
+  <code>Engine/Core/TaskRegistry.cpp</code>. One read of the ceiling <a href="grow.html">Grow</a> tests, zero meaning no ceiling.
+</p>
+
+<div class="note">
+  <strong>The inert value is the default, and a cap is something a caller opts into knowingly.</strong> The header puts it beside the
+  stream's result ceiling so one rule covers both growables (<code>Engine/Core/TaskRegistry.h</code>). The engine runs with no ceiling, and
+  its sizing test asserts exactly that: "R21's inert default is no ceiling" (<code>Engine/Core/TaskRegistry.cpp</code>).
+</div>
+
+<div class="gap">
+  <strong>It bounds growth; it does not describe the table.</strong> A registry capped at 100000 records with 4096 allocated reports a
+  capacity of 4096 and a ceiling of 100000 — the two figures answer different questions, and the only one that constrains what can be
+  issued today is <a href="getcapacity.html">GetCapacity</a>. Conversely the ceiling does not protect against a
+  <a href="create.html">Create</a> refusal: a table whose records are all live refuses work long before it reaches either limit.
+</div>
+
+<div class="note">
+  <strong>A ceiling below the current capacity does not shrink anything.</strong> Nothing here frees a bank; the number only makes the next
+  <a href="grow.html">Grow</a> refuse, with the log from <a href="reportrefusedgrowth.html">ReportRefusedGrowth</a> naming the ceiling and
+  the bank limit. Lowering a ceiling is a statement about the future, and the table's present memory is unaffected.
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<p>None.</p>
+
+<h2 id="return">Return value</h2>
+
+<table>
+  <tr><th>Type</th><th>What you get</th></tr>
+  <tr><td><code>std::size_t</code></td><td>The ceiling in records, or 0 for none. Read the zero as unlimited: the refusal logs spell that convention out in the message so an operator does not read "ceiling is 0" as "no room"</td></tr>
+</table>
+
+<h2 id="example">Examples</h2>
+
+<p class="meta">From Engine/Core/TaskRegistry.cpp, TaskRegistryTest</p>
+
+<pre><code>if (registry.GetMaxCapacity() != decidedMaxRecords)
+{
+    ls &lt;&lt; "The engine's registry caps itself at " &lt;&lt; registry.GetMaxCapacity()
+       &lt;&lt; " records; R21's inert default is no ceiling." &lt;&lt; lferr;
+}</code></pre>
+
+<p>
+  The pair this belongs to is <a href="setmaxcapacity.html">SetMaxCapacity</a> / this read, and the ordering rule that goes with it:
+  <a href="initialize.html">Initialize</a> resets the ceiling to zero, so a cap that is set first is silently discarded.
+</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; TaskRegistry</a></span>
+  <span><a href="index.html#methods">All TaskRegistry methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

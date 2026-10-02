@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TaskProvider::IsStopRequested — Core module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a class="current" href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Core</a> /
+  <a href="index.html">TaskProvider</a> / IsStopRequested
+</p>
+
+<h1><span class="fn">IsStopRequested</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::TaskProvider</span>
+  <span class="tag">Engine/Core/TaskProvider.h</span>
+  Whether a stop has been requested; readable from any thread, and one-way.
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>[[nodiscard]] bool IsStopRequested() const noexcept
+
+[[nodiscard]] bool IsStopRequested() const noexcept</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  Declared and defined in the header <code>Engine/Core/TaskProvider.h</code> and marked there
+  <code>@threadsafe{any}@const{true}</code>: the one member of this class that may be called from anywhere.
+</p>
+
+<div class="note">
+  <strong>It is the read half of the only synchronised state a provider owns.</strong> An acquire load, paired with the release store in
+  <a href="stop.html">Stop</a>, so a reader that sees <code>true</code> also sees what the requesting thread published first. Everything else on
+  this object — the slot list, the lane masks, the counts — is unsynchronised and belongs to the owner's thread
+  (<code>Engine/Core/TaskProvider.h</code>).
+</div>
+
+<div class="note">
+  <strong>The intended reader is the provider itself.</strong> "Implementations may check it from inside <a href="produce.html">Produce</a> and
+  return <code>nullopt</code>" (<code>Engine/Core/TaskProvider.h</code>) — which is the only mechanism that currently makes a stop request
+  change behaviour, because the stream's drain does not consult the flag before asking (<a href="stop.html">Stop</a> documents the search that
+  establishes this). A provider that does not check is asked forever.
+</div>
+
+<div class="gap">
+  <strong>It is also what a holder of a <a href="../TaskHandle/index.html">TaskHandle</a> sees.</strong>
+  <code>TaskHandle::IsStopRequested</code> forwards here, so the question "did anyone ask this producer to wind down?" is answerable by code
+  that was never given the provider. That is the useful half of the feature today: the request is observable even though the drain does not act
+  on it (<code>Engine/Core/TaskHandle.cpp</code>).
+</div>
+
+<div class="gap">
+  <strong>A stale-true is possible by design and a stale-false is not worth reasoning about.</strong> Once set, the flag never clears, so a
+  <code>true</code> stays true. A <code>false</code> means only "not requested as of the load" — a stop that lands one instruction later is
+  already in flight, so a caller must not read this as permission to skip calling
+  <a href="stop.html">Stop</a> (<code>Engine/Core/TaskProvider.h</code>).
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<p>None.</p>
+
+<h2 id="return">Return value</h2>
+
+<table>
+  <tr><th>Type</th><th>What you get</th></tr>
+  <tr><td><code>bool</code></td><td><code>true</code> once <a href="stop.html">Stop</a> has been called, forever after; <code>false</code> means not yet, not that it will not be</td></tr>
+</table>
+
+<h2 id="example">Examples</h2>
+
+<p class="meta">From Engine/Core/TaskProvider.cpp, TaskProviderTest</p>
+
+<pre><code>provider.Stop();
+
+if (!provider.IsStopRequested())</code></pre>
+
+<p>
+  The test asserts the write/read pair rather than any effect on a drain, which is the honest scope of the feature: the flag is set, the flag is
+  seen, and the question of who acts on it is still open in the shipping path
+  (<code>Engine/Core/TaskProvider.cpp</code>).
+</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; TaskProvider</a></span>
+  <span><a href="index.html#methods">All TaskProvider methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

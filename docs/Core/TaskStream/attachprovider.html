@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TaskStream::AttachProvider — Core module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a class="current" href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Core</a> /
+  <a href="index.html">TaskStream</a> / AttachProvider
+</p>
+
+<h1><span class="fn">AttachProvider</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::TaskStream</span>
+  <span class="tag">Engine/Core/TaskStream.cpp</span>
+  Add a producer to one lane of this stream, and report whether the list took it.
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>bool AttachProvider(TaskProvider&amp; provider, StreamDrainPolicy::ELane lane) noexcept</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  Declared in <code>Engine/Core/TaskStream.h</code>, defined in <code>Engine/Core/TaskStream.cpp</code> as
+  <code>TaskStream::AttachProvider()</code>: the stream side of <a href="../TaskProvider/attachto.html">TaskProvider::AttachTo</a>, and the writer
+  of the list the drain actually reads.
+</p>
+
+<pre><code>const size_t slot = ProviderSlot(lane);
+if (slot &gt;= laneProviders.size())
+{
+    return false;
+}
+
+std::scoped_lock&lt;std::mutex&gt; lock(queueLock);
+auto&amp; list = laneProviders[slot];
+
+for (TIndex index = 0; index &lt; list.count; ++index)
+{
+    if (list.items[static_cast&lt;size_t&gt;(index)] == &amp;provider)
+    {
+        return false;
+    }
+}
+
+if (list.count &gt;= MaxProvidersPerLane)
+{
+    return false;
+}
+
+list.items[static_cast&lt;size_t&gt;(list.count)] = &amp;provider;
+++list.count;
+cv.notify_one();
+return true;</code></pre>
+
+<p class="meta">From Engine/Core/TaskStream.cpp</p>
+
+<div class="note">
+  <strong>Three refusals, each silent, each reported by the caller instead.</strong> A lane that is <code>ELane::None</code>, a provider already on
+  this lane, and a lane whose eight slots are full all return <code>false</code> without a word;
+  <a href="../TaskProvider/registeronstream.html">TaskProvider::RegisterOnStream</a> is the layer that logs, as an error, "The lane list already
+  holds this provider or is full, so the drain will not ask it." (<code>Engine/Core/TaskStream.cpp</code>,
+  <code>Engine/Core/TaskProvider.cpp</code>). The duplicate check is the whole reason re-attaching is safe: "Registering the same provider on the
+  same lane twice is refused, because the drain walks the list and would ask it twice per pass"
+  (<code>Engine/Core/TaskStream.h</code>).
+</div>
+
+<div class="gap">
+  <strong>The lane is selected through a helper whose out-of-range value is the rejection.</strong>
+  <code>ProviderSlot</code> maps FIFO to 0 and Priority to 1, and <code>ELane::None</code> to 2 — while
+  <code>laneProviders</code> is a <code>std::array&lt;LaneProviders, 2&gt;</code>
+  (<code>Engine/Core/TaskStream.h</code>). So "no lane" lands on an index that does not exist, and the bounds test at the top is what turns it into
+  a refusal. The same trick guards the other two provider calls, all of which begin with the same four lines.
+</div>
+
+<div class="note">
+  <strong>Eight per lane is a bound to keep the list inline, not a limit anyone is expected to reach.</strong>
+  "The realistic figure is one, and a lane is asked at most once per pass per provider registered on it, so this is a bound to keep the list
+  inline rather than a limit anyone is expected to reach" (<code>Engine/Core/TaskStream.h</code>). The list is raw
+  <code>TaskProvider*</code> — no ownership, and no knowledge of when the provider dies, which is exactly what
+  <a href="detachprovider.html">DetachProvider</a> exists to keep honest.
+</div>
+
+<div class="gap">
+  <strong>Attaching notifies the condition variable, so a late provider is asked without waiting for outside work.</strong> A stream parked in
+  <code>WaitForWork</code> wakes on this, finds its lanes empty, and asks the newly registered producer
+  (<code>Engine/Core/TaskStream.cpp</code>). Without the notify, attaching to an idle stream would look like it had no effect until someone
+  enqueued an item.
+</div>
+
+<div class="note">
+  <strong>Registration order is drain order.</strong> <a href="drainproviderslocked.html">DrainProvidersLocked</a> walks this array from index 0
+  and returns the first item produced, so the position a provider takes here is its position in the scheduling queue for that lane
+  (<code>Engine/Core/TaskStream.cpp</code>). There is no rotation, so the seventh provider attached is the seventh asked.
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<table>
+  <tr><th>Parameter</th><th>Type</th><th>Requirement</th></tr>
+  <tr><td><code>provider</code></td><td><code>TaskProvider&amp;</code></td><td>Identity is its address; the engine keeps no ownership and no lifetime claim, so it must outlive this registration</td></tr>
+  <tr><td><code>lane</code></td><td><code>StreamDrainPolicy::ELane</code></td><td>One lane; a provider on both lanes is registered twice, in two separate lists, and asked under two policies</td></tr>
+</table>
+
+<h2 id="return">Return value</h2>
+
+<table>
+  <tr><th>Type</th><th>What you get</th></tr>
+  <tr><td><code>bool</code></td><td><code>true</code> only if this call added the provider. <code>false</code> covers no-lane, already-registered and lane-full, and the three are indistinguishable to this caller — which is why the reporting lives one layer up</td></tr>
+</table>
+
+<h2 id="example">Examples</h2>
+
+<p class="meta">From Engine/Core/TaskProvider.cpp, TaskProvider::RegisterOnStream()</p>
+
+<pre><code>if (!taskSystem.GetStream(stream).AttachProvider(*this, lane))
+{
+    auto log = Logger::Get(name);
+    log.OutError([name = name, stream](auto&amp; ls)
+    {
+        ls &lt;&lt; "TaskProvider " &lt;&lt; name.c_str() &lt;&lt; " could not register on stream " &lt;&lt; stream
+           &lt;&lt; ". The lane list already holds this provider or is full, so the drain will not ask it.";
+    });
+    return;
+}</code></pre>
+
+<p>
+  The only caller in the engine, and the reason the refusal is loud: a provider whose registration was refused stays recorded in its own slot
+  list, so the provider — not the stream — is the party that can name itself in the log
+  (<code>Engine/Core/TaskProvider.cpp</code>).
+</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; TaskStream</a></span>
+  <span><a href="index.html#methods">All TaskStream methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

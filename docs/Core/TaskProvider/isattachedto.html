@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TaskProvider::IsAttachedTo — Core module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a class="current" href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Core</a> /
+  <a href="index.html">TaskProvider</a> / IsAttachedTo
+</p>
+
+<h1><span class="fn">IsAttachedTo</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::TaskProvider</span>
+  <span class="tag">Engine/Core/TaskProvider.cpp</span>
+  Whether a stream is currently draining this provider on any lane.
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>[[nodiscard]] bool IsAttachedTo(TStreamIndex stream) const noexcept</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  Defined in <code>Engine/Core/TaskProvider.cpp</code> as <code>TaskProvider::IsAttachedTo()</code>: a linear search of the slot list for one
+  stream index, ignoring which lanes were named.
+</p>
+
+<div class="note">
+  <strong>Any lane counts as attached.</strong> The mask is not consulted, so a stream attached on the priority lane alone answers
+  <code>true</code>. For the lanes themselves, ask <a href="getattachedlanes.html">GetAttachedLanes</a> — it returns the same mask this
+  function searches for, and zero for the same "not found"
+  (<code>Engine/Core/TaskProvider.cpp</code>).
+</div>
+
+<div class="gap">
+  <strong>"Attached" here means recorded, not accepted.</strong> A provider that named a stream the engine does not have, or that a full lane
+  list refused, is attached by this answer and will never be asked anything
+  (<a href="registeronstream.html">RegisterOnStream</a> reports both). The drain does not consult this list at all — R38: "that registration -
+  not this provider's slot list - is what the drain reads" (<code>Engine/Core/TaskProvider.h</code>).
+</div>
+
+<div class="note">
+  <strong>It is the observable half of the attachment contract.</strong> Both the budget test and the stream-affinity test assert with it:
+  "the provider attached only to the worker stream, so its work is budget-bound"
+  (<code>Engine/Core/TaskSystem.cpp</code>). Since the tests attach to stream indices rather than to stream objects, an index-based predicate is
+  the only way to state that claim at all.
+</div>
+
+<div class="gap">
+  <strong>No lock, and the same ownership rule as every other read here.</strong> The list is mutated unsynchronised by
+  <a href="attachto.html">AttachTo</a> and <a href="detachfrom.html">DetachFrom</a>, so this predicate belongs to the owner's thread; the one
+  member of this class that is safe from anywhere is the stop flag, read by
+  <a href="isstoprequested.html">IsStopRequested</a> (<code>Engine/Core/TaskProvider.h</code>).
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<table>
+  <tr><th>Parameter</th><th>Type</th><th>Requirement</th></tr>
+  <tr><td><code>stream</code></td><td><code>TStreamIndex</code> (<code>int</code>)</td><td>The stream to look for. No range check and no assert: an index the engine does not have is simply searched for, and found if it was recorded</td></tr>
+</table>
+
+<h2 id="return">Return value</h2>
+
+<table>
+  <tr><th>Type</th><th>What you get</th></tr>
+  <tr><td><code>bool</code></td><td><code>true</code> if the stream holds a slot at any lane, <code>false</code> if it holds none</td></tr>
+</table>
+
+<h2 id="example">Examples</h2>
+
+<p class="meta">From Engine/Core/TaskSystem.cpp, TaskSystemTest</p>
+
+<pre><code>if (!budgeted.IsAttachedTo(worker))</code></pre>
+
+<p>
+  The assertion that the provider reached the stream it was meant to reach, written as a question to the provider rather than an inspection of
+  the stream — which is the only direction available, since the stream's list is private and guarded by its queue lock
+  (<code>Engine/Core/TaskSystem.cpp</code>).
+</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; TaskProvider</a></span>
+  <span><a href="index.html#methods">All TaskProvider methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

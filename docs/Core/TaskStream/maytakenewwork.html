@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TaskStream::MayTakeNewWork — Core module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a class="current" href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Core</a> /
+  <a href="index.html">TaskStream</a> / MayTakeNewWork
+</p>
+
+<h1><span class="fn">MayTakeNewWork</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::TaskStream</span>
+  <span class="tag">Engine/Core/TaskStream.cpp</span>
+  Whether this stream's CPU budget still permits taking work.
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>[[nodiscard]] bool MayTakeNewWork() const noexcept</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  Declared in <code>Engine/Core/TaskStream.h</code>, defined in <code>Engine/Core/TaskStream.cpp</code> as
+  <code>TaskStream::MayTakeNewWork()</code>; the body is one call.
+</p>
+
+<pre><code>return budget.CanTakeWork();</code></pre>
+
+<p class="meta">From Engine/Core/TaskStream.cpp</p>
+
+<p>
+  The stream's public face on its CPU budget: "may this stream still take work?", answered by <a href="../CPUBudget/cantakework.html">CPUBudget
+  ::CanTakeWork</a> — an allowance spent down by measured task time, not by a wall-clock guess.
+</p>
+
+<div class="note">
+  <strong>Its wiring is narrower than its name suggests, and the header says exactly where.</strong> "Wired today in front of the general queue
+  only, and not in front of a stream's own lanes. An entry on a lane is either a task nobody has taken or one taken and paused before it finished,
+  and the two are indistinguishable without a field the work item does not have. Refusing the lane would strand the second kind, which is the
+  failure this gate exists not to cause." (<code>Engine/Core/TaskStream.h</code>) So a spent stream keeps draining its own lanes; what it stops
+  doing is pulling from the general queue and asking providers (R39).
+</div>
+
+<div class="gap">
+  <strong>Reading does not reserve anything, and the header makes the caller own the gap.</strong> "Readable from any thread. Enquiry does not act
+  on the answer, so a reader that acts must accept that another thread may have spent the budget in between."
+  (<code>Engine/Core/TaskStream.h</code>) There is no attempt at a reservation — the value is advisory by construction, and a caller that treats it
+  as a claim will double-spend. Where the decision must be atomic with the answer, the decision is made inside the stream's own drain loop, where
+  the same test is re-run immediately before the ask (<code>Engine/Core/TaskStream.cpp</code>).
+</div>
+
+<div class="note">
+  <strong>It is the observable half of a budget that otherwise only reports after the fact.</strong> The companion reads are
+  <code>GetAccumulatedCPUTime</code> (what has been spent) and <code>RequestBudget</code> (what the next window will allow); this is the only one
+  phrased as a question about the future (<code>Engine/Core/TaskStream.h</code>). A caller with no budget wired gets a constant answer — the
+  default stream allowance is unlimited, so this returns <code>true</code> forever unless something calls
+  <code>ConfigureBudget</code>.
+</div>
+
+<div class="gap">
+  <strong>The overshoot rule lives one layer down and is stated here by reference.</strong> A task already running is charged when it finishes, so
+  a stream can pass this test, take work, and finish over allowance: "the overshoot is bounded by the longest task, not by the allowance"
+  (<code>Engine/Core/TaskStream.h</code>). No gate at this granularity can do better without pre-measuring tasks, which the engine deliberately
+  does not do.
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<p>None.</p>
+
+<h2 id="return">Return value</h2>
+
+<table>
+  <tr><th>Type</th><th>What you get</th></tr>
+  <tr><td><code>bool</code></td><td>Whether the stream's budget still permits work at the instant of the load. Not a reservation, not a promise about the next instruction</td></tr>
+</table>
+
+<h2 id="example">Examples</h2>
+
+<p class="meta">From Engine/Core/TaskStream.cpp, TaskStream::Update()</p>
+
+<pre><code>if (!laneIsEmpty || isDrainingForShutdown || !budget.CanTakeWork())</code></pre>
+
+<p>
+  The internal form of the same question, asked at the point of consequence: a lane with items in it, or a stream draining for shutdown, or a
+  spent allowance each end the provider probe for that pass. The public predicate exists for callers outside the loop; the loop does not route
+  through it (<code>Engine/Core/TaskStream.cpp</code>).
+</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; TaskStream</a></span>
+  <span><a href="index.html#methods">All TaskStream methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TaskRegistry::GetRecord — Core module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a class="current" href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Core</a> /
+  <a href="index.html">TaskRegistry</a> / GetRecord
+</p>
+
+<h1><span class="fn">GetRecord</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::TaskRegistry</span>
+  <span class="tag">Engine/Core/TaskRegistry.cpp</span>
+  Index to record with no validity check at all - the caller proved the index.
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>[[nodiscard]] Record&amp; GetRecord(std::size_t recordIndex) noexcept</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  Defined in <code>Engine/Core/TaskRegistry.cpp</code> as <code>TaskRegistry::GetRecord()</code>; the body is the index computation the
+  whole storage scheme exists to make cheap.
+</p>
+
+<pre><code>return banks[recordIndex / recordsPerBank][recordIndex % recordsPerBank];</code></pre>
+
+<p class="meta">From Engine/Core/TaskRegistry.cpp</p>
+
+<p>
+  Private, and called from one place — <a href="create.html">Create</a>, immediately after it has taken an index off the free chain. That is
+  the whole contract: the index came from the registry's own chain, so it names a bank that exists and an offset inside it, and this
+  function adds nothing.
+</p>
+
+<div class="gap">
+  <strong>It checks nothing, so it is only ever correct for an index the registry issued.</strong> No bound on the bank index, no test
+  against <code>bankCount</code>, no <code>inUse</code> or generation read, no assertion. A foreign or corrupt index here is a wild pointer
+  read rather than a null return, which is the deliberate opposite of <a href="find.html">Find</a> — the public path that takes an identity
+  from a caller and therefore validates every step of the same arithmetic.
+</div>
+
+<div class="note">
+  <strong>Its safety rests on <code>recordsPerBank</code> being the value in force when the record was issued.</strong> The divisor decides
+  which bank an index lives in, so a grow-by that changed between <a href="allocatebank.html">AllocateBank</a> and this read would resolve an
+  existing index into a different bank — the concrete reason <a href="initialize.html">Initialize</a> belongs before any task exists and not
+  beside one. <a href="findliverecord.html">FindLiveRecord</a> performs the same division with a bound check, because its input is an
+  identity from elsewhere.
+</div>
+
+<div class="note">
+  <strong>It returns a reference to a record, not a task.</strong> The caller gets <code>Record</code> — task, successor, generation,
+  in-use flag and free-list link together — which is what <a href="create.html">Create</a> needs while it fills a record in place. Anything
+  that should see only the task goes through <a href="find.html">Find</a>.
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<table>
+  <tr><th>Parameter</th><th>Type</th><th>Requirement</th></tr>
+  <tr><td><code>recordIndex</code></td><td><code>std::size_t</code></td><td>An index from the free chain, i.e. below <code>bankCount × recordsPerBank</code>. Nothing here proves it</td></tr>
+</table>
+
+<h2 id="return">Return value</h2>
+
+<table>
+  <tr><th>Type</th><th>What you get</th></tr>
+  <tr><td><code>Record&amp;</code></td><td>The record at that index, live or free — the function cannot tell and does not ask. The reference stays valid for the life of the registry, since banks are never moved or freed while it lives</td></tr>
+</table>
+
+<h2 id="example">Examples</h2>
+
+<p class="meta">From Engine/Core/TaskRegistry.cpp, TaskRegistry::Create()</p>
+
+<pre><code>const std::size_t recordIndex = freeRecordHead;
+Record&amp; record = GetRecord(recordIndex);
+freeRecordHead = record.nextFreeRecord;</code></pre>
+
+<p>
+  Taken from the head of the chain, then unlinked by reading the link stored inside the record itself — the free list lives in the records,
+  which is why a record keeps a <code>nextFreeRecord</code> field even while it is live and unused
+  (<code>Engine/Core/TaskRegistry.h</code>, and the R28 pricing note that explains why it is not aliased onto the successor).
+</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; TaskRegistry</a></span>
+  <span><a href="index.html#methods">All TaskRegistry methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

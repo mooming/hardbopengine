@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MainThreadTaskQueue::ProcessTasks — Core module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a class="current" href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Core</a> /
+  <a href="index.html">MainThreadTaskQueue</a> / ProcessTasks
+</p>
+
+<h1><span class="fn">ProcessTasks</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::MainThreadTaskQueue</span>
+  <span class="tag">Engine/Core/MainThreadTaskQueue.cpp</span>
+  Drains until the queue reads empty, invoking outside the lock.
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>size_t ProcessTasks() noexcept</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  Defined in <code>Engine/Core/MainThreadTaskQueue.cpp</code> as <code>MainThreadTaskQueue::ProcessTasks()</code>.
+</p>
+
+<pre><code>for (;;)
+{
+    std::optional&lt;TaskItem&gt; itemOpt;
+    {
+        std::lock_guard lock(queueLock);
+        itemOpt = queue.Pop();
+    }
+
+    if (!itemOpt.has_value())
+    {
+        break;
+    }
+
+    TaskItem&amp; item = *itemOpt;
+    if (item.taskFunc)
+    {
+        item.taskFunc(item.userData);
+        ++processed;
+    }
+}</code></pre>
+
+<p class="meta">From Engine/Core/MainThreadTaskQueue.cpp</p>
+
+<p>
+  Pop under the lock, call outside it, repeat until a pop returns nothing. The scope around the lock is the whole design: the mutex is
+  not held across a call, so a posted callable may post more work without deadlock — the failure the class exists to avoid
+  (<code>Engine/Core/MainThreadTaskQueue.h</code>).
+</p>
+
+<div class="gap">
+  <strong>A producer that keeps posting can keep this loop alive indefinitely, and nothing bounds it.</strong> The header states it as
+  intended behaviour — "Returns once the queue is observed empty; producers that keep enqueueing can extend the loop, which is the
+  behaviour callers already rely on" — but the consequence for a frame budget is real: a self-reposting callable makes this an
+  unbounded loop inside the stream's pass. <a href="requeststop.html">RequestStop</a> will not break it, because the loop never reads
+  that flag.
+</div>
+
+<div class="note">
+  <strong>The return counts callables actually invoked, not items taken.</strong> An item with a null
+  <code>taskFunc</code> is popped, discarded, and not counted — so the count is what ran, and an enqueue of a null function is a
+  silent drop with no trace anywhere.
+</div>
+
+<div class="note">
+  <strong>Intended for the main thread, and in practice run by whichever stream owns the queue.</strong> Each
+  <code>TaskStream</code> holds one and drains it at the top of its pass, before its lanes are asked for anything: "Posted callables
+  first: they are the engine loop's own work, and the frame budget is spent on them before the stream's queues are asked for anything"
+  (<code>Engine/Core/TaskStream.cpp</code>). Priority order is honoured within one pass; a callable posted by a callable in this pass
+  runs in the same pass if the loop is still going.
+</div>
+
+<div class="gap">
+  <strong>It ignores a close or shutdown request.</strong> The stream's pass drains posted work before it consults
+  <code>closeRequested</code>, so work posted after a close was asked for still runs, and the shutdown pump keeps pumping the base stream
+  while <a href="haspendingtasks.html">HasPendingTasks</a> reports anything left. Stopping the drain of posted work is not this
+  function's job — which is why <a href="requeststop.html">the stop flag</a> is wired to nothing here.
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<p>None.</p>
+
+<h2 id="return">Return value</h2>
+
+<table>
+  <tr><th>Type</th><th>What you get</th></tr>
+  <tr><td><code>size_t</code></td><td>How many callables ran on this call. Zero means the queue read empty on the first pop — not that nothing happened elsewhere</td></tr>
+</table>
+
+<h2 id="example">Examples</h2>
+
+<p class="meta">From Engine/Core/TaskStream.cpp, TaskStream::Update()</p>
+
+<pre><code>// Posted callables first: they are the engine loop's own work, and the frame budget is spent on them before the
+// stream's queues are asked for anything. They run with the queue's lock released, so a posted callable may post
+// again.
+postedTasks.ProcessTasks();</code></pre>
+
+<p>
+  The engine's only shipping drain, inside the stream's own pass and on its own thread — the pairing that keeps the destructor's
+  obligation satisfiable, since the drainer and the owner of the queue are the same thread.
+</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; MainThreadTaskQueue</a></span>
+  <span><a href="index.html#methods">All MainThreadTaskQueue methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

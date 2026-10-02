@@ -31,6 +31,7 @@ class TaskSystem;
 /// @threadsafe RequestStop and IsStopRequested are safe from any thread. GetProvider hands back a pointer
 ///             whose remaining use is limited to that same claim - reading anything on the provider other
 ///             than its stop state from another thread is not covered by this.
+/// API reference: docs/Core/TaskHandle/index.html
 class TaskHandle final
 {
 private:
@@ -75,6 +76,7 @@ public:
 /// @details now is an instant in the engine epoch's own time base, not an elapsed span, so that comparing
 ///          two of them is valid arithmetic rather than a subtraction of two independently anchored
 ///          numbers. Call time::ElapsedSinceEngineEpoch to turn it into a duration.
+/// API reference: docs/Core/TaskProduceContext/index.html
 struct TaskProduceContext final
 {
 public:
@@ -100,6 +102,7 @@ public:
 ///          already advisory because provider state can change in between, so the stream would be steering
 ///          on a reading it cannot trust.
 
+/// API reference: docs/Core/TaskProvider/index.html
 class TaskProvider
 {
 public:

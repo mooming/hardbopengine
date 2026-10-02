@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>StreamDrainPolicy — Core module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a class="current" href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This class</h3>
+  <ul>
+    <li><a href="#description">Class description</a></li>
+    <li><a href="#template">Template parameters</a></li>
+    <li><a href="#properties">Class properties</a></li>
+    <li><a href="#methods">Class methods</a></li>
+    <li><a href="#non-member">Non-member helper functions</a></li>
+    <li><a href="#coverage">Coverage</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Core</a> /
+  StreamDrainPolicy
+</p>
+
+<h1>StreamDrainPolicy</h1>
+<p class="subtitle">
+  <span class="tag">Engine/Core/StreamDrainPolicy.h</span>
+  Decides which lane a stream drains next and keeps the books that decide it.
+</p>
+
+<h2 id="description">Class description</h2>
+
+<p>
+  <code>class StreamDrainPolicy final</code> at <code>Engine/Core/StreamDrainPolicy.h</code>: the gate a
+  <a href="../index.html#taskstream">TaskStream</a> consults before it takes work, and the bookkeeping behind that gate. A
+  stream has two lanes — a FIFO lane and a priority lane — and this class answers one question (which lane next, or
+  neither) while accumulating the CPU time each lane spent. It owns no thread, no queue and no timer: the stream calls it,
+  the stream stores the result, and every field here is written by the stream's own thread.
+</p>
+
+<p>
+  There are two modes, and the difference is whether there is any CPU to divide. With an allowance configured, each lane
+  gets <em>allowance × (its weight / total weight)</em> and the accumulations are compared against those shares. With no
+  allowance there are no shares to compare, so the decision falls back to a weighted rotation over <em>takes</em>, driven
+  by two signed credit counters. Both modes keep the same promise: a lane with work is never starved by the other lane's
+  weight — pinned by the tests <em>A light lane is never starved by a heavy one</em> and <em>Unlimited allowance serves the
+  configured ratio</em> (<code>Engine/Core/StreamDrainPolicy.cpp</code>).
+</p>
+
+<div class="note">
+  <strong>Borrowing is free, and the header says what that costs.</strong> A lane may keep taking while the stream total is
+  inside budget and either lane's share still has room, so an idle lane does not hold its share hostage — the test
+  <em>An empty lane does not hold its share hostage</em> charges the priority lane 0.6 ms of a 1 ms allowance at a 1:1 rate
+  and requires the still-idle FIFO lane to be refused rather than the over-share priority lane. The accepted cost is that
+  the long-run ratio is <em>not</em> preserved when both lanes are permanently backlogged: whoever has work gets the CPU.
+</div>
+
+<div class="gap">
+  <strong>A lane overshoots its share by the length of its longest task, and "share spent" never means "nothing is in
+  flight".</strong> A task cannot be stopped once taken, so the decision is a gate on <em>acquiring</em> work, not a ceiling
+  on execution (<code>Engine/Core/StreamDrainPolicy.h</code>). Charges arrive only after a task ran
+  (<code>TaskStream::Update()</code> charges the lane it took the item from, in
+  <code>Engine/Core/TaskStream.cpp</code>), so a reading of a lane's accumulation is always the past and never the present.
+</div>
+
+<div class="gap">
+  <strong>Not thread-safe, by design, and the assert that protects it lives one class up.</strong> The owning stream thread
+  makes every decision and takes every charge; the reporting accessors are <code>const</code> but only meaningful from that
+  same thread. <code>TaskStream::ConfigureRate()</code> is the guard the type does not have itself: it
+  <code>Assert</code>s that the caller is the stream's own thread, because the weights are unsynchronised fields the stream
+  reads while choosing a lane (<code>Engine/Core/TaskStream.cpp</code>) — and that assert only exists in configurations that
+  define <code>__DEBUG__</code>.
+</div>
+
+<div class="note">
+  <strong>The round is what makes a spent stream spendable again, and the shipping stream ends it on a budget window, not
+  on exhaustion.</strong> <a href="isroundexhausted.html">IsRoundExhausted</a> is the question "has the total passed the
+  allowance", but in <code>Engine/</code> it has no caller outside this class's own tests: <code>TaskStream::Update()</code>
+  calls <a href="endround.html">EndRound</a> when a budget-window advance was requested
+  (<code>Engine/Core/TaskStream.cpp</code>). The accumulations therefore reopen once per window pass, which is the shape
+  <code>TaskSystem::RunBudgetWindowPass</code> drives.
+</div>
+
+<h2 id="template">Template parameters</h2>
+
+<p>None. <code>StreamDrainPolicy</code> is a concrete <code>final</code> class.</p>
+
+<h2 id="properties">Class properties</h2>
+
+<table>
+  <tr><th>Type + Name</th><th>Default Value</th><th>Description</th></tr>
+  <tr><td><code>enum class ELane : uint8_t</code> <span class="badge">public nested</span></td><td><span class="muted">not applicable</span></td><td>The answer <a href="chooselane.html">ChooseLane</a> gives, and the name every other engine class uses for a lane</td></tr>
+  <tr><td><code>None</code> <span class="badge">enumerator</span></td><td><span class="muted">none in the header</span></td><td>Value 0 — take nothing — no work, or the round is exhausted. Naming it at an enqueue is a refusal the queue reports rather than a lane</td></tr>
+  <tr><td><code>Fifo</code> <span class="badge">enumerator</span></td><td><span class="muted">none in the header</span></td><td>Value 1 — the stream's FIFO lane: arrival order, no priority byte consulted</td></tr>
+  <tr><td><code>Priority</code> <span class="badge">enumerator</span></td><td><span class="muted">none in the header</span></td><td>Value 2 — the stream's priority lane: <code>BoundedPriorityQueue</code> buckets by the item's priority byte</td></tr>
+  <tr><td><code>uint32_t fifoWeight = 1;</code> <span class="badge">private</span></td><td><code>1</code></td><td>The FIFO side of the configured rate; a zero from <a href="configurerate.html">ConfigureRate</a> becomes 1</td></tr>
+  <tr><td><code>uint32_t priorityWeight = 1;</code> <span class="badge">private</span></td><td><code>1</code></td><td>The priority side of the configured rate; the share is normalised over both weights, so only the ratio is observable</td></tr>
+  <tr><td><code>std::chrono::duration&lt;double&gt; allowance{};</code> <span class="badge">private</span></td><td><code>{}</code></td><td>The stream's CPU allowance, from which both shares derive. Zero — or a negative value, clamped here — means unlimited</td></tr>
+  <tr><td><code>std::chrono::nanoseconds fifoUsed{};</code> <span class="badge">private</span></td><td><code>{}</code></td><td>CPU time charged to the FIFO lane this round; reset by <a href="endround.html">EndRound</a></td></tr>
+  <tr><td><code>std::chrono::nanoseconds priorityUsed{};</code> <span class="badge">private</span></td><td><code>{}</code></td><td>CPU time charged to the priority lane this round</td></tr>
+  <tr><td><code>int64_t fifoCredit = 1;</code> <span class="badge">private</span></td><td><code>1</code></td><td>Rotation credit for the unlimited case; spent by <a href="committake.html">CommitTake</a>, replenished by the weights when both lanes run out</td></tr>
+  <tr><td><code>int64_t priorityCredit = 1;</code> <span class="badge">private</span></td><td><code>1</code></td><td>The same credit for the priority lane; the two are compared against each other, never against zero</td></tr>
+  <tr><td><code>std::chrono::nanoseconds maxAge{};</code> <span class="badge">private</span></td><td><code>{}</code></td><td>The oldest work this stream will still run; zero means unlimited, so every stream behaves as it did before the feature existed</td></tr>
+</table>
+
+<h2 id="methods">Class methods</h2>
+
+<table class="methods">
+  <tr><th>Name</th><th>Signature</th><th>What a caller depends on</th></tr>
+  <tr><td><a href="configurerate.html"><code>ConfigureRate</code></a></td><td class="sig">void ConfigureRate(uint32_t fifoWeight, uint32_t priorityWeight) noexcept</td><td>Sets the FIFO:priority rate; a zero on either side becomes 1, and two zeros become 1:1.</td></tr>
+  <tr><td><a href="configureallowance.html"><code>ConfigureAllowance</code></a></td><td class="sig">void ConfigureAllowance(std::chrono::duration&lt;double&gt; streamAllowance) noexcept</td><td>Chooses the mode: a positive allowance divides CPU time, zero or less means unlimited rotation.</td></tr>
+  <tr><td><a href="chooselane.html"><code>ChooseLane</code></a></td><td class="sig">[[nodiscard]] ELane ChooseLane(bool fifoHasWork, bool priorityHasWork) const noexcept</td><td>Pure — charges nothing and mutates nothing, so calling it twice with the same answers gives the same lane.</td></tr>
+  <tr><td><a href="committake.html"><code>CommitTake</code></a></td><td class="sig">void CommitTake(ELane lane) noexcept</td><td>Spends one unit of that lane's credit at the take, not at the charge — and <code>None</code> spends nothing.</td></tr>
+  <tr><td><a href="chargefifo.html"><code>ChargeFifo</code></a></td><td class="sig">void ChargeFifo(std::chrono::nanoseconds spent) noexcept</td><td>Adds a task's CPU time to the FIFO lane's accumulation for this round.</td></tr>
+  <tr><td><a href="chargepriority.html"><code>ChargePriority</code></a></td><td class="sig">void ChargePriority(std::chrono::nanoseconds spent) noexcept</td><td>The same for the priority lane.</td></tr>
+  <tr><td><a href="isroundexhausted.html"><code>IsRoundExhausted</code></a></td><td class="sig">[[nodiscard]] bool IsRoundExhausted() const noexcept</td><td>Whether the stream total passed its allowance — always <code>false</code> for an unlimited stream, so a caller would never reset.</td></tr>
+  <tr><td><a href="endround.html"><code>EndRound</code></a></td><td class="sig">void EndRound() noexcept</td><td>Reopens the round: both accumulations zeroed and both credits restored to the weights.</td></tr>
+  <tr><td><a href="getfifoused.html"><code>GetFifoUsed</code></a></td><td class="sig">[[nodiscard]] std::chrono::nanoseconds GetFifoUsed() const noexcept</td><td>Reporting only, and only from the owning thread; nothing in the repository reads it.</td></tr>
+  <tr><td><a href="getpriorityused.html"><code>GetPriorityUsed</code></a></td><td class="sig">[[nodiscard]] std::chrono::nanoseconds GetPriorityUsed() const noexcept</td><td>Reporting only; nothing in the repository reads it.</td></tr>
+  <tr><td><a href="getfifoshare.html"><code>GetFifoShare</code></a></td><td class="sig">[[nodiscard]] std::chrono::duration&lt;double&gt; GetFifoShare() const noexcept</td><td>allowance × fifoWeight / total weight, or zero when unlimited — a derived value, never stored.</td></tr>
+  <tr><td><a href="getpriorityshare.html"><code>GetPriorityShare</code></a></td><td class="sig">[[nodiscard]] std::chrono::duration&lt;double&gt; GetPriorityShare() const noexcept</td><td>The same for the priority lane; the two shares add up to the allowance.</td></tr>
+  <tr><td><a href="setmaxage.html"><code>SetMaxAge</code></a></td><td class="sig">void SetMaxAge(std::chrono::nanoseconds maxAge) noexcept</td><td>Per-stream staleness ceiling; zero is unlimited, and the default is zero.</td></tr>
+  <tr><td><a href="getmaxage.html"><code>GetMaxAge</code></a></td><td class="sig">[[nodiscard]] std::chrono::nanoseconds GetMaxAge() const noexcept</td><td>The ceiling as set — the read half of a change-then-restore, which is how the engine uses it.</td></tr>
+  <tr><td><a href="getfifoweight.html"><code>GetFifoWeight</code></a></td><td class="sig">[[nodiscard]] uint32_t GetFifoWeight() const noexcept</td><td>The configured weight, not the normalised share — the only way to restore a rate you borrowed.</td></tr>
+  <tr><td><a href="getpriorityweight.html"><code>GetPriorityWeight</code></a></td><td class="sig">[[nodiscard]] uint32_t GetPriorityWeight() const noexcept</td><td>The priority side of the same pair.</td></tr>
+  <tr><td><a href="isoverage.html"><code>IsOverAge</code></a></td><td class="sig">[[nodiscard]] bool IsOverAge(std::chrono::nanoseconds offerTime, std::chrono::nanoseconds now) const noexcept</td><td>Three guards before the comparison, each load-bearing: unlimited streams and unstamped work are never judged.</td></tr>
+  <tr><td><a href="fifocredit.html"><code>FifoCredit</code></a></td><td class="sig">[[nodiscard]] int64_t FifoCredit() const noexcept</td><td>Private, and nothing calls it — not even this class, which reads the field directly.</td></tr>
+  <tr><td><a href="prioritycredit.html"><code>PriorityCredit</code></a></td><td class="sig">[[nodiscard]] int64_t PriorityCredit() const noexcept</td><td>Private, and nothing calls it.</td></tr>
+</table>
+
+<h2 id="non-member">Non-member helper functions</h2>
+
+<p>
+  None. The header's namespace closes with the class and nothing else; <code>ELane</code> is nested, and it is what
+  <code>TaskStream</code>, <code>TaskSystem::Enqueue</code> and <code>TaskProvider</code> name when they name a lane.
+</p>
+
+<h2 id="coverage">Coverage</h2>
+
+<table>
+  <tr><th>Not documented here</th><th>Why</th></tr>
+  <tr><td>Where the stream's CPU allowance comes from, and what a budget window is</td>
+    <td>That is <code>CPUBudget</code> and <code>TaskSystem::RunBudgetWindowPass</code>; this class only receives the
+    figure through <a href="configureallowance.html">ConfigureAllowance</a> and the charges through its two charge calls</td></tr>
+  <tr><td>Which queue a lane actually is, and how an item is removed from it</td>
+    <td><code>TaskStream</code>'s contract; its own pages own <code>EnqueueFifo</code>, <code>EnqueuePriority</code> and the
+    lane sweeps</td></tr>
+  <tr><td>What <code>offerTime</code> is stamped from</td>
+    <td>The age clock lives on <a href="../Task/loadintorecord.html">Task</a> and is copied by
+    <a href="../WorkItem/index.html">WorkItem</a>; <a href="isoverage.html">IsOverAge</a> only compares what it is handed</td></tr>
+  <tr><td>Whether <code>IsRoundExhausted</code>, <code>GetFifoUsed</code>, <code>GetPriorityUsed</code>,
+    <code>FifoCredit</code> and <code>PriorityCredit</code> are used</td>
+    <td>Documented per page as they stand: none of them has a caller outside this class's own tests, and the two credit
+    accessors have none at all — <a href="chooselane.html">ChooseLane</a> reads the credit fields directly</td></tr>
+  <tr><td>Why the rate is a share of CPU time rather than a count of tasks</td>
+    <td>A design decision recorded in <code>docs/TaskSystemRedesign.md</code>; the page states the behaviour and the cost a
+    caller inherits, not the decision history</td></tr>
+</table>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; StreamDrainPolicy</a></span>
+  <span><a href="index.html#methods">All StreamDrainPolicy methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TaskStreamAffinityBase::GetNumBits — Core module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a class="current" href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Core</a> /
+  <a href="index.html">TaskStreamAffinityBase</a> / GetNumBits
+</p>
+
+<h1><span class="fn">GetNumBits</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::TaskStreamAffinityBase</span>
+  <span class="tag">Engine/Core/TaskStreamAffinity.h</span>
+  how many stream indices this mask addresses — the template argument, readable without an object
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>[[nodiscard]] static constexpr auto GetNumBits() noexcept</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  Defined in the header <code>Engine/Core/TaskStreamAffinity.h</code> as
+  <code>TaskStreamAffinityBase::GetNumBits()</code>; the body is <code>return NumBits;</code> and the deduced return type
+  is the template parameter's own type, <code>unsigned int</code>. It is the count of stream indices this mask addresses,
+  handed out without needing an object — the only way to ask a mask's <em>type</em> how wide it is.
+</p>
+
+<p>
+  Everything in the class is measured against this figure. <code>Set</code>, <code>Unset</code> and <code>Get</code> treat an
+  index at or above it as out of range; the storage is
+  <code>(NumBits + BitsPerUnit - 1) / BitsPerUnit</code> words, so the width is rounded up to whole 64-bit words and the
+  bits between <code>NumBits</code> and the end of the last word are unreachable by design.
+</p>
+
+<div class="note">
+  <strong>The engine's instantiation is 64 bits; its stream count has no such cap.</strong>
+  <code>TaskStreamAffinity</code> is <code>TaskStreamAffinityBase&lt;64&gt;</code>, and the tests use this accessor to pin
+  the relationship between the two numbering schemes that have to agree:
+  <code>static_assert(TaskSystem::NonStreamIndex &gt;= TaskStreamAffinity::GetNumBits());</code>
+  (<code>Engine/Core/TaskSystem.cpp</code>) asserts that a thread with no stream cannot be mistaken for one, because
+  <a href="get.html">Get</a> refuses out-of-range indices and the no-stream index is out of range by design.
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<p>None.</p>
+
+<h2 id="return">Return value</h2>
+
+<table>
+  <tr><th>Type</th><th>What you get</th></tr>
+  <tr><td><code>unsigned int</code></td><td>The template argument <code>NumBits</code> — 64 for the alias the engine uses, 517 in the width tests</td></tr>
+</table>
+
+<h2 id="example">Examples</h2>
+
+<p class="meta">From Engine/Core/TaskStreamAffinity.cpp, TaskStreamAffinityTest</p>
+
+<pre><code>TaskStreamAffinityBase&lt;517&gt; affinity;
+
+for (unsigned int i = 0; i &lt; affinity.GetNumBits(); ++i)
+{
+    const bool affinityValue = affinity.Get(i);
+    if (!affinityValue)
+    {
+        ls &lt;&lt; "Default constructed affinity shouldn't be false at index " &lt;&lt; i &lt;&lt; lferr;
+    }
+}</code></pre>
+
+<p>
+  The usual job for this accessor: driving every index the mask owns, which is the only way to check a mask as a whole
+  rather than the handful of streams one call happened to name.
+</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; TaskStreamAffinityBase</a></span>
+  <span><a href="index.html#methods">All TaskStreamAffinityBase methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>StreamDrainPolicy::GetPriorityWeight — Core module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a class="current" href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Core</a> /
+  <a href="index.html">StreamDrainPolicy</a> / GetPriorityWeight
+</p>
+
+<h1><span class="fn">GetPriorityWeight</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::StreamDrainPolicy</span>
+  <span class="tag">Engine/Core/StreamDrainPolicy.cpp</span>
+  The configured priority weight, not the normalised share.
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>[[nodiscard]] uint32_t GetPriorityWeight() const noexcept</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  Defined in <code>Engine/Core/StreamDrainPolicy.cpp</code> as <code>StreamDrainPolicy::GetPriorityWeight()</code>; the body
+  is <code>return priorityWeight;</code>. The priority side of the configured rate, with the same guarantees as
+  <a href="getfifoweight.html">GetFifoWeight</a>: never zero, because <a href="configurerate.html">ConfigureRate</a> rewrites a
+  zero to one, and only meaningful next to the other weight.
+</p>
+
+<p>
+  Which queue it describes is fixed, not configured: the priority lane is the stream's
+  <code>BoundedPriorityQueue</code> buckets keyed on the item's priority byte, and the FIFO lane is the arrival-order deque.
+  Raising this weight changes how CPU time is divided between those two structures, never how an item is placed in one of them.
+</p>
+
+<div class="note">
+  <strong>A high priority weight is not a priority.</strong> Priority within a stream is the byte an item is enqueued with; this
+  weight only decides how much of the stream's allowance the priority queue gets to spend. A stream at 1:64 still serves the
+  FIFO lane when the priority queue is empty, and still borrows the other lane's share
+  (<a href="chooselane.html">ChooseLane</a>) — so the weight is a fair-share guarantee, not a preemption rule.
+</div>
+
+<div class="gap">
+  <strong>The sum of the two weights is added in <code>uint32_t</code> before the share divides by it</strong>, so a pair that
+  overflows 32 bits yields a nonsense ratio; keep derived weights well inside 31 bits in total. Details on
+  <a href="getfifoweight.html">GetFifoWeight</a>.
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<p>None.</p>
+
+<h2 id="return">Return value</h2>
+
+<table>
+  <tr><th>Type</th><th>What you get</th></tr>
+  <tr><td><code>uint32_t</code></td><td>The configured priority weight, minimum 1, default 1 — so the untouched state of every stream in the engine is 1:1</td></tr>
+</table>
+
+<h2 id="example">Examples</h2>
+
+<p class="meta">From Engine/Core/TaskStream.h, TaskStream::GetPriorityWeight()</p>
+
+<pre><code>[[nodiscard]] uint32_t GetPriorityWeight() const noexcept
+{
+    return drainPolicy.GetPriorityWeight();
+}</code></pre>
+
+<p>
+  A stream's public read side. Note what the pair cannot express: there is no way to ask a stream for its
+  <em>effective</em> rate under a budget, because the effective rate is a decision
+  (<a href="chooselane.html">ChooseLane</a>) that includes whether each lane has work at all — the weights are only its
+  configuration.
+</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; StreamDrainPolicy</a></span>
+  <span><a href="index.html#methods">All StreamDrainPolicy methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

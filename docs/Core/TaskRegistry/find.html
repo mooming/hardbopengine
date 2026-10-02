@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TaskRegistry::Find — Core module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a class="current" href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Core</a> /
+  <a href="index.html">TaskRegistry</a> / Find
+</p>
+
+<h1><span class="fn">Find</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::TaskRegistry</span>
+  <span class="tag">Engine/Core/TaskRegistry.cpp</span>
+  Lock-free lookup that validates generation; the pointer is not a lease.
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>[[nodiscard]] Task* Find(TaskID id) noexcept</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  Defined in <code>Engine/Core/TaskRegistry.cpp</code> as <code>TaskRegistry::Find()</code>. This is the lock-free path, and the reason
+  the registry can be written from any thread at all.
+</p>
+
+<pre><code>if (id.IsNull())
+{
+    return nullptr;
+}
+
+const std::size_t bankIndex = id.index / recordsPerBank;
+if (bankIndex &gt;= bankCount.load(std::memory_order::acquire))
+{
+    return nullptr;
+}
+
+Record&amp; record = banks[bankIndex][id.index % recordsPerBank];
+if (!record.inUse.load(std::memory_order::acquire))
+{
+    return nullptr;
+}
+
+if (record.generation.load(std::memory_order::acquire) != id.generation)
+{
+    return nullptr;
+}
+
+return &amp;record.task;</code></pre>
+
+<p class="meta">From Engine/Core/TaskRegistry.cpp</p>
+
+<p>
+  Three acquire loads, each answering a different question, and no lock anywhere. The bank bound is what makes the pointer arithmetic
+  safe: <a href="allocatebank.html">AllocateBank</a> fills a bank and <em>then</em> publishes <code>bankCount</code> with release
+  semantics, so a reader that acquires a count covering that bank is guaranteed to see the bank's contents. The generation compare is what
+  makes a recycled record read as absent rather than as someone else's task — the case the identity exists to catch.
+</p>
+
+<div class="note">
+  <strong>Three different histories share one answer, and the caller cannot tell them apart.</strong>
+  Nullptr means the index was never issued, the task has been released, or the record has been re-issued to another task
+  (<code>Engine/Core/TaskRegistry.h</code>). That is deliberate — none of the three entitles a caller to touch a task — but it means a
+  null from this call is not evidence about which happened, and a diagnostic that needs to know must ask
+  <a href="getcount.html">GetCount</a> or look at the release path's own log.
+</div>
+
+<div class="gap">
+  <strong>The pointer is valid memory for the life of the registry, and it is not a lease.</strong> "If the task is released on another
+  thread while it is being read, the fields read are whatever they held, not a guarantee about what they say"
+  (<code>Engine/Core/TaskRegistry.h</code>). The record's memory is never freed or moved while the registry lives — that is what banks
+  buy — so a dereference cannot fault; what it can do is report a task that was released mid-read, or one that was re-issued mid-read,
+  because the release and re-issue paths only publish <code>inUse</code> and the generation and leave the task's own fields alone.
+</div>
+
+<div class="note">
+  <strong><code>recordsPerBank</code> is read here without synchronisation, and that is safe only while it does not change.</strong>
+  The divisor decides which bank an index lives in, so a lookup in flight during a <a href="initialize.html">Initialize</a> that changed
+  the grow-by would compute a different bank than the one the index was issued against. This is the same hazard
+  <a href="grow.html">Grow</a> documents as "legal only while no lookup is in flight", and it is why sizing belongs between frames on the
+  owner rather than on a task path.
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<table>
+  <tr><th>Parameter</th><th>Type</th><th>Requirement</th></tr>
+  <tr><td><code>id</code></td><td><code>TaskID</code></td><td>An identity from this registry. An ID issued by a different registry can name a live record here — the index and generation are plain numbers, and nothing tags them with their issuer (<code>Engine/Core/TaskRegistry.cpp</code>, release path)</td></tr>
+</table>
+
+<h2 id="return">Return value</h2>
+
+<table>
+  <tr><th>Type</th><th>What you get</th></tr>
+  <tr><td><code>Task*</code></td><td>The tracked task, or <code>nullptr</code>. "A caller must handle null; there is no variant of this call that returns a task it cannot verify" (<code>Engine/Core/TaskRegistry.h</code>). The pointer is into the registry's own banks — never free it, never outlive the registry with it</td></tr>
+</table>
+
+<h2 id="example">Examples</h2>
+
+<p class="meta">From Engine/Core/TaskSystem.cpp, TaskSystem::DispatchSuccessor()</p>
+
+<pre><code>Task* finished = taskRegistry.Find(finishedTask);
+if (finished == nullptr)
+{
+    return;
+}
+
+const TaskID successorID = taskRegistry.GetSuccessor(finishedTask);</code></pre>
+
+<p>
+  The hottest use: a worker thread that has just closed a join, resolving the identity it carried. It takes no lock, which is the point —
+  a result delivery path that queued behind a creating thread would make task creation latency visible in completion latency.
+</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; TaskRegistry</a></span>
+  <span><a href="index.html#methods">All TaskRegistry methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

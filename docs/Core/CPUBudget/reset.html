@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CPUBudget::Reset — Core module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a class="current" href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Core</a> /
+  <a href="index.html">CPUBudget</a> / Reset
+</p>
+
+<h1><span class="fn">Reset</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::CPUBudget</span>
+  <span class="tag">Engine/Core/CPUBudget.cpp</span>
+  Forgets everything charged and stops measuring; a window boundary falls between tasks.
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>void Reset() noexcept</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  Defined in <code>Engine/Core/CPUBudget.cpp</code> as <code>CPUBudget::Reset()</code>.
+</p>
+
+<pre><code>accumulatedNanos.store(0, std::memory_order_relaxed);
+isMeasuring = false;</code></pre>
+
+<p class="meta">From Engine/Core/CPUBudget.cpp, CPUBudget::Reset()</p>
+
+<p>
+  The allowance survives; only the spending is forgotten. After this call a stream whose allowance was fully spent permits work again,
+  which is what makes a budget a rate rather than a lifetime quota — the test <em>Reset restores the allowance</em> spends a 2 ms
+  allowance with 12 ms of busy work, requires the refusal, then requires both the acceptance and a zero accumulation after the reset
+  (<code>Engine/Core/CPUBudget.cpp</code>).
+</p>
+
+<div class="gap">
+  <strong>It also stops measuring, and an in-flight charge is lost rather than deferred.</strong> Clearing
+  <code>isMeasuring</code> means a later <a href="endtask.html">EndTask</a> hits the guard and charges nothing, so a
+  <a href="begintask.html">BeginTask</a> that was open when the window moved contributes nothing to the new window. That is the
+  accepted cost of a reset that must not be executed from another thread: the boundary falls between tasks, and a task straddling it is
+  billed to neither window.
+</div>
+
+<div class="note">
+  <strong>Only the owning thread calls this, and the window mechanism is built to keep it that way.</strong>
+  <code>TaskSystem::RunBudgetWindowPass()</code> merely sets a per-stream flag
+  (<code>TaskStream::RequestWindowAdvance()</code>), and <code>TaskStream::Update()</code> performs the reset on its own thread at the
+  top of its next loop, paired with <code>StreamDrainPolicy::EndRound()</code> so the lane shares reopen on the same beat
+  (<code>Engine/Core/TaskSystem.cpp</code>, <code>Engine/Core/TaskStream.cpp</code>). A reset executed on the pass thread would land
+  between the owner's <a href="begintask.html">BeginTask</a> and <a href="endtask.html">EndTask</a>, costing either a lost charge or the
+  thread's whole life billed to the budget (<code>Engine/Core/TaskStream.h</code>).
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<p>None. The allowance is not a parameter here precisely because a window does not change what a stream is allowed to spend.</p>
+
+<h2 id="return">Return value</h2>
+
+<p><code>void</code>. Nothing reports whether anything had been charged, and no callback tells the drain policy — the caller must pair the two resets itself.</p>
+
+<h2 id="example">Examples</h2>
+
+<p class="meta">From Engine/Core/TaskStream.cpp, TaskStream::Update()</p>
+
+<pre><code>if (windowAdvanceRequested.exchange(false, std::memory_order_relaxed))
+{
+    budget.Reset();
+    drainPolicy.EndRound();
+}</code></pre>
+
+<p>
+  One exchange, one reset of both books, whichever thread asked for the window to move. The cadence comes from
+  <code>TaskSystem::RunBudgetWindowPass()</code>, which advances at most once per <code>time::GetBaseFramePeriod</code>
+  (<code>Engine/Core/TaskSystem.cpp</code>) — so a stream that is never scheduled keeps its spent budget until the base stream runs
+  the pass again.
+</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; CPUBudget</a></span>
+  <span><a href="index.html#methods">All CPUBudget methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

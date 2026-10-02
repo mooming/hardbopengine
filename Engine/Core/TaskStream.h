@@ -29,6 +29,7 @@ class TaskStream;
 class TaskSystem;
 
 /// @brief Represents a thread that processes a series of tasks from a priority queue.
+/// API reference: docs/Core/TaskStream/index.html
 class TaskStream final
 {
 public:

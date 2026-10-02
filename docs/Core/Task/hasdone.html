@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Task::HasDone — Core module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a class="current" href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Core</a> /
+  <a href="index.html">Task</a> / HasDone
+</p>
+
+<h1><span class="fn">HasDone</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::Task</span>
+  <span class="tag">Engine/Core/Task.h</span>
+  private: cannot tell a finished task from one that never ran, which is why it is not a customer API
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>[[nodiscard]] bool HasDone() const noexcept</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  Defined in the header <code>Engine/Core/Task.h</code> as <code>Task::HasDone()</code>; the body is
+  <code>return numSubTasks &gt; 0 &amp;&amp; NumFinishedSubTasks() &gt;= numSubTasks;</code>. <strong>Private</strong> —
+  reachable only through the six <a href="index.html#non-member">friend declarations</a>
+  (<code>TaskRegistry</code>, <code>WorkItem</code>, <code>TaskSystem</code>, <code>TaskProvider</code> and the two test
+  collections), and its callers in this repository are all inside the unit tests of
+  <code>Engine/Core/TaskSystem.cpp</code> and <code>Engine/Core/TaskRegistry.cpp</code>.
+</p>
+
+<p>
+  It is <a href="reportfinishedsubtask.html">ReportFinishedSubTask</a>'s comparison re-evaluated at an arbitrary moment:
+  the same two counters, with <code>&gt;=</code> instead of <code>==</code> and with a guard that a task which reserved
+  nothing is never "done".
+</p>
+
+<div class="gap">
+  <strong>A finished task and a never-dispatched one read identically here.</strong> Both report not-done: an unreserved
+  task by the <code>numSubTasks &gt; 0</code> test, and a task whose items were dropped, aged out or never queued because
+  its counter never reached the reservation. A caller that waits on this therefore has no way to notice that the executor
+  it depends on is gone, and no deadline it could honestly apply. That is why it is not a customer API: a customer asks
+  what it can actually answer — whether work is still queued.
+  <code>Logger::StopTask()</code> (<code>Engine/Log/Logger.cpp</code>) is the pattern: it polls
+  <code>TaskStream::CountPendingItems()</code> against a deadline and reports a timeout rather than waiting on a counter
+  that cannot explain itself.
+</div>
+
+<div class="gap">
+  <strong>Two reads, no snapshot.</strong> The relaxed load of <code>numFinishedSubTasks</code> and the plain read of
+  <code>numSubTasks</code> are separate, and the counter can pass the reservation (an item generated beyond it is still
+  counted), so <code>&gt;=</code> rather than <code>==</code> is what makes an over-produced task still report done. The
+  ordering guarantee that makes a completed task's <em>results</em> visible lives in
+  <a href="reportfinishedsubtask.html">ReportFinishedSubTask</a>, not here: reading <code>true</code> off this function from
+  another thread is not the same promise as being the call that returned <code>true</code>.
+</div>
+
+<div class="note">
+  <strong>Within a test, wait with the harness, not with this.</strong> The tests that use it wrap it in
+  <code>WaitUntil</code> (<code>Engine/Core/TaskSystem.cpp</code>), which carries a deadline and reports a stall as a
+  failure instead of hanging.
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<p>None.</p>
+
+<h2 id="return">Return value</h2>
+
+<table>
+  <tr><th>Type</th><th>What you get</th></tr>
+  <tr><td><code>bool</code></td><td><code>true</code> when something was reserved and at least that many items have reported in. <code>false</code> means "not done", never "will never run"</td></tr>
+</table>
+
+<h2 id="example">Examples</h2>
+
+<p class="meta">From Engine/Core/TaskRegistry.cpp, TaskRegistryTest</p>
+
+<pre><code>task.ReserveSubTasks(3);
+
+const bool first = task.ReportFinishedSubTask();
+const bool second = task.ReportFinishedSubTask();
+
+if (first || second || task.HasDone())
+{
+    ls &lt;&lt; "A join of three closed after two items, so whatever waits on it is woken early and reads"
+       &lt;&lt; " results that were never written." &lt;&lt; lferr;
+}</code></pre>
+
+<p>
+  The test uses this as a witness for a claim the winner-only return cannot make: that the join had genuinely not closed
+  yet. Note also that the task here was built by hand, so the counters work while the identity is null — this function
+  needs no registry, which is exactly why it cannot tell whether any executor exists.
+</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; Task</a></span>
+  <span><a href="index.html#methods">All Task methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

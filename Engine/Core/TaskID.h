@@ -22,6 +22,7 @@ namespace hbe
 /// @note Equality compares both halves. Two IDs naming the same record at different generations are different
 ///       tasks, and an ID that ignores the generation to "just get the task" reintroduces exactly the defect
 ///       this type exists to close.
+/// API reference: docs/Core/TaskID/index.html
 struct TaskID final
 {
 	using TIndex = std::size_t;

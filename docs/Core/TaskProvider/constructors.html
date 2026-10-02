@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TaskProvider::TaskProvider — Core module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a class="current" href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Core</a> /
+  <a href="index.html">TaskProvider</a> / TaskProvider
+</p>
+
+<h1><span class="fn">TaskProvider</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::TaskProvider</span>
+  <span class="tag">Engine/Core/TaskProvider.cpp</span>
+  Name the producer and fix the task system it creates tasks in; attaches to nothing.
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>explicit TaskProvider(StaticString name, TaskSystem&amp; targetSystem) noexcept
+
+TaskProvider(const TaskProvider&amp;) = delete</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  Defined in <code>Engine/Core/TaskProvider.cpp</code> as <code>TaskProvider::TaskProvider()</code>.
+</p>
+
+<pre><code>: name(providerName)
+, taskSystem(targetSystem)</code></pre>
+
+<p class="meta">From Engine/Core/TaskProvider.cpp</p>
+
+<p>
+  Two members are initialised and nothing else happens: no allocation, no registration, no attachment. A constructed provider feeds no stream
+  until <a href="attachto.html">AttachTo</a> names one, which is what lets a provider be constructed before the engine exists — a property the
+  header claims deliberately: "Taking it here rather than reaching for the engine instance keeps this type usable by code that constructs a
+  provider before the engine exists, and keeps the unit probes able to attach to stream indices the engine does not have"
+  (<code>Engine/Core/TaskProvider.h</code>).
+</p>
+
+<div class="note">
+  <strong>The task system is held as a reference, so it is a lifetime obligation written into the type.</strong> A provider cannot be
+  reseated onto another system, and a provider whose system has been destroyed is dangling in the one field that matters for
+  <a href="registeronstream.html">RegisterOnStream</a> and <a href="unregisterfromstream.html">UnregisterFromStream</a>. The constructor
+  cannot check the relationship, because a reference to a live object is exactly what it cannot distinguish from a dead one.
+</div>
+
+<div class="note">
+  <strong>Copying is deleted, and the reason is the registration list.</strong>
+  <code>TaskProvider(const TaskProvider&amp;)</code> and its assignment operator are <code>= delete</code> in the public section: a stream's
+  lane list holds this object's address, so a copy would either duplicate a registration that names the original or silently produce a
+  provider that feeds nothing while believing it feeds something. Identity here is the address, as
+  <a href="gethandle.html">GetHandle</a> also assumes.
+</div>
+
+<div class="gap">
+  <strong>The parameter is named <code>name</code> in the header and <code>providerName</code> in the source</strong>, because the member and
+  the argument would otherwise collide in the initialiser list. The header's spelling is the documented one: <code>name</code> and
+  <code>targetSystem</code>. The name is copied into a <code>StaticString</code>, so the caller's buffer is not retained — and the name is
+  what every report from this class prints, including the two failure lines that identify a producer that was lost
+  (<code>Engine/Core/TaskProvider.cpp</code>).
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<table>
+  <tr><th>Parameter</th><th>Type</th><th>Requirement</th></tr>
+  <tr><td><code>name</code></td><td><code>StaticString</code></td><td>Copied; names this producer in logs and in <a href="getname.html">GetName</a></td></tr>
+  <tr><td><code>targetSystem</code></td><td><code>TaskSystem&amp;</code></td><td>The system this provider creates tasks in and whose streams it attaches to; must outlive the provider</td></tr>
+</table>
+
+<h2 id="return">Return value</h2>
+
+<p>Nothing. Construction allocates nothing and attaches nothing, so there is nothing to fail; a provider that cannot produce is one whose <a href="produce.html">Produce</a> reports none.</p>
+
+<h2 id="example">Examples</h2>
+
+<p class="meta">From Engine/Core/TaskProvider.cpp, TaskProviderTest</p>
+
+<pre><code>RecordingProvider provider("ProviderStopProbe", System());
+provider.AttachTo(1, StreamDrainPolicy::ELane::Fifo);</code></pre>
+
+<p>
+  Construction then attachment, in that order, is the only usable sequence: a provider built with a task system it never attaches to is a
+  valid object that will never be asked anything, which is also the state
+  <a href="registeronstream.html">RegisterOnStream</a> reports when the named stream does not exist.
+</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; TaskProvider</a></span>
+  <span><a href="index.html#methods">All TaskProvider methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

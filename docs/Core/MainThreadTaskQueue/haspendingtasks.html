@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MainThreadTaskQueue::HasPendingTasks — Core module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a class="current" href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Core</a> /
+  <a href="index.html">MainThreadTaskQueue</a> / HasPendingTasks
+</p>
+
+<h1><span class="fn">HasPendingTasks</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::MainThreadTaskQueue</span>
+  <span class="tag">Engine/Core/MainThreadTaskQueue.cpp</span>
+  A locked point-in-time read of emptiness; true says nothing about who drains first.
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>[[nodiscard]] bool HasPendingTasks() const noexcept</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  Defined in <code>Engine/Core/MainThreadTaskQueue.cpp</code> as <code>MainThreadTaskQueue::HasPendingTasks()</code>.
+</p>
+
+<pre><code>std::lock_guard lock(queueLock);
+return !queue.IsEmpty();</code></pre>
+
+<p class="meta">From Engine/Core/MainThreadTaskQueue.cpp</p>
+
+<p>
+  A locked read of the container's emptiness — the reason the mutex is declared <code>mutable</code>, as its own header note says:
+  "Guards queue alone. Mutable because HasPendingTasks takes it while reporting const."
+  (<code>Engine/Core/MainThreadTaskQueue.h</code>). Without the lock this would race the container's plain size counter, which is the
+  ThreadSanitizer finding the class carries a note about.
+</p>
+
+<div class="gap">
+  <strong>The answer is a moment, not a state.</strong> The lock is released the instant the read is done, so a
+  <code>true</code> only says the queue was non-empty at that point: another thread may drain it before the caller acts, and a producer
+  may fill a queue that answered <code>false</code>. A caller that acts on the answer must tolerate both, which is why the engine's use
+  is a loop condition rather than a decision.
+</div>
+
+<div class="note">
+  <strong>Its one shipping use is a shutdown report, which is exactly the use a stale answer cannot harm.</strong> The engine-loop
+  shutdown pumps the base stream until its posted queue and its lanes are empty or 2000 ms have passed, then asks this question one last
+  time to decide whether to log an error — "and at least one posted callable ... Whatever was promised through them will not happen."
+  (<code>Engine/Core/TaskSystem.cpp</code>). Asking after the pumping stops removes the race that would otherwise matter: nobody is
+  draining any more.
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<p>None.</p>
+
+<h2 id="return">Return value</h2>
+
+<table>
+  <tr><th>Type</th><th>What you get</th></tr>
+  <tr><td><code>bool</code></td><td>Whether at least one callable was queued at the instant of the read. It does not say how many, which priority holds them, or whether any is already popped and running elsewhere</td></tr>
+</table>
+
+<h2 id="example">Examples</h2>
+
+<p class="meta">From Engine/Core/TaskSystem.cpp, the engine-loop shutdown path</p>
+
+<pre><code>while (std::chrono::steady_clock::now() &lt; pumpDeadline &amp;&amp;
+       (!AreUserStreamsClosed() || baseStream.HasPostedTasks() || baseStream.CountPendingItems() &gt; 0))
+{
+    baseStream.Update();
+    std::this_thread::sleep_for(std::chrono::milliseconds(1));
+}</code></pre>
+
+<p>
+  Reached through <code>TaskStream::HasPostedTasks()</code>, which forwards this call unchanged
+  (<code>Engine/Core/TaskStream.cpp</code>). The deadline is what makes the loop terminate despite the race: a queue that never drains
+  cannot keep the engine alive forever, and the report afterwards is the honest admission of what was left.
+</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; MainThreadTaskQueue</a></span>
+  <span><a href="index.html#methods">All MainThreadTaskQueue methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

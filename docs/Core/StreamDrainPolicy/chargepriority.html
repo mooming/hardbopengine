@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>StreamDrainPolicy::ChargePriority — Core module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a class="current" href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Core</a> /
+  <a href="index.html">StreamDrainPolicy</a> / ChargePriority
+</p>
+
+<h1><span class="fn">ChargePriority</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::StreamDrainPolicy</span>
+  <span class="tag">Engine/Core/StreamDrainPolicy.cpp</span>
+  Adds a task's CPU time to the priority lane's accumulation for this round.
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>void ChargePriority(std::chrono::nanoseconds spent) noexcept</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  Defined in <code>Engine/Core/StreamDrainPolicy.cpp</code> as <code>StreamDrainPolicy::ChargePriority()</code>; the body is
+  <code>priorityUsed += spent;</code>. The exact counterpart of
+  <a href="chargefifo.html">ChargeFifo</a> for the priority lane: unconditional accumulation, no mode check, and read by
+  <a href="chooselane.html">ChooseLane</a> only when an allowance is configured.
+</p>
+
+<p>
+  Because the two accumulations are summed to decide whether the round is over, an item charged to the wrong lane is not a
+  cosmetic error — it moves the boundary between the two shares. The shipping call site decides by the lane it took from,
+  not by the item's priority byte (<code>TaskStream::Update()</code>, <code>Engine/Core/TaskStream.cpp</code>), which is the
+  only rule that can be right: the priority byte says how an item was bucketed at insertion, not which queue it came out of.
+</p>
+
+<div class="gap">
+  <strong>Both accumulations are compared against the allowance as a sum.</strong> A priority lane can be charged past its own
+  share without stopping the stream — the test <em>An empty lane does not hold its share hostage</em> charges 0.6 ms to a
+  0.5 ms share inside a 1 ms allowance and requires the lane still to be served
+  (<code>Engine/Core/StreamDrainPolicy.cpp</code>) — but the same sum reaching 1 ms ends the round for both lanes at once, via
+  <a href="isroundexhausted.html">IsRoundExhausted</a>.
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<table>
+  <tr><th>Parameter</th><th>Type</th><th>Requirement</th></tr>
+  <tr><td><code>spent</code></td><td><code>std::chrono::nanoseconds</code></td><td>CPU time the task consumed, attributed to the priority lane because the item was taken from that queue</td></tr>
+</table>
+
+<h2 id="return">Return value</h2>
+
+<p><code>void</code>. Read it back with <a href="getpriorityused.html">GetPriorityUsed</a>, on the owning thread.</p>
+
+<h2 id="example">Examples</h2>
+
+<p class="meta">From Engine/Core/TaskStream.cpp, TaskStream::Update()</p>
+
+<pre><code>if (chargingBudget)
+{
+    budget.EndTask();
+
+    const auto spent = budget.GetAccumulated() - chargedBefore;
+    if (lane == StreamDrainPolicy::ELane::Priority)
+    {
+        drainPolicy.ChargePriority(spent);
+    }</code></pre>
+
+<p>
+  <code>chargedBefore</code> is the budget's accumulation captured before the run, so the charge is exactly what this one
+  item cost — including the case where the item was re-queued unfinished and will be charged again on its next run.
+</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; StreamDrainPolicy</a></span>
+  <span><a href="index.html#methods">All StreamDrainPolicy methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

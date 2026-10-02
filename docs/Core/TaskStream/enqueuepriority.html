@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TaskStream::EnqueuePriority — Core module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a class="current" href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Core</a> /
+  <a href="index.html">TaskStream</a> / EnqueuePriority
+</p>
+
+<h1><span class="fn">EnqueuePriority</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::TaskStream</span>
+  <span class="tag">Engine/Core/TaskStream.cpp</span>
+  Queue a work item on this stream's priority lane, highest number first.
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>void EnqueuePriority(const WorkItem&amp; task) noexcept</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  Declared in <code>Engine/Core/TaskStream.h</code>, defined in <code>Engine/Core/TaskStream.cpp</code> as
+  <code>TaskStream::EnqueuePriority()</code>.
+</p>
+
+<pre><code>std::scoped_lock&lt;std::mutex&gt; lock(queueLock);
+priorityQueue.Push(task);
+cv.notify_one();</code></pre>
+
+<p class="meta">From Engine/Core/TaskStream.cpp</p>
+
+<p>
+  Structurally identical to <a href="enqueuefifo.html">EnqueueFifo</a> — same lock, same notify — and the entire difference is which container
+  receives the item. The header's one-line contract states the ordering the container owes: "Queue a task on the priority lane, which runs the
+  highest priority number first and the oldest first within a tie" (<code>Engine/Core/TaskStream.h</code>). So a large priority byte is urgent
+  here, and equal bytes are served in arrival order.
+</p>
+
+<div class="note">
+  <strong>"Bounded" in the container's name bounds the priority levels, not the number of items.</strong> The lane is a
+  <code>BoundedPriorityQueue&lt;WorkItem&gt;</code> with the defaults <code>MaxPriority = 256</code> and
+  <code>BucketSizeHint = 0</code>: 256 buckets, one per value a <code>uint8_t</code> priority can hold, each a
+  <code>Deque&lt;WorkItem&gt;</code> created the first time that level is used and released when it runs dry
+  (<code>Engine/Container/BoundedPriorityQueue.h</code>). <code>Push</code> returns nothing and never refuses, which is why the header can call
+  this enqueue unfailable.
+</div>
+
+<div class="gap">
+  <strong>Constructing the lane allocates nothing, but the first item at a priority pays for a bucket.</strong> "Constructing a queue therefore
+  allocates nothing no matter how many priority levels it declares, which is what makes MaxPriority=256 and a roomy BucketSizeHint affordable at
+  the same time" (<code>Engine/Container/BoundedPriorityQueue.h</code>). A stream that sees one priority level does not pay for the other 255 —
+  and a stream that sprays items across 200 levels holds 200 live buckets until each empties.
+</div>
+
+<div class="gap">
+  <strong>The priority byte is load-bearing on this lane and nearly free on the other.</strong> The drain picks a lane by policy and then pops
+  the head of that lane, so on the FIFO lane the byte only matters if an item is later re-filed to the priority lane during compaction
+  (<code>Engine/Core/TaskStream.cpp</code>). A producer that cares about ordering must choose the lane as well as the byte:
+  <a href="enqueuefifo.html">EnqueueFifo</a> will not reorder what it is given.
+</div>
+
+<div class="note">
+  <strong>Same lock, same R40 prohibition.</strong> Calling this from inside <a href="../TaskProvider/produce.html">Produce</a> on the stream
+  draining the provider deadlocks on the non-recursive <code>queueLock</code>
+  (<a href="enqueuefifo.html">EnqueueFifo</a> carries the full statement).
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<table>
+  <tr><th>Parameter</th><th>Type</th><th>Requirement</th></tr>
+  <tr><td><code>task</code></td><td><code>const WorkItem&amp;</code></td><td>Copied into the bucket named by <code>task.priority</code>; 255 is the most urgent level, 0 the least</td></tr>
+</table>
+
+<h2 id="return">Return value</h2>
+
+<p><code>void</code>. No capacity is checked because there is no item capacity to check; a producer that outruns this lane ages its oldest items until the max-age rule drops them (<code>StreamDrainPolicy::SetMaxAge</code>).</p>
+
+<h2 id="example">Examples</h2>
+
+<p class="meta">From Engine/Core/TaskSystem.cpp, TaskSystem::RunSplit()</p>
+
+<pre><code>const auto item = task-&gt;GenerateSubTask(itemStart, itemEnd, priority);
+if (priority &gt; 0)
+{
+    destination.EnqueuePriority(item);
+}
+else
+{
+    destination.EnqueueFifo(item);
+}</code></pre>
+
+<p>
+  The engine's split path chooses the lane by the priority byte it was given: nonzero goes to the priority lane, zero goes to FIFO
+  (<code>Engine/Core/TaskSystem.cpp</code>). That is the whole routing rule a caller can rely on — a byte of 0 means arrival order, and any other
+  byte means "ahead of the queue, behind anything more urgent".
+</p>
+
+<p class="meta">From Engine/Core/TaskStream.cpp, TaskStream::Update()</p>
+
+<pre><code>priorityQueue.Remove([](const WorkItem&amp; task) { return task.HasFinished(); });
+priorityQueue.PushRange(readdingPriority);</code></pre>
+
+<p>
+  The lane's own maintenance, run inside the drain pass: items whose range finished elsewhere are struck off the lane. It shows what the
+  container actually requires of its element type — a priority byte and <code>HasFinished</code>
+  (<code>Engine/Container/BoundedPriorityQueue.h</code>) — and it is the sweep that keeps a lane whose items were completed by another stream from
+  being drained again (<code>Engine/Core/TaskStream.cpp</code>).
+</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; TaskStream</a></span>
+  <span><a href="index.html#methods">All TaskStream methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

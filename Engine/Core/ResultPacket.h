@@ -25,6 +25,7 @@ namespace hbe
 /// @note Not thread-safe, and it does not need to be: one task writes its packet while it runs, and the reader
 ///       arrives after that task has finished. A task writing while another reads the same packet is a bug in
 ///       whoever declared the result, not a condition this type negotiates.
+/// API reference: docs/Core/ResultPacket/index.html
 class alignas(std::uint64_t) ResultPacket final
 {
 public:

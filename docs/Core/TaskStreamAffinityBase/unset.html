@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TaskStreamAffinityBase::Unset — Core module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a class="current" href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Core</a> /
+  <a href="index.html">TaskStreamAffinityBase</a> / Unset
+</p>
+
+<h1><span class="fn">Unset</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::TaskStreamAffinityBase</span>
+  <span class="tag">Engine/Core/TaskStreamAffinity.h</span>
+  despite the name, this takes a stream away: the bit is set, and a set bit means excluded
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>void Unset(unsigned int bitIndex) noexcept</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  Defined in the header <code>Engine/Core/TaskStreamAffinity.h</code> as <code>TaskStreamAffinityBase::Unset()</code>.
+  <strong>Despite the name, this call takes a stream away.</strong> The mask stores the excluded set, so writing a 1 into
+  the bit means the stream is barred, and the name describes the permitted set rather than the operation on the bits.
+</p>
+
+<pre><code>const auto index = GetBitsArrayIndexOf(bitIndex);
+auto&amp; value = bitBuffer[index];
+const auto numShift = bitIndex - (index * BitsPerUnit);
+TBitArrayUnit bit = 1;
+bit = bit &lt;&lt; numShift;
+
+value = value | bit;</code></pre>
+
+<p class="meta">From Engine/Core/TaskStreamAffinity.h, TaskStreamAffinityBase::Unset()</p>
+
+<p>
+  The guard above the quoted block is the first thing in the function: an index at or above
+  <a href="getnumbits.html">GetNumBits</a>() returns immediately, changing nothing and reporting nothing. It is what keeps
+  the padding bits of a partially filled last word out of reach — a bit at index 517 in a 517-bit mask cannot be excluded,
+  because no such index exists, and the words' extra bits therefore never mean anything.
+</p>
+
+<div class="gap">
+  <strong>A silent return is the only answer a bad index gets.</strong> No assert, no log, no return value. Excluding stream
+  <code>NumBits</code> or higher looks like a call that succeeded and did nothing, and the same is true of a mistyped
+  constant: <code>Unset(70)</code> on the engine's 64-bit alias bars nothing at all, so work a caller believed confined to
+  a subset of streams stays permitted on every stream in range.
+</div>
+
+<div class="note">
+  <strong>Idempotent, and independent of every other bit.</strong> A second call on the same index changes nothing further,
+  and the test <em>Taking away one stream leaves every other stream alone</em>
+  (<code>Engine/Core/TaskStreamAffinity.cpp</code>) excludes each of seven probe indices — 0, 1, 63, 64, 127, 128 and
+  516 — on a 517-bit mask and then requires that no other index changed, which is the assertion that would catch two
+  streams colliding on one bit.
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<table>
+  <tr><th>Parameter</th><th>Type</th><th>Requirement</th></tr>
+  <tr><td><code>bitIndex</code></td><td><code>unsigned int</code></td><td>The stream index to exclude. Must be below <a href="getnumbits.html">GetNumBits</a>(); anything else is ignored without a sign</td></tr>
+</table>
+
+<h2 id="return">Return value</h2>
+
+<p><code>void</code>. Nothing distinguishes "excluded it" from "index was out of range".</p>
+
+<h2 id="example">Examples</h2>
+
+<p class="meta">From Engine/Core/WorkItem.cpp, WorkItem::WorkItem()</p>
+
+<pre><code>affinity.Unset(TaskSystem::GetBaseTaskStreamIndex());
+affinity.Unset(TaskSystem::GetIOTaskStreamIndex());</code></pre>
+
+<p>
+  Every work item is barred from streams 0 and 1 — the base stream that rides the engine loop and the IO stream driven by
+  the logger — while staying permitted on the worker streams. Read with the inverted encoding in mind, these two lines mean
+  what they look like they mean; read as ordinary bit surgery they would mean the opposite.
+</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; TaskStreamAffinityBase</a></span>
+  <span><a href="index.html#methods">All TaskStreamAffinityBase methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

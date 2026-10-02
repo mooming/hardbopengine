@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>StreamDrainPolicy::PriorityCredit — Core module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a class="current" href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Core</a> /
+  <a href="index.html">StreamDrainPolicy</a> / PriorityCredit
+</p>
+
+<h1><span class="fn">PriorityCredit</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::StreamDrainPolicy</span>
+  <span class="tag">Engine/Core/StreamDrainPolicy.cpp</span>
+  Private, and nothing calls it.
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>[[nodiscard]] int64_t PriorityCredit() const noexcept</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  Defined in <code>Engine/Core/StreamDrainPolicy.cpp</code> as <code>StreamDrainPolicy::PriorityCredit()</code>; the body is
+  <code>return priorityCredit;</code>. The private read side of the priority lane's rotation counter, counterpart of
+  <a href="fifocredit.html">FifoCredit</a>.
+</p>
+
+<div class="gap">
+  <strong>Nothing calls it, in this class or anywhere else.</strong> Its declaration and definition are the only occurrences in
+  the repository: <a href="chooselane.html">ChooseLane</a> reads the field, <a href="committake.html">CommitTake</a> and
+  <a href="endround.html">EndRound</a> write it, and the tests assert through the lane choices. Documented because the entry
+  exists in the header; the honest summary is dead code with a coherent purpose, the same as
+  <a href="fifocredit.html">FifoCredit</a>.
+</div>
+
+<p>
+  The comparison that gives the counter its shape is <code>fifoCredit &gt;= priorityCredit</code>, evaluated only when both lanes
+  have work and the stream is unlimited — so a lane's credit only matters relative to the other one. The replenishment rule is
+  likewise joint: <a href="committake.html">CommitTake</a> tops both up only once both have reached zero or below, which is why
+  a light lane is not starved by a heavy one at 1:3 (the test of that name requires at least one FIFO serve in eight takes).
+</p>
+
+<h2 id="parameters">Parameters</h2>
+
+<p>None.</p>
+
+<h2 id="return">Return value</h2>
+
+<table>
+  <tr><th>Type</th><th>What you get</th></tr>
+  <tr><td><code>int64_t</code></td><td>The priority lane's remaining rotation credit, possibly negative; only consulted when the stream is unlimited</td></tr>
+</table>
+
+<h2 id="example">Examples</h2>
+
+<p class="note">Illustrative — this accessor is private and has no caller; the behaviour it observes is tested through
+<a href="chooselane.html">ChooseLane</a>.</p>
+
+<pre><code>policy.ConfigureRate(1, 3);
+
+const auto counts = DriveTakes(policy, 8);</code></pre>
+
+<p class="meta">From Engine/Core/StreamDrainPolicy.cpp, StreamDrainPolicyTest</p>
+
+<p>
+  At 1:3 the helper drives eight takes and the test requires the lighter lane to be served at least once and the heavier one at
+  least as often. Each take in that helper both <a href="committake.html">CommitTake</a>s and charges one nanosecond to the lane
+  chosen, which is the ordering the class expects: credit at the take, CPU time afterwards.
+</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; StreamDrainPolicy</a></span>
+  <span><a href="index.html#methods">All StreamDrainPolicy methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

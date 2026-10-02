@@ -17,6 +17,7 @@ class TaskRegistry;
 
 /// @brief Represents a unit of work to be executed by the task system. It consists of multiple
 /// work items and can be split across threads.
+/// API reference: docs/Core/Task/index.html
 class Task final
 {
 public:

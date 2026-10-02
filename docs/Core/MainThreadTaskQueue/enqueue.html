@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MainThreadTaskQueue::Enqueue — Core module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a class="current" href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Core</a> /
+  <a href="index.html">MainThreadTaskQueue</a> / Enqueue
+</p>
+
+<h1><span class="fn">Enqueue</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::MainThreadTaskQueue</span>
+  <span class="tag">Engine/Core/MainThreadTaskQueue.cpp</span>
+  Any thread; never fails, never bounds; userData must outlive the call.
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>void Enqueue(TTaskFunc taskFunc, void* userData, uint8_t priority = 128) noexcept</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  Defined in <code>Engine/Core/MainThreadTaskQueue.cpp</code> as <code>MainThreadTaskQueue::Enqueue()</code>.
+</p>
+
+<pre><code>TaskItem item(priority, taskFunc, userData);
+std::lock_guard lock(queueLock);
+queue.Push(item);</code></pre>
+
+<p class="meta">From Engine/Core/MainThreadTaskQueue.cpp</p>
+
+<p>
+  Build the item, take the lock, hand it to the container. The item is filed by its priority byte into that priority's bucket and joins
+  it at the back, so two callables sharing a priority run in arrival order;
+  <a href="processtasks.html">ProcessTasks</a> always takes from the highest populated priority first.
+</p>
+
+<table>
+  <tr><th>What a caller must hold onto</th><th>Why</th></tr>
+  <tr><td><code>userData</code> must outlive the call, not the statement</td><td>The queue stores the pointer and nothing else — no ownership, no copy, no lifetime token. A posted callable runs later, on another thread</td></tr>
+  <tr><td>There is no failure to check</td><td><code>Push</code> performs no capacity test, so an enqueue cannot be refused, cannot drop, and cannot report — see the bounded-name gap below</td></tr>
+  <tr><td>255 is urgent, 0 is least, 128 is the default</td><td>The direction was inverted on 2026-09-18 along with the container; a small number now means low urgency (<code>Engine/Core/MainThreadTaskQueue.h</code>)</td></tr>
+</table>
+
+<div class="gap">
+  <strong>"Bounded" and <code>MaxQueueSize</code> do not bound the number of queued callables.</strong>
+  <code>MaxQueueSize = 1024</code> is the container's third template parameter, whose documented role is <em>BucketSizeHint</em> — the
+  capacity a bucket is created with on first use. So the first item ever pushed at a given priority reserves a deque of 1024 slots, and
+  at 24 bytes per <code>TaskItem</code> that is 24,576 bytes from the engine allocator, per priority level, per queue
+  (<code>Engine/Container/Deque.h</code>, <code>Engine/Container/BoundedPriorityQueue.h</code>). Levels are released when they drain, so
+  the peak is what is simultaneously populated. Enqueue's cost is therefore not proportional to how full the queue is but to how many
+  distinct priorities have been touched since the last drain.
+</div>
+
+<div class="note">
+  <strong>Callable from any thread, and the engine relies on that pairing.</strong> "Window callbacks reach it through
+  <code>TaskSystem::DispatchToMainThread</code> on a task-stream thread while the process main thread is draining the same queue"
+  (<code>Engine/Core/MainThreadTaskQueue.h</code>). The lock makes that legal; it does not make the ordering predictable — a callable
+  enqueued during a drain is simply picked up by the same loop if it is still running.
+</div>
+
+<div class="note">
+  <strong>The priority byte on a queued item is a filing label, not a live value.</strong> The container files an item by the byte and
+  never re-sorts it, and on the way out it overwrites the byte with the level it actually served from. Changing a queued callable's
+  priority means removing it and pushing it again; nothing here offers that, so for this queue the byte is write-once at enqueue
+  (<code>Engine/Container/BoundedPriorityQueue.h</code>).
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<table>
+  <tr><th>Parameter</th><th>Type</th><th>Requirement</th></tr>
+  <tr><td><code>taskFunc</code></td><td><code>TTaskFunc</code> (<code>void (*)(void*)</code>)</td><td>A captureless function — a captureless lambda converts to it. A null pointer is accepted and silently skipped by <a href="processtasks.html">ProcessTasks</a>, which does not count it as processed</td></tr>
+  <tr><td><code>userData</code></td><td><code>void*</code></td><td>Context for the call. Its lifetime is the caller's problem: the engine pattern is a local struct plus a future the poster waits on</td></tr>
+  <tr><td><code>priority</code></td><td><code>uint8_t</code></td><td>0 lowest, 255 most urgent, default 128 — the middle, so a caller that states nothing joins neither end of the range</td></tr>
+</table>
+
+<h2 id="return">Return value</h2>
+
+<p><code>void</code>. Nothing indicates whether the queue was empty before, whether a bucket had to be reserved, or whether the callable will ever be drained.</p>
+
+<h2 id="example">Examples</h2>
+
+<p class="meta">From Engine/Core/TaskStream.cpp, TaskStream::DispatchPostedTasks()</p>
+
+<pre><code>void TaskStream::DispatchPostedTasks(MainThreadTaskQueue::TTaskFunc taskFunc, void* userData,
+                                     const uint8_t priority) noexcept
+{
+    postedTasks.Enqueue(taskFunc, userData, priority);
+}</code></pre>
+
+<p>
+  The stream's forwarder, reached from <code>TaskSystem::DispatchToMainThread()</code>, which routes to the base stream. The engine's
+  heaviest user is <code>Engine/OSAL/Window.cpp</code>, which packs a struct of <code>this</code>, a log stream and a
+  <code>std::promise</code> reference into a local, passes its address, and then drives the engine until the future is ready — the
+  pattern that keeps <code>userData</code> alive across the thread boundary.
+</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; MainThreadTaskQueue</a></span>
+  <span><a href="index.html#methods">All MainThreadTaskQueue methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TaskRegistry::SetMaxCapacity — Core module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a class="current" href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Core</a> /
+  <a href="index.html">TaskRegistry</a> / SetMaxCapacity
+</p>
+
+<h1><span class="fn">SetMaxCapacity</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::TaskRegistry</span>
+  <span class="tag">Engine/Core/TaskRegistry.h</span>
+  Caps growth without reserving anything; set it where the registry is built.
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>void SetMaxCapacity(std::size_t maxRecords) noexcept</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  Declared and defined in the header <code>Engine/Core/TaskRegistry.h</code>; there is no counterpart in
+  <code>Engine/Core/TaskRegistry.cpp</code>. One unsynchronised store, and the header names the two properties that make it safe enough:
+  "This bounds growth; it reserves nothing. Set it where the registry is built rather than while tasks are running, since Grow reads it
+  without a lock."
+</p>
+
+<div class="gap">
+  <strong><a href="grow.html">Grow</a> reads this field without the lock that <a href="grow.html">Grow</a> itself takes.</strong>
+  <code>AllocateBank</code> tests <code>maxCapacityRecords &gt; 0 &amp;&amp; (bankIndex + 1) * recordsPerBank &gt; maxCapacityRecords</code>
+  inside <code>registryLock</code>, so a writer on another thread is racing a locked reader
+  (<code>Engine/Core/TaskRegistry.cpp</code>). The value is a <code>std::size_t</code> that will not be torn in practice; the header's
+  instruction — configure it where the registry is built — is the actual protection, and it is a rule about ordering rather than about
+  atomicity.
+</div>
+
+<div class="note">
+  <strong>Order it after <a href="initialize.html">Initialize</a> or lose it.</strong> <a href="initialize.html">Initialize</a> stores
+  <code>DefaultMaxCapacityRecords</code> — zero — unconditionally, so a ceiling applied before that call is overwritten and the table grows
+  without bound. This is the one place where two configuration calls have a required order, and the only symptom of getting it wrong is a
+  megabyte bank appearing somewhere nobody capped it.
+</div>
+
+<div class="note">
+  <strong>What it does not do.</strong> It does not shrink the table, does not fail a grow that is already in flight, and does not make
+  <a href="create.html">Create</a> refuse earlier: a creation is refused when the free chain is empty, whether or not the ceiling has been
+  reached. The difference shows only in the log — <a href="reportnoroom.html">ReportNoRoom</a> for a full table,
+  <a href="reportrefusedgrowth.html">ReportRefusedGrowth</a> for a capped one.
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<table>
+  <tr><th>Parameter</th><th>Type</th><th>Requirement</th></tr>
+  <tr><td><code>maxRecords</code></td><td><code>std::size_t</code></td><td>Ceiling in records; 0 lifts the cap. A figure that is not a whole number of banks is effectively the last whole bank below it, since <a href="allocatebank.html">AllocateBank</a> refuses the bank that would cross it</td></tr>
+</table>
+
+<h2 id="return">Return value</h2>
+
+<p><code>void</code>. No clamp, no refusal, no report — <a href="getmaxcapacity.html">GetMaxCapacity</a> is what a caller reads back to confirm the store landed after its <a href="initialize.html">Initialize</a>.</p>
+
+<h2 id="example">Examples</h2>
+
+<p class="note">Illustrative — no caller sets a ceiling; the engine runs uncapped, and the sizing test asserts the uncapped default.</p>
+
+<pre><code>registry.Initialize("TaskRegistry", TaskRegistry::DefaultInitialCapacityRecords,
+                    TaskRegistry::DefaultGrowByRecords);
+registry.SetMaxCapacity(65536);</code></pre>
+
+<p>
+  Order matters more than the figure: <a href="initialize.html">Initialize</a> first, ceiling second, and the read-back afterwards if the
+  configuration came from data. The ceiling's real purpose is to turn an unbounded growable into a bounded one: without it the only limit is
+  <code>MaxBanks</code>, and 1024 banks of 1 MiB is a gigabyte.
+</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; TaskRegistry</a></span>
+  <span><a href="index.html#methods">All TaskRegistry methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

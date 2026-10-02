@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Task::ReserveSubTasks — Core module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a class="current" href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Core</a> /
+  <a href="index.html">Task</a> / ReserveSubTasks
+</p>
+
+<h1><span class="fn">ReserveSubTasks</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::Task</span>
+  <span class="tag">Engine/Core/Task.h</span>
+  declare the join before the first item is queued; a late count makes the task report itself finished early
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>void ReserveSubTasks(TNumSubTasks count) noexcept</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  Defined in the header <code>Engine/Core/Task.h</code> as <code>Task::ReserveSubTasks()</code>; the body is
+  <code>numSubTasks = count;</code> and nothing else. It declares how many work items this task will be split into, and
+  that figure is the join: <a href="reportfinishedsubtask.html">ReportFinishedSubTask</a> closes the join when the
+  finished count reaches it, and <a href="hasdone.html">HasDone</a> asks the same comparison.
+</p>
+
+<p>
+  The order is the contract. The count has to be the truth before the first item can be seen by a worker, because the
+  winner of a join is decided by equality against <code>numSubTasks</code> — so declaring three items after one has
+  already finished makes the task report itself complete on a task that still has two items queued. A caller waiting on
+  the real completion never learns it. Both engine call sites reserve before they generate anything:
+  <code>TaskSystem::EnqueueTask()</code> reserves one immediately before its single
+  <a href="generatesubtask.html">GenerateSubTask</a>, and <code>TaskSystem::EnqueueTask()</code>'s splitting sibling
+  <code>TaskSystem::RunSplit()</code> reserves the clamped count before the loop that hands out ranges
+  (<code>Engine/Core/TaskSystem.cpp</code>).
+</p>
+
+<div class="gap">
+  <strong>One plain byte, written and read unsynchronised.</strong> <code>numSubTasks</code> is not atomic. Reserving
+  while the task's items are already running races with the reads inside
+  <a href="reportfinishedsubtask.html">ReportFinishedSubTask</a> and <a href="hasdone.html">HasDone</a>, and nothing here
+  detects it — the header's rule ("call it once, on a task the registry has just issued, before the first item is
+  queued") is the whole guarantee. Note that <a href="../TaskSystem/dispatch-successor.html">DispatchSuccessor</a> reads
+  this field to decide whether a successor can be dispatched at all, so a successor that reserved nothing is refused
+  with a log line rather than run.
+</div>
+
+<div class="note">
+  <strong>Reserving is not the same as promising a waiter.</strong> A fire-and-forget job still reserves the number of
+  items it queues — the count is what makes the join close correctly for whatever else reads it. What is optional is
+  somebody reading the result, not the count. The count cannot exceed
+  <code>MaxNumSubTasks</code> (255) because the parameter is a <code>TNumSubTasks</code>; the one splitter in the engine
+  clamps its request to 255 rather than refusing it.
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<table>
+  <tr><th>Parameter</th><th>Type</th><th>Requirement</th></tr>
+  <tr><td><code>count</code></td><td><code>TNumSubTasks</code> (<code>uint8_t</code>)</td><td>How many items will report in. Overwrites any previous value; 0 means the join can never close and a successor naming this task is refused</td></tr>
+</table>
+
+<h2 id="return">Return value</h2>
+
+<p><code>void</code>. No clamp, no refusal, and no report of a previous reservation.</p>
+
+<h2 id="example">Examples</h2>
+
+<p class="meta">From Engine/Core/TaskSystem.cpp, TaskSystem::EnqueueTask()</p>
+
+<pre><code>task.ReserveSubTasks(1);
+Enqueue(streamIndex, task.GenerateSubTask(0, 1, priority), lane);</code></pre>
+
+<p>
+  The declare-then-generate order is visible in the two lines: the join exists before the item can reach a lane. In
+  <code>TaskSystem::RunSplit()</code> the same shape appears once for the whole split —
+  <code>task-&gt;ReserveSubTasks(static_cast&lt;Task::TNumSubTasks&gt;(numSubJobs));</code> — followed by the loop that
+  generates exactly that many items.
+</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; Task</a></span>
+  <span><a href="index.html#methods">All Task methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

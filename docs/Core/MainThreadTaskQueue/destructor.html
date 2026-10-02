@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MainThreadTaskQueue::~MainThreadTaskQueue — Core module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a class="current" href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Core</a> /
+  <a href="index.html">MainThreadTaskQueue</a> / ~MainThreadTaskQueue
+</p>
+
+<h1><span class="fn">~MainThreadTaskQueue</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::MainThreadTaskQueue</span>
+  <span class="tag">Engine/Core/MainThreadTaskQueue.h</span>
+  Discards whatever is still queued; it neither runs nor reports those callables.
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>~MainThreadTaskQueue() = default</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  Declared in <code>Engine/Core/MainThreadTaskQueue.h</code> as <code>~MainThreadTaskQueue() = default;</code> and therefore has no
+  definition in <code>Engine/Core/MainThreadTaskQueue.cpp</code>. Its work is member destruction: the mutex, the atomic flag, and the
+  container — which releases whatever its populated buckets hold.
+</p>
+
+<div class="gap">
+  <strong>Anything still queued is discarded, not run, and the destruction says nothing.</strong> A
+  <code>TaskItem</code> is a function pointer and a context pointer; destroying one does not call it. So a queue that dies with work in
+  it drops that work silently, and the caller that posted it is never told. The engine treats this as an error condition worth logging
+  at the level above the class: the shutdown path pumps the base stream for up to 2000 ms and, if work remains, logs
+  "Shutdown abandoned work on the base stream after 2000ms: N queued item(s) and at least one posted callable. Whatever was promised
+  through them will not happen." (<code>Engine/Core/TaskSystem.cpp</code>).
+</div>
+
+<div class="note">
+  <strong>It does not stop the queue.</strong> The flag read by <a href="isrunning.html">IsRunning</a> is left as it was, so destroying a
+  queue does not make <a href="enqueue.html">Enqueue</a> unsafe — that is simply impossible to express here, and nothing claims
+  otherwise. What is required of the caller is the ordinary one: no <a href="enqueue.html">Enqueue</a> may be in flight, and none may
+  arrive afterwards, because a queue cannot outlive the threads that hold its function pointers' context.
+</div>
+
+<div class="gap">
+  <strong>A task running under <a href="processtasks.html">ProcessTasks</a> on another thread is not awaited.</strong> The destructor
+  takes no lock and checks no counter, because the class keeps none: <a href="processtasks.html">ProcessTasks</a> pops an item and
+  invokes it with the lock already released, so nothing observable exists between the pop and the call. A drainer that is still inside a
+  posted callable while the queue is destroyed is a use-after-free of the mutex, and preventing it is the drainer's obligation — which
+  is why the engine's only drainer is the stream's own pass, on the stream's own thread.
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<p>None.</p>
+
+<h2 id="return">Return value</h2>
+
+<p>Nothing. No count of discarded callables, no log, no assert — which is precisely why the shutdown path counts them before the destruction happens.</p>
+
+<h2 id="example">Examples</h2>
+
+<p class="meta">From Engine/Core/TaskSystem.cpp, the engine-loop shutdown path</p>
+
+<pre><code>const bool hasAbandonedPostedWork = baseStream.HasPostedTasks();
+const auto abandonedItemCount = baseStream.CountPendingItems();
+
+if (hasAbandonedPostedWork || abandonedItemCount > 0)
+{
+    Logger::Get().AddLog(GetName(), ELogLevel::Error,
+                         [hasAbandonedPostedWork, abandonedItemCount](auto&amp; logStream)
+    {
+        logStream &lt;&lt; "Shutdown abandoned work on the base stream after 2000ms: " &lt;&lt; abandonedItemCount
+                  &lt;&lt; " queued item(s)";
+
+        if (hasAbandonedPostedWork)
+        {
+            logStream &lt;&lt; " and at least one posted callable";
+        }
+
+        logStream &lt;&lt; ". Whatever was promised through them will not happen.";
+    });
+}</code></pre>
+
+<p>
+  The compensation for a silent destructor: the only owner of a queue in the engine measures what it is about to discard and reports it
+  as an error, with the sentence that makes the consequence plain — whatever was promised through those callables will not happen.
+</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; MainThreadTaskQueue</a></span>
+  <span><a href="index.html#methods">All MainThreadTaskQueue methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

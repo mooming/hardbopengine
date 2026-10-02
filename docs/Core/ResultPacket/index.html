@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ResultPacket — Core module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a class="current" href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This class</h3>
+  <ul>
+    <li><a href="#description">Class description</a></li>
+    <li><a href="#template">Template parameters</a></li>
+    <li><a href="#properties">Class properties</a></li>
+    <li><a href="#methods">Class methods</a></li>
+    <li><a href="#non-member">Non-member helper functions</a></li>
+    <li><a href="#coverage">Coverage</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Core</a> /
+  ResultPacket
+</p>
+
+<h1>ResultPacket</h1>
+<p class="subtitle">
+  <span class="tag">Engine/Core/ResultPacket.h</span>
+  <span class="tag">final</span>
+  <span class="tag">namespace hbe</span>
+  one task's result: an 8-byte header over a 120-byte payload, embedded in the task and therefore in the registry record
+</p>
+
+<h2 id="description">Class description</h2>
+
+<p>
+  <code>class alignas(std::uint64_t) ResultPacket final</code> at <code>Engine/Core/ResultPacket.h</code>: 8 bytes of
+  header over 120 bytes of payload, embedded by value in <a href="../Task/index.html">Task</a> and therefore in every
+  record of the task registry. This is the whole of what the engine knows about results. A task writes one packet; a task
+  with more to say than one packet holds puts a handle to memory it owns into the payload and owns that memory itself.
+  There is no per-stream result buffer, no capacity to admit against, and no delivery window measured in frames.
+</p>
+
+<pre><code>static_assert(SizeBytes == 128, "A result packet must be the 128 bytes the design fixed");
+static_assert(HeaderBytes &gt; DestinationByteIndex, "The header must be wide enough to hold both decided fields");</code></pre>
+
+<p class="meta">From Engine/Core/ResultPacket.h, hbe::ResultPacket</p>
+
+<p>
+  Two more assertions sit at file scope after the namespace closes:
+  <code>sizeof(hbe::ResultPacket) == hbe::ResultPacket::SizeBytes</code> (the compiler adds no padding) and
+  <code>alignof(hbe::ResultPacket) == sizeof(std::uint64_t)</code> (the payload is reachable in aligned words wherever the
+  packet lands). The width is not academic: because the packet is embedded, its 128 bytes are added to a task, and a task
+  is a registry record's largest field — <code>TaskRegistry::RecordSizeBytes</code> is 256, and the default table is 4096
+  records, so the packet is half the price of tracking a task at all.
+</p>
+
+<p>
+  The header is not padding either. Its first two bytes are the only things a reader needs before interpreting the
+  payload — what the result is, and who asked for it — and both are written by the producer, which is why routing never
+  needed the header to grow past eight bytes. Everything from byte 2 on is spare and deliberately nameless: the two
+  meaningful fields are byte-indexed by <code>KindByteIndex</code> and <code>DestinationByteIndex</code> rather than
+  declared as three named fields with a gap between them.
+</p>
+
+<div class="note">
+  <strong>Kind 0 means "no result", and that is a state rather than a value.</strong> A record is reused without being
+  zeroed, so the cleared state is what a packet comes back in (<a href="clear.html">Clear</a>) and what a reader stops at
+  (<a href="hasresult.html">HasResult</a>). Kind is zero because a packet that was never written to is a packet of zeroes.
+  Values from <code>FirstApplicationKind</code> (64) up belong to the application; below it is the engine's range, so the
+  engine cannot allocate an application's kind by accident. The split is a boundary, not a table: nothing dispatches on
+  it.
+</div>
+
+<div class="gap">
+  <strong>One writer, one late reader — and no synchronisation.</strong> The type is not thread-safe and does not
+  negotiate: one task writes its packet while it runs, and the reader arrives after that task finished. A task writing
+  while another thread reads the same packet is a bug in whoever declared the result. There is a second writer the design
+  accepts: <code>TaskSystem::DispatchSuccessor()</code> assigns one packet to another when it delivers an outcome
+  (<code>Engine/Core/TaskSystem.cpp</code>) — so the claim, made in this header and in
+  <a href="../Task/getresult.html">Task::GetResult</a>, that nothing in the engine copies a packet is not true of the
+  shipping path.
+</div>
+
+<div class="gap">
+  <strong>Nothing checks that a result was ever written before it is delivered.</strong>
+  <code>TaskSystem::DispatchSuccessor()</code> routes on the destination byte alone; it never calls
+  <a href="hasresult.html">HasResult</a>. A producer that set a destination and wrote nothing still delivers: the
+  successor is dispatched with a packet whose kind is <code>KindNoResult</code> and whose payload is whatever a
+  <a href="clear.html">Clear</a> left in it. A successor that cares about the difference reads the kind itself.
+</div>
+
+<h2 id="template">Template parameters</h2>
+
+<p>None. <code>ResultPacket</code> is a concrete <code>final</code> class with a fixed byte layout.</p>
+
+<h2 id="properties">Class properties</h2>
+
+<table>
+  <tr><th>Type + Name</th><th>Default Value</th><th>Description</th></tr>
+  <tr><td><code>static constexpr std::size_t HeaderBytes = 8;</code> <span class="badge">public</span></td><td><code>8</code></td><td>Bytes of header, fixed by decision rather than measurement</td></tr>
+  <tr><td><code>static constexpr std::size_t PayloadBytes = 120;</code> <span class="badge">public</span></td><td><code>120</code></td><td>Bytes available to the producer after the header</td></tr>
+  <tr><td><code>static constexpr std::size_t SizeBytes = HeaderBytes + PayloadBytes;</code> <span class="badge">public</span></td><td><code>HeaderBytes + PayloadBytes</code></td><td>128 — and, because the packet is embedded, the growth it adds to a task and to every record</td></tr>
+  <tr><td><code>static constexpr std::uint8_t KindNoResult = 0;</code> <span class="badge">public</span></td><td><code>0</code></td><td>Kind meaning "no result has been written"; the state a reused record comes back in</td></tr>
+  <tr><td><code>static constexpr std::uint8_t FirstApplicationKind = 64;</code> <span class="badge">public</span></td><td><code>64</code></td><td>First kind owned by the application; below it is the engine's range, and nothing dispatches on the boundary</td></tr>
+  <tr><td><code>static constexpr std::size_t KindByteIndex = 0;</code> <span class="badge">public</span></td><td><code>0</code></td><td>Header byte holding the kind — the single place that claim is written down</td></tr>
+  <tr><td><code>static constexpr std::size_t DestinationByteIndex = 1;</code> <span class="badge">public</span></td><td><code>1</code></td><td>Header byte holding the destination stream index, which is the byte routing reads</td></tr>
+  <tr><td><code>static constexpr std::uint8_t NoDestinationStream = 0xFF;</code> <span class="badge">public</span></td><td><code>0xFF</code></td><td>Addressed to no stream: work that reports nothing to anyone, or a caller that reads its own result through its own identity</td></tr>
+  <tr><td><code>std::uint8_t header[HeaderBytes] = {KindNoResult, NoDestinationStream};</code> <span class="badge">private</span></td><td><code>{KindNoResult, NoDestinationStream}</code></td><td>The header as bytes: kind, destination, then the spare six — deliberately not named fields, since a spare field nobody reads is a warning this project treats as an error</td></tr>
+  <tr><td><code>std::uint8_t payload[PayloadBytes] = {};</code> <span class="badge">private</span></td><td><code>{}</code></td><td>The producer's data; the engine never interprets a byte of it</td></tr>
+</table>
+
+<h2 id="methods">Class methods</h2>
+
+<p>
+  One row per method name, in header declaration order. Every body is in the header
+  (<code>Engine/Core/ResultPacket.h</code>); <code>Engine/Core/ResultPacket.cpp</code> carries only the test collection.
+</p>
+
+<table class="methods">
+  <tr><th>Name</th><th>Signature</th><th>What a caller depends on</th></tr>
+  <tr><td><a href="clear.html"><code>Clear</code></a></td><td class="sig">void Clear() noexcept</td><td>Forgets every byte, back to "no result, addressed to nobody" — called when a record is issued, not when a task is done with it</td></tr>
+  <tr><td><a href="hasresult.html"><code>HasResult</code></a></td><td class="sig">[[nodiscard]] bool HasResult() const noexcept</td><td>One test: the kind byte is not <code>KindNoResult</code>. It proves a producer declared a result, not that the payload means anything</td></tr>
+  <tr><td><a href="getkind.html"><code>GetKind</code></a></td><td class="sig">[[nodiscard]] std::uint8_t GetKind() const noexcept</td><td>What the result is — the producer's choice, never interpreted by the engine</td></tr>
+  <tr><td><a href="setkind.html"><code>SetKind</code></a></td><td class="sig">void SetKind(std::uint8_t newKind) noexcept</td><td>Declares the result and its type at once; setting it is the last write a producer makes</td></tr>
+  <tr><td><a href="getdestinationstreamindex.html"><code>GetDestinationStreamIndex</code></a></td><td class="sig">[[nodiscard]] std::uint8_t GetDestinationStreamIndex() const noexcept</td><td>The byte routing reads — and the one a chain refuses to dispatch without</td></tr>
+  <tr><td><a href="setdestinationstreamindex.html"><code>SetDestinationStreamIndex</code></a></td><td class="sig">void SetDestinationStreamIndex(std::uint8_t streamIndex) noexcept</td><td>Addresses the result; no stream is looked up when it is written, so an invalid byte fails at delivery</td></tr>
+  <tr><td><a href="getpayload.html"><code>GetPayload</code></a><span class="badge">2 overloads</span></td><td class="sig">[[nodiscard]] std::uint8_t* GetPayload() noexcept<br>[[nodiscard]] const std::uint8_t* GetPayload() const noexcept</td><td>The payload's first byte, <code>PayloadBytes</code> long, aligned for 64-bit access — with no length check of any kind</td></tr>
+</table>
+
+<h2 id="non-member">Non-member helper functions</h2>
+
+<p>
+  None. The header closes with two file-scope <code>static_assert</code>s that constrain the type from outside the
+  namespace rather than any function:
+</p>
+
+<pre><code>static_assert(sizeof(hbe::ResultPacket) == hbe::ResultPacket::SizeBytes,
+              "A result packet must be exactly its declared width, with no padding added by the compiler");
+
+static_assert(alignof(hbe::ResultPacket) == sizeof(std::uint64_t),
+              "A packet payload must be reachable in aligned words, wherever the packet lands");</code></pre>
+
+<p class="meta">From Engine/Core/ResultPacket.h, file scope</p>
+
+<h2 id="coverage">Coverage</h2>
+
+<table>
+  <tr><th>Not documented here</th><th>Why</th></tr>
+  <tr><td>Who owns a handle stored inside the payload</td>
+    <td>The engine never allocates, copies out or frees it, so the rule is the declaring task's; nothing in
+    <code>Engine/</code> states a general one to document</td></tr>
+  <tr><td>The full delivery protocol — refusals, successor lookup, which stream runs the successor</td>
+    <td>Owned by <code>TaskSystem</code>; see <a href="../TaskSystem/dispatch-successor.html">TaskSystem::DispatchSuccessor</a>,
+    which is this packet's only reader outside the tests</td></tr>
+  <tr><td>Why a byte of the header, rather than a stream index field, carries the destination</td>
+    <td>A design decision recorded in <code>docs/TaskSystemRedesign.md</code>; the page states the consequence a caller
+    depends on, not the reasoning history</td></tr>
+  <tr><td><code>ResultPacketTest</code>, in <code>#ifdef __UNIT_TEST__</code> at the end of the header</td>
+    <td>Test-only; it owns a Coverage row on the module ledger rather than a page. Its assertions are quoted where they
+    pin a contract, because they are the only executable statement of "a reused record must not report the previous
+    occupant's result"</td></tr>
+</table>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; ResultPacket</a></span>
+  <span><a href="index.html#methods">All ResultPacket methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

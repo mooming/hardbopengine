@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Task::GenerateSubTask — Core module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a class="current" href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Core</a> /
+  <a href="index.html">Task</a> / GenerateSubTask
+</p>
+
+<h1><span class="fn">GenerateSubTask</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::Task</span>
+  <span class="tag">Engine/Core/Task.h</span>
+  private: build one item for a range and count nothing — the join was declared, not discovered here
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>WorkItem GenerateSubTask(TIndex start, TIndex end, uint8_t priority = 0) noexcept</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  Private; defined in <code>Engine/Core/Task.cpp</code> as <code>Task::GenerateSubTask()</code>. It builds one
+  <a href="../WorkItem/index.html">WorkItem</a> covering <code>[start, end)</code> and stamps it from this task — identity,
+  abandonment notice pair and age clock — which is the only way an item ever gets a valid identity
+  (<code>WorkItem::WorkItem()</code> is private, and <code>Task</code> is one of its three friends).
+</p>
+
+<pre><code>Assert(numGeneratedSubTasks &lt; numSubTasks, …);
+
+return {*this, start, end, priority};</code></pre>
+
+<p class="meta">From Engine/Core/Task.cpp, Task::GenerateSubTask()</p>
+
+<p>
+  The elided arguments are the assert's message, which names the very failure it is meant to catch: handing out a work
+  item beyond the number the task reserved, so the task reports itself finished before that item runs.
+</p>
+
+<p>
+  Generating an item counts nothing. The join was declared by
+  <a href="reservesubtasks.html">ReserveSubTasks</a>, and it is the number of items that report in which closes it, so an
+  item is only correct if the reservation already covers it. The item is a value: it is returned by value, copied into the
+  queue on every push, and copied again when a stream re-adds it after a partial run.
+</p>
+
+<div class="gap">
+  <strong>The reservation check cannot fire on over-production — the counter it tests is never incremented.</strong>
+  <code>numGeneratedSubTasks</code> appears five times in the engine: declared in <code>Engine/Core/Task.h</code>,
+  initialised to 0 in both <code>Task</code> constructors, reset to 0 in
+  <a href="loadintorecord.html">LoadIntoRecord</a>, and read here. Nothing ever adds to it. The comparison therefore
+  reduces to <code>0 &lt; numSubTasks</code>: it catches generating an item for a task that reserved <em>nothing</em>, and
+  it stays silent for every case its message describes — the second item of a task that reserved one, the fourth of a task
+  that reserved three. The field's own description in the header ("how many work items have been handed out for this task,
+  which is never more than numSubTasks") states a bookkeeping that does not exist. Recorded in this page's Coverage as a
+  defect rather than glossed: the consequence is that over-production is undetected in every build, and it is exactly the
+  mistake that makes a task report itself finished before its last item runs.
+</div>
+
+<div class="note">
+  <strong>Even the check that does exist is Debug-only.</strong> <code>Assert</code> is an ordinary function with two
+  definitions (<code>Engine/Core/Debug.h</code>): under <code>__DEBUG__</code> it flushes logs, prints and
+  <code>std::abort()</code>s; otherwise its body is empty. <code>CMakeLists.txt</code> defines
+  <code>__DEBUG__</code> for the Debug configuration and inherits it into Dev, so Release performs no check here at all —
+  an over-produced item in Release is queued as though nothing happened.
+</div>
+
+<div class="note">
+  <strong>Empty ranges are allowed.</strong> Nothing rejects <code>start == end</code>: the item's
+  <code>current</code> starts at <code>start</code>, <code>HasFinished()</code> is then already true, and the first run of
+  that item reports a finished subtask without the runnable doing anything meaningful — <code>Engine/Core/TaskSystem.cpp</code>
+  has a test that drives exactly this (<code>taskSys.Enqueue(task.GenerateSubTask(0, 0))</code>).
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<table>
+  <tr><th>Parameter</th><th>Type</th><th>Requirement</th></tr>
+  <tr><td><code>start</code></td><td><code>TIndex</code></td><td>First index of the slice; becomes the item's <code>current</code> as well as its <code>start</code></td></tr>
+  <tr><td><code>end</code></td><td><code>TIndex</code></td><td>One past the last index of the slice; the runnable is never given an index at or past it</td></tr>
+  <tr><td><code>priority</code></td><td><code>uint8_t</code></td><td>Defaults to 0. The bucket the item is filed under when it is pushed onto a priority lane — a label at insertion, not a live value, and ignored entirely on the FIFO lane</td></tr>
+</table>
+
+<h2 id="return">Return value</h2>
+
+<table>
+  <tr><th>Type</th><th>What you get</th></tr>
+  <tr><td><code>WorkItem</code></td><td>One queue-ready item naming this task, its notice pair and its age. It is a copy-out value: nothing is registered, queued or counted by this call</td></tr>
+</table>
+
+<h2 id="example">Examples</h2>
+
+<p class="meta">From Engine/Core/TaskProvider.cpp, TaskProvider::MakeWholeItem()</p>
+
+<pre><code>task.ReserveSubTasks(1);
+
+return task.GenerateSubTask(0, 1, priority);</code></pre>
+
+<p>
+  The protected helper a producer-side <code>TaskProvider</code> uses, and the smallest legal shape: declare one item,
+  build one item. The engine's own splitter does the same once for the whole job —
+  <code>TaskSystem::RunSplit()</code> reserves the clamped count and then generates exactly that many items, dividing
+  <code>numItems</code> into contiguous ranges — and <code>TaskSystem::DispatchSuccessor()</code> generates the single
+  item that delivers an outcome to a successor.
+</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; Task</a></span>
+  <span><a href="index.html#methods">All Task methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

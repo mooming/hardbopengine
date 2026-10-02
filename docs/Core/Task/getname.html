@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Task::GetName — Core module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a class="current" href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Core</a> /
+  <a href="index.html">Task</a> / GetName
+</p>
+
+<h1><span class="fn">GetName</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::Task</span>
+  <span class="tag">Engine/Core/Task.h</span>
+  the task's log label, returned as a pointer identity rather than a copy
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>[[nodiscard]] auto GetName() const noexcept</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  Defined in the header <code>Engine/Core/Task.h</code> as <code>Task::GetName()</code>; the body is
+  <code>return name;</code>. The deduced return type is <code>StaticString</code>, which is a pointer identity into
+  static storage rather than a buffer, so returning it by value copies the reference and not the text. A caller may keep
+  the returned value for as long as the string literal behind it lives.
+</p>
+
+<p>
+  The name is a label, not a key: it is what a task's warnings, errors and asserts are filed under, and it is never used
+  to find a task. Lookup goes through <a href="../TaskID/index.html">TaskID</a> only. That is deliberate —
+  <a href="../WorkItem/index.html">WorkItem</a> used to carry a copy of this name for its drop warning, and the copy was
+  dropped because the registry cannot confirm a name belongs to the task that produced an ID.
+</p>
+
+<div class="note">
+  <strong>A task that was never loaded has no name.</strong> <code>name</code> is written by the named
+  <a href="constructors.html">constructor</a> and by <a href="loadintorecord.html">LoadIntoRecord</a>; the default
+  constructor leaves it default-constructed, and <code>StaticString::IsNull()</code> is how a caller can tell. The
+  registry always names a task it issues, so an unnamed task is one built by hand.
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<p>None.</p>
+
+<h2 id="return">Return value</h2>
+
+<table>
+  <tr><th>Type</th><th>What you get</th></tr>
+  <tr><td><code>StaticString</code></td><td>The task's label by value; null for a task that was never named</td></tr>
+</table>
+
+<h2 id="example">Examples</h2>
+
+<p class="meta">From Engine/Core/WorkItem.cpp, WorkItem::Run()</p>
+
+<pre><code>auto runnable = task.GetRunnable();
+if (runnable == nullptr)
+{
+    current = end;
+
+    auto logger = Logger::Get(task.GetName());
+    logger.OutError([](auto& ls) { ls &lt;&lt; "Null Runnable."; });
+
+    return false;
+}</code></pre>
+
+<p>
+  The name is read at the moment something goes wrong, which is its only real use: it is the log category the line is
+  filed under. The item's own range is closed first, so a null runnable finishes the slice rather than stalling the lane
+  on it.
+</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; Task</a></span>
+  <span><a href="index.html#methods">All Task methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

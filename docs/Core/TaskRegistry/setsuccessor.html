@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TaskRegistry::SetSuccessor — Core module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a class="current" href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Core</a> /
+  <a href="index.html">TaskRegistry</a> / SetSuccessor
+</p>
+
+<h1><span class="fn">SetSuccessor</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::TaskRegistry</span>
+  <span class="tag">Engine/Core/TaskRegistry.cpp</span>
+  Records the task to dispatch when this one's join closes.
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>void SetSuccessor(TaskID task, TaskID successor) noexcept</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  Defined in <code>Engine/Core/TaskRegistry.cpp</code> as <code>TaskRegistry::SetSuccessor()</code>: resolve the record, or log and give
+  up, then store the successor.
+</p>
+
+<pre><code>Record* record = FindLiveRecord(task);
+if (record == nullptr)
+{
+    ...ReportError...
+    return;
+}
+
+record-&gt;successor = successor;</code></pre>
+
+<p class="meta">From Engine/Core/TaskRegistry.cpp (the elided block is the error log quoted below)</p>
+
+<p>
+  This field is the entirety of what the task system knows about chains — "a job, an optional successor, and a join counter" (R9). Where
+  the successor runs is not stored here: the completing task writes a destination byte into its own
+  <a href="../ResultPacket/index.html">result packet</a>, and <code>TaskSystem::DispatchSuccessor</code> reads that, so routing stays data
+  the registry carries rather than a pipeline the engine has to understand (<code>Engine/Core/TaskRegistry.h</code>).
+</p>
+
+<div class="gap">
+  <strong>It takes no lock, and <code>successor</code> is not atomic.</strong> The record is reached through
+  <a href="findliverecord.html">FindLiveRecord</a>, which reads its flags relaxed and takes no lock, and what follows is a plain store to a
+  16-byte <code>TaskID</code>. <a href="create.html">Create</a> writes the same field under <code>registryLock</code>, so a successor
+  recorded on one thread while another thread's <a href="create.html">Create</a> recycles that record is an unguarded concurrent write
+  (<code>Engine/Core/TaskRegistry.cpp</code>). The safe pattern in the engine is the one already in use: set the chain at creation time,
+  from the thread that holds both identities — which is what <code>TaskSystem</code>'s split path does, recording the successor and the
+  destination byte together (<code>Engine/Core/TaskSystem.cpp</code>).
+</div>
+
+<div class="note">
+  <strong>A successor is a promise about the future, not a lease.</strong> "It is dispatched when the join closes, and if it has been
+  released by then the dispatch is refused and logged rather than run" (<code>Engine/Core/TaskRegistry.h</code>). Nothing here checks that
+  <code>successor</code> names a live task, and nothing keeps it alive — recording an ID that will be released by the time the join closes
+  is accepted at this line and discovered at dispatch.
+</div>
+
+<div class="note">
+  <strong>Naming a task that is not tracked does nothing and is reported.</strong> The error names the registry, the index and the
+  generation, and states the consequence a reader needs: "so nothing will be dispatched when that join closes"
+  (<code>Engine/Core/TaskRegistry.cpp</code>). Same rule as <a href="release.html">Release</a> — an untracked identity is never silently
+  accepted.
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<table>
+  <tr><th>Parameter</th><th>Type</th><th>Requirement</th></tr>
+  <tr><td><code>task</code></td><td><code>TaskID</code></td><td>The task whose join closes first; must be live in this registry</td></tr>
+  <tr><td><code>successor</code></td><td><code>TaskID</code></td><td>Stored without validation, including a null ID — which <a href="getsuccessor.html">GetSuccessor</a> then reports as "nobody is waiting"</td></tr>
+</table>
+
+<h2 id="return">Return value</h2>
+
+<p><code>void</code>. No indication whether the record was found, so a caller cannot distinguish "recorded" from "logged and dropped" except by reading the log or asking <a href="getsuccessor.html">GetSuccessor</a> afterwards.</p>
+
+<h2 id="example">Examples</h2>
+
+<p class="meta">From Engine/Core/TaskSystem.cpp, the split-and-chain path</p>
+
+<pre><code>if (!successor.IsNull())
+{
+    SetSuccessor(taskID, successor);
+    task-&gt;GetResult().SetDestinationStreamIndex(static_cast&lt;std::uint8_t&gt;(successorStream));
+}</code></pre>
+
+<p>
+  The pairing that makes a chain deliverable: recording the successor here is meaningless unless the completing task also names where the
+  result goes, and a chain that closes without a destination is the error
+  <code>DispatchSuccessor</code> logs — a chain that stops with no symptom until something downstream waits.
+</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; TaskRegistry</a></span>
+  <span><a href="index.html#methods">All TaskRegistry methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

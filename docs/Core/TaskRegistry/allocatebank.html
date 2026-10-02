@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TaskRegistry::AllocateBank — Core module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a class="current" href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Core</a> /
+  <a href="index.html">TaskRegistry</a> / AllocateBank
+</p>
+
+<h1><span class="fn">AllocateBank</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::TaskRegistry</span>
+  <span class="tag">Engine/Core/TaskRegistry.cpp</span>
+  Takes one bank, constructs its records, and links them into the free chain.
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>TBank AllocateBank() noexcept</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  Defined in <code>Engine/Core/TaskRegistry.cpp</code> as <code>TaskRegistry::AllocateBank()</code>. Private, and called from exactly two
+  places: <a href="initialize.html">Initialize</a>'s loop and <a href="grow.html">Grow</a> — which is how the class guarantees that every
+  bank is taken either before any task exists or between frames on the owner.
+</p>
+
+<p>Its body is a sequence with no step that can be reordered:</p>
+
+<table>
+  <tr><th>Step</th><th>What it does</th><th>Why the order matters</th></tr>
+  <tr><td>1</td><td>Refuse if <code>bankIndex &gt;= MaxBanks</code></td><td>The bank table is a fixed array of 1024 pointers; past it the request is reported by <a href="reportrefusedgrowth.html">ReportRefusedGrowth</a> rather than writing outside the table</td></tr>
+  <tr><td>2</td><td>Refuse if the ceiling would be crossed</td><td>Checked before allocating, so a capped registry never takes memory it will have to give back; the ceiling is read without a lock, which is why <a href="setmaxcapacity.html">SetMaxCapacity</a> is a build-time call</td></tr>
+  <tr><td>3</td><td>Allocate <code>recordsPerBank * sizeof(Record)</code> from <code>bankAllocatorID</code></td><td>Exact-sized, one bank at a time, from the allocator captured at <a href="initialize.html">Initialize</a> — a pool bank would round a table of this size up by more than the table itself</td></tr>
+  <tr><td>4</td><td>Placement-construct every record</td><td><code>new (&amp;records[record]) Record()</code>: a record's task holds an atomic counter, so records are constructed in place and never moved</td></tr>
+  <tr><td>5</td><td>Publish: <code>banks[bankIndex] = records;</code> then <code>bankCount.store(bankIndex + 1, release)</code></td><td>The release store is what makes the lock-free <a href="find.html">Find</a> correct: a reader that acquires a count covering this bank is guaranteed to see its constructed records</td></tr>
+  <tr><td>6</td><td>Thread the bank's records into the free chain and move <code>freeRecordHead</code> to the bank's first record</td><td>The chain is walked backwards so records issue in ascending index order, and the new bank is handed out before the older free records that were already chained</td></tr>
+</table>
+
+<div class="gap">
+  <strong>Failure is reported and changes nothing at all.</strong> Every refusal path returns <code>nullptr</code> without touching
+  <code>banks</code>, <code>bankCount</code> or <code>freeRecordHead</code>, and the two failure reports say different things: a ceiling or
+  bank-limit refusal from <a href="reportrefusedgrowth.html">ReportRefusedGrowth</a>, and an allocator refusal naming the byte count — "The
+  table keeps the capacity it has." (<code>Engine/Core/TaskRegistry.cpp</code>). This is what lets <a href="grow.html">Grow</a> answer
+  <code>false</code> honestly and <a href="initialize.html">Initialize</a> stop a loop and keep what it got.
+</div>
+
+<div class="note">
+  <strong>One bank is 1 MiB at the engine's defaults, and it is a single allocation.</strong> That figure, not the record count, is what a
+  caller is really asking for; and the publication step means the megabyte is invisible to a
+  <a href="find.html">Find</a> until it is fully built. The cost of the alternative — a pool bank sized by a round-number rule — is recorded
+  in the class note as costing more than the table itself.
+</div>
+
+<div class="gap">
+  <strong>It never frees anything, so a bank is only ever reclaimed by
+  <a href="destructor.html">the destructor</a>.</strong> There is no shrink path on this class, and
+  <a href="initialize.html">Initialize</a> called twice neither frees nor reuses the earlier banks properly — the header states the leak
+  plainly (<code>Engine/Core/TaskRegistry.h</code>). Growth is monotonic for the life of the registry.
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<p>None. Bank size comes from <a href="getgrowby.html">recordsPerBank</a> and the allocator from <code>bankAllocatorID</code>, both set by <a href="initialize.html">Initialize</a>.</p>
+
+<h2 id="return">Return value</h2>
+
+<table>
+  <tr><th>Type</th><th>What you get</th></tr>
+  <tr><td><code>TBank</code> (<code>Record*</code>)</td><td>The bank's first record, already published and already in the free chain; <code>nullptr</code> on any refusal, with a log line already emitted</td></tr>
+</table>
+
+<h2 id="example">Examples</h2>
+
+<p class="meta">From Engine/Core/TaskRegistry.cpp, TaskRegistry::Grow()</p>
+
+<pre><code>std::scoped_lock&lt;std::mutex&gt; lock(registryLock);
+return AllocateBank() != nullptr;</code></pre>
+
+<p>
+  The only caller that looks at the pointer, and it looks only at whether it is null. The lock is what makes steps 5 and 6 safe against a
+  concurrent <a href="create.html">Create</a> or <a href="release.html">Release</a> mutating the same free chain
+  (<code>Engine/Core/TaskRegistry.cpp</code>).
+</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; TaskRegistry</a></span>
+  <span><a href="index.html#methods">All TaskRegistry methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

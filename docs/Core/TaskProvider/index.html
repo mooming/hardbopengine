@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TaskProvider — Core module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a class="current" href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This class</h3>
+  <ul>
+    <li><a href="#description">Class description</a></li>
+    <li><a href="#template">Template parameters</a></li>
+    <li><a href="#properties">Class properties</a></li>
+    <li><a href="#methods">Class methods</a></li>
+    <li><a href="#non-member">Non-member helper functions</a></li>
+    <li><a href="#coverage">Coverage</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Core</a> /
+  TaskProvider
+</p>
+
+<h1>TaskProvider</h1>
+<p class="subtitle">
+  <span class="tag">Engine/Core/TaskProvider.h</span>
+  A producer of tasks, and the unit of lifecycle in the task system: asked for work rather than pushing it, attached to stream lanes, and destructible only once no stream still holds its pointer.
+</p>
+
+<h2 id="description">Class description</h2>
+
+<p>
+  <code>class TaskProvider</code> at <code>Engine/Core/TaskProvider.h</code>: a producer of tasks, and the unit of lifecycle in the task
+  system. Apps, subsystems and tools are providers, and a provider is <em>asked</em> for work rather than pushing it: a stream drains a
+  provider while the stream's budget lasts and <a href="produce.html">Produce</a> keeps reporting that it produced something. That makes the
+  drain — not the individual task — the unit of control, which is the only unit available given that a task cannot be stopped once taken.
+</p>
+
+<div class="note">
+  <strong>There is no <code>HasWork</code> predicate, and the header records why it was rejected.</strong> "By the time Produce runs, a
+  HasWork answer is already advisory because provider state can change in between, so the stream would be steering on a reading it cannot
+  trust" (<code>Engine/Core/TaskProvider.h</code>). The single question is asked at the moment of consequence:
+  <a href="produce.html">Produce</a> returns an item or reports that there is none, and reporting none ends this lane's drain for the pass at
+  the cost of one call per drain thereafter.
+</div>
+
+<table>
+  <tr><th>Book</th><th>Where it lives</th><th>Who reads it</th></tr>
+  <tr><td>The provider's own attachment list — <code>attached</code> and its <code>lanes</code> mask</td><td>This object, an inline array of <code>MaxAttachedStreams</code> slots</td><td>Reporting and <a href="detachfrom.html">DetachFrom</a> — nobody drains from it</td></tr>
+  <tr><td>The stream's per-lane registration list — raw <code>TaskProvider*</code></td><td><code>TaskStream</code>, guarded by that stream's queue lock</td><td>The drain (R38): "that registration - not this provider's slot list - is what the drain reads"</td></tr>
+  <tr><td>The stop flag</td><td>This object, <code>std::atomic&lt;bool&gt;</code></td><td>Any thread through <a href="isstoprequested.html">IsStopRequested</a> or a <a href="../TaskHandle/index.html">TaskHandle</a></td></tr>
+</table>
+
+<div class="gap">
+  <strong>A provider that outlives its registration is a dead pointer in a lane list, and the destructor exists to catch it.</strong>
+  "R37: a stream holds this object's pointer, so destroying a provider that still feeds one leaves a dead pointer in that lane's list.
+  Detach first." The assert counts <em>registrations</em>, not recorded attachments: an attachment naming a stream the engine does not have
+  puts nothing anywhere, so it cannot dangle and must not be fatal. A destructor assert cannot see a drain in progress, which is why
+  <a href="detachfrom.html">DetachFrom</a> and <a href="detachall.html">DetachAll</a> take the target stream's lock rather than clearing
+  flags here (<code>Engine/Core/TaskProvider.h</code>).
+</div>
+
+<div class="gap">
+  <strong>The stop flag has no reader in the shipping drain path.</strong> The contract is stated plainly: "Stop is not cancellation. Tasks
+  already taken run to completion - the task system cannot stop one - so 'stopped' means no further Produce calls, not no further work"
+  (<code>Engine/Core/TaskProvider.h</code>). In <code>Engine/</code> and <code>Applications/</code> nothing outside this class reads the
+  flag: <code>TaskStream::DrainProvidersLocked</code> asks every provider on the lane whatever the flag says
+  (<code>Engine/Core/TaskStream.cpp</code>). See <a href="stop.html">Stop</a> for what a caller can rely on today.
+</div>
+
+<div class="gap">
+  <strong>The mechanism is complete and has no shipping user.</strong> The only <code>TaskProvider</code> derived class in the repository is
+  a test probe, and every <a href="attachto.html">AttachTo</a> call site sits in a unit-test region
+  (<code>Engine/Core/TaskSystem.cpp</code>, <code>Engine/Core/TaskProvider.cpp</code>). The stream side is wired and gated — provider asks
+  are the one path the CPU budget explicitly forbids while spent (R39, <code>Engine/Core/TaskStream.cpp</code>) — but nothing in a shipping
+  build attaches a producer.
+</div>
+
+<div class="note">
+  <strong>Attachment is a lifecycle event on the owner's thread.</strong> The provider's own arrays have no lock, so
+  <a href="attachto.html">AttachTo</a>, <a href="detachfrom.html">DetachFrom</a>, <a href="detachall.html">DetachAll</a> and the const
+  reporting reads are written to be driven by one owner. What makes detaching safe against a concurrent drain is not a lock on this object
+  but the target stream's queue lock, taken per lane inside
+  <a href="unregisterfromstream.html">UnregisterFromStream</a>.
+</div>
+
+<h2 id="template">Template parameters</h2>
+
+<p>None. <code>TaskProvider</code> is an abstract base with one pure virtual entry, <a href="produce.html">Produce</a>.</p>
+
+<h2 id="properties">Class properties</h2>
+
+<table>
+  <tr><th>Type + Name</th><th>Default Value</th><th>Description</th></tr>
+  <tr><td><code>static constexpr TStreamIndex MaxAttachedStreams = 64;</code> <span class="badge">public static</span></td><td><code>64</code></td><td>How many streams one provider may feed. The bound "has to clear the number of streams an ordinary machine has" — feeding every worker stream is a thing providers do, and R35's two lanes per worker double the attachments. Exceeding it asserts, reports, and drops the attachment</td></tr>
+  <tr><td><code>static constexpr std::uint8_t LaneBitFifo = 1U &lt;&lt; 0;</code> <span class="badge">public static</span></td><td><code>1</code></td><td>The FIFO lane's bit in an attachment's lane mask</td></tr>
+  <tr><td><code>static constexpr std::uint8_t LaneBitPriority = 1U &lt;&lt; 1;</code> <span class="badge">public static</span></td><td><code>2</code></td><td>The priority lane's bit; the two are named explicitly rather than derived from <code>ELane</code>, because <code>ELane::None</code> occupies zero and a positional encoding would give "no lane" a bit a stream could match</td></tr>
+  <tr><td><code>StaticString name;</code> <span class="badge">private</span></td><td>the constructor's argument</td><td>Names the provider in every report, including the two failure reports whose whole purpose is to say which producer was lost</td></tr>
+  <tr><td><code>TaskSystem&amp; taskSystem;</code> <span class="badge">private</span></td><td>the constructor's argument</td><td>Where tasks are created and whose streams are attached to; held as a reference, so a provider cannot outlive the system it was built against without dangling</td></tr>
+  <tr><td><code>std::array&lt;TStreamIndex, MaxAttachedStreams&gt; attached{};</code> <span class="badge">private</span></td><td>all <code>0</code></td><td>Attachment order, packed from the front; <a href="detachfrom.html">DetachFrom</a> shift-compacts it, so a position is not stable across a detach</td></tr>
+  <tr><td><code>std::array&lt;std::uint8_t, MaxAttachedStreams&gt; lanes{};</code> <span class="badge">private</span></td><td>all <code>0</code></td><td>One lane mask per attachment — a stream appears once with both bits set if it was attached on both lanes</td></tr>
+  <tr><td><code>TStreamIndex attachedCount = 0;</code> <span class="badge">private</span></td><td><code>0</code></td><td>How many slots are in use; the loop bound of every read here and of <a href="getattachedcount.html">GetAttachedCount</a></td></tr>
+  <tr><td><code>int registeredCount = 0;</code> <span class="badge">private</span></td><td><code>0</code></td><td>How many live streams currently hold this object's pointer, and what <a href="destructor.html">~TaskProvider</a> asserts on. It counts registrations, not attachments</td></tr>
+  <tr><td><code>std::atomic&lt;bool&gt; stopRequested{false};</code> <span class="badge">private</span></td><td><code>false</code></td><td>One-way flag: released by <a href="stop.html">Stop</a>, acquired by <a href="isstoprequested.html">IsStopRequested</a>, and never cleared by anything</td></tr>
+</table>
+
+<h2 id="methods">Class methods</h2>
+
+<table class="methods">
+  <tr><th>Name</th><th>Signature</th><th>What a caller depends on</th></tr>
+  <tr><td><a href="lanebit.html"><code>LaneBit</code></a></td><td class="sig">static constexpr std::uint8_t LaneBit(StreamDrainPolicy::ELane lane) noexcept</td><td>The mask an <code>ELane</code> claims, or zero for <code>ELane::None</code>.</td></tr>
+  <tr><td><a href="constructors.html"><code>TaskProvider</code></a></td><td class="sig">explicit TaskProvider(StaticString name, TaskSystem&amp; targetSystem) noexcept</td><td>Names the producer and fixes the task system it creates in; copies are deleted.</td></tr>
+  <tr><td><a href="destructor.html"><code>~TaskProvider</code></a></td><td class="sig">virtual ~TaskProvider()</td><td>Asserts that no live stream still holds this object's pointer.</td></tr>
+  <tr><td><a href="produce.html"><code>Produce</code></a></td><td class="sig">virtual std::optional&lt;WorkItem&gt; Produce(const TaskProduceContext&amp; context) noexcept = 0</td><td>Pure: hand over the next item or report none, on the draining thread with its queue lock held.</td></tr>
+  <tr><td><a href="attachto.html"><code>AttachTo</code></a></td><td class="sig">void AttachTo(TStreamIndex stream, StreamDrainPolicy::ELane lane) noexcept</td><td>Start being drained by one lane of one stream; duplicates are per (stream, lane).</td></tr>
+  <tr><td><a href="detachfrom.html"><code>DetachFrom</code></a></td><td class="sig">void DetachFrom(TStreamIndex stream) noexcept</td><td>Stop feeding one stream and wait for a drain already in flight on it.</td></tr>
+  <tr><td><a href="detachall.html"><code>DetachAll</code></a></td><td class="sig">void DetachAll() noexcept</td><td>Detach from every stream this provider is attached to.</td></tr>
+  <tr><td><a href="getattachedcount.html"><code>GetAttachedCount</code></a></td><td class="sig">[[nodiscard]] TStreamIndex GetAttachedCount() const noexcept</td><td>How many streams this provider currently feeds.</td></tr>
+  <tr><td><a href="getattachedstream.html"><code>GetAttachedStream</code></a></td><td class="sig">[[nodiscard]] TStreamIndex GetAttachedStream(TStreamIndex index) const noexcept</td><td>The attached stream at a position; out-of-range asserts and returns 0.</td></tr>
+  <tr><td><a href="isattachedto.html"><code>IsAttachedTo</code></a></td><td class="sig">[[nodiscard]] bool IsAttachedTo(TStreamIndex stream) const noexcept</td><td>Whether a stream is currently draining this provider on any lane.</td></tr>
+  <tr><td><a href="getattachedlanes.html"><code>GetAttachedLanes</code></a></td><td class="sig">[[nodiscard]] std::uint8_t GetAttachedLanes(TStreamIndex stream) const noexcept</td><td>The lane mask for one stream, or zero when not attached to it.</td></tr>
+  <tr><td><a href="stop.html"><code>Stop</code></a></td><td class="sig">void Stop() noexcept</td><td>Sets the flag; removes nothing from any stream's list, and is not cancellation.</td></tr>
+  <tr><td><a href="isstoprequested.html"><code>IsStopRequested</code></a></td><td class="sig">[[nodiscard]] bool IsStopRequested() const noexcept</td><td>Readable from any thread; one-way, and the answer any handle also sees.</td></tr>
+  <tr><td><a href="gethandle.html"><code>GetHandle</code></a></td><td class="sig">[[nodiscard]] TaskHandle GetHandle() noexcept</td><td>A token that can request this provider's stop from elsewhere.</td></tr>
+  <tr><td><a href="getname.html"><code>GetName</code></a></td><td class="sig">[[nodiscard]] StaticString GetName() const noexcept</td><td>The name given at construction, by value.</td></tr>
+  <tr><td><a href="makewholeitem.html"><code>MakeWholeItem</code></a></td><td class="sig">static WorkItem MakeWholeItem(Task&amp; task, uint8_t priority = 0) noexcept</td><td>Protected: declare a one-item join and return the item that fills it.</td></tr>
+  <tr><td><a href="registeronstream.html"><code>RegisterOnStream</code></a></td><td class="sig">void RegisterOnStream(TStreamIndex stream, StreamDrainPolicy::ELane lane) noexcept</td><td>Private: put this provider on a real stream's lane list and count the registration.</td></tr>
+  <tr><td><a href="unregisterfromstream.html"><code>UnregisterFromStream</code></a></td><td class="sig">void UnregisterFromStream(TStreamIndex stream, StreamDrainPolicy::ELane lane) noexcept</td><td>Private: remove it under that stream's lock, which is what waits out a drain in flight.</td></tr>
+</table>
+
+<h2 id="non-member">Non-member helper functions</h2>
+
+<p>
+  None. The two types the class names are forward-declared at the top of the header — <code>TaskHandle</code> and
+  <code>TaskSystem</code> — so a provider's translation unit need not know how a token is built or where a stream lives
+  (<code>Engine/Core/TaskProvider.h</code>).
+</p>
+
+<h2 id="coverage">Coverage</h2>
+
+<table>
+  <tr><th>Not documented here</th><th>Why</th></tr>
+  <tr><td>What <code>TaskStream::AttachProvider</code> and <code>DetachProvider</code> do to a lane list, and the eight-provider ceiling per
+    lane</td>
+    <td><code>TaskStream</code>'s contract; the pages here state what this class observes when they refuse</td></tr>
+  <tr><td>How the drain asks providers, and how the CPU budget gates that ask (R39)</td>
+    <td><code>TaskStream::Update</code> and <code>DrainProvidersLocked</code>; this class owns the answer to a call, not the decision to make
+    one</td></tr>
+  <tr><td>How a produced item's result is routed to a successor's stream</td>
+    <td><code>TaskSystem::DispatchSuccessor</code> and the result packet's destination byte; a provider's job ends when the item is handed
+    over</td></tr>
+  <tr><td>Whether a shipping subsystem produces work through this interface</td>
+    <td>Answered above: no derived provider and no attachment exists outside the tests, and every page states the absence rather than
+    implying a user</td></tr>
+</table>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; TaskProvider</a></span>
+  <span><a href="index.html#methods">All TaskProvider methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

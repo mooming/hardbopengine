@@ -20,6 +20,7 @@ namespace hbe
 ///          consistent, which is exactly why the defect survived.
 /// @note `Get` refuses indices at or above `NumBits`, so padding bits in a partially filled last word are unreachable
 ///       and their zero value (which this encoding reads as "set") never becomes permission to run something.
+/// API reference: docs/Core/TaskStreamAffinityBase/index.html
 template <unsigned int NumBits>
 class TaskStreamAffinityBase final
 {

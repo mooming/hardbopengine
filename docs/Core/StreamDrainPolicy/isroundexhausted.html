@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>StreamDrainPolicy::IsRoundExhausted — Core module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a class="current" href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Core</a> /
+  <a href="index.html">StreamDrainPolicy</a> / IsRoundExhausted
+</p>
+
+<h1><span class="fn">IsRoundExhausted</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::StreamDrainPolicy</span>
+  <span class="tag">Engine/Core/StreamDrainPolicy.cpp</span>
+  Whether the stream's total has passed its allowance - always false when unlimited.
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>[[nodiscard]] bool IsRoundExhausted() const noexcept</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  Defined in <code>Engine/Core/StreamDrainPolicy.cpp</code> as <code>StreamDrainPolicy::IsRoundExhausted()</code>.
+</p>
+
+<pre><code>if (allowance.count() &lt;= 0.0)
+{
+    return false;
+}
+
+return (fifoUsed + priorityUsed) &gt;= std::chrono::duration_cast&lt;std::chrono::nanoseconds&gt;(allowance);</code></pre>
+
+<p class="meta">From Engine/Core/StreamDrainPolicy.cpp, StreamDrainPolicy::IsRoundExhausted()</p>
+
+<p>
+  The first test is the load-bearing one: for an unlimited stream this is <strong>always false</strong>, because a round is
+  defined by the allowance. A caller that gated its reset on this answer alone would never reset an unbudgeted stream — which
+  is why <a href="committake.html">CommitTake</a> replenishes credit on its own terms rather than waiting for a round to
+  close.
+</p>
+
+<p>
+  The comparison is the same sum <a href="chooselane.html">ChooseLane</a> uses before it returns a lane, so the two agree:
+  when this says true, <a href="chooselane.html">ChooseLane</a> answers <code>ELane::None</code> whatever the lanes hold.
+</p>
+
+<div class="gap">
+  <strong>Nothing outside this class's tests asks the question.</strong> In <code>Engine/</code> and
+  <code>Applications/</code> the only call sites are in <code>Engine/Core/StreamDrainPolicy.cpp</code>'s own test collection.
+  <code>TaskStream::Update()</code> ends the round on a different event — a budget-window advance — so a stream's shares
+  reopen on the window cadence, not when this predicate turns true
+  (<code>Engine/Core/TaskStream.cpp</code>). Treat this as the accessor that states the round's state, not as the hook that
+  closes it.
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<p>None.</p>
+
+<h2 id="return">Return value</h2>
+
+<table>
+  <tr><th>Type</th><th>What you get</th></tr>
+  <tr><td><code>bool</code></td><td><code>true</code> when an allowance is configured and the two lanes' accumulations have reached it; <code>false</code> for an unlimited stream, always</td></tr>
+</table>
+
+<h2 id="example">Examples</h2>
+
+<p class="meta">From Engine/Core/StreamDrainPolicy.cpp, StreamDrainPolicyTest</p>
+
+<pre><code>const auto overspill =
+        std::chrono::duration_cast&lt;std::chrono::nanoseconds&gt;(std::chrono::duration&lt;double, std::milli&gt;{0.6});
+policy.ChargeFifo(overspill);
+policy.ChargePriority(overspill);
+
+if (!policy.IsRoundExhausted())
+{
+    ls &lt;&lt; "1.2 ms charged against a 1 ms allowance did not exhaust the round." &lt;&lt; lferr;
+}</code></pre>
+
+<p>
+  Both lanes charged past their own half-share but each still inside the stream total would not exhaust anything; it is the
+  sum that closes a round. The same test then requires <a href="chooselane.html">ChooseLane</a> to answer
+  <code>None</code>, and <a href="endround.html">EndRound</a> to reopen both.
+</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; StreamDrainPolicy</a></span>
+  <span><a href="index.html#methods">All StreamDrainPolicy methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

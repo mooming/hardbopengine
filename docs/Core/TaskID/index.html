@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TaskID — Core module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a class="current" href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This class</h3>
+  <ul>
+    <li><a href="#description">Class description</a></li>
+    <li><a href="#template">Template parameters</a></li>
+    <li><a href="#properties">Class properties</a></li>
+    <li><a href="#methods">Class methods</a></li>
+    <li><a href="#non-member">Non-member helper functions</a></li>
+    <li><a href="#coverage">Coverage</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Core</a> /
+  TaskID
+</p>
+
+<h1>TaskID</h1>
+<p class="subtitle">
+  <span class="tag">Engine/Core/TaskID.h</span>
+  <span class="tag">namespace hbe</span>
+  <span class="tag">final</span>
+  identity of a tracked task: which registry record holds it, and which turn of that record it was issued for
+</p>
+
+<h2 id="description">Class description</h2>
+
+<p>
+  <code>struct TaskID final</code> at <code>Engine/Core/TaskID.h</code>: which registry record holds a task, and which
+  turn of that record this identity was issued for. It replaces what used to be a reference into the task's memory. A
+  work item that held a reference could be run against — or dropped onto — whatever task later occupied that
+  address; an index plus generation turns that into a checkable claim: the index says which record to look at, the
+  generation says whether that record is still the one the ID named when it was issued. A packet naming a dead task is
+  recognised and dropped rather than followed (R7, <code>docs/TaskSystemRedesign.md</code>).
+</p>
+
+<p>
+  Every live ID is minted in one function, <code>TaskRegistry::Create()</code> in
+  <code>Engine/Core/TaskRegistry.cpp</code>: it takes a free record, adds one to that record's stored generation,
+  loads the task into the record under the new identity, and returns the pair.
+</p>
+
+<pre><code>const TaskID::TGeneration generation = record.generation.load(std::memory_order::relaxed) + 1;
+record.generation.store(generation, std::memory_order::relaxed);
+record.successor = {};
+record.task.LoadIntoRecord(TaskID{recordIndex, generation}, taskName, func, userData);
+record.inUse.store(true, std::memory_order::release);
+usedRecords.fetch_add(1, std::memory_order::relaxed);
+
+return TaskID{recordIndex, generation};</code></pre>
+
+<p class="meta">From Engine/Core/TaskRegistry.cpp, TaskRegistry::Create()</p>
+
+<p>
+  A default-constructed ID refers to nothing (<code>index = NullIndex</code>), and a refusal is reported the same way:
+  when no record is free, <code>TaskRegistry::Create()</code> logs and <code>return {};</code>. One predicate —
+  <a href="isnull.html">IsNull</a> — therefore covers both cases, and the engine relies on it:
+  <code>TaskSystem::DispatchSuccessor()</code> in <code>Engine/Core/TaskSystem.cpp</code> ends routing on a null
+  successor ID.
+</p>
+
+<div class="note">
+  <strong>The generation is 32 bits deliberately.</strong> A stale ID can only alias a live task after the very same
+  record has been reused four billion times, which no run reaches. A 16-bit generation would make aliasing an
+  everyday hazard in a table of thousands of records and defeat the reason a generation is carried at all.
+</div>
+
+<div class="gap">
+  <strong>Equality compares both halves.</strong> Two IDs naming the same record at different generations are
+  different tasks. An ID wrapper that ignores the generation to "just get the task" reintroduces exactly the defect
+  this type exists to close; the defaulted <code>operator==</code> cannot be talked into half a comparison, and a
+  hand-rolled index-only comparison is the way to lose that protection.
+</div>
+
+<div class="gap">
+  <strong>Nothing in the type stops a hand-written ID.</strong> <code>TaskID</code> is an aggregate whose two members
+  are public data — that is how <code>TaskRegistry::Create()</code> builds one with <code>TaskID{recordIndex,
+  generation}</code> — so no constructor enforces that an ID came from the registry. A fabricated ID is caught the
+  same way a stale one is: <code>TaskRegistry::Find()</code> answers <code>nullptr</code> unless the record is live
+  <em>and</em> its generation matches. Hand-writing an ID is therefore never a way past the registry, but it is also
+  never reported as a mistake, and a pair copied out of a log line is indistinguishable from an ID that was issued.
+</div>
+
+<h2 id="template">Template parameters</h2>
+
+<p>None. <code>TaskID</code> is a concrete <code>final</code> struct with no template parameter.</p>
+
+<h2 id="properties">Class properties</h2>
+
+<table>
+  <tr><th>Type + Name</th><th>Default Value</th><th>Description</th></tr>
+  <tr><td><code>using TIndex = std::size_t;</code> <span class="badge">member type</span></td>
+    <td><span class="muted">not applicable</span></td>
+    <td>Record-index type; <code>TaskRegistry</code> numbers its records in the same type.</td></tr>
+  <tr><td><code>using TGeneration = std::uint32_t;</code> <span class="badge">member type</span></td>
+    <td><span class="muted">not applicable</span></td>
+    <td>Record-turn type; <code>TaskRegistry::Record::generation</code> is an atomic of this type. The width is the aliasing bound described above.</td></tr>
+  <tr><td><code>static constexpr TIndex NullIndex = std::numeric_limits&lt;TIndex&gt;::max();</code> <span class="badge">public</span></td>
+    <td><code>std::numeric_limits&lt;TIndex&gt;::max()</code></td>
+    <td>The index that names no record, so a default-constructed ID refers to nothing.</td></tr>
+  <tr><td><code>TIndex index = NullIndex;</code> <span class="badge">public</span></td>
+    <td><code>NullIndex</code></td>
+    <td>Which registry record this ID names; <code>NullIndex</code> names none.</td></tr>
+  <tr><td><code>TGeneration generation = 0;</code> <span class="badge">public</span></td>
+    <td><code>0</code></td>
+    <td>Which turn of that record this ID was issued for; <code>TaskRegistry::Create()</code> stores one more than the record held before issuing it.</td></tr>
+</table>
+
+<h2 id="methods">Class methods</h2>
+
+<table class="methods">
+  <tr><th>Name</th><th>Signature</th><th>What a caller depends on</th></tr>
+  <tr><td><a href="isnull.html"><code>IsNull</code></a></td>
+    <td class="sig">[[nodiscard]] constexpr bool IsNull() const noexcept</td>
+    <td>The one test for "names no task"; it covers the default-constructed ID and a refused creation alike, but it does not prove the named task is still live.</td></tr>
+  <tr><td><code>operator==</code></td>
+    <td class="sig">friend constexpr bool operator==(const TaskID&amp; lhs, const TaskID&amp; rhs) noexcept = default</td>
+    <td>No page — defaulted. Compares <code>index</code> and <code>generation</code> together, so a record reissued to a new task never equals the old occupant's ID; <code>!=</code> comes from this in C++20, and the function is a hidden friend found by argument-dependent lookup.</td></tr>
+</table>
+
+<h2 id="non-member">Non-member helper functions</h2>
+
+<p>None. The header's only namespace-scope contents are the type itself; <code>operator==</code> is declared inside the
+class and is found by argument-dependent lookup, not as a namespace-scope function.</p>
+
+<h2 id="coverage">Coverage</h2>
+
+<table>
+  <tr><th>Not documented here</th><th>Why</th></tr>
+  <tr><td>When an ID is issued, and exactly when a generation advances</td>
+    <td>That is <code>TaskRegistry</code>'s contract; its folder under <code>docs/Core/</code> is not authored yet, so
+    the claims above are cited to <code>Engine/Core/TaskRegistry.h</code> and <code>Engine/Core/TaskRegistry.cpp</code>
+    instead of being documented here.</td></tr>
+  <tr><td>What a lookup by ID can legally answer (liveness, result, successor)</td>
+    <td>Split between the registry and <a href="../TaskSystem/find-task.html">TaskSystem::FindTask</a>; the
+    <code>Task</code> record itself is a separate entry whose folder is not authored yet.</td></tr>
+  <tr><td>Where an ID is stored, and which drop sites treat it as stale</td>
+    <td>The item-side field is <a href="../WorkItem/index.html">WorkItem</a>'s <code>taskID</code> row; the sites that
+    act on it belong to <code>TaskStream</code>, whose folder is not authored yet. What was verified here is only
+    <code>TaskStream::FireAbandonedNotice()</code>, which passes <code>item.taskID</code> to the notice, and
+    <code>TaskStream::ReportAgedOutWorkItem()</code>, which logs <code>index</code> and <code>generation</code>.</td></tr>
+  <tr><td>The memory ordering behind the generation read in <code>TaskRegistry::Create()</code> and
+    <code>TaskRegistry::Find()</code></td>
+    <td>A registry locking and publication contract; it belongs to <code>TaskRegistry</code>'s pages and to the design
+    documents, not to the identity type.</td></tr>
+</table>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; TaskID</a></span>
+  <span><a href="index.html#methods">All TaskID methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

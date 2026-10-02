@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TaskProvider::DetachAll — Core module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a class="current" href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Core</a> /
+  <a href="index.html">TaskProvider</a> / DetachAll
+</p>
+
+<h1><span class="fn">DetachAll</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::TaskProvider</span>
+  <span class="tag">Engine/Core/TaskProvider.cpp</span>
+  Detach from every stream this provider is attached to, which is what makes destruction legal.
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>void DetachAll() noexcept</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  Defined in <code>Engine/Core/TaskProvider.cpp</code> as <code>TaskProvider::DetachAll()</code>; the body walks the slot list from the back
+  and reuses the single-stream path.
+</p>
+
+<pre><code>for (TStreamIndex index = attachedCount - 1; index &gt;= 0; --index)
+{
+    DetachFrom(attached[static_cast&lt;size_t&gt;(index)]);
+}</code></pre>
+
+<p class="meta">From Engine/Core/TaskProvider.cpp</p>
+
+<p>
+  Nothing here duplicates <a href="detachfrom.html">DetachFrom</a>'s work, which is the point: the per-lane unregistration, the wait for a drain
+  in flight and the compaction are the same code, so a provider cannot be half-detached by one path and fully detached by the other. Walking
+  backwards is what makes the compaction safe — every entry still to be visited sits below the one being removed, so nothing shifts out from
+  under the loop.
+</p>
+
+<div class="note">
+  <strong>This is the call that makes destruction legal.</strong> The destructor asserts that the provider is registered on no live stream
+  (R37), and the probes satisfy it by calling this from their own destructors: "a provider that is destroyed while registered is exactly the
+  dangling pointer the assert exists to catch" (<code>Engine/Core/TaskProvider.cpp</code>). Because the assert is compiled away outside the
+  Debug configuration (<code>CMakeLists.txt</code> defines <code>__DEBUG__</code> for Debug only), a shipping owner has this call and the
+  discipline, not the check.
+</div>
+
+<div class="gap">
+  <strong>Each stream's lock is taken in turn, so a provider feeding many streams waits many times.</strong>
+  <a href="detachfrom.html">DetachFrom</a> enters a stream to unregister a lane, and a provider attached to a dozen workers — an ordinary
+  figure, since <code>MaxAttachedStreams</code> is sized for every stream on a machine — serialises a dozen short critical sections, each
+  waiting for whatever that stream's current <a href="produce.html">Produce</a> is doing. Detaching is a teardown path, and it is not cheap
+  enough to belong in a frame.
+</div>
+
+<div class="gap">
+  <strong>The loop's bound is the array itself, so a stream recorded twice would be visited twice — and cannot be.</strong>
+  <a href="attachto.html">AttachTo</a> keeps one slot per stream, merging lane bits rather than adding an entry, so every value in
+  <code>attached</code> is distinct and one pass is enough (<code>Engine/Core/TaskProvider.cpp</code>). That invariant is what lets this loop
+  be three lines.
+</div>
+
+<div class="note">
+  <strong>After this call the provider is inert but intact.</strong> Its slot list is empty, <code>registeredCount</code> is back to zero, and
+  its <a href="stop.html">stop flag</a> is untouched — a stopped provider that is detached and re-attached is still stopped. Re-attaching after
+  a detach is legal and registers afresh.
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<p>None. There is no "detach from streams that exist" variant: everything recorded is visited, including an index the engine never had, which is removed from the list and never needs a lock.</p>
+
+<h2 id="return">Return value</h2>
+
+<p><code>void</code>. Nothing reports how many streams were released; a caller that needs the number reads <a href="getattachedcount.html">GetAttachedCount</a> on both sides.</p>
+
+<h2 id="example">Examples</h2>
+
+<p class="meta">From Engine/Core/TaskProvider.cpp, TaskProviderTest</p>
+
+<pre><code>deadProvider.DetachAll();</code></pre>
+
+<p>
+  Called while the provider is still alive and the stream may still be draining it, which is the ordering that matters: the call returns only
+  once each lane's lock has been taken, so the object can then go out of scope without a worker holding its address. The test afterwards
+  asserts on what it observed rather than on what the detach reported, because this function reports nothing
+  (<code>Engine/Core/TaskProvider.cpp</code>).
+</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; TaskProvider</a></span>
+  <span><a href="index.html#methods">All TaskProvider methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

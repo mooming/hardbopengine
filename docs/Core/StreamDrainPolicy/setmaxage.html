@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>StreamDrainPolicy::SetMaxAge — Core module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a class="current" href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Core</a> /
+  <a href="index.html">StreamDrainPolicy</a> / SetMaxAge
+</p>
+
+<h1><span class="fn">SetMaxAge</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::StreamDrainPolicy</span>
+  <span class="tag">Engine/Core/StreamDrainPolicy.cpp</span>
+  The oldest work this stream will still run; zero is unlimited.
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>void SetMaxAge(std::chrono::nanoseconds maxAge) noexcept</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  Defined in <code>Engine/Core/StreamDrainPolicy.cpp</code> as <code>StreamDrainPolicy::SetMaxAge()</code>; the body is
+  <code>StreamDrainPolicy::maxAge = maxAge;</code>. One store, no validation — a negative ceiling is stored as given, and
+  <a href="isoverage.html">IsOverAge</a>'s first guard (<code>maxAge.count() &lt;= 0</code>) then makes it mean unlimited
+  rather than "everything is too old".
+</p>
+
+<p>
+  The ceiling is per stream, not global, and it is a ceiling on <em>admission</em>: the check runs on the worker thread that is
+  about to execute one specific offer (<code>Engine/Core/TaskStream.cpp</code>), so a work item's age is judged against
+  <code>offerTime</code> — when it entered this stream — rather than against its type's global age limit.
+</p>
+
+<div class="note">
+  <strong>Zero is unlimited, and it is also the default.</strong> The header states that a stream with no ceiling behaves as it
+  did before the feature existed (<code>Engine/Core/StreamDrainPolicy.h</code>), and the member's initialiser is
+  <code>std::chrono::nanoseconds maxAge{{}}</code>. The test <em>A stream with no max age ages nothing out, and work it cannot
+  date is never judged</em> calls this the guard that "decides whether the feature is off by default or merely unreadable"
+  (<code>Engine/Core/StreamDrainPolicy.cpp</code>) — without it, every existing stream would start dropping tasks whose age
+  happened to exceed a zero ceiling.
+</div>
+
+<div class="gap">
+  <strong>A ceiling that is shorter than one task's run time strands work.</strong> An item is judged when it is taken, so
+  anything still running when the ceiling passes is not recalled — but its successor, or the same item re-queued unfinished,
+  will be judged again on its next attempt. A ceiling set below the stream's typical task duration turns staleness into a
+  permanent refusal, and the only trace is the stream's age-drop counter.
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<table>
+  <tr><th>Parameter</th><th>Type</th><th>Requirement</th></tr>
+  <tr><td><code>maxAge</code></td><td><code>std::chrono::nanoseconds</code></td><td>Oldest work this stream still runs. Zero is unlimited; a negative value behaves as unlimited through the guard, not through intent</td></tr>
+</table>
+
+<h2 id="return">Return value</h2>
+
+<p><code>void</code>. Read it back with <a href="getmaxage.html">GetMaxAge</a>, which is what a change-then-restore relies on.</p>
+
+<h2 id="example">Examples</h2>
+
+<p class="meta">From Engine/Core/TaskStream.h, TaskStream::SetMaxAge()</p>
+
+<pre><code>void SetMaxAge(std::chrono::nanoseconds maxAge) noexcept
+{
+    drainPolicy.SetMaxAge(maxAge);
+}</code></pre>
+
+<p>
+  A stream forwards this without a thread assert — unlike <code>TaskStream::ConfigureRate()</code>, which
+  <code>Assert</code>s that the caller is the owning thread. The ceiling is read on a worker thread during
+  <code>TryExecuteWorkItem</code>, so a cross-thread write is a plain data race that the class does not detect; the discipline
+  is the caller's.
+</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; StreamDrainPolicy</a></span>
+  <span><a href="index.html#methods">All StreamDrainPolicy methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

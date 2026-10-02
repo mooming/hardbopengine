@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CPUBudget — Core module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a class="current" href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This class</h3>
+  <ul>
+    <li><a href="#description">Class description</a></li>
+    <li><a href="#template">Template parameters</a></li>
+    <li><a href="#properties">Class properties</a></li>
+    <li><a href="#methods">Class methods</a></li>
+    <li><a href="#non-member">Non-member helper functions</a></li>
+    <li><a href="#coverage">Coverage</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Core</a> /
+  CPUBudget
+</p>
+
+<h1>CPUBudget</h1>
+<p class="subtitle">
+  <span class="tag">Engine/Core/CPUBudget.h</span>
+  One stream's allowance of measured CPU time, configured as a duration and spent as work runs.
+</p>
+
+<h2 id="description">Class description</h2>
+
+<p>
+  <code>class CPUBudget</code> at <code>Engine/Core/CPUBudget.h</code>: one stream's allowance of measured CPU time,
+  configured as a duration and spent as work runs. A stream asks <a href="cantakework.html">CanTakeWork</a> before it acquires
+  anything and stops acquiring while the allowance is spent. Nothing is preempted — a task already running runs to completion,
+  so a single long task overshoots the allowance by its own length, and that overshoot is bounded by the longest task rather
+  than by the budget (<code>Engine/Core/CPUBudget.h</code>).
+</p>
+
+<table>
+  <tr><th>Quantity</th><th>Unit</th><th>Whose decision it encodes</th></tr>
+  <tr><td>Allowance — <a href="configure.html">Configure</a>, <a href="getallowance.html">GetAllowance</a></td><td><code>std::chrono::duration&lt;double&gt;</code>, seconds</td><td>What a caller can put in a config file and reason about</td></tr>
+  <tr><td>Spending — <a href="begintask.html">BeginTask</a> / <a href="endtask.html">EndTask</a>, <a href="getaccumulated.html">GetAccumulated</a></td><td>the owning thread's CPU time, nanoseconds</td><td>What the stream actually consumed, excluding time it spent blocked</td></tr>
+</table>
+
+<p>
+  The two are different quantities deliberately: a budget that charged wall time would bill a stream for work that was only
+  ever blocked. The platform clock behind the measurement is
+  <code>clock_gettime(CLOCK_THREAD_CPUTIME_ID)</code> on macOS and Linux and <code>GetThreadTimes</code> on Windows
+  (<code>Engine/OSAL/OSXThread.cpp</code>, <code>Engine/OSAL/LinuxThread.cpp</code>, <code>Engine/OSAL/WindowsThread.cpp</code>),
+  and the engine's own test of it is that 80 ms of sleep advances it by less than 20 ms
+  (<em>Thread CPU Time Ignores Sleeping</em>, <code>Engine/OSAL/OSThread.cpp</code>).
+</p>
+
+<div class="note">
+  <strong>Zero means unlimited, and that is the state every shipping stream is in.</strong> An allowance of zero is what a
+  stream that has not been given a budget gets, so the primitive is inert until something configures it. Searching
+  <code>Engine/</code> and <code>Applications/</code> for callers of <code>TaskStream::ConfigureBudget</code> and
+  <code>TaskStream::RequestBudget</code> finds only the test app
+  (<code>Applications/EngineTest/TestMain.cpp</code>) and the unit-test region of
+  <code>Engine/Core/TaskSystem.cpp</code> — no engine configuration sets an allowance, so today this class measures and
+  refuses nothing in a shipping build.
+</div>
+
+<div class="note">
+  <strong>An unmeasured stream pays nothing for the budget, by design.</strong> A stream with no allowance does not call
+  <a href="begintask.html">BeginTask</a> or <a href="endtask.html">EndTask</a> at all: a measurement that cannot change a
+  decision is a syscall billed to every task for nothing, and an unlimited budget cannot change a decision. The consequence a
+  reader must not misread is that <code>TaskStream::GetAccumulatedCPUTime()</code> stays zero until an allowance is set — that
+  is the absence of accounting, not a task that cost nothing (<code>Engine/Core/TaskStream.h</code>, restated on
+  <a href="getaccumulated.html">GetAccumulated</a>).
+</div>
+
+<div class="gap">
+  <strong>Not thread-safe for the things that matter, and the split is exact.</strong> A budget belongs to exactly one stream
+  thread, which is the thread whose CPU time is charged; <code>allowance</code>, <code>taskStart</code> and
+  <code>isMeasuring</code> are plain fields that only that thread touches. The two atomics are the deliberate exceptions:
+  <code>requestedAllowanceNanos</code> carries a request from any thread to the owner, and
+  <code>accumulatedNanos</code> is atomic because it is read for diagnosis from threads that do not own the budget. "That
+  makes the read well-defined; it does not make <a href="begintask.html">BeginTask</a> and
+  <a href="endtask.html">EndTask</a> portable to another thread" (<code>Engine/Core/CPUBudget.h</code>).
+</div>
+
+<div class="note">
+  <strong>The gate goes in front of acquiring work and never in front of finishing it.</strong> Refusing to dequeue is the
+  mechanism; refusing to finish work already in flight would turn a budget into a way to strand results.
+  <code>TaskStream::MayTakeNewWork()</code> states the rule and its one shipping wiring: in front of the general queue, and not
+  in front of a stream's own lanes, because a lane entry is either a task nobody has taken or one taken and paused before it
+  finished, and refusing the lane would strand the second kind (<code>Engine/Core/TaskStream.h</code>).
+</div>
+
+<div class="note">
+  <strong>A window is what makes a spent budget spendable again, and it is reopened by the owner.</strong> The base stream's
+  pass calls <code>TaskSystem::RunBudgetWindowPass()</code>, which signals every stream
+  (<code>Engine/Core/TaskSystem.cpp</code>); each stream then calls <a href="reset.html">Reset</a> on its own thread at the top
+  of its next loop. A reset executed on another thread would land between that thread's
+  <a href="begintask.html">BeginTask</a> and <a href="endtask.html">EndTask</a>, which is why the signal is a flag and not a
+  call (<code>Engine/Core/TaskStream.h</code>).
+</div>
+
+<h2 id="template">Template parameters</h2>
+
+<p>None. <code>CPUBudget</code> is a concrete class, one instance per <code>TaskStream</code>.</p>
+
+<h2 id="properties">Class properties</h2>
+
+<table>
+  <tr><th>Type + Name</th><th>Default Value</th><th>Description</th></tr>
+  <tr><td><code>static constexpr long long PendingAllowanceNone = -1;</code> <span class="badge">private static</span></td><td><code>-1</code></td><td>The "nothing is waiting" value of the pending request slot, chosen because no allowance a caller states is negative</td></tr>
+  <tr><td><code>std::chrono::duration&lt;double&gt; allowance{};</code> <span class="badge">private</span></td><td><code>{}</code></td><td>The configured allowance, zero meaning unlimited. Deliberately unsynchronised: only the owning thread writes it, through <a href="configure.html">Configure</a> or <a href="applyrequestedallowance.html">ApplyRequestedAllowance</a></td></tr>
+  <tr><td><code>std::atomic&lt;long long&gt; requestedAllowanceNanos{PendingAllowanceNone};</code> <span class="badge">private</span></td><td><code>PendingAllowanceNone</code></td><td>One slot, not a queue: the most recent request wins, held as nanoseconds because <code>duration&lt;double&gt;</code> has no atomic form worth storing</td></tr>
+  <tr><td><code>std::atomic&lt;long long&gt; accumulatedNanos{0};</code> <span class="badge">private</span></td><td><code>0</code></td><td>CPU time charged since the last <a href="reset.html">Reset</a>; atomic so a diagnostic thread may read it, written only by the owner</td></tr>
+  <tr><td><code>std::chrono::nanoseconds taskStart{};</code> <span class="badge">private</span></td><td><code>{}</code></td><td>The CPU-time reading taken by <a href="begintask.html">BeginTask</a>, meaningful only while measuring</td></tr>
+  <tr><td><code>bool isMeasuring = false;</code> <span class="badge">private</span></td><td><code>false</code></td><td>Whether a <a href="begintask.html">BeginTask</a> is awaiting its <a href="endtask.html">EndTask</a>; the guard that makes an unmatched call lose the charge instead of charging the thread's whole life</td></tr>
+</table>
+
+<h2 id="methods">Class methods</h2>
+
+<table class="methods">
+  <tr><th>Name</th><th>Signature</th><th>What a caller depends on</th></tr>
+  <tr><td><a href="configure.html"><code>Configure</code></a></td><td class="sig">void Configure(std::chrono::duration&lt;double&gt; allowance) noexcept</td><td>Direct store of the allowance; legal only on the owning stream thread, or before the streams start.</td></tr>
+  <tr><td><a href="requestallowance.html"><code>RequestAllowance</code></a></td><td class="sig">void RequestAllowance(std::chrono::duration&lt;double&gt; allowance) noexcept</td><td>The cross-thread route: stores one pending figure atomically, applied later by the owner. Latest request wins.</td></tr>
+  <tr><td><a href="applyrequestedallowance.html"><code>ApplyRequestedAllowance</code></a></td><td class="sig">std::optional&lt;std::chrono::duration&lt;double&gt;&gt; ApplyRequestedAllowance() noexcept</td><td>Applies a pending request once and reports what it applied, or <code>nullopt</code>.</td></tr>
+  <tr><td><a href="getallowance.html"><code>GetAllowance</code></a></td><td class="sig">[[nodiscard]] std::chrono::duration&lt;double&gt; GetAllowance() const noexcept</td><td>The configured allowance; zero means unlimited. Reads an unsynchronised field.</td></tr>
+  <tr><td><a href="begintask.html"><code>BeginTask</code></a></td><td class="sig">void BeginTask() noexcept</td><td>Starts charging the calling thread's CPU time; must be paired on the same thread.</td></tr>
+  <tr><td><a href="endtask.html"><code>EndTask</code></a></td><td class="sig">void EndTask() noexcept</td><td>Adds the measured span; an unpaired call charges nothing rather than poisoning the budget.</td></tr>
+  <tr><td><a href="getaccumulated.html"><code>GetAccumulated</code></a></td><td class="sig">[[nodiscard]] std::chrono::nanoseconds GetAccumulated() const noexcept</td><td>CPU time charged since the last reset — the one figure any thread may read.</td></tr>
+  <tr><td><a href="reset.html"><code>Reset</code></a></td><td class="sig">void Reset() noexcept</td><td>Forgets everything charged and stops measuring; a window boundary falls between tasks.</td></tr>
+  <tr><td><a href="cantakework.html"><code>CanTakeWork</code></a></td><td class="sig">[[nodiscard]] bool CanTakeWork() const noexcept</td><td>Whether the allowance still permits acquiring another task; always true when unlimited.</td></tr>
+</table>
+
+<h2 id="non-member">Non-member helper functions</h2>
+
+<p>
+  None. The header's <code>hbe</code> namespace closes with the class, and the CPU-time clock it reads is
+  <code>OS::GetThreadCPUTime</code>, documented with its platform implementations under OSAL rather than here.
+</p>
+
+<h2 id="coverage">Coverage</h2>
+
+<table>
+  <tr><th>Not documented here</th><th>Why</th></tr>
+  <tr><td>How <code>OS::GetThreadCPUTime</code> works per platform, and what it returns when the platform call fails</td>
+    <td>OSAL's contract — <code>Engine/OSAL/OSXThread.cpp</code>, <code>LinuxThread.cpp</code>,
+    <code>WindowsThread.cpp</code>. The consequence for this class is documented where it bites, on
+    <a href="begintask.html">BeginTask</a> and <a href="endtask.html">EndTask</a></td></tr>
+  <tr><td>When a stream brackets a task, and how the charge reaches <code>StreamDrainPolicy</code></td>
+    <td><code>TaskStream</code>'s contract; the drain policy's own pages own the lane shares derived from the same figure</td></tr>
+  <tr><td>What a budget window is and what cadence it moves on</td>
+    <td><code>TaskSystem::RunBudgetWindowPass</code> and <code>time::GetBaseFramePeriod</code>; this class only receives the
+    resulting <a href="reset.html">Reset</a> and the resulting window count belongs to the task system</td></tr>
+  <tr><td>Whether any shipping configuration sets an allowance</td>
+    <td>Answered above: no. The class is exercised by tests and reachable through <code>TaskStream</code>'s public API, and
+    nothing in a shipping build configures it</td></tr>
+</table>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; CPUBudget</a></span>
+  <span><a href="index.html#methods">All CPUBudget methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

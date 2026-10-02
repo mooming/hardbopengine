@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Task — Core module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a class="current" href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This class</h3>
+  <ul>
+    <li><a href="#description">Class description</a></li>
+    <li><a href="#template">Template parameters</a></li>
+    <li><a href="#properties">Class properties</a></li>
+    <li><a href="#methods">Class methods</a></li>
+    <li><a href="#non-member">Non-member helper functions</a></li>
+    <li><a href="#coverage">Coverage</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Core</a> /
+  Task
+</p>
+
+<h1>Task</h1>
+<p class="subtitle">
+  <span class="tag">Engine/Core/Task.h</span>
+  <span class="tag">final</span>
+  <span class="tag">namespace hbe</span>
+  the unit of work the registry tracks: a runnable, a declared join, a finished-item counter, and one embedded result packet
+</p>
+
+<h2 id="description">Class description</h2>
+
+<p>
+  <code>class Task final</code> at <code>Engine/Core/Task.h</code>: the unit of work the task system tracks, and the
+  thing a caller holds an <a href="../TaskID/index.html">identity</a> for. It is not a queue item —
+  <a href="../WorkItem/index.html">WorkItem</a> is — and it is not a thread. A task is a name, a
+  <code>TRunnable</code>, one user pointer, a <strong>declared join</strong> (how many items will report in), the
+  counter of those reports, an age clock, an optional abandonment notice, and one embedded
+  result packet.
+</p>
+
+<p>
+  A live task lives inside a <code>TaskRegistry::Record</code> (<code>Engine/Core/TaskRegistry.h</code>), never on a
+  caller's stack. The registry issues the record, calls <a href="loadintorecord.html">LoadIntoRecord</a> to fill it,
+  and hands back the identity; every engine path that wants a task goes through
+  <a href="../TaskSystem/create-task.html">TaskSystem::CreateTask</a> and
+  <a href="../TaskSystem/find-task.html">TaskSystem::FindTask</a>. The two public
+  <a href="constructors.html">constructors</a> still exist, but they build a task with a <em>null</em> identity, and a
+  work item built from a null-identity task names a record no stream can resolve — the constructor pair has no call
+  site outside the unit tests (<code>Engine/Core/TaskRegistry.cpp</code>, <code>TaskRegistryTest</code>; the helper
+  <code>TrackedTask</code> in <code>Engine/Core/TaskSystem.cpp</code> is what the task-system tests use, and it asks
+  the registry).
+</p>
+
+<p>
+  The join is the class's whole reason for existing. <a href="reservesubtasks.html">ReserveSubTasks</a> declares how
+  many items the task will be split into; <a href="reportfinishedsubtask.html">ReportFinishedSubTask</a> counts each
+  finished item and returns true to exactly the one that closed the join; and the thread that got true is the one that
+  dispatches the successor (<code>TaskStream::TryExecuteWorkItem()</code> in
+  <code>Engine/Core/TaskStream.cpp</code> calls <a href="../WorkItem/run.html">WorkItem::Run</a> and, on true,
+  <a href="../TaskSystem/dispatch-successor.html">TaskSystem::DispatchSuccessor</a>).
+</p>
+
+<pre><code>if (workItem-&gt;Run(*task))
+{
+    taskSys.DispatchSuccessor(task-&gt;GetID());
+}</code></pre>
+
+<p class="meta">From Engine/Core/TaskStream.cpp, TaskStream::TryExecuteWorkItem()</p>
+
+<div class="note">
+  <strong>The join counter is 8 bits, so 255 items is the ceiling.</strong>
+  <code>MaxNumSubTasks</code> is the width of <code>numFinishedSubTasks</code>, not a policy limit, and the one splitter
+  in the engine <em>clamps</em> to it rather than refusing: <code>TaskSystem::RunSplit()</code> in
+  <code>Engine/Core/TaskSystem.cpp</code> caps the requested sub-job count at <code>Task::MaxNumSubTasks</code>. A
+  request for a thousand slices becomes 255 slices, each covering more of the range — the split still covers every
+  item, it just runs in fewer, larger pieces.
+</div>
+
+<div class="gap">
+  <strong>Reserving is not optional, and doing it late is a hang.</strong> The join is decided by counting finished
+  items against the reserved figure, so a task that queues two items and reserves one reports itself finished when the
+  first item closes — and a caller waiting on the second never wakes. <code>TaskSystem::EnqueueTask()</code> reserves
+  immediately before generating its one item (<code>Engine/Core/TaskSystem.cpp</code>), and
+  <code>TaskSystem::RunSplit()</code> reserves before the loop that generates any item; both orders are load-bearing.
+  What is optional is the <em>reporting</em>, not the count: a fire-and-forget job still reserves the number of items
+  it queues and simply has nobody reading the join.
+</div>
+
+<div class="gap">
+  <strong>The counter cannot tell a finished task from one that never ran.</strong>
+  <a href="hasdone.html">HasDone</a> is <code>numSubTasks &gt; 0 &amp;&amp; finished &gt;= numSubTasks</code>, so a task
+  whose executor vanished reads as not-done forever. That is why it is private: the six
+  <a href="#non-member">friends</a> are the whole surface it is reachable through, and a customer that needs an honest
+  answer asks what work is still queued instead.
+</div>
+
+<h2 id="template">Template parameters</h2>
+
+<p>None. <code>Task</code> is a concrete <code>final</code> class and declares no template parameter, on the class or on any member.</p>
+
+<h2 id="properties">Class properties</h2>
+
+<table>
+  <tr><th>Type + Name</th><th>Default Value</th><th>Description</th></tr>
+  <tr><td><code>using TIndex = std::size_t;</code> <span class="badge">member type</span></td><td><span class="muted">not applicable</span></td><td>Index type of a task's work range, and the type every item slice is measured in</td></tr>
+  <tr><td><code>using TThreadID = std::thread::id;</code> <span class="badge">member type</span></td><td><span class="muted">not applicable</span></td><td>Declared and <strong>never used</strong> — no member, parameter or return type of <code>Task</code> names it</td></tr>
+  <tr><td><code>using TNumSubTasks = uint8_t;</code> <span class="badge">member type</span></td><td><span class="muted">not applicable</span></td><td>The join-counter type, and the reason <code>MaxNumSubTasks</code> is 255</td></tr>
+  <tr><td><code>static constexpr TNumSubTasks MaxNumSubTasks = 255;</code> <span class="badge">public</span></td><td><code>255</code></td><td>Most items one task may count; <code>TaskSystem::RunSplit()</code> clamps a larger request to it</td></tr>
+  <tr><td><code>TaskID id;</code> <span class="badge">private</span></td><td><span class="muted">none in the header</span></td><td>Where this task lives in the registry; written once by <a href="loadintorecord.html">LoadIntoRecord</a>, and null in a hand-built task, which no stream can resolve</td></tr>
+  <tr><td><code>StaticString name;</code> <span class="badge">private</span></td><td><span class="muted">none in the header</span></td><td>The log and assert label for this task; a pointer into static storage, never a copy — which is why <a href="../WorkItem/index.html">WorkItem</a> stopped carrying one</td></tr>
+  <tr><td><code>TNumSubTasks numSubTasks;</code> <span class="badge">private</span></td><td><span class="muted">none in the header</span></td><td>How many items the join waits for, set by <a href="reservesubtasks.html">ReserveSubTasks</a>; 0 means "nothing declared", which <a href="../TaskSystem/dispatch-successor.html">DispatchSuccessor</a> treats as a refusal</td></tr>
+  <tr><td><code>TNumSubTasks numGeneratedSubTasks;</code> <span class="badge">private</span></td><td><span class="muted">none in the header</span></td><td>Intended as the count of items handed out; <strong>never incremented</strong> anywhere — see <a href="generatesubtask.html">GenerateSubTask</a></td></tr>
+  <tr><td><code>std::atomic&lt;TNumSubTasks&gt; numFinishedSubTasks;</code> <span class="badge">private</span></td><td><span class="muted">none in the header</span></td><td>The join counter: incremented by <a href="reportfinishedsubtask.html">ReportFinishedSubTask</a> with sequential consistency</td></tr>
+  <tr><td><code>TRunnable func;</code> <span class="badge">private</span></td><td><span class="muted">none in the header</span></td><td>The function every item of this task runs; <code>nullptr</code> is reported as an error at run time instead of being skipped</td></tr>
+  <tr><td><code>void* userData;</code> <span class="badge">private</span></td><td><span class="muted">none in the header</span></td><td>Passed to the runnable untouched; its lifetime belongs to whoever created the task</td></tr>
+  <tr><td><code>FAbandonedNotice abandonedNotice{nullptr};</code> <span class="badge">private</span></td><td><code>{nullptr}</code></td><td>Fired if this task's work is dropped without running; stamped onto every item, and set through <a href="../TaskSystem/set-abandoned-notice.html">SetAbandonedNotice</a></td></tr>
+  <tr><td><code>void* abandonedUserData{nullptr};</code> <span class="badge">private</span></td><td><code>{nullptr}</code></td><td>The requestor's context for that notice — a different party from <code>userData</code>, which is why the pair is separate</td></tr>
+  <tr><td><code>std::chrono::nanoseconds offerTime{};</code> <span class="badge">private</span></td><td><code>{}</code></td><td>The single age clock: stamped when the record is loaded, inherited by each item, read by a stream that configured a max age</td></tr>
+  <tr><td><code>ResultPacket result;</code> <span class="badge">private</span></td><td><span class="muted">none in the header</span></td><td>This task's 128-byte result, embedded rather than pooled — the whole of what the engine knows about results</td></tr>
+</table>
+
+<h2 id="methods">Class methods</h2>
+
+<p>
+  One row per method name, in header declaration order. Private names are listed because the public surface and the
+  registry depend on their rules; the six friend declarations are what make the private ones reachable at all.
+</p>
+
+<table class="methods">
+  <tr><th>Name</th><th>Signature</th><th>What a caller depends on</th></tr>
+  <tr><td><a href="constructors.html"><code>Task</code></a><span class="badge">2 overloads</span></td><td class="sig">Task() noexcept<br>Task(StaticString taskName, TRunnable func, void* userData) noexcept</td><td>Both leave the identity null, so a task built here is invisible to every stream until a registry issues a record for it.</td></tr>
+  <tr><td><a href="destructor.html"><code>~Task</code></a></td><td class="sig">~Task() = default</td><td>Releases nothing — the registry owns the storage, and the record outlives the task it last held.</td></tr>
+  <tr><td><a href="reservesubtasks.html"><code>ReserveSubTasks</code></a></td><td class="sig">void ReserveSubTasks(TNumSubTasks count) noexcept</td><td>Declares the join before the first item is queued; a late or short reservation makes the task report itself finished early.</td></tr>
+  <tr><td><a href="getname.html"><code>GetName</code></a></td><td class="sig">[[nodiscard]] auto GetName() const noexcept</td><td>The task's name, by value — the label every warning and assert about this task is filed under.</td></tr>
+  <tr><td><a href="getid.html"><code>GetID</code></a></td><td class="sig">[[nodiscard]] TaskID GetID() const noexcept</td><td>The identity every work item is stamped with; null for a task no registry issued.</td></tr>
+  <tr><td><a href="numsubtasks.html"><code>NumSubTasks</code></a></td><td class="sig">[[nodiscard]] auto NumSubTasks() const noexcept</td><td>The declared join size, read unsynchronised — 0 is what <code>DispatchSuccessor</code> refuses on.</td></tr>
+  <tr><td><a href="getresult.html"><code>GetResult</code></a><span class="badge">2 overloads</span></td><td class="sig">[[nodiscard]] ResultPacket&amp; GetResult() noexcept<br>[[nodiscard]] const ResultPacket&amp; GetResult() const noexcept</td><td>The task's own packet, cleared when the record was issued — the only result storage the engine knows about.</td></tr>
+  <tr><td><a href="numfinishedsubtasks.html"><code>NumFinishedSubTasks</code></a></td><td class="sig">[[nodiscard]] auto NumFinishedSubTasks() const noexcept</td><td>The join counter read with relaxed ordering — a progress figure, not a completion proof.</td></tr>
+  <tr><td><a href="reportfinishedsubtask.html"><code>ReportFinishedSubTask</code></a></td><td class="sig">bool ReportFinishedSubTask() noexcept</td><td>True to exactly one caller, the one that closed the join, and that caller owes the successor a dispatch.</td></tr>
+  <tr><td><a href="getrunnable.html"><code>GetRunnable</code></a></td><td class="sig">[[nodiscard]] TRunnable GetRunnable() const noexcept</td><td>The function pointer an item is about to call; <code>nullptr</code> ends the item's range and logs an error.</td></tr>
+  <tr><td><a href="setrunnable.html"><code>SetRunnable</code></a></td><td class="sig">void SetRunnable(TRunnable runnable) noexcept</td><td>Writes <code>func</code> and nothing else; nothing in the repository calls it.</td></tr>
+  <tr><td><a href="getuserdata.html"><code>GetUserData</code></a></td><td class="sig">[[nodiscard]] void* GetUserData() const noexcept</td><td>The pointer every item passes to the runnable, read once per item just before the call.</td></tr>
+  <tr><td><a href="hasdone.html"><code>HasDone</code></a></td><td class="sig">[[nodiscard]] bool HasDone() const noexcept</td><td>Private: cannot tell a finished task from one never dispatched, which is exactly why it is not a customer API.</td></tr>
+  <tr><td><a href="loadintorecord.html"><code>LoadIntoRecord</code></a></td><td class="sig">void LoadIntoRecord(TaskID newID, StaticString taskName, TRunnable newFunc, void* newUserData) noexcept</td><td>Private: reloads <em>every</em> field, including the notice pair, because the record it sits in is recycled.</td></tr>
+  <tr><td><a href="generatesubtask.html"><code>GenerateSubTask</code></a></td><td class="sig">WorkItem GenerateSubTask(TIndex start, TIndex end, uint8_t priority = 0) noexcept</td><td>Private: builds one item for <code>[start, end)</code> and counts nothing — the join was declared, not discovered here.</td></tr>
+</table>
+
+<h2 id="non-member">Non-member helper functions</h2>
+
+<p>None. What the header carries instead is six <code>friend</code> declarations, and they are the only route to the
+private half of the class:</p>
+
+<pre><code>friend class TaskRegistry;
+friend class WorkItem;
+friend class TaskSystem;
+friend class TaskProvider;
+friend class TaskSystemTest;
+friend class TaskRegistryTest;</code></pre>
+
+<p class="meta">From Engine/Core/Task.h, hbe::Task</p>
+
+<p>
+  Four of them are engine classes and two are test collections, which is what the build can reach: the private
+  <a href="hasdone.html">HasDone</a> is called from the task-system tests, the private
+  <a href="loadintorecord.html">LoadIntoRecord</a> has exactly one caller (<code>TaskRegistry::Create()</code>), and the
+  private <a href="generatesubtask.html">GenerateSubTask</a> is reached through
+  <code>TaskProvider::MakeWholeItem</code> as well as from
+  <code>TaskSystem</code>.
+</p>
+
+<h2 id="coverage">Coverage</h2>
+
+<table>
+  <tr><th>Not documented here</th><th>Why</th></tr>
+  <tr><td>Record storage, identity issuance, generation advance, capacity and growth</td>
+    <td>All <code>TaskRegistry</code>'s contract; its folder is not authored yet, so record-level claims here are cited
+    to <code>Engine/Core/TaskRegistry.h</code> and <code>Engine/Core/TaskRegistry.cpp</code></td></tr>
+  <tr><td>Which queue lane an item goes to, affinity filtering, and the drain policy that decides when a stream takes
+    work</td><td>Owned by <code>TaskStream</code> and <code>StreamDrainPolicy</code>;
+    <code>Task</code> only names the fields those classes read</td></tr>
+  <tr><td>The internals of <code>ResultPacket</code> — header bytes, kind ranges, payload width</td>
+    <td>Its own entry; this class owns the packet as a member and documents only who writes it and when it is cleared</td></tr>
+  <tr><td>What <code>Task::TThreadID</code> is for</td>
+    <td>Nothing: the alias is declared in <code>Engine/Core/Task.h</code> and named nowhere else in the class, so there is
+    no contract to state — recorded as a finding rather than guessed at</td></tr>
+  <tr><td>Whether <code>numGeneratedSubTasks</code> ever guards anything</td>
+    <td>Documented as it behaves on <a href="generatesubtask.html">GenerateSubTask</a>; the field is never incremented,
+    so the reservation check its header comment describes cannot fire on over-production</td></tr>
+  <tr><td>The claim that no packet is ever copied</td>
+    <td>Refuted by the source and stated correctly on <a href="getresult.html">GetResult</a>:
+    <code>TaskSystem::DispatchSuccessor()</code> assigns one packet to another</td></tr>
+</table>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; Task</a></span>
+  <span><a href="index.html#methods">All Task methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

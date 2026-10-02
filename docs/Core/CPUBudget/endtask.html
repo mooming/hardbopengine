@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CPUBudget::EndTask — Core module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a class="current" href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Core</a> /
+  <a href="index.html">CPUBudget</a> / EndTask
+</p>
+
+<h1><span class="fn">EndTask</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::CPUBudget</span>
+  <span class="tag">Engine/Core/CPUBudget.cpp</span>
+  Adds the measured span; an unpaired call charges nothing rather than poisoning the budget.
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>void EndTask() noexcept</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  Defined in <code>Engine/Core/CPUBudget.cpp</code> as <code>CPUBudget::EndTask()</code>.
+</p>
+
+<pre><code>if (!isMeasuring)
+{
+    return;
+}
+
+const auto span = OS::GetThreadCPUTime() - taskStart;
+accumulatedNanos.fetch_add(span.count(), std::memory_order_relaxed);
+isMeasuring = false;</code></pre>
+
+<p class="meta">From Engine/Core/CPUBudget.cpp, CPUBudget::EndTask()</p>
+
+<p>
+  The guard is the entry's substance. Measuring from a start that was never taken would charge the thread's entire life to the budget
+  and leave a stream refusing work forever, so the pairing error loses the charge instead of poisoning the budget — "the same
+  fail-open choice as a failed platform call in <code>OS::GetThreadCPUTime</code>" (<code>Engine/Core/CPUBudget.h</code>). The test
+  <em>Unmatched EndTask charges nothing</em> pairs a call, reads the accumulation, calls again, and requires no change
+  (<code>Engine/Core/CPUBudget.cpp</code>).
+</p>
+
+<p>
+  The charge itself is one relaxed atomic add. Relaxed is sufficient because nothing derives an ordering from it: the only writer is
+  the owner, and a reader on another thread is satisfied with "as of the last task that thread finished"
+  (<code>Engine/Core/TaskStream.h</code>).
+</p>
+
+<div class="gap">
+  <strong>A span is not clamped at zero, so a failed reading taken <em>here</em> subtracts from the accumulation.</strong> The
+  platform clock returns zero on failure (<code>Engine/OSAL/OSXThread.cpp</code>, <code>Engine/OSAL/LinuxThread.cpp</code>,
+  <code>Engine/OSAL/WindowsThread.cpp</code>), and <code>0 - taskStart</code> is negative, which drives
+  <code>accumulatedNanos</code> down and makes the budget more permissive than it earned. The failure the header's fail-open claim
+  covers is a missing <a href="begintask.html">BeginTask</a>; a failure of the clock is handled by neither guard. Details on
+  <a href="begintask.html">BeginTask</a>.
+</div>
+
+<div class="note">
+  <strong>Nothing here re-reads the allowance or re-decides anything.</strong> The charge only becomes a refusal the next time the
+  stream asks <a href="cantakework.html">CanTakeWork</a>, which is why a lane overshoots its budget by the length of the task that
+  overshot it: the gate sits in front of acquiring, never in front of finishing (<code>Engine/Core/TaskStream.h</code>).
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<p>None.</p>
+
+<h2 id="return">Return value</h2>
+
+<p><code>void</code>. An unmatched call is indistinguishable from a matched one from the outside — it charges nothing and says nothing.</p>
+
+<h2 id="example">Examples</h2>
+
+<p class="meta">From Engine/Core/TaskStream.cpp, TaskStream::Update()</p>
+
+<pre><code>if (chargingBudget)
+{
+    budget.EndTask();
+
+    const auto spent = budget.GetAccumulated() - chargedBefore;
+    if (lane == StreamDrainPolicy::ELane::Priority)
+    {
+        drainPolicy.ChargePriority(spent);
+    }
+    else
+    {
+        drainPolicy.ChargeFifo(spent);
+    }
+}</code></pre>
+
+<p>
+  The difference against <code>chargedBefore</code> is how one task's CPU time is attributed to a lane: the budget holds the running
+  total, and the drain policy receives only this task's share of it. Both brackets are guarded by the same
+  <code>chargingBudget</code> flag, so the pair is never split — an unmatched <a href="begintask.html">BeginTask</a> would leave the
+  span open, and the next <a href="endtask.html">EndTask</a> would charge one interval spanning both tasks.
+</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; CPUBudget</a></span>
+  <span><a href="index.html#methods">All CPUBudget methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

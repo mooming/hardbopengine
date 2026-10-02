@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TaskRegistry::FindLiveRecord — Core module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a class="current" href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Core</a> /
+  <a href="index.html">TaskRegistry</a> / FindLiveRecord
+</p>
+
+<h1><span class="fn">FindLiveRecord</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::TaskRegistry</span>
+  <span class="tag">Engine/Core/TaskRegistry.cpp</span>
+  The generation-checked lookup behind the mutating calls, reading flags relaxed.
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>[[nodiscard]] Record* FindLiveRecord(TaskID id) noexcept</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  Defined in <code>Engine/Core/TaskRegistry.cpp</code> as <code>TaskRegistry::FindLiveRecord()</code>: the private lookup behind the calls
+  that mutate a record — <a href="setsuccessor.html">SetSuccessor</a>, <a href="getsuccessor.html">GetSuccessor</a> and
+  <a href="release.html">Release</a>.
+</p>
+
+<pre><code>if (id.IsNull())
+{
+    return nullptr;
+}
+
+const std::size_t bankIndex = id.index / recordsPerBank;
+if (bankIndex &gt;= bankCount.load(std::memory_order::relaxed))
+{
+    return nullptr;
+}
+
+Record&amp; record = banks[bankIndex][id.index % recordsPerBank];
+if (!record.inUse.load(std::memory_order::relaxed) ||
+    record.generation.load(std::memory_order::relaxed) != id.generation)
+{
+    return nullptr;
+}
+
+return &amp;record;</code></pre>
+
+<p class="meta">From Engine/Core/TaskRegistry.cpp</p>
+
+<p>
+  Structurally it is <a href="find.html">Find</a> with the record instead of the task, and the same three questions — is the identity real,
+  does a bank hold that index, is this record the generation that index was issued with. Two of its callers hold
+  <code>registryLock</code> (<a href="release.html">Release</a>) or do not (<a href="setsuccessor.html">SetSuccessor</a>,
+  <a href="getsuccessor.html">GetSuccessor</a>), and that difference is what a caller inherits from here.
+</p>
+
+<div class="gap">
+  <strong>Every load here is relaxed, including the two that <a href="find.html">Find</a> takes with acquire.</strong>
+  <a href="create.html">Create</a> publishes a filled record by releasing <code>inUse</code>, and the pairing that completes it is
+  <a href="find.html">Find</a>'s acquire load. A relaxed reader is entitled to a value but not to the writes that preceded the release, so
+  through this path <code>record.inUse</code> can read true while the task fields the same
+  <a href="create.html">Create</a> stored are not yet visible. <a href="release.html">Release</a> is protected by the lock that covers
+  every write; the two successor calls have no such cover
+  (<code>Engine/Core/TaskRegistry.cpp</code>). The published path is the one to imitate.
+</div>
+
+<div class="note">
+  <strong>Returning the record rather than the task is the reason this exists separately.</strong>
+  <a href="release.html">Release</a> needs the free-list link and the flag, <a href="setsuccessor.html">SetSuccessor</a> needs the successor
+  field, and neither belongs in a public type. The consequence is that a caller holding this pointer holds a record that may be
+  re-issued — which is why the mutating calls that use it do so immediately rather than storing it.
+</div>
+
+<div class="note">
+  <strong>A foreign registry's identity can pass this test.</strong> An identity is an index and a generation with nothing naming its
+  issuer, so an ID from another registry that happens to match a live record here is accepted — a case the
+  <a href="release.html">Release</a> log explicitly anticipates ("an ID from a registry that did not issue it",
+  <code>Engine/Core/TaskRegistry.cpp</code>). Isolation between registries is the caller's discipline, not this check's job.
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<table>
+  <tr><th>Parameter</th><th>Type</th><th>Requirement</th></tr>
+  <tr><td><code>id</code></td><td><code>TaskID</code></td><td>An identity to resolve; a null ID returns <code>nullptr</code> before any memory is touched</td></tr>
+</table>
+
+<h2 id="return">Return value</h2>
+
+<table>
+  <tr><th>Type</th><th>What you get</th></tr>
+  <tr><td><code>Record*</code></td><td>The live record an identity names, or <code>nullptr</code>. Not a lease, and not a guarantee that the record is still live when the caller's store lands — the lock-free publication rules are what a caller has to work with</td></tr>
+</table>
+
+<h2 id="example">Examples</h2>
+
+<p class="meta">From Engine/Core/TaskRegistry.cpp, TaskRegistry::SetSuccessor()</p>
+
+<pre><code>Record* record = FindLiveRecord(task);
+if (record == nullptr)
+{
+    auto log = Logger::Get(name);
+    log.OutError([name = name, index = task.index, generation = task.generation](auto&amp; ls)
+    {
+        ls &lt;&lt; name.c_str() &lt;&lt; " was asked to record a successor for task record " &lt;&lt; index &lt;&lt; " generation "
+           &lt;&lt; generation &lt;&lt; ", which it is not tracking, so nothing will be dispatched when that join closes. ";
+    });
+    return;
+}</code></pre>
+
+<p>
+  The caller's pattern in full: resolve, report the miss with the identity that missed, and change nothing on that path. The success path
+  then writes a plain field with no lock — see <a href="setsuccessor.html">SetSuccessor</a> for what that costs.
+</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; TaskRegistry</a></span>
+  <span><a href="index.html#methods">All TaskRegistry methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

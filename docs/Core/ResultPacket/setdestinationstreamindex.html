@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ResultPacket::SetDestinationStreamIndex — Core module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a class="current" href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Core</a> /
+  <a href="index.html">ResultPacket</a> / SetDestinationStreamIndex
+</p>
+
+<h1><span class="fn">SetDestinationStreamIndex</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::ResultPacket</span>
+  <span class="tag">Engine/Core/ResultPacket.h</span>
+  address the result at a stream — unchecked here, refused at delivery if the stream is not there
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>void SetDestinationStreamIndex(std::uint8_t streamIndex) noexcept</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  Defined in the header <code>Engine/Core/ResultPacket.h</code> as
+  <code>ResultPacket::SetDestinationStreamIndex()</code>; the body is
+  <code>header[DestinationByteIndex] = streamIndex;</code>. One byte, no lookup, no check: writing this address does not ask
+  the task system whether that stream exists.
+</p>
+
+<p>
+  Validation happens later and elsewhere. <code>TaskSystem::DispatchSuccessor()</code> reads the byte back and refuses with
+  a logged error if it names a stream this engine does not have (<code>Engine/Core/TaskSystem.cpp</code>), so a bad
+  destination is a chain that silently stops rather than a write that fails. Addressed-to is a decision the producer makes:
+  <a href="clear.html">Clear</a> deliberately restores <code>NoDestinationStream</code> rather than leaving 0, because a
+  cleared packet must not look addressed to the base stream.
+</p>
+
+<div class="gap">
+  <strong>The parameter is a byte and stream indices are not.</strong> Everywhere else a stream index is a signed integer
+  (<code>TaskSystem::TIndex</code>), so the caller casts: <code>TaskSystem::RunSplit()</code> writes
+  <code>static_cast&lt;std::uint8_t&gt;(successorStream)</code> after checking <code>HasStream(successorStream)</code> on
+  the <em>signed</em> value (<code>Engine/Core/TaskSystem.cpp</code>). On an engine with 256 streams or fewer that cast
+  cannot lie. On one with more, a successor stream whose index is above 255 passes the existence check and is then
+  truncated — 256 arrives as 0, the base stream — and the delivery happily routes to a different, real stream, because the
+  byte it validates is the truncated one. Recorded here as it behaves and in this page's report as a latent defect: the
+  packet's one byte is the binding width on how many streams can ever be destinations, and nothing enforces that at either
+  end.
+</div>
+
+<div class="note">
+  <strong>A destination with no successor is inert, not an error.</strong> This byte only matters to
+  <code>DispatchSuccessor()</code>, which is reached when a join closes <em>and</em> a successor is recorded. Addressing a
+  packet at a stream and never recording a successor delivers nothing, and nothing complains.
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<table>
+  <tr><th>Parameter</th><th>Type</th><th>Requirement</th></tr>
+  <tr><td><code>streamIndex</code></td><td><code>std::uint8_t</code></td><td>The stream the outcome should be delivered on, or <code>NoDestinationStream</code> (0xFF) for none. Not validated here; a value naming no stream is refused at delivery time</td></tr>
+</table>
+
+<h2 id="return">Return value</h2>
+
+<p><code>void</code>. Nothing reports whether the previous destination was overwritten, nor whether the value names a stream.</p>
+
+<h2 id="example">Examples</h2>
+
+<p class="meta">From Engine/Core/TaskSystem.cpp, TaskSystem::RunSplit()</p>
+
+<pre><code>if (!successor.IsNull())
+{
+    SetSuccessor(taskID, successor);
+    task-&gt;GetResult().SetDestinationStreamIndex(static_cast&lt;std::uint8_t&gt;(successorStream));
+}</code></pre>
+
+<p>
+  A split has no producer runnable of its own to write the routing, so this is where the byte comes from — recorded next to
+  the successor itself, before the first item of the split is queued, so a join that closes in the first pass already knows
+  where its outcome belongs.
+</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; ResultPacket</a></span>
+  <span><a href="index.html#methods">All ResultPacket methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

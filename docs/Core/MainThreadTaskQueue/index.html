@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MainThreadTaskQueue — Core module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a class="current" href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This class</h3>
+  <ul>
+    <li><a href="#description">Class description</a></li>
+    <li><a href="#template">Template parameters</a></li>
+    <li><a href="#properties">Class properties</a></li>
+    <li><a href="#methods">Class methods</a></li>
+    <li><a href="#non-member">Non-member helper functions</a></li>
+    <li><a href="#coverage">Coverage</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Core</a> /
+  MainThreadTaskQueue
+</p>
+
+<h1>MainThreadTaskQueue</h1>
+<p class="subtitle">
+  <span class="tag">Engine/Core/MainThreadTaskQueue.h</span>
+  A locked, priority-ordered queue of callables, drained by whoever asks - one per task stream.
+</p>
+
+<h2 id="description">Class description</h2>
+
+<p>
+  <code>class MainThreadTaskQueue final</code> at <code>Engine/Core/MainThreadTaskQueue.h</code>: a lock-guarded,
+  priority-ordered queue of <code>void (*)(void*)</code> callables, drained by whoever calls
+  <a href="processtasks.html">ProcessTasks</a>. Its name records its original purpose — work that a worker thread wants executed on
+  the process main thread — and its actual shipping use is broader: every <code>TaskStream</code> owns one as
+  <code>postedTasks</code> (<code>Engine/Core/TaskStream.h</code>), drained at the top of that stream's pass, so a "posted" callable
+  now runs on whichever stream it was posted to. <code>TaskSystem::DispatchToMainThread()</code> keeps the old meaning by routing to
+  the <em>base stream's</em> queue (<code>Engine/Core/TaskSystem.cpp</code>), which is the stream the engine loop drives.
+</p>
+
+<div class="note">
+  <strong>The lock guards the container, and the tasks run outside it.</strong>
+  <code>BoundedPriorityQueue</code> mutates a plain size counter and its bucket vectors in both push and pop, so an unsynchronised
+  hand-off raced on that counter — "measured under ThreadSanitizer, where Push raced IsEmpty and Pop on the same object"
+  (<code>Engine/Core/MainThreadTaskQueue.h</code>). Invoking a queued callable under a non-recursive mutex would
+  deadlock the moment it posted more work, which is exactly what posted callables do: <a href="processtasks.html">ProcessTasks</a>
+  pops under the lock and calls with it released, and the stream's pass says so in its own comment — "They run with the queue's lock
+  released, so a posted callable may post again" (<code>Engine/Core/TaskStream.cpp</code>).
+</div>
+
+<div class="note">
+  <strong>Priority is a byte, highest wins, and the direction was inverted deliberately.</strong>
+  <code>Enqueue</code>'s default of 128 is the middle of the range "so a caller that states nothing sits between urgent work and
+  background work rather than silently joining one end". The note attached to it is a migration warning: the direction was inverted on
+  2026-09-18 along with <code>BoundedPriorityQueue</code>, which now drains the highest number first, "so anything that previously
+  passed a small number expecting urgency now reads as low urgency" (<code>Engine/Core/MainThreadTaskQueue.h</code>).
+</div>
+
+<div class="gap">
+  <strong>Nothing bounds the number of queued callables, and the constant named for a bound is not one.</strong>
+  <code>MaxQueueSize = 1024</code> is passed as <code>BoundedPriorityQueue</code>'s third template parameter, whose documented meaning
+  is <em>BucketSizeHint</em>: the capacity a bucket is created with the first time a priority is used
+  (<code>Engine/Container/BoundedPriorityQueue.h</code>). <code>Push</code> checks no capacity at all, so an enqueue cannot fail or
+  drop — and a priority level that receives one item reserves a deque sized for 1024 of these 24-byte items, about 24 KB per
+  populated priority, per stream (<code>Engine/Container/Deque.h</code>). Buckets are released when they run dry, so the cost is paid
+  only by levels that hold something at the same time.
+</div>
+
+<div class="gap">
+  <strong>The stop flag stops nothing.</strong> <a href="requeststop.html">RequestStop</a> clears
+  <a href="isrunning.html">isRunning</a> and <a href="processtasks.html">ProcessTasks</a> never reads it — its loop ends when the queue
+  is observed empty. No code in <code>Engine/</code> or <code>Applications/</code> calls either function on this class, and the streams'
+  own shutdown uses different flags (<code>closeRequested</code>, <code>isDrainingForShutdown</code> in
+  <code>Engine/Core/TaskStream.cpp</code>). Treat the pair as inert state today.
+</div>
+
+<div class="note">
+  <strong>Reporting is a locked read, and the mutex is <code>mutable</code> for that reason.</strong>
+  <a href="haspendingtasks.html">HasPendingTasks</a> is <code>const</code> and takes
+  <code>queueLock</code>, which is why the member is declared <code>mutable std::mutex queueLock</code> with the reason written at its
+  declaration. <code>isRunning</code> is deliberately <em>outside</em> the lock: it is only ever touched as an atomic and guards
+  nothing, so pulling it into the critical section "would widen the lock for no protection"
+  (<code>Engine/Core/MainThreadTaskQueue.h</code>).
+</div>
+
+<h2 id="template">Template parameters</h2>
+
+<p>None. The queue's shape is fixed by the aliases below rather than by template arguments.</p>
+
+<h2 id="properties">Class properties</h2>
+
+<table>
+  <tr><th>Type + Name</th><th>Default Value</th><th>Description</th></tr>
+  <tr><td><code>using TTaskFunc = void (*)(void*);</code> <span class="badge">public</span></td><td><span class="muted">not applicable</span></td><td>A posted callable: a plain function pointer plus one untyped context pointer. A captureless lambda converts to it, which is how the engine posts stateful work — <code>OS::Window</code>'s tests pack their state into a struct and pass its address</td></tr>
+  <tr><td><code>struct TaskItem</code> <span class="badge">private nested</span></td><td><span class="muted">not applicable</span></td><td>What the container holds: <code>uint8_t priority</code>, <code>mutable bool isDone</code>, <code>TTaskFunc taskFunc</code>, <code>void* userData</code>, ordered by <code>priority</code>. <code>isDone</code> is written once by the constructor and never again, and its <code>HasFinished()</code> reader exists because <code>BoundedPriorityQueue</code> documents that its element type must provide one — not because anything here asks it</td></tr>
+  <tr><td><code>static constexpr size_t MaxQueueSize = 1024;</code> <span class="badge">private static</span></td><td><code>1024</code></td><td>Despite the name, the per-bucket size hint handed to the container — not a limit on how many callables may be queued</td></tr>
+  <tr><td><code>using TQueue = BoundedPriorityQueue&lt;TaskItem, 256, MaxQueueSize&gt;;</code> <span class="badge">private nested</span></td><td><span class="muted">not applicable</span></td><td>256 priority levels, each bucket reserved at <code>MaxQueueSize</code> on first use. Marked <code>// hb-standards:ignore</code> because the alias names the constant declared directly above it, which the member-ordering rule otherwise forbids</td></tr>
+  <tr><td><code>TQueue queue;</code> <span class="badge">private</span></td><td><span class="muted">empty</span></td><td>The container itself; every access goes through <code>queueLock</code></td></tr>
+  <tr><td><code>mutable std::mutex queueLock;</code> <span class="badge">private</span></td><td><span class="muted">unlocked</span></td><td>Guards <code>queue</code> alone. <code>mutable</code> because <a href="haspendingtasks.html">HasPendingTasks</a> takes it while reporting <code>const</code></td></tr>
+  <tr><td><code>std::atomic&lt;bool&gt; isRunning;</code> <span class="badge">private</span></td><td><code>true</code>, set by the constructor</td><td>A flag no reader in the engine consults, and no loop of this class obeys; outside <code>queueLock</code> by design</td></tr>
+</table>
+
+<h2 id="methods">Class methods</h2>
+
+<table class="methods">
+  <tr><th>Name</th><th>Signature</th><th>What a caller depends on</th></tr>
+  <tr><td><a href="constructors.html"><code>MainThreadTaskQueue</code></a></td><td class="sig">MainThreadTaskQueue()</td><td>Constructs an empty queue already marked running; the container allocates nothing until a priority is used.</td></tr>
+  <tr><td><a href="destructor.html"><code>~MainThreadTaskQueue</code></a></td><td class="sig">~MainThreadTaskQueue() = default</td><td>Discards whatever is still queued; it neither runs nor reports those callables.</td></tr>
+  <tr><td><a href="enqueue.html"><code>Enqueue</code></a></td><td class="sig">void Enqueue(TTaskFunc taskFunc, void* userData, uint8_t priority = 128) noexcept</td><td>Any thread; never fails and never bounds; the callable runs later on another thread, so <code>userData</code> must outlive the call.</td></tr>
+  <tr><td><a href="processtasks.html"><code>ProcessTasks</code></a></td><td class="sig">size_t ProcessTasks() noexcept</td><td>Drains until the queue reads empty, invoking outside the lock; returns the count of callables actually invoked.</td></tr>
+  <tr><td><a href="haspendingtasks.html"><code>HasPendingTasks</code></a></td><td class="sig">[[nodiscard]] bool HasPendingTasks() const noexcept</td><td>A locked point-in-time read; a true answer says nothing about who drains it first.</td></tr>
+  <tr><td><a href="requeststop.html"><code>RequestStop</code></a></td><td class="sig">void RequestStop() noexcept</td><td>Clears the running flag; nothing in the class or the engine changes behaviour because of it.</td></tr>
+  <tr><td><a href="isrunning.html"><code>IsRunning</code></a></td><td class="sig">[[nodiscard]] bool IsRunning() const noexcept</td><td>Reports that flag; no caller exists in the repository.</td></tr>
+</table>
+
+<h2 id="non-member">Non-member helper functions</h2>
+
+<p>
+  None. The header's namespace closes with the class. The engine's routes into it are
+  <code>TaskStream::DispatchPostedTasks</code>, <code>TaskStream::ProcessPostedTasks</code>,
+  <code>TaskStream::HasPostedTasks</code> and <code>TaskSystem::DispatchToMainThread</code>, each of which forwards to one method here
+  (<code>Engine/Core/TaskStream.cpp</code>, <code>Engine/Core/TaskSystem.cpp</code>).
+</p>
+
+<h2 id="coverage">Coverage</h2>
+
+<table>
+  <tr><th>Not documented here</th><th>Why</th></tr>
+  <tr><td>How <code>BoundedPriorityQueue</code> orders, stores and releases buckets, and why <code>Pop</code> rewrites an item's
+    priority byte</td>
+    <td>Container's contract, at <code>Engine/Container/BoundedPriorityQueue.h</code>; this page states only what changes an
+    <code>Enqueue</code> caller's obligations</td></tr>
+  <tr><td>Which stream drains a posted callable, and when</td>
+    <td><code>TaskStream</code>'s contract; the stream's pass calls <a href="processtasks.html">ProcessTasks</a> before it asks its
+    lanes for anything, which is a scheduling decision of that class</td></tr>
+  <tr><td>Whether the stop flag should be wired to something</td>
+    <td>A design question, not a contract. The pages state that it is not wired, and that its two accessors have no caller</td></tr>
+  <tr><td>The <code>TaskItem</code> nested type's own members</td>
+    <td>They are private detail of this class, described in the properties table above; they have no page because no caller can name
+    them</td></tr>
+</table>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; MainThreadTaskQueue</a></span>
+  <span><a href="index.html#methods">All MainThreadTaskQueue methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

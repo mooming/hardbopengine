@@ -101,12 +101,20 @@
   <tr><td><a href="#types">Types</a></td><td>Alias set</td><td>Types.h</td><td>Engine-wide scalar and pointer aliases</td></tr>
   <tr><td>Constants</td><td>Constant set</td><td>Constants.h</td><td>Byte multiples and mathematical constants — see <a href="#variables">Module variables</a></td></tr>
   <tr><td><a href="#runnable">Runnable</a></td><td>Alias</td><td>Runnable.h</td><td>Signature of a function a task executes</td></tr>
-  <tr><td><a href="#task">Task</a></td><td>Class</td><td>Task.h</td><td>Unit of work, splittable into sub-tasks</td></tr>
+  <tr><td id="taskid"><a href="TaskID/index.html">TaskID</a></td><td>Struct</td><td>TaskID.h</td><td>Record index plus generation: the identity that names a tracked task</td></tr>
+  <tr><td><a href="Task/index.html">Task</a></td><td>Class</td><td>Task.h</td><td>Unit of work, splittable into sub-tasks</td></tr>
+  <tr><td id="taskregistry"><a href="TaskRegistry/index.html">TaskRegistry</a></td><td>Class</td><td>TaskRegistry.h</td><td>Banked table of tracked tasks and the issuer of TaskID identity</td></tr>
   <tr><td id="workitem"><a href="WorkItem/index.html">WorkItem</a></td><td>Class</td><td>WorkItem.h</td><td>One index range <code>[start, end)</code> of a Task</td></tr>
-  <tr><td><a href="#taskstream">TaskStream</a></td><td>Class</td><td>TaskStream.h</td><td>Thread that processes tasks taken from a stream</td></tr>
-  <tr><td><a href="#taskstreamaffinity">TaskStreamAffinity</a></td><td>Class template</td><td>TaskStreamAffinity.h</td><td>Bitmask of streams a task may run on</td></tr>
+  <tr><td id="resultpacket"><a href="ResultPacket/index.html">ResultPacket</a></td><td>Class</td><td>ResultPacket.h</td><td>One task's result: an 8-byte header over a 120-byte payload, embedded in the record</td></tr>
+  <tr><td><a href="TaskStream/index.html">TaskStream</a></td><td>Class</td><td>TaskStream.h</td><td>One stream's two lanes, their drain policy, CPU budget, provider lists and posted-task pump</td></tr>
+  <tr><td><a href="TaskStreamAffinityBase/index.html">TaskStreamAffinity</a></td><td>Class template</td><td>TaskStreamAffinity.h</td><td>Bitmask of streams a task may run on</td></tr>
+  <tr><td id="streamdrainpolicy"><a href="StreamDrainPolicy/index.html">StreamDrainPolicy</a></td><td>Class</td><td>StreamDrainPolicy.h</td><td>Which lane a stream drains next, and the CPU shares and staleness ceiling that decide it</td></tr>
+  <tr><td id="cpubudget"><a href="CPUBudget/index.html">CPUBudget</a></td><td>Class</td><td>CPUBudget.h</td><td>One stream's allowance of measured CPU time, spent as work runs</td></tr>
   <tr><td id="tasksystem"><a href="TaskSystem/index.html">TaskSystem</a></td><td>Class</td><td>TaskSystem.h</td><td>Owns the streams and the general queue</td></tr>
-  <tr><td><a href="#mainthreadtaskqueue">MainThreadTaskQueue</a></td><td>Class</td><td>MainThreadTaskQueue.h</td><td>Thread-safe queue feeding the main thread</td></tr>
+  <tr><td><a href="MainThreadTaskQueue/index.html">MainThreadTaskQueue</a></td><td>Class</td><td>MainThreadTaskQueue.h</td><td>Thread-safe queue feeding the main thread</td></tr>
+  <tr><td><a href="TaskProvider/index.html">TaskProvider</a></td><td>Abstract class</td><td>TaskProvider.h</td><td>A producer of tasks: asked for work by the streams it attaches to, and drained rather than fed</td></tr>
+  <tr><td id="taskhandle"><a href="TaskHandle/index.html">TaskHandle</a></td><td>Class</td><td>TaskProvider.h</td><td>Control token that can ask one TaskProvider to stop producing</td></tr>
+  <tr><td id="taskproducecontext"><a href="TaskProduceContext/index.html">TaskProduceContext</a></td><td>Struct</td><td>TaskProvider.h</td><td>The two facts a stream hands a provider: which stream is asking, and when</td></tr>
   <tr><td id="componentstate"><a href="ComponentState/index.html">ComponentState</a></td><td>Enum class</td><td>ComponentState.h</td><td>Lifecycle states of a component</td></tr>
   <tr><td><a href="#component">Component</a></td><td>Abstract class</td><td>Component.h</td><td>Base of every engine component</td></tr>
   <tr><td><a href="#componentsystem">ComponentSystem</a></td><td>Class template</td><td>ComponentSystem.h</td><td>Drives a component type through its lifecycle</td></tr>
@@ -811,10 +819,9 @@ the arguments to <code>PrintArgs</code> and stores nothing, which is why there i
   <tr><th>Gap</th><th>Detail</th></tr>
   <tr>
     <td>Headers with no entry</td>
-    <td><code>CommonMacros.h</code>, <code>CPUBudget.h</code>, <code>ResultContainer.h</code>,
-        <code>StreamDrainPolicy.h</code>, <code>TaskProvider.h</code>, <code>TaskStreamIndex.h</code> —
-        six of the 26 Core headers. All but <code>CommonMacros.h</code> came from the task-system work that
-        post-dates the reference this page was migrated from.</td>
+    <td><code>CommonMacros.h</code>, <code>ResultContainer.h</code>, <code>TaskStreamIndex.h</code> —
+        three of the 26 Core headers, all of which came from the task-system work that post-dates the
+        reference this page was migrated from.</td>
   </tr>
   <tr>
     <td>Time functions not summarised</td>

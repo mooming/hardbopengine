@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TaskProvider::AttachTo — Core module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a class="current" href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Core</a> /
+  <a href="index.html">TaskProvider</a> / AttachTo
+</p>
+
+<h1><span class="fn">AttachTo</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::TaskProvider</span>
+  <span class="tag">Engine/Core/TaskProvider.cpp</span>
+  Start being drained by one lane of one stream; duplicates are per (stream, lane).
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>void AttachTo(TStreamIndex stream, StreamDrainPolicy::ELane lane) noexcept</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  Defined in <code>Engine/Core/TaskProvider.cpp</code> as <code>TaskProvider::AttachTo()</code>: start being drained by one lane of one
+  stream. Three outcomes — the stream was already attached and gains a lane bit, the stream is new and takes a slot, or the call is refused
+  and reports itself.
+</p>
+
+<pre><code>for (TStreamIndex index = 0; index &lt; attachedCount; ++index)
+{
+    if (attached[static_cast&lt;size_t&gt;(index)] != stream)
+    {
+        continue;
+    }
+
+    const bool alreadyOnLane = (lanes[static_cast&lt;size_t&gt;(index)] &amp; laneBit) != 0;
+    lanes[static_cast&lt;size_t&gt;(index)] |= laneBit;
+
+    if (!alreadyOnLane)
+    {
+        RegisterOnStream(stream, lane);
+    }
+
+    return;
+}</code></pre>
+
+<p class="meta">From Engine/Core/TaskProvider.cpp</p>
+
+<div class="note">
+  <strong>Duplicates are per (stream, lane), and one stream never occupies two slots.</strong>
+  Re-attaching the same lane changes nothing, "because a stream that listed a provider twice on one lane would call Produce twice per drain
+  and double its output rate silently". Attaching the other lane is a different thing and is allowed: it says this provider may be drawn on by
+  either lane, "which is the same doubled-call hazard taken with intent, so it has to be the caller's decision and never a default"
+  (<code>Engine/Core/TaskProvider.h</code>). The mask that records the pair is what
+  <a href="getattachedlanes.html">GetAttachedLanes</a> reports.
+</div>
+
+<div class="gap">
+  <strong><code>ELane::None</code> is refused with an error rather than accepted.</strong>
+  "An attachment with no lane would sit in the slot and never be drained", so the call logs and returns having changed nothing
+  (<code>Engine/Core/TaskProvider.h</code>). The reason the report matters is the symptom: a lost attachment is a stream that quietly never
+  gets work, which is otherwise indistinguishable from a provider with nothing to do.
+</div>
+
+<div class="gap">
+  <strong>When a registration fails, the recorded attachment stays.</strong>
+  The slot is written and counted, then <a href="registeronstream.html">RegisterOnStream</a> decides whether the stream really exists and
+  really has room; a missing stream is a warning and a full lane list is an error, and neither rolls the slot back
+  (<code>Engine/Core/TaskProvider.cpp</code>). The consequence is that <a href="getattachedcount.html">GetAttachedCount</a> and
+  <a href="isattachedto.html">IsAttachedTo</a> can report an attachment that will never be asked about — which is exactly what the R38 rule
+  needs them to be able to say, since the drain reads the stream's list and not this one.
+</div>
+
+<div class="note">
+  <strong>The capacity ceiling asserts, reports, and drops.</strong>
+  Past <code>MaxAttachedStreams</code> the call <code>Assert</code>s with the provider name, the limit and the fact that the attachment was
+  dropped, logs the same in an error line naming the lane bit, and returns
+  (<code>Engine/Core/TaskProvider.cpp</code>). The limit is 64 for a reason the header prices: feeding every worker stream is an ordinary
+  thing providers do, and R35's two lanes per worker double the attachments. Note the assert is Debug-only
+  (<code>__DEBUG__</code> in <code>CMakeLists.txt</code>), so a shipping overflow is the log line and nothing else.
+</div>
+
+<div class="gap">
+  <strong>This object's own arrays have no lock, so attachment is a lifecycle event on one thread.</strong> What makes attaching and
+  detaching safe against a drain is that <a href="registeronstream.html">RegisterOnStream</a> and
+  <a href="unregisterfromstream.html">UnregisterFromStream</a> enter the stream — whose queue lock guards its provider list — not that
+  anything here is synchronised. Two threads calling this on one provider race <code>attached</code>, <code>lanes</code> and
+  <code>attachedCount</code>, and no check detects it (<code>Engine/Core/TaskProvider.cpp</code>).
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<table>
+  <tr><th>Parameter</th><th>Type</th><th>Requirement</th></tr>
+  <tr><td><code>stream</code></td><td><code>TStreamIndex</code> (<code>int</code>)</td><td>The stream to feed. An index the engine does not have is recorded and warned about, and nothing will ever ask this provider</td></tr>
+  <tr><td><code>lane</code></td><td><code>StreamDrainPolicy::ELane</code></td><td>Which lane, because "which lane attaches decides the policy the stream applies to what this provider hands it" (R35). <code>None</code> attaches nothing</td></tr>
+</table>
+
+<h2 id="return">Return value</h2>
+
+<p><code>void</code>. No return distinguishes "attached now" from "already attached" from "recorded but never registered" — read <a href="getattachedlanes.html">GetAttachedLanes</a> for the first two, and the log for the third.</p>
+
+<h2 id="example">Examples</h2>
+
+<p class="meta">From Engine/Core/TaskProvider.cpp, TaskProviderTest</p>
+
+<pre><code>fifoProvider.AttachTo(worker, StreamDrainPolicy::ELane::Fifo);
+priorityProvider.AttachTo(worker, StreamDrainPolicy::ELane::Priority);</code></pre>
+
+<p>
+  Both lanes of one worker fed by two different providers — the arrangement the lane split exists for, since each lane applies its own drain
+  policy to what it is handed. One provider attached to both lanes of the same stream is also legal and takes one slot with both bits set, at
+  the cost of being asked on either lane's schedule (<code>Engine/Core/TaskProvider.h</code>).
+</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; TaskProvider</a></span>
+  <span><a href="index.html#methods">All TaskProvider methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

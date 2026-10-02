@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TaskStream::DrainProvidersLocked — Core module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a class="current" href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Core</a> /
+  <a href="index.html">TaskStream</a> / DrainProvidersLocked
+</p>
+
+<h1><span class="fn">DrainProvidersLocked</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::TaskStream</span>
+  <span class="tag">Engine/Core/TaskStream.cpp</span>
+  Private: ask one lane's registered producers, under the queue lock, for the next item.
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>std::optional&lt;WorkItem&gt; DrainProvidersLocked(StreamDrainPolicy::ELane lane) noexcept</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  Declared <code>private</code> in <code>Engine/Core/TaskStream.h</code>, defined in <code>Engine/Core/TaskStream.cpp</code> as
+  <code>TaskStream::DrainProvidersLocked()</code>. The "Locked" suffix is the contract: the caller already holds
+  <code>queueLock</code>, and this helper never takes it and never releases it.
+</p>
+
+<pre><code>const size_t slot = ProviderSlot(lane);
+if (slot &gt;= laneProviders.size())
+{
+    return std::nullopt;
+}
+
+const auto&amp; list = laneProviders[slot];
+if (list.count == 0)
+{
+    return std::nullopt;
+}
+
+const TaskProduceContext context = TaskProduceContext::ForStream(streamIndex);
+
+for (TIndex index = 0; index &lt; list.count; ++index)
+{
+    if (auto produced = list.items[static_cast&lt;size_t&gt;(index)]-&gt;Produce(context); produced.has_value())
+    {
+        return produced;
+    }
+}
+
+return std::nullopt;</code></pre>
+
+<p class="meta">From Engine/Core/TaskStream.cpp</p>
+
+<p>
+  One pass over one lane's provider list: build the context, ask in registration order, hand back the first item anyone produces. It is the whole
+  mechanism by which work enters a stream from outside it, and it is nine effective lines.
+</p>
+
+<div class="note">
+  <strong>The user call happens under the queue lock, and the header draws the rule from that.</strong> "The queue lock is held across the provider
+  call, so this helper never runs user code unlocked and never re-enters the queue. A provider must therefore not touch this stream from inside
+  <code>Produce</code>." (<code>Engine/Core/TaskStream.h</code>) That single sentence is R40, and it is why
+  <a href="detachprovider.html">DetachProvider</a> needs no in-flight counter: a detach arriving mid-<code>Produce</code> blocks on the same lock
+  and therefore cannot erase a provider that is mid-call.
+</div>
+
+<div class="gap">
+  <strong>One context per pass, so every producer asked in a drain sees the same instant.</strong>
+  <code>TaskProduceContext::ForStream(streamIndex)</code> is built once and passed by reference to each
+  <a href="../TaskProvider/produce.html">Produce</a> — so a provider that compares its own age against <code>context.now</code> cannot be
+  contradicted by a peer asked a microsecond later (<code>Engine/Core/TaskStream.cpp</code>,
+  <a href="../TaskProduceContext/index.html">TaskProduceContext</a>).
+</div>
+
+<div class="gap">
+  <strong>First success wins, in registration order, with no rotation.</strong> "Providers are asked in registration order and the first that hands
+  something back wins; a provider with nothing returns <code>nullopt</code> and the lane stops being drained this pass rather than spinning."
+  (<code>Engine/Core/TaskStream.h</code>) The consequence for a caller: a permanently productive provider registered early starves the entries
+  behind it, because a producer later in the list is never reached while an earlier one succeeds. Nothing here rotates the cursor, so fairness
+  across providers on one lane is the attaching order's problem.
+</div>
+
+<div class="note">
+  <strong>It is reached only from an empty lane, and only while the budget allows (R39).</strong>
+  The caller asks only when the lane has no items, is not draining for shutdown, and <code>budget.CanTakeWork()</code> holds — with a second
+  <code>Assert</code> at the ask, "a spent stream would otherwise keep manufacturing work it has no right to run"
+  (<code>Engine/Core/TaskStream.cpp</code>). A stream that cannot take work does not ask, so a provider cannot starve itself by being eager; and
+  a provider is never asked twice per pass on the same lane, because the ask is inside one branch that ends the branch.
+</div>
+
+<div class="gap">
+  <strong>Nothing is charged for asking, and the counter that would have shown the waste is separate.</strong>
+  A produced item is charged to the budget only when the task runs; the ask itself is unmeasured. The stream does keep
+  <code>providerAsksWhileSpent</code> — incremented if an ask ever happened against a spent allowance, which R39 forbids and the assert is there to
+  make unreachable (<code>Engine/Core/TaskStream.h</code>). A non-zero reading of that counter is a bug in the gate, not a policy.
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<table>
+  <tr><th>Parameter</th><th>Type</th><th>Requirement</th></tr>
+  <tr><td><code>lane</code></td><td><code>StreamDrainPolicy::ELane</code></td><td>Which lane's list to ask; the drain asks the lane its policy just chose. <code>ELane::None</code> yields <code>nullopt</code> without asking anyone</td></tr>
+</table>
+
+<h2 id="return">Return value</h2>
+
+<table>
+  <tr><th>Type</th><th>What you get</th></tr>
+  <tr><td><code>std::optional&lt;WorkItem&gt;</code></td><td>The item to put on the lane, or <code>nullopt</code> — which ends the drain of this lane for this pass rather than trying the next lane's producers</td></tr>
+</table>
+
+<h2 id="example">Examples</h2>
+
+<p class="meta">From Engine/Core/TaskStream.cpp, TaskStream::Update()</p>
+
+<pre><code>Assert(budget.CanTakeWork(), "Stream ", name,</code></pre>
+
+<p>
+  The gate immediately above the call. Reading the two together is the fastest way to see the design: the stream will not ask a producer for work
+  it has no allowance to run, and if that ever stops being true the assert fires in a Debug build rather than letting a spent stream manufacture
+  work (<code>Engine/Core/TaskStream.cpp</code>).
+</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; TaskStream</a></span>
+  <span><a href="index.html#methods">All TaskStream methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

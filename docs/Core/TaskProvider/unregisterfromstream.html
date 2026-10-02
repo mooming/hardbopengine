@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TaskProvider::UnregisterFromStream — Core module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a class="current" href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Core</a> /
+  <a href="index.html">TaskProvider</a> / UnregisterFromStream
+</p>
+
+<h1><span class="fn">UnregisterFromStream</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::TaskProvider</span>
+  <span class="tag">Engine/Core/TaskProvider.cpp</span>
+  Private: remove this provider from one lane under that stream's lock, which waits out a drain in flight.
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>void UnregisterFromStream(TStreamIndex stream, StreamDrainPolicy::ELane lane) noexcept</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  Declared <code>private</code> in <code>Engine/Core/TaskProvider.h</code>, defined in <code>Engine/Core/TaskProvider.cpp</code> as
+  <code>TaskProvider::UnregisterFromStream()</code>; five lines, and the reason a detach can be called while a worker is draining.
+</p>
+
+<pre><code>if (!taskSystem.HasStream(stream))
+{
+    return;
+}
+
+if (taskSystem.GetStream(stream).DetachProvider(*this, lane))
+{
+    --registeredCount;
+}</code></pre>
+
+<p class="meta">From Engine/Core/TaskProvider.cpp</p>
+
+<div class="note">
+  <strong>The wait is inside <code>TaskStream::DetachProvider</code>, not here.</strong> That call takes the stream's queue lock before it
+  removes the pointer (<code>Engine/Core/TaskStream.cpp</code>), which is what makes the header's promise true: "Takes the stream's lock per
+  lane, so a <code>Produce</code> still running has handed over (or refused) its item before this returns, and no item can arrive afterwards"
+  (<code>Engine/Core/TaskProvider.h</code>). This function contributes the lane-by-lane decomposition and the count, nothing more.
+</div>
+
+<div class="gap">
+  <strong>The count moves only when the stream confirms it held this provider.</strong> A <code>false</code> from
+  <code>DetachProvider</code> leaves <code>registeredCount</code> alone, so a detach of a lane that never registered — an attachment naming a
+  stream the engine lacks, or a lane list that refused the provider — cannot drive the count negative
+  (<code>Engine/Core/TaskProvider.cpp</code>). That guard is what keeps the destructor's R37 assert meaningful in builds where it exists, and
+  keeps a mismatched detach from hiding a real registration elsewhere.
+</div>
+
+<div class="gap">
+  <strong>A stream the engine does not have is skipped without a word</strong>, unlike
+  <a href="registeronstream.html">RegisterOnStream</a>, which warns about the same condition. The asymmetry is defensible — the registration
+  already said out loud that nothing was registered, and a teardown path that over-detaches should not log twice — but it does mean a silent
+  no-op and a successful removal are indistinguishable from the outside
+  (<code>Engine/Core/TaskProvider.cpp</code>).
+</div>
+
+<div class="note">
+  <strong>It removes one lane's entry, and the caller decides how many lanes to ask about.</strong>
+  <a href="detachfrom.html">DetachFrom</a> reads the recorded mask and calls this once per bit set, so a provider on both lanes ends up
+  unregistered twice and decremented twice. Nothing here consults the mask itself, so a caller that drove this directly could leave the other
+  lane holding the pointer — which is precisely why the function is private
+  (<code>Engine/Core/TaskProvider.h</code>).
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<table>
+  <tr><th>Parameter</th><th>Type</th><th>Requirement</th></tr>
+  <tr><td><code>stream</code></td><td><code>TStreamIndex</code> (<code>int</code>)</td><td>The stream to leave; an index the engine does not have returns immediately</td></tr>
+  <tr><td><code>lane</code></td><td><code>StreamDrainPolicy::ELane</code></td><td>The lane to remove this provider from — one lane per call</td></tr>
+</table>
+
+<h2 id="return">Return value</h2>
+
+<p><code>void</code>. Whether the lane's list actually held this provider is visible only as the difference between <code>registeredCount</code> moving and not moving, which no accessor exposes (<code>Engine/Core/TaskProvider.h</code>).</p>
+
+<h2 id="example">Examples</h2>
+
+<p class="meta">From Engine/Core/TaskProvider.cpp, TaskProvider::DetachFrom()</p>
+
+<pre><code>if ((held &amp; LaneBitPriority) != 0)
+{
+    UnregisterFromStream(stream, StreamDrainPolicy::ELane::Priority);
+}</code></pre>
+
+<p>
+  The one public route to it: read the mask, ask for each bit. The pairing of that mask with this function's per-lane removal is what guarantees
+  the recorded attachment and the stream's list empty out together — and therefore that <code>registeredCount</code> is back at zero before a
+  provider is allowed to die (<code>Engine/Core/TaskProvider.cpp</code>).
+</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; TaskProvider</a></span>
+  <span><a href="index.html#methods">All TaskProvider methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

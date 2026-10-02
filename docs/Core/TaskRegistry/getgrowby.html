@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TaskRegistry::GetGrowBy — Core module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a class="current" href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Core</a> /
+  <a href="index.html">TaskRegistry</a> / GetGrowBy
+</p>
+
+<h1><span class="fn">GetGrowBy</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::TaskRegistry</span>
+  <span class="tag">Engine/Core/TaskRegistry.h</span>
+  Records each Grow adds.
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>[[nodiscard]] std::size_t GetGrowBy() const noexcept</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  Declared and defined in the header <code>Engine/Core/TaskRegistry.h</code>; there is no counterpart in
+  <code>Engine/Core/TaskRegistry.cpp</code>. One read of the field that is simultaneously the records-per-<a href="grow.html">Grow</a>
+  figure, the size of every bank, and the divisor that turns an index into a bank and an offset.
+</p>
+
+<div class="note">
+  <strong>The figure a caller should compare against what it asked for.</strong>
+  <a href="initialize.html">Initialize</a> replaces a zero grow-by with <code>DefaultGrowByRecords</code>, so the requested and effective
+  values can differ; this is the effective one, and <a href="getcapacity.html">GetCapacity</a> is expressed in it. The engine's sizing test
+  asserts it equals 4096 (<code>Engine/Core/TaskRegistry.cpp</code>).
+</div>
+
+<div class="gap">
+  <strong>It is not a growth policy and not a reservation.</strong> One <a href="grow.html">Grow</a> buys exactly this many records and
+  <code>this × sizeof(Record)</code> bytes — 1 MiB at the default — and nothing grows automatically, because
+  <a href="create.html">Create</a> refuses rather than growing. It is also not advisory: every index computation in
+  <a href="find.html">Find</a> and <a href="getrecord.html">GetRecord</a> divides by it, which is the reason the header restricts
+  <a href="initialize.html">Initialize</a> to once, before any task exists.
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<p>None.</p>
+
+<h2 id="return">Return value</h2>
+
+<table>
+  <tr><th>Type</th><th>What you get</th></tr>
+  <tr><td><code>std::size_t</code></td><td>Records per bank, never zero — the constructor seeds it with <code>DefaultGrowByRecords</code> and <a href="initialize.html">Initialize</a> refuses to store a zero</td></tr>
+</table>
+
+<h2 id="example">Examples</h2>
+
+<p class="meta">From Engine/Core/TaskRegistry.cpp, TaskRegistryTest</p>
+
+<pre><code>if (registry.GetGrowBy() != decidedGrowByRecords)
+{
+    ls &lt;&lt; "The engine's registry grows by " &lt;&lt; registry.GetGrowBy() &lt;&lt; " records, not " &lt;&lt; decidedGrowByRecords
+       &lt;&lt; '.' &lt;&lt; lferr;
+}</code></pre>
+
+<p>
+  The reading that makes a memory budget checkable: capacity times record size is the table's footprint, and grow-by times record size is
+  the cost of the next <a href="grow.html">Grow</a> — the number a caller needs before deciding whether growth is affordable at this point
+  in a frame.
+</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; TaskRegistry</a></span>
+  <span><a href="index.html#methods">All TaskRegistry methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

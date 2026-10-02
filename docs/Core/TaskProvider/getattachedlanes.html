@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TaskProvider::GetAttachedLanes — Core module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a class="current" href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Core</a> /
+  <a href="index.html">TaskProvider</a> / GetAttachedLanes
+</p>
+
+<h1><span class="fn">GetAttachedLanes</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::TaskProvider</span>
+  <span class="tag">Engine/Core/TaskProvider.cpp</span>
+  The lane mask recorded for one stream, or zero when not attached to it.
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>[[nodiscard]] std::uint8_t GetAttachedLanes(TStreamIndex stream) const noexcept</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  Defined in <code>Engine/Core/TaskProvider.cpp</code> as <code>TaskProvider::GetAttachedLanes()</code>: the lane mask recorded for one stream,
+  or zero when the provider is not attached to it.
+</p>
+
+<div class="note">
+  <strong>The mask is cumulative, because <a href="attachto.html">AttachTo</a> ORs each call's bit into it.</strong> Attaching the FIFO lane and
+  then the priority lane yields <code>LaneBitFifo | LaneBitPriority</code>, and there is no way to take one lane back without
+  <a href="detachfrom.html">DetachFrom</a>, which drops the whole stream
+  (<code>Engine/Core/TaskProvider.cpp</code>). A caller that needs "this lane only" cannot get it by detaching and re-attaching while a drain is
+  live without accepting the gap in between.
+</div>
+
+<div class="gap">
+  <strong>Zero is doing two jobs, and they cannot be told apart.</strong> It is both "not attached to this stream" and the mask
+  <a href="lanebit.html">LaneBit</a> returns for <code>ELane::None</code> — a value this class never stores, since
+  <a href="attachto.html">AttachTo</a> refuses a no-lane attachment before it reaches the array. Ask
+  <a href="isattachedto.html">IsAttachedTo</a> to separate the two cases
+  (<code>Engine/Core/TaskProvider.cpp</code>).
+</div>
+
+<div class="note">
+  <strong>The mask is bookkeeping on this side of the pair only.</strong> The stream keeps its own per-lane lists — up to
+  <code>MaxProvidersPerLane</code> providers each — and the drain reads those. This mask says what the provider asked for; it does not say the
+  stream accepted it, and <a href="registeronstream.html">RegisterOnStream</a> reports a refusal rather than correcting it
+  (<code>Engine/Core/TaskProvider.h</code>).
+</div>
+
+<div class="gap">
+  <strong>Two bits set means two registrations and up to two asks per drain pass</strong> — once for the FIFO lane's policy, once for the
+  priority lane's. That doubling is the hazard the header says "has to be the caller's decision and never a default", and this accessor is the
+  only way to see after the fact whether it was taken (<code>Engine/Core/TaskProvider.h</code>).
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<table>
+  <tr><th>Parameter</th><th>Type</th><th>Requirement</th></tr>
+  <tr><td><code>stream</code></td><td><code>TStreamIndex</code> (<code>int</code>)</td><td>The stream to report on; no range check, no assert</td></tr>
+</table>
+
+<h2 id="return">Return value</h2>
+
+<table>
+  <tr><th>Type</th><th>What you get</th></tr>
+  <tr><td><code>std::uint8_t</code></td><td>A mask of <code>LaneBitFifo</code> (1) and <code>LaneBitPriority</code> (2), or 0 when no slot names this stream</td></tr>
+</table>
+
+<h2 id="example">Examples</h2>
+
+<p class="meta">From Engine/Core/TaskProvider.cpp, TaskProviderTest</p>
+
+<pre><code>provider.AttachTo(3, StreamDrainPolicy::ELane::Fifo);
+provider.AttachTo(3, StreamDrainPolicy::ELane::Priority);</code></pre>
+
+<p>
+  The pair that produces the mask <code>3</code> on one slot, with the test asserting immediately afterwards that it took one slot rather than
+  two (<code>Engine/Core/TaskProvider.cpp</code>). Reading the mask back is how a caller confirms which lanes it is now feeding, since the two
+  calls return nothing.
+</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; TaskProvider</a></span>
+  <span><a href="index.html#methods">All TaskProvider methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

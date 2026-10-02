@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>StreamDrainPolicy::ChooseLane — Core module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a class="current" href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Core</a> /
+  <a href="index.html">StreamDrainPolicy</a> / ChooseLane
+</p>
+
+<h1><span class="fn">ChooseLane</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::StreamDrainPolicy</span>
+  <span class="tag">Engine/Core/StreamDrainPolicy.cpp</span>
+  The lane to drain next, or None - a pure call that charges nothing.
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>[[nodiscard]] ELane ChooseLane(bool fifoHasWork, bool priorityHasWork) const noexcept</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  Defined in <code>Engine/Core/StreamDrainPolicy.cpp</code> as <code>StreamDrainPolicy::ChooseLane()</code>. It is
+  <strong>const and pure</strong>: it charges nothing, spends no credit, and mutates no rotation state, so calling it twice
+  with the same two answers gives the same lane. Charging is a separate call —
+  <a href="committake.html">CommitTake</a> when an item was actually taken from the lane, and
+  <a href="chargefifo.html">ChargeFifo</a> / <a href="chargepriority.html">ChargePriority</a> once its CPU time is known.
+</p>
+
+<table>
+  <tr><th>State</th><th>Answer</th></tr>
+  <tr><td>Neither lane has work</td><td><code>ELane::None</code></td></tr>
+  <tr><td>Unlimited, one lane has work</td><td>that lane</td></tr>
+  <tr><td>Unlimited, both have work</td><td>whichever holds more credit — <code>fifoCredit &gt;= priorityCredit</code> picks FIFO, so a tie goes to FIFO</td></tr>
+  <tr><td>Limited, total spent has reached the allowance</td><td><code>ELane::None</code></td></tr>
+  <tr><td>Limited, both lanes have work inside their own share</td><td>whichever has more share remaining; a tie goes to FIFO</td></tr>
+  <tr><td>Limited, only one lane has share remaining</td><td>that lane</td></tr>
+  <tr><td>Limited, both shares spent, stream total still inside budget</td><td>borrowing: the heavier lane if both have work, otherwise whichever has work</td></tr>
+</table>
+
+<pre><code>const auto used = fifoUsed + priorityUsed;
+if (used &gt;= std::chrono::duration_cast&lt;std::chrono::nanoseconds&gt;(allowance))
+{
+    return ELane::None;
+}</code></pre>
+
+<p class="meta">From Engine/Core/StreamDrainPolicy.cpp, StreamDrainPolicy::ChooseLane()</p>
+
+<p>
+  The last row is the borrowing the class is designed around, and the source names the reason: the work exists, the stream
+  can still pay for it, and refusing would idle the stream over a bookkeeping detail. Where both lanes are backlogged
+  without either having share left, the preference is the configured heavier lane and then FIFO, "so the choice is never
+  arbitrary".
+</p>
+
+<div class="gap">
+  <strong>The answer is a suggestion the queue does not have to accept, and one shipping caller ignores it entirely.</strong>
+  <code>TaskStream::Dequeue()</code> serves the priority lane whenever it is non-empty and the FIFO lane otherwise,
+  <em>without consulting this function</em> — its comment says the rate and the budget gate the stream's own loop, and
+  gating here would let a caller's refill stall on an exhausted allowance (<code>Engine/Core/TaskStream.cpp</code>). It does
+  still call <a href="committake.html">CommitTake</a> for the lane it served, so the books stay honest even on that path.
+</div>
+
+<div class="gap">
+  <strong><code>None</code> with work waiting is the only signal that a stream declined.</strong> This function reports no
+  reason. <code>TaskStream::Update()</code> detects the combination itself — no lane chosen while at least one lane holds
+  work — and counts it once per pass (<code>laneWorkRefusals</code>,
+  <code>Engine/Core/TaskStream.cpp</code>), because the refusal is a rate and not a queue depth.
+</div>
+
+<div class="note">
+  <strong>A lane with work is never starved; the ratio is not guaranteed.</strong> With an allowance and both lanes
+  permanently backlogged, whoever has work gets the CPU, and the long-run ratio is not preserved — the cost of free
+  borrowing, stated in the header. In the unlimited mode the ratio <em>is</em> honoured by credit: a 3:1 rate yields 6:2 over
+  eight takes, and a 1:3 rate still serves the lighter lane at least once in eight
+  (<code>Engine/Core/StreamDrainPolicy.cpp</code>, <em>Unlimited allowance serves the configured ratio</em> and <em>A light
+  lane is never starved by a heavy one</em>).
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<table>
+  <tr><th>Parameter</th><th>Type</th><th>Requirement</th></tr>
+  <tr><td><code>fifoHasWork</code></td><td><code>bool</code></td><td>Whether the FIFO lane holds anything — the caller's <code>!fifoQueue.IsEmpty()</code>, read under the queue's lock</td></tr>
+  <tr><td><code>priorityHasWork</code></td><td><code>bool</code></td><td>Whether the priority lane holds anything</td></tr>
+</table>
+
+<h2 id="return">Return value</h2>
+
+<table>
+  <tr><th>Type</th><th>What you get</th></tr>
+  <tr><td><code>ELane</code></td><td>The lane to acquire from, or <code>ELane::None</code> when there is nothing to take or the budget says stop. Whenever work exists and the allowance is unlimited, a lane is always returned</td></tr>
+</table>
+
+<h2 id="example">Examples</h2>
+
+<p class="meta">From Engine/Core/TaskStream.cpp, TaskStream::Update()</p>
+
+<pre><code>lane = drainPolicy.ChooseLane(!fifoQueue.IsEmpty(), !priorityQueue.IsEmpty());
+
+if (lane == StreamDrainPolicy::ELane::None &amp;&amp; (!fifoQueue.IsEmpty() || !priorityQueue.IsEmpty()))
+{
+    laneWorkRefusals.fetch_add(1, std::memory_order_relaxed);
+}</code></pre>
+
+<p>
+  Called inside the queue lock, immediately after finished items are swept and unfinished ones re-added, so the two
+  emptiness answers describe the queues as the stream is about to take from them. What follows is a switch over the three
+  answers, and the <code>None</code> case is where the provider probes and the general queue are then consulted.
+</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; StreamDrainPolicy</a></span>
+  <span><a href="index.html#methods">All StreamDrainPolicy methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>
