@@ -663,6 +663,85 @@ def _fixture_record(inits, ctor_offset=None):
             'inner': [{'kind': 'CXXConstructorDecl', 'name': 'Probe', 'loc': loc, 'inner': inits}]}
 
 
+ACCESS_LABEL = re.compile(r'^\s*(public|protected|private)\s*:\s*(?://.*)?$')
+RECORD_OPENER = re.compile(r'^\s*(?:template\s*<[^>]*>\s*)?(class|struct|union|enum(?:\s+(?:class|struct))?)\b')
+ACCESS_DEFAULT = {'class': 'private', 'struct': 'public', 'union': 'private', 'enum': 'private'}
+CONDITIONAL_HEAD = re.compile(r'^\s*#\s*(?:if|ifdef|ifndef|else|elif|endif)\b')
+
+
+ADVICE = []
+
+
+def access_label_findings(target, text):
+    """(findings, advice) for access labels that do nothing or head a section that declares nothing.
+
+    Both are what a comment strip leaves behind. A doc block used to justify writing `public:` again inside a
+    block that was already public; delete the prose and the label stays, re-declaring an access the class had
+    never left. A section whose members were all prose leaves an access label followed straight by the next
+    one. Neither is a blank-line rule and neither is a member-order rule, so the two existing checks read such
+    a file as clean — and a label that does nothing is a reader's dead end either way.
+
+    Only the empty section is a finding. A repeated label can be a section heading — `public:` before a block
+    of nested types, then `public:` again before the functions — and the twelve-block layout neither forbids
+    that nor names it, so whether the second label heads a real group is a reader's judgement, reported as
+    advice on the same footing as `includes.py`'s B6 candidates.
+
+    A label inside or after a conditional region is never reported. `#ifdef` branches each need their own
+    label, and once a conditional has been seen the effective access is not knowable from the text, so the
+    frame's access goes unknown and stays unreported rather than guessing a configuration.
+    """
+    findings = []
+    advice = []
+    stack = []
+    pending = None
+    for index, raw in enumerate(text.split('\n'), 1):
+        line = raw.strip()
+        if not line:
+            continue
+        opener = RECORD_OPENER.match(raw)
+        if opener and not line.startswith('friend '):
+            pending = ACCESS_DEFAULT.get(opener.group(1).split()[0], 'private')
+        opens, closes = raw.count('{'), raw.count('}')
+        for _ in range(opens):
+            stack.append({'record': pending is not None, 'access': pending, 'default': pending,
+                          'line': 0, 'since': False})
+            pending = None
+        label = ACCESS_LABEL.match(raw)
+        if stack and label and not opens:
+            frame = stack[-1]
+            if frame['record']:
+                named = label.group(1)
+                if frame['line'] and not frame['since'] and frame['access'] != named:
+                    findings.append('%s:%d: ACCESS-EMPTY  the %s: section declares nothing before %s:'
+                                    % (target, frame['line'], frame['access'], named))
+                # Restating the default as the body's first label is the twelve-block layout asking for the
+                # sections to be declared, so it is style rather than a no-op; only a label written after the
+                # body has already been placed changes nothing.
+                if frame['access'] not in (None, '?') and frame['access'] == named \
+                        and not (frame['line'] == 0 and named == frame['default']):
+                    advice.append('%s:%d: ACCESS-REDUNDANT  %s: while this body is already %s'
+                                  % (target, index, named, named))
+                frame.update(access=named, line=index, since=False)
+                continue
+        if CONDITIONAL_HEAD.match(raw):
+            for frame in stack:
+                if frame['record']:
+                    frame['access'] = '?'
+                    frame['since'] = True
+            continue
+        for _ in range(closes):
+            frame = stack.pop() if stack else None
+            if frame and frame['record'] and frame['line'] and not frame['since']:
+                findings.append('%s:%d: ACCESS-EMPTY  the %s: section declares nothing to the end of the body'
+                                % (target, frame['line'], frame['access']))
+            pending = None
+        if stack and not label and line != '{' and line != '}':
+            frame = stack[-1]
+            if frame['record'] and not line.startswith(('//', '/*', '*')):
+                frame['since'] = True
+    return findings, advice
+
+
 def selftest():
     """Regression tests for the written-order reconstruction, on recorded clang JSON shapes.
 
@@ -739,6 +818,33 @@ def selftest():
     else:
         print('PASS  a missing file yields no waivers rather than raising')
     os.unlink(sample_path)
+
+    label_cases = [
+        ('a label inside a fresh class is not redundant',
+         'class X final\n{\npublic:\n\tint a;\n};\n', []),
+        ('a label reopening the access already in force is redundant',
+         'class X final\n{\npublic:\n\tint a;\n\npublic:\n\tint b;\n};\n', ['ACCESS-REDUNDANT']),
+        ('two identical labels back to back report one redundancy',
+         'class X final\n{\npublic:\npublic:\n\tint a;\n};\n', ['ACCESS-REDUNDANT']),
+        ('restating the default as the first label is explicit style, not a defect',
+         'struct X final\n{\npublic:\n\tint a;\n};\n', []),
+        ('a private section that declares nothing is empty',
+         'class X final\n{\n\tint a;\n\nprivate:\n};\n', ['ACCESS-EMPTY']),
+        ('the default access of a class is not an empty section',
+         'class X final\n{\n\tint a;\n};\n', []),
+        ('a nested body keeps its own access, and the outer frame survives it',
+         'class X final\n{\npublic:\n\tstruct Inner final\n\t{\n\t\tint x;\n\t};\n\n\tint a;\n};\n', []),
+        ('conditional branches each need their own label',
+         'class X final\n{\n#ifdef A\npublic:\n\tint a;\n#else\npublic:\n\tint b;\n#endif\n};\n', []),
+    ]
+    for name, source, want in label_cases:
+        empties, repeated = access_label_findings('fixture.h', source)
+        got = sorted(set(f.split(':', 2)[2].strip().split()[0] for f in empties + repeated))
+        if got != sorted(want):
+            failures += 1
+            print('FAIL  %s: want %s, got %s' % (name, sorted(want), got))
+        else:
+            print('PASS  %s' % name)
     return 1 if failures else 0
 
 
@@ -778,13 +884,15 @@ def init_order_findings(target, entries, by_name, clang_override=None):
 
 def check_file(target, entries, by_name, clang_override=None):
     text = open(target, encoding='utf-8', errors='ignore').read()
+    labels, repeated = access_label_findings(target, text)
+    ADVICE.extend(repeated)
     if not CLASS_DECL.search(text):
-        return [], [], 'no class or struct defined here', []
+        return labels, [], 'no class or struct defined here', []
     records, guarded, notes = collect_records(target, entries, by_name, clang_override)
     notes = [n if n.startswith(target) else '%s: [PARTIAL] %s' % (target, n) for n in notes]
     if not records:
-        return [], notes, 'no class body reached by clang in this file', []
-    findings = []
+        return labels, notes, 'no class body reached by clang in this file', []
+    findings = list(labels)
     waived = []
     for record, line, home in records:
         name = record.get('name') or '(anonymous at line %d)' % line
@@ -863,6 +971,11 @@ def main(argv):
                 print('%s: [PASS] %s' % (target, mode))
     summary = '%s: %d file(s) checked (%d clean, %d with findings), %d skipped, %d partial — %d violation(s)'
     summary += ', %d waived' % waived_total if waived_total else ''
+    if ADVICE:
+        print('access labels: %d repeated label(s) that may head a group only a reader can name — advice, '
+              'fix or leave' % len(ADVICE))
+        for line in ADVICE:
+            print('    %s' % line)
     print(summary % (mode, checked, silent, checked - silent, skipped, partial, total))
     return 1 if total else 0
 
