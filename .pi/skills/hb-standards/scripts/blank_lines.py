@@ -790,11 +790,9 @@ def main(argv):
                              'fail a conforming file')
     parser.add_argument('--summary-only', action='store_true', help='print counts, not findings')
     parser.add_argument('--paragraphs', action='store_true',
-                        help='report the member-scope paragraph shape of each file: how many groups hold a '
-                             'single declaration, and the longest run of them standing alone. This is advice, '
-                             'not a finding — rule set A is a set of ceilings, so a file whose every member '
-                             'sits alone between blanks is clean under A and still has no paragraphs. Only a '
-                             'reader can decide the seams; this says where to look.')
+                        help='report each file\'s longest run of stranded member declarations — advice, not '
+                             'findings. paragraph_shape() carries the reasoning and why a clean rule set A '
+                             'run is not evidence that the seams were ever decided.')
     args = parser.parse_args(argv)
 
     if args.paragraphs:
