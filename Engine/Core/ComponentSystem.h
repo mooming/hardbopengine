@@ -3,10 +3,12 @@
 #pragma once
 
 #include <algorithm>
+
 #include "ComponentState.h"
 #include "Debug.h"
 #include "HSTL/HVector.h"
 #include "String/String.h"
+
 
 namespace hbe
 {

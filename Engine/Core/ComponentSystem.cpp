@@ -9,7 +9,6 @@
 
 namespace hbe
 {
-
 void ComponentSystemTest::Prepare()
 {
 	AddTest("Update Component Test", [this](auto& ls)
@@ -162,7 +161,6 @@ void ComponentSystemTest::Prepare()
 		}
 
 		time::TDuration loopTime;
-
 		{
 			time::ScopedTime measure(loopTime);
 			while (testSystem)
@@ -177,7 +175,6 @@ void ComponentSystemTest::Prepare()
 		ls << "Total Loop Time = " << time::ToFloat(loopTime) << lf;
 	});
 }
-
 } // namespace hbe
 
 #endif //__UNIT_TEST__
