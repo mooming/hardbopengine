@@ -197,6 +197,14 @@ def label_expectations(text):
         if ch == '\n':
             line += 1
             line_start = index + 1
+            # A newline is a token boundary, not nothing. Accumulating nothing fused the last word of
+            # one line onto the first of the next, so `#ifdef __UNIT_TEST__` above `namespace hbe` put
+            # `__UNIT_TEST__namespace` in front of the keyword, `\bnamespace` refused to match, and the
+            # namespace was never pushed — which cost its closing `} // namespace hbe` the structural-label
+            # exemption and let `--strip` delete a label the standard protects. Any directive ending in a
+            # word character did this, which is why a region that opens with an `#include` was unaffected:
+            # the quote is not a word character, so the boundary survived by accident.
+            pending = (pending + ' ')[-120:]
             continue
         if index == line_start:
             line_end = blanked.find('\n', line_start)
@@ -665,6 +673,24 @@ SELFTEST_CASES.append(('api reference pointer on a member is reported', POINTER_
                        '\n'.join(['class WorkItem final', '{', 'public:',
                                   '\t/// API reference: docs/Core/WorkItem/index.html',
                                   '\tvoid Run() {}', '};', '']), [4]))
+
+SELFTEST_CASES.append(('a namespace label inside a conditional is still a structural label',
+                       'selftest.h',
+                       '\n'.join(['#ifdef __UNIT_TEST__',
+                                  'namespace hbe',
+                                  '{',
+                                  '\tclass T final',
+                                  '\t{',
+                                  '\t};',
+                                  '} // namespace hbe',
+                                  '#endif //__UNIT_TEST__', '']), []))
+SELFTEST_CASES.append(('a guard whose name ends in a word character cannot swallow the keyword',
+                       'selftest.h',
+                       '\n'.join(['#if HBE_TRACE',
+                                  'namespace hbe',
+                                  '{',
+                                  '} // namespace hbe',
+                                  '#endif // HBE_TRACE', '']), []))
 
 POINTER_PACKET = 'Engine/Core/ResultPacket.h'
 SELFTEST_CASES.append(('alignas between the keyword and the name still names its entry', POINTER_PACKET,
