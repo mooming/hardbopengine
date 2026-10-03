@@ -1,5 +1,52 @@
 # Journal
 
+## 2026-10-03 13:00 — the four refuted checker claims, fixed, and the sample that was too small to see one of them
+
+**Cause.** The entry below refuted four checker claims and left all four unfixed — "reported, not fixed", one
+blank-line false positive still printed at every gate. The owner had approved fixing them as work outside the
+original `Applications`/`Examples` scope. All four are now fixed, each with a measurement that shows the fix
+removes the wrong answer and keeps the right ones.
+
+| Checker | Fix | Proof it did not just stop looking | Commits |
+|---|---|---|---|
+| `blank_lines.py` A14 | Asks whether the region is **trailing** — nothing but blanks, comments and closing braces after the matching `#endif` — instead of whether the guard is indented. `IndentPPDirectives: None` pins every directive to column 0, so indentation cannot carry the distinction. | Two new fixtures take the boundary both ways: a guard inside a `namespace` is still trailing and still needs its blank; a guard opening `main()`'s body is not one at any column, and the blank the old reading demanded is reported as the A4 violation it is. Against `6a48f9a^`'s reader those two fail. Tree-scale over 273 files: **1486 → 1485 findings, A14 14 → 13, every other rule count identical** — one false positive removed, none created. | `6a48f9a` |
+| `layout.py --init-order` | A field written with no explicit initializer arrives as a `CXXConstructExpr` at the constructor's own offset, not a `CXXDefaultInitExpr`; `_same_position()` compares by `offset` where both sides have one, because clang's JSON omits `line` on some locations beside siblings that carry it. | Six direct cases including the positive control (a genuinely swapped list is still reported). Tree-scale: 5 findings removed, **all five verified false positives by reading the constructor** — see below. | `9a0182d` |
+| `includes.py` name provenance | `walk_names` read `loc.file` off every node; clang writes `file` only where the file *changes*, so a declaration nested in `namespace hbe` reports no file and was dropped. The file is now inherited down the AST. Separately, measurements add `-D__TEST__ -D__UNIT_TEST__` for a file carrying that region, and print that they did. | 3 new fixtures on recorded clang JSON shapes; with `a8793f7^`'s reader they fail with `got ['hbe']`, the exact symptom. Measured over 9 engine headers: **11 names found before, 164 after** (`Vector3.h` 1→43, `MemoryManager.h` 1→32). `--unused` now reports 0 candidates for all three in-scope files. | `a8793f7` |
+| `prove_regroup.py --whitespace-only` | The `__UNIT_TEST__` guard compared bytes from the marker to end of file, so it owned blank lines for the one mode whose job is editing them. A regrouping still may not touch a byte; a blank-line pass is held to the region's **code** lines, and the report says which guarantee ran. | Six cases on the pure function: a blank added inside the region fails strict and passes lenient; a code line edited or deleted fails both; **a line carried into the region fails both** — the case the whole-file multiset cannot see, so the relaxation opens no hole. Exit codes re-read unmasked: 0 proven, 1 failed, `[NONE]` for a file with no region. | `107ec20` |
+
+**The sample was too small, and my commit message said so wrongly.** `9a0182d`'s message claims the init-order
+fix "changes no verdict on code already passing", backed by re-checking 65 engine headers. That sample was
+drawn from `Engine/**.h` and **missed all three files the fix actually affects**. Measured over the whole tree
+instead — 270 files — the fix flips three verdicts from `[FAIL]` to `[PASS]`, removing 5 findings:
+`ResourceItem::ResourceItem` and `LoadingRequest::LoadingRequest` in `Engine/Resource/ResourceManager.h`,
+`TestEnv::TestEnv` in `Engine/Test/TestEnv.h`, and `WindowTickProvider::WindowTickProvider` in
+`Examples/WindowExample/Main.cpp`. Each was then read by hand, which is the only thing that settles it:
+
+| Constructor | Declaration order | What the list writes | What the old reader claimed |
+|---|---|---|---|
+| `ResourceItem` | `id`, `referenceCount`, `path`, `buffer` | `id(0)`, `referenceCount(0)` | "`id` is initialised after `path`" |
+| `LoadingRequest` | `resourceID`, `path` | `resourceID(0)` | "`resourceID` is initialised after `path`" |
+| `TestEnv` | `tests` (125), `errorMessages` (131) | `testedCount(0)`, `passCount(0)` | "`tests` is initialised after `errorMessages`" |
+| `WindowTickProvider` | `taskSystem`, `ticks`, `frames`, `produced` | base, `taskSystem`, `ticks` | "`taskSystem` is initialised after `frames`" |
+
+Every one names a member **the source never writes in its initializer list**. A list that writes only
+`id(0), referenceCount(0)` cannot initialise `id` after `path`; the old reader invented a position for the
+implicit default-construction and then compared against it. All four written orders match their declaration
+order, so `[PASS]` is the true verdict — including `WindowTickProvider`, which matters because
+`fca89a9` moved that very data block and a real re-sequencing there is a silent behaviour change.
+**Lesson, and it is about my method, not the tool: a checker that runs tree-wide is re-checked tree-wide.**
+A sampled verdict-comparison cannot find the files a fix changes, and I wrote the number into a commit message
+as if it were the whole claim.
+
+**Gate for this work.** All four self-test suites green: `blank_lines.py` 44 fixtures, `layout.py` 8 checks,
+`includes.py` 13 fixtures, `prove_regroup.py` 6 cases — 0 failures. The three in-scope files are clean on every
+checker the fixes touch: `blank lines: 0 finding(s)`, `init order: 3 file(s) checked (3 clean) — 0
+violation(s)`, `comments: 0 violation(s)`, `includes: 0 finding(s)`. The A14 false positive that this entry's
+predecessor left standing is gone. No C++ changed in these four commits, so the build gate is untouched;
+`check.sh --all --no-build` still exits 1 on the tree's open docs backlog (172 method pages owed) and the
+engine's rule-set-A backlog (1481 findings, reported not gated), neither of which these commits own or touch.
+Commits `a8793f7`, `107ec20`, `6a48f9a`, `9a0182d`.
+
 ## 2026-10-03 00:55 — the sweep of Applications and Examples, and the four checker claims that did not survive a compiler
 
 **Cause.** The owner asked for `hb-standards` on every file under `Applications/` and `Examples/`. Measured
@@ -63,7 +110,8 @@ failures, 0 advisories, 0 layout findings, 0 comment findings, 0 include finding
 1 blank-line finding, the A14 false positive above. `check.sh` exits 1 on all three runs: once for A14, and
 otherwise on tree-wide docs backlog (67 engine pages owed) that this task neither owns nor touched. Plan:
 `.Plans/PLAN_applications_examples_standards.md`. Commits `8421628`, `e88648b`, `fca89a9`, `1b28de5`,
-`ea4c934`, `50efdaa`.
+`ea4c934`, `50efdaa`. *(Superseded on the four checker fixes and that A14 finding — all four are fixed and the
+finding is gone; see the entry above.)*
 
 ## 2026-10-02 23:45 — a queue item's pages, a table grammar the owner changed twice, and five agents cut back to one
 

@@ -146,7 +146,7 @@ pass=59 fail=0 of 59 collections in Dev, Debug and Release.
 |---|---|
 | 1 clang-format | 0 rewrites |
 | 2 mechanical greps, `autofix.py` | 0 findings, 0 fixes, 0 advisories |
-| 2b blank lines (rule set A) | 15 findings → 1, and that 1 is a refuted false positive |
+| 2b blank lines (rule set A) | 15 findings → 0. The last one was the refuted A14 false positive, gone with `6a48f9a` |
 | 2b includes (rule set B) | 0 findings |
 | 3 comment ban | 0 comment lines in scope before or after |
 | 4 member layout | 4 findings → 0, `layout.py --init-order` 0 on the compiler's word |
@@ -165,3 +165,9 @@ and `Epsilon` was preprocessed away and the check could not see the breakage it 
 `blank_lines.py` and `prove_regroup.py` on `Applications/EngineTest/TestMain.cpp`, where no file state
 satisfies both. Each refutation, and the compiler or positive control that produced it, is in the journal
 entry for 2026-10-03.
+
+**All four are since fixed**, on the owner's ruling that the fixes were worth doing though they sat outside
+this plan's scope: `a8793f7` (`includes.py`), `107ec20` (`prove_regroup.py`), `6a48f9a` (`blank_lines.py`),
+`9a0182d` (`layout.py`). Every one was re-measured at the scale its checker runs at, not on a sample — the
+first claim for `9a0182d` was drawn from 65 headers and missed all three files the fix changes. See the
+journal entry for 2026-10-03 13:00.
