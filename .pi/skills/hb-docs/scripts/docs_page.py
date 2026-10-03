@@ -57,6 +57,9 @@ import sys
 import tempfile
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+# The validator stays with the standards that made it a gate, so page writes are checked by the same
+# code that checks them at commit time rather than by a copy that can drift from it.
+VALIDATOR = os.path.normpath(os.path.join(SCRIPT_DIR, '..', '..', 'hb-standards', 'scripts', 'htmlcheck.py'))
 REPO_ROOT = os.path.abspath(os.path.join(SCRIPT_DIR, '..', '..', '..', '..'))
 DOCS = os.path.join(REPO_ROOT, 'docs')
 
@@ -232,7 +235,7 @@ def keep_if_valid(path, text):
     probe = path + '.new'
     with open(probe, 'w', encoding='utf-8') as handle:
         handle.write(text)
-    result = subprocess.run([sys.executable, os.path.join(SCRIPT_DIR, 'htmlcheck.py'), probe],
+    result = subprocess.run([sys.executable, VALIDATOR, probe],
                             capture_output=True, text=True)
     if result.returncode == 0:
         os.replace(probe, path)
@@ -403,7 +406,7 @@ def command_check(argv):
                 targets += [os.path.join(root, f) for f in files if f.endswith('.html')]
         else:
             die('neither a page nor a documented module: %s' % arg)
-    result = subprocess.run([sys.executable, os.path.join(SCRIPT_DIR, 'htmlcheck.py')] + targets,
+    result = subprocess.run([sys.executable, VALIDATOR] + targets,
                             capture_output=True, text=True)
     print(result.stdout, end='')
     return result.returncode

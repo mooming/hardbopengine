@@ -6,7 +6,7 @@ description: >-
   must move into, delete the comments, and prove the tree still builds in Debug, Dev and Release. Use when
   asked to apply clang-format, check or fix coding standards, run check.sh --fix, run the module fix cycle
   pair by pair, prepare or amend a commit, review a commit for style conformance,
-  sweep or strip comments from a module, write or repair API reference pages under docs/, or when Main.cpp
+  sweep or strip comments from a module, hand reference-page work to the hb-docs skill, or when Main.cpp
   / engine sources need the Allman brace style, tab indentation, include ordering and the
   Engine/CodingStandards.h conventions enforced. Also use before declaring any engine change done, because
   the skill ends with a three-configuration build gate.
@@ -24,7 +24,7 @@ were **clang-format-clean but rule-non-clean** (include layout), so no single la
 | 3 | comment ban in `.h` and `.cpp` | `scripts/comments.py`, a lexer; `--strip` deletes | reviewer writes the prose into `docs/`, script deletes, gate proves |
 | 4 | twelve-block member layout | `scripts/layout.py`, clang AST; `--init-order` for initializer lists | reviewer, gate-proved |
 | 4b | grouping *inside* a block: one concern per group, one blank line at each seam | `scripts/prove_regroup.py` proves the edit moved nothing but order | reviewer decides, script proves |
-| 5 | every entry owns a page, every method owns a page, every page is valid HTML | `scripts/docs_coverage.py`, `scripts/docs_methods.py`, `scripts/htmlcheck.py`; `scripts/docs_page.py` writes them | reviewer authors, `docs_page.py` builds chrome, gate proves |
+| 5 | every entry owns a page, every method owns a page, every page is valid HTML | `scripts/docs_coverage.py`, `scripts/docs_methods.py`, `scripts/htmlcheck.py`; the **hb-docs** skill writes them with `.pi/skills/hb-docs/scripts/docs_page.py` | reviewer authors via `hb-docs`, its generator builds chrome, these gates prove |
 | 6 | Dev, Debug, Release compile, `EngineTest` on request | cmake + ninja, `scripts/runtest.sh` | nobody fixes it; it decides whether the fix is real |
 
 Three roles, and the split is the design.
@@ -461,7 +461,15 @@ hyphen. Three things that bug hid, all found in one sitting:
 **counted in the summary line**, not dropped: what a class forbids or inherits by default is its ownership
 story, which the class page carries, and an exemption nobody can see becomes a way to hide a gap.
 
-### Writing the pages (`docs_page.py`)
+### Writing the pages — the `hb-docs` skill
+
+Page generation is its own skill: **`.pi/skills/hb-docs/SKILL.md`**, with the generators at
+`.pi/skills/hb-docs/scripts/docs_page.py` and `docs_pass.py`. Read it before writing or revising any page:
+it owns the template grammar (properties as `Type + Name | Default Value | Description`; methods as
+`Name | Signature | What a caller depends on` with the **name itself** as the link), the citation rule
+(file and symbol, never a line number), and the Coverage rule that a partial page must name its omissions.
+This skill keeps the three gates that make the pages load-bearing, and keeps the authority to delete a
+comment only once `docs_coverage.py check-file` proves the page that receives it.
 
 `docs_page.py` owns the chrome — the sidebar module list, the `current` marker, the breadcrumb depth, the
 prevnext footer, and the method list every page of a class must agree on. It does not own the prose: every
@@ -469,11 +477,11 @@ sentence comes from a fragment file you wrote after reading the header, because 
 function was doing wrong.
 
 ```bash
-docs_page.py class  String Letter --source Engine/String/Letter.h --summary "…" --sections spec.json
-docs_page.py method String Letter is-lower-case --source Engine/String/Letter.h --summary "…" \
+.pi/skills/hb-docs/scripts/docs_page.py class  String Letter --source Engine/String/Letter.h --summary "…" --sections spec.json
+.pi/skills/hb-docs/scripts/docs_page.py method String Letter is-lower-case --source Engine/String/Letter.h --summary "…" \
               --sections spec.json
-docs_page.py renav  String Letter        # after adding a page, re-sync every page's method list
-docs_page.py check  String               # htmlcheck over what was written
+.pi/skills/hb-docs/scripts/docs_page.py renav  String Letter        # after adding a page, re-sync every page's method list
+.pi/skills/hb-docs/scripts/docs_page.py check  String               # htmlcheck over what was written
 ```
 
 `spec.json` is a list of `{"anchor", "heading", "file"}` (or `"body"` for a short one) in page order, and
@@ -595,7 +603,7 @@ reorder can be checked by reading it. Work the pairs in order; nothing here need
 | 1 mechanical | `clang-format --style=file -i <files>`; `python3 scripts/autofix.py --manifest .Plans/fix/manifest-<pair>.json <files>`; `clang-format --style=file -i <files>` | the manifest names every token removed, and nothing else was touched |
 | 1b paragraphs | `python3 scripts/blank_lines.py <files>`, decide the seams by reading the file, `python3 scripts/includes.py <files>`, and for any file carrying an include below the preamble `python3 scripts/includes.py --prove-immutable HEAD <files>` | rule set A and B clean, the two blanks after the preamble present, `--prove-immutable` reporting its include counts, and `python3 scripts/prove_regroup.py <file> --whitespace-only` proving only blank lines changed |
 | 2 layout | `python3 scripts/layout.py <files>`, edit, run it again | 0 findings, **and** `python3 scripts/layout.py --init-order <files>` at 0, because data moved |
-| 3 reference | `python3 scripts/docs_coverage.py check <mod>` and `scripts/docs_methods.py <mod>`, then `docs_page.py class` / `method` / `renav` / `check`; then replace the entry's doc block with its `/// API reference:` pointer line | both gates at 0 for the module, `htmlcheck` clean, and no `[NO POINTER]` row for an entry whose page now exists; step 4 is refused per file by `docs_coverage.py check-file <path>` until that file's own entries pass, which is what lets a finished header be cleaned while its neighbours are still owed pages |
+| 3 reference | `python3 scripts/docs_coverage.py check <mod>` and `scripts/docs_methods.py <mod>`, then `.pi/skills/hb-docs/scripts/docs_page.py class` / `method` / `renav` / `check`; then replace the entry's doc block with its `/// API reference:` pointer line | both gates at 0 for the module, `htmlcheck` clean, and no `[NO POINTER]` row for an entry whose page now exists; step 4 is refused per file by `docs_coverage.py check-file <path>` until that file's own entries pass, which is what lets a finished header be cleaned while its neighbours are still owed pages |
 | 4 delete | `python3 scripts/comments.py <files>` for the count, then `--strip`, then `comments.py code_tokens <file> /tmp/pre_<name>.h` | token multisets identical per file, then `comments.py` reports 0 |
 | 5 build | `.pi/skills/hb-standards/scripts/gate.sh spawn --all --test`, read with `gate.sh wait` | `GATE_EXIT=0`; never a pass read off `ninja: no work to do`. The marker line is echoed by the reviewing agent, not captured by the harness, and `check.sh` exits 0 when its lint scope comes out empty — so a CLEAN verdict with nothing else quoted is not evidence. Re-run `check.sh` yourself and read `$?` before believing one |
 

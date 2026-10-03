@@ -1,8 +1,9 @@
 # Worker brief: authoring one class's API reference folder
 
 For an agent asked to document one class of this engine. It states the grammar, the commands and the
-boundaries. The contract itself is `.Plans/AUTHORING_method_and_class_pages.md`; this brief is the
-short version plus the mechanics. Read both.
+boundaries. The skill that owns this work is `.pi/skills/hb-docs/SKILL.md`, the full contract is
+`.Plans/AUTHORING_method_and_class_pages.md`, and this brief is the short version a worker reads first.
+Read all three.
 
 ## What the reference is
 
@@ -101,19 +102,19 @@ Chrome (sidebar, breadcrumb, title, footer) is generated. Never hand-write it. F
 `/tmp/hbe-frag/<Module>/<Class>/`.
 
 ```bash
-python3 .pi/skills/hb-standards/scripts/docs_page.py class  Core <Class> \
+python3 .pi/skills/hb-docs/scripts/docs_page.py class  Core <Class> \
     --source Engine/Core/<Class>.h --summary "<one line>" [--tag "namespace hbe"] [--tag final] \
     --body /tmp/hbe-frag/Core/<Class>/index.body.html
 
-python3 .pi/skills/hb-standards/scripts/docs_page.py method Core <Class> <page-stem> \
+python3 .pi/skills/hb-docs/scripts/docs_page.py method Core <Class> <page-stem> \
     --source Engine/Core/<Class>.h --summary "<one line>" --label "<Display Name>" \
     --body /tmp/hbe-frag/Core/<Class>/<page-stem>.body.html
 
 # Prove every Signature block equals the header, character for character:
-python3 .pi/skills/hb-standards/scripts/docs_pass.py signatures docs/Core/<Class> Engine/Core/<Class>.h <Class>
+python3 .pi/skills/hb-docs/scripts/docs_pass.py signatures docs/Core/<Class> Engine/Core/<Class>.h <Class>
 
 # Gates — both must be clean when you finish:
-python3 .pi/skills/hb-standards/scripts/docs_page.py check Core     # 0 problems
+python3 .pi/skills/hb-docs/scripts/docs_page.py check Core     # 0 problems
 python3 .pi/skills/hb-standards/scripts/docs_methods.py Core        # your class gone from the list
 ```
 

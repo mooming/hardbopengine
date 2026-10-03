@@ -16,10 +16,13 @@ contract means belongs to an author, and these two are the parts where judgement
 """
 import glob, html, os, re, subprocess, sys
 
-sys.path.insert(0, '.pi/skills/hb-standards/scripts')
-from docs_methods import OPERATOR_PAGES      # the contract's own operator-spelling table, inverted below
-
-SCRIPTS = '.pi/skills/hb-standards/scripts'
+# The generators live here; the gates they feed stay in hb-standards, whose comment lexer and member
+# layout parser they are built on. Both directories go on the import path, and neither skill's script is
+# copied into the other to fake independence.
+HERE = os.path.dirname(os.path.abspath(__file__))
+SCRIPTS = os.path.normpath(os.path.join(HERE, '..', '..', 'hb-standards', 'scripts'))
+sys.path.insert(0, SCRIPTS)
+from docs_methods import OPERATOR_PAGES      # the gates' own operator-spelling table, inverted below
 
 
 def main_content(src, module, cls):
@@ -53,7 +56,7 @@ def reskin(folder, module, cls):
         frag = '/tmp/hbe-frag/%s/%s/%s.body.html' % (module, cls, stem)
         os.makedirs(os.path.dirname(frag), exist_ok=True)
         open(frag, 'w').write(body)
-        done = subprocess.run([sys.executable, os.path.join(SCRIPTS, 'docs_page.py'), 'method', module, cls, stem,
+        done = subprocess.run([sys.executable, os.path.join(HERE, 'docs_page.py'), 'method', module, cls, stem,
                                '--source', 'Engine/%s/%s.h' % (module, cls), '--summary', summary,
                                '--label', label, '--body', frag]
                               + sum([['--tag', t] for t in extras], []), capture_output=True, text=True)
