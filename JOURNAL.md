@@ -38,6 +38,25 @@ order, so `[PASS]` is the true verdict — including `WindowTickProvider`, which
 A sampled verdict-comparison cannot find the files a fix changes, and I wrote the number into a commit message
 as if it were the whole claim.
 
+**Nothing vanished from the swept files, proved at the range rather than per commit.**
+`prove_format.py 8421628^ --manifest .Plans/fix-manifest.json` compares every changed C++ file across the
+whole sweep — the pre-existing edits, the deletion, and the three source commits — against the revision before
+any of it: **19 files checked, 15 whitespace-only, 4 unexplained, exit 1.** The exit 1 is correct by contract
+and not a regression: the script explains a token removal only when `autofix.py` declared it, and all four
+removals are hand-made semantic edits, which belong to a different layer than the mechanical one this tool
+grades. So each was traced by hand to the commit that declares it, which is the claim worth keeping:
+
+| File | Tokens the tool could not explain | Declared by | Verdict |
+|---|---|---|---|
+| `Examples/WindowExample/Main.cpp` | `static_cast`, `(`, `)`, `<`, `>` | `1b28de5` | `frame < static_cast<int>(MaxFrameTasks)` became `std::size_t frame < MaxFrameTasks` — the cast is gone because the index no longer needs one |
+| `Applications/VulkanExample/Main.cpp` | `printf`, `(`, `)` | `1b28de5` | `printf("Rendering with: Vulkan\n")` became a `std::cout` chain |
+| `Engine/Core/TaskSystem.cpp` | `#`, `include`, `<`, `limits`, `>` | `8421628` | `<limits>` stays deleted: the file spells `numeric_limits` zero times, proved by the `-test` gate |
+| `Applications/EngineTest/TestMain.cpp` | 6 banner literals and 3 `"\n"` | `8421628` | the `-test` banner was rewritten as a `std::cerr` chain that **gained** the explanation of why `-test` must be global — concatenation differs because the text grew, and each `\n` is now `std::endl` |
+
+`prove_format.py` also reported `13 manifest entries not in this diff`, all `Examples/MacOSApp/**`, which is
+what a stale manifest looks like after the owner deletes the directory it catalogued: `autofix.py` treats that
+file as run scratch, it has never been tracked, and nothing should read it as a current claim.
+
 **Gate for this work.** All four self-test suites green: `blank_lines.py` 44 fixtures, `layout.py` 8 checks,
 `includes.py` 13 fixtures, `prove_regroup.py` 6 cases — 0 failures. The three in-scope files are clean on every
 checker the fixes touch: `blank lines: 0 finding(s)`, `init order: 3 file(s) checked (3 clean) — 0

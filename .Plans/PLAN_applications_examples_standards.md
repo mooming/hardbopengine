@@ -145,7 +145,7 @@ pass=59 fail=0 of 59 collections in Dev, Debug and Release.
 | Layer, on the 3 files left in scope | Result |
 |---|---|
 | 1 clang-format | 0 rewrites |
-| 2 mechanical greps, `autofix.py` | 0 findings, 0 fixes, 0 advisories |
+| 2 mechanical greps, `autofix.py` | 0 findings, 0 fixes, 0 advisories. Proved at the range: `prove_format.py 8421628^` — 19 files, 15 whitespace-only, 4 unexplained, and each of the 4 traces to the commit that declares it |
 | 2b blank lines (rule set A) | 15 findings → 0. The last one was the refuted A14 false positive, gone with `6a48f9a` |
 | 2b includes (rule set B) | 0 findings |
 | 3 comment ban | 0 comment lines in scope before or after |
