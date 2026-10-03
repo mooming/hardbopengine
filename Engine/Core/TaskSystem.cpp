@@ -801,7 +801,7 @@ void TaskSystem::BuildStreams()
 #include <memory>
 #include <mutex>
 #include <vector>
-#include "../Engine/Engine.h"
+#include "Engine/Engine.h"
 #include "OSAL/Intrinsic.h"
 #include "Test/TestCollection.h"
 #include "Test/TestHelper.h"
