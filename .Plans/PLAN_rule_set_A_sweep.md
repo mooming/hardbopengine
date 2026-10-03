@@ -100,6 +100,12 @@ evidence intact. That argument is sound and unmeasured, and it is the only remai
 | 5 | `Engine/Container`, `Engine/Memory`, `Engine/OSAL`, `Engine/Renderer`, `Engine/Test` | 271, 228, 174, 108, 23 | Bulk of the tree; `Engine/Renderer` and `Engine/Test` also owe layout, so batch them if the owner wants one pass per file |
 | 6 | `Engine/Core` | 340 | **Last, deliberately.** A concurrent session is editing `Engine/Core` and its `docs/Core/` pages right now; paragraph edits there would collide mid-file and every collision is silently resolved in favour of whoever commits second |
 
+**Progress.** `Engine/Core` is **done** — 339 findings closed to zero, six commits `8504000`..`5e0988b`, taken
+first rather than last because the owner ruled the concurrent session finished. Tree-wide rule set A is 1500 →
+1161. The gate carries one pre-existing failure this pass did not cause: `WindowTest::TC0` retains 101,552 bytes
+against a 65,536 ceiling, and fails identically at `HEAD` with this sweep stashed. Details in `JOURNAL.md`
+2026-10-03 22:32.
+
 ## 6. Procedure per file, and the proof
 
 1. `python3 .pi/skills/hb-standards/scripts/blank_lines.py <file>` — read the findings, then read the file. The

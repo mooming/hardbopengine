@@ -1,7 +1,7 @@
 # hb-standards per-file verdict
 
 **Generated — do not edit.** Every row measures a tracked source **as it stands on disk**, produced by
-`python3 .pi/skills/hb-standards/scripts/file_ledger.py --write`. Measured against fbdbc10 (tree dated 2026-10-03) with
+`python3 .pi/skills/hb-standards/scripts/file_ledger.py --write`. Measured against 5e0988b (tree dated 2026-10-03) with
 `Homebrew clang-format version 22.1.8`.
 
 The previous edition of this file was hand-written and its labels had rotted: 246 of its 256
@@ -33,8 +33,8 @@ Two counts a reader should not act on alone, both named here because the rows ca
   line 28 and includes no `<utility>` — it builds today only because its consumers reach that header
   first, which is the same latent shape `Engine/Core/TaskSystem.cpp` carried before `50efdaa`.
 
-4 path(s) carried uncommitted edits while this ran, so those rows describe work in progress rather
-than fbdbc10.
+5 path(s) carried uncommitted edits while this ran, so those rows describe work in progress rather
+than 5e0988b.
 
 3 file(s) carry a column this run could not measure: unmeasured 3.
 
@@ -73,52 +73,52 @@ than fbdbc10.
 | Engine/Container/RingQueue.h | clean | 13 | 0 | 1 | 5 (partial) |
 | Engine/Container/Vector.cpp | clean | 23 | 0 | 0 | n/a (no class or struct defined here) |
 | Engine/Container/Vector.h | clean | 11 | 0 | 0 | 7 (partial) |
-| Engine/Core/CPUBudget.cpp | clean | 3 | 0 | 4 | n/a (no class or struct defined here) |
-| Engine/Core/CPUBudget.h | clean | 5 | 0 | 47 | 0 (partial) |
-| Engine/Core/CommandLineArguments.cpp | clean | 2 | 0 | 0 | n/a (no class or struct defined here) |
-| Engine/Core/CommandLineArguments.h | clean | 1 | 0 | 1 | 0 |
-| Engine/Core/CommonMacros.h | clean | 1 | 0 | 1 | n/a (no class or struct defined here) |
-| Engine/Core/CommonUtil.h | clean | 2 | 0 | 0 | 0 |
+| Engine/Core/CPUBudget.cpp | clean apart from A3 | 0 | 0 | 4 | n/a (no class or struct defined here) |
+| Engine/Core/CPUBudget.h | clean apart from A3 | 0 | 0 | 47 | 0 (partial) |
+| Engine/Core/CommandLineArguments.cpp | clean apart from A3 | 0 | 0 | 0 | n/a (no class or struct defined here) |
+| Engine/Core/CommandLineArguments.h | clean apart from A3 | 0 | 0 | 1 | 0 |
+| Engine/Core/CommonMacros.h | clean | 0 | 0 | 1 | n/a (no class or struct defined here) |
+| Engine/Core/CommonUtil.h | clean apart from A3 | 0 | 0 | 0 | 0 |
 | Engine/Core/Component.cpp | clean | 0 | 0 | 0 | n/a (no class or struct defined here) |
-| Engine/Core/Component.h | clean | 1 | 0 | 1 | 0 |
-| Engine/Core/ComponentState.h | clean | 3 | 0 | 0 | n/a (no class or struct defined here) |
-| Engine/Core/ComponentSystem.cpp | clean | 3 | 0 | 0 | 0 (partial) |
-| Engine/Core/ComponentSystem.h | clean | 2 | 0 | 1 | 0 (partial) |
-| Engine/Core/Constants.h | clean | 1 | 0 | 0 | n/a (no class or struct defined here) |
-| Engine/Core/Debug.cpp | clean | 1 | 1 | 0 | n/a (no class or struct defined here) |
-| Engine/Core/Debug.h | clean | 3 | 0 | 11 | n/a (no class or struct defined here) |
-| Engine/Core/Exception.h | clean | 2 | 0 | 0 | 0 |
-| Engine/Core/MainThreadTaskQueue.cpp | clean | 5 | 0 | 0 | n/a (no class or struct defined here) |
-| Engine/Core/MainThreadTaskQueue.h | clean | 5 | 0 | 26 | 0 (+1 waived) |
-| Engine/Core/ResultPacket.cpp | clean | 15 | 0 | 3 | n/a (no class or struct defined here) |
-| Engine/Core/ResultPacket.h | clean | 5 | 0 | 49 | 0 (partial) |
-| Engine/Core/Runnable.h | clean | 1 | 0 | 9 | n/a (no class or struct defined here) |
-| Engine/Core/ScopedLock.cpp | clean | 1 | 0 | 0 | n/a (no class or struct defined here) |
-| Engine/Core/ScopedLock.h | clean | 2 | 0 | 0 | 0 |
-| Engine/Core/ScopedTime.h | clean | 1 | 0 | 0 | 0 |
-| Engine/Core/StreamDrainPolicy.cpp | clean | 12 | 0 | 16 | 0 (partial) |
-| Engine/Core/StreamDrainPolicy.h | clean | 5 | 0 | 61 | 0 (partial) |
-| Engine/Core/SystemStatistics.cpp | clean | 5 | 1 | 0 | n/a (no class or struct defined here) |
-| Engine/Core/SystemStatistics.h | clean | 4 | 0 | 1 | 0 |
-| Engine/Core/Task.cpp | clean | 3 | 1 | 0 | n/a (no class or struct defined here) |
-| Engine/Core/Task.h | clean | 2 | 0 | 84 | 0 |
-| Engine/Core/TaskID.h | clean | 1 | 0 | 18 | 0 |
-| Engine/Core/TaskProvider.cpp | clean | 16 | 0 | 17 | 0 (partial) |
-| Engine/Core/TaskProvider.h | clean | 8 | 0 | 134 | 0 (partial) |
-| Engine/Core/TaskRegistry.cpp | clean | 30 | 0 | 11 | n/a (no class or struct defined here) |
-| Engine/Core/TaskRegistry.h | clean | 3 | 0 | 111 | 0 (partial) |
-| Engine/Core/TaskStream.cpp | clean | 16 | 0 | 34 | 0 |
-| Engine/Core/TaskStream.h | clean | 3 | 0 | 265 | 0 (+1 waived) |
-| Engine/Core/TaskStreamAffinity.cpp | clean | 6 | 0 | 1 | n/a (no class or struct defined here) |
-| Engine/Core/TaskStreamAffinity.h | clean | 7 | 0 | 15 | 0 (partial) |
-| Engine/Core/TaskStreamIndex.h | clean | 3 | 0 | 11 | n/a (no class or struct defined here) |
-| Engine/Core/TaskSystem.cpp | clean | 125 | 1 | 0 | 0 (partial) |
-| Engine/Core/TaskSystem.h | clean | 7 | 0 | 0 | 0 (partial) |
-| Engine/Core/Time.cpp | clean | 6 | 0 | 7 | n/a (no class or struct defined here) |
-| Engine/Core/Time.h | clean | 8 | 0 | 35 | 0 (partial) |
-| Engine/Core/Types.h | clean | 1 | 0 | 1 | n/a (no class or struct defined here) |
-| Engine/Core/WorkItem.cpp | clean | 1 | 0 | 0 | n/a (no class or struct defined here) |
-| Engine/Core/WorkItem.h | clean | 3 | 0 | 0 | 0 |
+| Engine/Core/Component.h | clean apart from A3 | 0 | 0 | 1 | 0 |
+| Engine/Core/ComponentState.h | clean apart from A3 | 0 | 0 | 0 | n/a (no class or struct defined here) |
+| Engine/Core/ComponentSystem.cpp | clean | 0 | 0 | 0 | 0 (partial) |
+| Engine/Core/ComponentSystem.h | clean apart from A3 | 0 | 0 | 1 | 0 (partial) |
+| Engine/Core/Constants.h | clean apart from A3 | 0 | 0 | 0 | n/a (no class or struct defined here) |
+| Engine/Core/Debug.cpp | clean apart from A3 | 0 | 1 | 0 | n/a (no class or struct defined here) |
+| Engine/Core/Debug.h | clean | 0 | 0 | 11 | n/a (no class or struct defined here) |
+| Engine/Core/Exception.h | clean apart from A3 | 0 | 0 | 0 | 0 |
+| Engine/Core/MainThreadTaskQueue.cpp | clean apart from A3 | 0 | 0 | 0 | n/a (no class or struct defined here) |
+| Engine/Core/MainThreadTaskQueue.h | clean apart from A3 | 0 | 0 | 26 | 0 (+1 waived) |
+| Engine/Core/ResultPacket.cpp | clean | 0 | 0 | 3 | n/a (no class or struct defined here) |
+| Engine/Core/ResultPacket.h | clean apart from A3 | 0 | 0 | 49 | 0 (partial) |
+| Engine/Core/Runnable.h | clean apart from A3 | 0 | 0 | 9 | n/a (no class or struct defined here) |
+| Engine/Core/ScopedLock.cpp | clean apart from A3 | 0 | 0 | 0 | n/a (no class or struct defined here) |
+| Engine/Core/ScopedLock.h | clean apart from A3 | 0 | 0 | 0 | 0 |
+| Engine/Core/ScopedTime.h | clean apart from A3 | 0 | 0 | 0 | 0 |
+| Engine/Core/StreamDrainPolicy.cpp | clean apart from A3 | 0 | 0 | 16 | 0 (partial) |
+| Engine/Core/StreamDrainPolicy.h | clean apart from A3 | 0 | 0 | 61 | 0 (partial) |
+| Engine/Core/SystemStatistics.cpp | clean apart from A3 | 0 | 1 | 0 | n/a (no class or struct defined here) |
+| Engine/Core/SystemStatistics.h | clean apart from A3 | 0 | 0 | 1 | 0 |
+| Engine/Core/Task.cpp | code shape | 0 | 1 | 0 | n/a (no class or struct defined here) |
+| Engine/Core/Task.h | clean apart from A3 | 0 | 0 | 84 | 0 |
+| Engine/Core/TaskID.h | clean apart from A3 | 0 | 0 | 18 | 0 |
+| Engine/Core/TaskProvider.cpp | clean apart from A3 | 0 | 0 | 17 | 0 (partial) |
+| Engine/Core/TaskProvider.h | clean apart from A3 | 0 | 0 | 134 | 0 (partial) |
+| Engine/Core/TaskRegistry.cpp | clean apart from A3 | 0 | 0 | 11 | n/a (no class or struct defined here) |
+| Engine/Core/TaskRegistry.h | clean apart from A3 | 0 | 0 | 111 | 0 (partial) |
+| Engine/Core/TaskStream.cpp | clean apart from A3 | 0 | 0 | 34 | 0 |
+| Engine/Core/TaskStream.h | clean apart from A3 | 0 | 0 | 265 | 0 (+1 waived) |
+| Engine/Core/TaskStreamAffinity.cpp | clean | 0 | 0 | 1 | n/a (no class or struct defined here) |
+| Engine/Core/TaskStreamAffinity.h | clean apart from A3 | 0 | 0 | 15 | 0 (partial) |
+| Engine/Core/TaskStreamIndex.h | clean apart from A3 | 0 | 0 | 11 | n/a (no class or struct defined here) |
+| Engine/Core/TaskSystem.cpp | clean apart from A3 | 0 | 1 | 0 | 0 (partial) |
+| Engine/Core/TaskSystem.h | clean apart from A3 | 0 | 0 | 0 | 0 (partial) |
+| Engine/Core/Time.cpp | clean apart from A3 | 0 | 0 | 7 | n/a (no class or struct defined here) |
+| Engine/Core/Time.h | clean apart from A3 | 0 | 0 | 35 | 0 (partial) |
+| Engine/Core/Types.h | clean apart from A3 | 0 | 0 | 1 | n/a (no class or struct defined here) |
+| Engine/Core/WorkItem.cpp | clean apart from A3 | 0 | 0 | 0 | n/a (no class or struct defined here) |
+| Engine/Core/WorkItem.h | clean apart from A3 | 0 | 0 | 0 | 0 |
 | Engine/Engine/Engine.cpp | clean | 7 | 0 | 0 | n/a (no class or struct defined here) |
 | Engine/Engine/Engine.h | clean | 2 | 0 | 0 | 0 |
 | Engine/Engine/EngineInitLevel.h | clean | 2 | 0 | 0 | n/a (no class or struct defined here) |

@@ -1,5 +1,53 @@
 # Journal
 
+## 2026-10-03 22:32 — Engine/Core paragraphed: 339 seams closed, and the one finding that would have broken the build
+
+**Cause.** The owner ruled that the concurrent session is finished and that `Engine/Core` starts now, overriding
+the plan's "leave Core last". Scope is rule set A only — blank-line seams — per
+`.Plans/PLAN_rule_set_A_sweep.md`.
+
+**One finding in this rule set breaks the build if obeyed,** and it was in the first file I opened:
+`Engine/Core/CommonMacros.h`'s A3 seam landed *inside* a `#define` continued with backslashes, where a blank
+ends the continuation chain and drops `if (...)` at file scope. Fixed in the checker before editing anything
+(`77802c4`), with the tree-scale proof that it removed one false finding and nothing else.
+
+**Result: `Engine/Core` is at zero rule-set-A findings** — 45 source files, 339 findings, six commits. The proof
+chain is per file, not per module: `prove_regroup.py --whitespace-only` on all 44 changed files (non-blank lines
+identical as a multiset *and* identical in position, so a swap or a dropped line is a refusal), then
+`blank_lines.py` at 0, then the three-configuration build.
+
+| Step | Result |
+|---|---|
+| `blank_lines.py` over Core sources | 339 → **0** |
+| `prove_regroup.py --whitespace-only` | 44 of 44 files proven blank-only |
+| Build, `-dev -debug -release` with `-test` | all three configurations linked |
+| `EngineTest` in all three | **1 collection failing — pre-existing, see below** |
+| Tree-wide blank-A in the regenerated ledger | 1500 → **1161** (exactly Core's 339) |
+
+**A pre-existing failure the gate now carries.** `WindowTest::TC0.Create Window` retains **101,552 bytes** at
+the end of its body against `MaxRetainedGlobalBytes` = 65,536 (`Engine/Test/TestCollection.h:67`) — 55% over.
+It fails identically in Dev, Debug and Release. It is not this pass: I stashed the sweep, rebuilt `EngineTest`
+at `HEAD` alone, and got the same failure, so it predates every commit here. It is a real finding about
+`Engine/OSAL/Window.cpp` — either the testlet never destroys its window or window creation genuinely retains
+~100 KB — and the harness already states the rule it broke: *"Free it, or raise the ceiling with a reason that
+survives review."* Out of this task's scope, so reported rather than fixed.
+
+**Three mistakes I made inside this pass, each caught by a check rather than by luck.**
+
+| Mistake | How it was caught | What it should have taught me |
+|---|---|---|
+| My applier hardcoded `A2 = 1 blank`, so it stalled on `Task.cpp` and `TaskStreamAffinity.h` | The helper reported "the gap already matches" while the checker still reported A2. A2 means *exactly one* between directive blocks and *at most zero* inside one | The rule's size belongs to the finding, not the rule name. The checker's message already carries both numbers; reading them beat my table |
+| A commit message claimed 18 findings were A1 in `TaskRegistry.cpp` | Re-measured the pre-commit file: it is **A11 = 18**, A10 = 7, A4 = 3. The summary table renders `A1118`, which reads as A1-18 as easily as A11-18. Message amended (`5053ed0`) | Never quote a number from a compact rendering. Re-run the tool whose output is unambiguous |
+| My "every changed line in the diff is blank" grep flagged `#include <algorithm>` as changed | `prove_regroup.py` had already proved the non-blank sequence identical; inserting a blank above an unchanged line is what minimal edit distance chooses to print as a move | A diff is a rendering, not a fact. The sequence comparison is the fact |
+
+**Not done, deliberately.** `Engine/Core` still owes 975 comment-ban findings and its docs layer; this pass
+touched neither. The measurement that made ordering a non-issue stays as it was recorded: stripping 234 comment
+findings from `TaskSystem.h` moved 2 blank findings, so doing paragraphs first costs nothing.
+
+**Next** per the plan's order: `Engine/HSTL` (8) and `Engine/Engine` (11) to re-prove the procedure cheaply, or
+`Engine/Container` (271) if the owner wants the big one next. Regenerate the ledger with
+`python3 .pi/skills/hb-standards/scripts/file_ledger.py --write`.
+
 ## 2026-10-03 21:46 — the rule-set-A sweep scoped from the trustworthy ledger, and one inference of mine refuted
 
 **Cause.** The owner said continue, and the next item the closing report listed was scoping the engine-wide
