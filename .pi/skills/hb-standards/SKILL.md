@@ -324,8 +324,9 @@ Two properties of this script are easy to misread. It **exits 1 while any commen
 normal state of a module that still owes reference pages — a nonzero exit here is a count, not a failed
 step, and a driver that treats it as a failure marks a correct run as broken. And its exemption for
 structural labels (`#endif // PROFILE_ENABLED`, `} // namespace hbe`) depends on knowing which construct
-each line closes, which is a stack discipline no compile can check: `--selftest` runs five fixtures over
-it, including the nested-guard shape whose absence once deleted permitted labels from
+each line closes, which is a stack discipline no compile can check: six of `comments.py`'s twelve
+selftest cases cover those labels (`--selftest` prints their names), including the nested-guard shape whose
+absence once deleted permitted labels from
 `Engine/Core/ScopedLock.h`.
 
 Deleting them is `--strip`, and the ordering rule and its token proof live in
@@ -657,8 +658,9 @@ above tells you how to check.
 | `verify-findings.py` | reject review findings whose cited line does not exist or does not contain the quoted evidence |
 | `review_merge.py` | fold two independent review passes into one deduplicated finding set and mark the corroborated findings |
 | `prove_format.py` | prove a commit moved no code, per revision; `--manifest` holds a fixer to its declared tokens |
-| `blank_lines.py` | rule set A: the sixteen blank-line sizes, silent on the three that need a reader; `--collapse-seam` prints the shape clang-format produces, which is how the format gate can hold rule A3; `--selftest` runs 41 fixtures. **No `--fix`**: deleting a blank because a checker disapproved is the failure this layer exists to prevent |
-| `includes.py` | rule set B: the preamble shape; `--prove-immutable REV` proves every include below the preamble kept its place and its guard, and prints what it compared; `--unused` prints candidates that ablation *and* name provenance both clear; `--selftest` runs 10 fixtures. **No `--fix`**: a preamble rewritten by a script is a preamble nobody read |
+| `blank_lines.py` | rule set A: the sixteen blank-line sizes, silent on the three that need a reader; `--collapse-seam` prints the shape clang-format produces, which is how the format gate can hold rule A3; `--selftest` runs 44 fixtures. **No `--fix`**: deleting a blank because a checker disapproved is the failure this layer exists to prevent |
+| `includes.py` | rule set B: the preamble shape; `--prove-immutable REV` proves every include below the preamble kept its place and its guard, and prints what it compared; `--unused` prints candidates that ablation *and* name provenance both clear; `--selftest` runs 13 fixtures. **No `--fix`**: a preamble rewritten by a script is a preamble nobody read |
+| `file_ledger.py` | regenerate `.Plans/STANDARDS_PER_FILE.md` by measuring every tracked source: `git ls-files` sets the rows, so the ledger cannot drift from the tree again. It exists because the hand-written edition had rotted — 246 of its 256 measurable rows described clang-format work already done, and 19 sources had no row, so the file was scheduling effort at finished files while reading as "nothing to do" about unmeasured ones. **Never hand-edit it**: every format run silently retires a label, which is how the labels went wrong. `--write`; exit 1 while any cell is `unmeasured`, because `unmeasured` and `n/a` are never printed alike and neither is a pass |
 | `docs_page.py` | emit reference pages with correct chrome, validated before kept |
 
 `verify-findings.py` is not decoration. A model asked to audit files it never opened invents defects rather

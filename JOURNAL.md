@@ -1,5 +1,63 @@
 # Journal
 
+## 2026-10-03 21:30 — the per-file ledger was scheduling work for 164 finished files, so it is now generated
+
+**Cause.** The owner picked the ledger repair off the list this task closed with: `.Plans/STANDARDS_PER_FILE.md`
+was known to hold a row for `Applications/WindowExample/Main.cpp` (a path that never existed) and no row for 19
+tracked sources. Expected size of the job: 19 rows added, 2 deleted. Measured size: **the whole file was
+false**, because its labels described a tree that no longer exists.
+
+| `format` label the file carried | rows | what clang-format reports today |
+|---|---|---|
+| `format-clean` | 49 | 46 identical, 3 differ by whitespace and blanks |
+| `format-debt-only` | 38 | **36 identical**, 1 differs, 1 file gone |
+| `format-real` | 169 | **164 identical**, 4 differ, 1 file gone |
+
+246 of 256 measurable rows described formatting work already done, so the ledger was pointing effort at 164
+finished files while the 19 unmeasured ones read as "nothing to do". That is why a hand-edited ledger cannot
+survive: every `clang-format` run silently retires a label and nothing notices. **A stale optimistic row is
+worse than a missing one, because nobody goes looking.** `file_ledger.py` regenerates every row from
+`git ls-files`, so the row set cannot drift from the tree again — the drift was the defect, not any wrong cell.
+
+**The tree needs no clang-format work at all.** Under the gate's own comparison: 265 files byte-identical to
+their formatted form, 5 `n/a` (3 `.mm`, 2 `.inl`), and **8 differ only by the double blank rule A3 mandates**
+and clang-format deletes — printed as `clean apart from A3`. That is `docs/CodingStandards.md`: *"clang-format
+forces exactly one blank at that seam... formatter cleanliness is a pre-process, not the definition of
+clean: format first, apply the table second."*
+
+**My own first version contradicted a measurement I had taken two hours earlier.** It compared clang-format
+output to the file byte-for-byte, so `Applications/EngineTest/TestMain.cpp` and
+`Examples/WindowExample/Main.cpp` came back "not clean" after I had re-measured them clean today. The one
+blank each differs by is the mandated one at the preamble seam, and `check.sh` already handles it by pushing
+*both* sides through `blank_lines.py --collapse-seam` (line 316) — I had re-derived the naive diff the project
+had already retired. Using the sanctioned comparison, the classifier and `check.sh`'s formula agree on **all
+278 sources, 0 disagreements**, which is the only thing that made the generated labels trustworthy.
+
+| Verdict after the correction | files | note |
+|---|---|---|
+| `clean` | 265 | byte-identical to `clang-format --style=file` output |
+| `clean apart from A3` | 8 | only difference is the mandated preamble double blank |
+| `n/a` | 5 | `clang-format` cannot classify `.mm` (`Language: Cpp` only) or `.inl` |
+
+**Two inconsistencies surfaced, both annotated in the file and neither settled by me.** `comments.py` exempts
+`Engine/CodingStandards.cpp`; `docs/CodingStandards.md` exempts that `.cpp` outright and
+`Engine/CodingStandards.h` *only its BAD EXAMPLE blocks*; `check.sh` skips `Engine/CodingStandards.*` whole.
+So the 120 comments the checker reports on the `.h` are true under the checker and unreachable through the
+gate — and they are not all inside the two BAD EXAMPLE blocks (markers at lines 190 and 467; findings run 10 to
+539), so the file's teaching prose is what is counted. Which of the three should win is an owner decision.
+Separately, `Engine/Memory/ScopedAllocator.h` cannot be analysed because clang rejects it as its own
+translation unit: **it names `std::forward` on line 28 and includes no `<utility>`**, so it builds today only
+because its consumers reach that header first — the same latent shape `Engine/Core/TaskSystem.cpp` carried
+before `50efdaa`. Out of this task's scope, so reported rather than fixed.
+
+**Gate.** Rows reconcile exactly: 278 rows for 278 tracked sources, no row naming an untracked path, no tracked
+source without a row, no duplicates; three rows spot-checked against the checkers run directly (3/0/265,
+1/0/1, 0/0/0). `file_ledger.py --write` exits 1 while any column is `unmeasured` — 3 files do: two
+`Engine/OSAL/*Thread.cpp` with no namespace for the AST filter, and `ScopedAllocator.h` above. `unmeasured`
+never renders as `0`, and neither `n/a` nor `unmeasured` is a pass. 3 paths carried uncommitted edits from the
+concurrent session while this ran, and the header says so rather than labelling them `fbdbc10`.
+Commit `b04bd75`. Regenerate with `python3 .pi/skills/hb-standards/scripts/file_ledger.py --write`.
+
 ## 2026-10-03 13:00 — the four refuted checker claims, fixed, and the sample that was too small to see one of them
 
 **Cause.** The entry below refuted four checker claims and left all four unfixed — "reported, not fixed", one
