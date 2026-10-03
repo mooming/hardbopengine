@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Assertion design — Core module — HardBop Engine design document</title>
+<link rel="stylesheet" href="../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../Config/index.html">Config</a></li>
+    <li><a href="../Container/index.html">Container</a></li>
+    <li><a class="current" href="../Core/index.html">Core</a></li>
+    <li><a href="../Engine/index.html">Engine</a></li>
+    <li><a href="../HSTL/index.html">HSTL</a></li>
+    <li><a href="../Log/index.html">Log</a></li>
+    <li><a href="../Math/index.html">Math</a></li>
+    <li><a href="../Memory/index.html">Memory</a></li>
+    <li><a href="../OSAL/index.html">OSAL</a></li>
+    <li><a href="../Renderer/index.html">Renderer</a></li>
+    <li><a href="../Resource/index.html">Resource</a></li>
+    <li><a href="../String/index.html">String</a></li>
+    <li><a href="../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This document</h3>
+  <ul>
+    <li><a href="#parity">Both branches of the guard must agree</a></li>
+    <li><a href="#dropped">What a Release build evaluates</a></li>
+    <li><a href="#includes">Includes that only one branch uses, unconditionally</a></li>
+    <li><a href="#open">An asymmetry recorded, not explained</a></li>
+    <li><a href="#seealso">Where else to look</a></li>  </ul>
+</nav>
+
+<main class="main">
+  <div class="breadcrumb"><a href="../index.html">Docs</a> / <a href="../Core/index.html">Core</a> / Assertion design</div>
+
+<h1>Assertion design</h1>
+<div class="subtitle">The <code>__DEBUG__</code> guard is a compile-time switch with two branches that must be kept identical — and the build break that taught the rule</div>
+
+<div class="note">
+  <strong>Scope.</strong> This document owns the invariants that <em>Engine/Core/Debug.h</em> must preserve across
+  its configurations. What <code>Assert</code> and <code>FatalAssert</code> promise a caller — when each is active,
+  what they print, that they abort — is on the <a href="../Core/index.html#debug">Debug reference section</a>, and
+  the project rule that a message must precede any assertion is in
+  <a href="../CodingStandards.md">docs/CodingStandards.md</a>.
+</div>
+
+<h2 id="parity">Both branches of the guard must agree</h2>
+<p>
+The <code>__DEBUG__</code> and <code>#else</code> branches of <em>Debug.h</em> must declare exactly the same
+overloads, with the same exception specification. That is a structural requirement, not a style preference: the
+call sites are written once and compiled against whichever branch the configuration selects, so a difference
+between the branches is invisible until the other configuration is built.
+</p>
+<p>
+The rule exists because it was broken. The release branch used to demand a <code>const char*</code> as the second
+argument, so a message assembled from any other type compiled under <code>__DEBUG__</code>, ran for days, and then
+broke the Release build. A mismatch of <code>noexcept</code> alone is enough to do the same damage by a different
+route: it flips <code>std::is_nothrow_*</code> traits between configurations, so code that is well-formed in one
+build is rejected in another without a single line of it changing. Both branches therefore say
+<code>noexcept</code>.
+</p>
+<div class="note">
+  <strong>The failure mode is timing, not compilation.</strong> The bug above survived because the configuration
+  that was wrong was the one nobody was running. Any change to one branch of this guard is a change to both, and the
+  proof is a build of every configuration — which is why the engine's standards gate builds Dev, Debug and Release
+  rather than the one being edited.
+</div>
+
+<h2 id="dropped">What a Release build evaluates</h2>
+<p>
+In a Release build the arguments of <code>Assert</code> are unnamed and unused on purpose: the call inlines away,
+and with it goes every subexpression that produced the arguments. An argument with a side effect is therefore
+evaluated in Debug and dropped in Release — the same trap as any <code>assert</code>, and the reason
+<code>docs/CodingStandards.md</code> puts the message on its own statement.
+</p>
+<p>
+<code>TDebugVariable</code> is the support for that split: <code>template &lt;typename T&gt; using TDebugVariable
+= const T;</code> names a binding whose only reader is a Debug build, so the variable that feeds a Debug-only
+assertion does not raise an unused-variable warning in Release. It is an alias, not a wrapper — it adds no storage
+and no lifetime rule.
+</p>
+
+<h2 id="includes">Includes that only one branch uses, unconditionally</h2>
+<p>
+<code>&lt;cstdio&gt;</code>, <code>&lt;cstdlib&gt;</code> and <code>&lt;source_location&gt;</code> are used only by
+the <code>__DEBUG__</code> branch, and they are included unconditionally. That is a deliberate concession to the
+project's include layout: every include belongs in one block at the top of the file, and a guarded
+<code>#include</code> cannot satisfy that rule. The cost is three standard headers pulled into a configuration that
+ignores them, which is a compile-time cost paid to keep one readable include preamble — the standard the layout
+rule protects is a readability rule, and the alternative was a preamble split across a preprocessor conditional.
+</p>
+
+<h2 id="open">An asymmetry recorded, not explained</h2>
+<div class="gap">
+  <strong><code>Assert</code> is <code>noexcept</code> in both branches; <code>FatalAssert</code> is
+  <code>noexcept</code> in neither.</strong> The parity rule above is about the two branches of one name, so it does
+  not forbid this, and the code is consistent about it. What does not exist anywhere is a statement of
+  <em>why</em> — whether <code>FatalAssert</code>'s absence is intentional (its arguments are printed through the
+  same <code>PrintArgs</code> path, which can allocate) or simply never examined. Recorded here as an open question
+  so that a reader who finds it does not have to guess which it is, and so that the parity rule is not silently
+  generalised to cover it.
+</div>
+
+<h2 id="seealso">Where else to look</h2>
+<table>
+  <tr><th>Question</th><th>Where it lives</th></tr>
+  <tr><td>What each assertion does, and when it is active</td><td><a href="../Core/index.html#debug">Debug reference section</a> of the Core module page</td></tr>
+  <tr><td>The requirement to log a message before asserting</td><td><a href="../CodingStandards.md">docs/CodingStandards.md</a></td></tr>
+  <tr><td>Why every configuration is built to prove a change</td><td><a href="../BuildSystem.md">docs/BuildSystem.md</a></td></tr>
+  <tr><td>How the assertion path drains logs before aborting</td><td><a href="../Core/Exception/index.html">Exception</a> and the Log module; <code>FlushLogs</code> is the boundary</td></tr>
+</table>
+
+</main>
+</body>
+</html>

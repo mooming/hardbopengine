@@ -34,8 +34,10 @@
     <li><a href="#classes">Module classes</a></li>
     <li><a href="#variables">Module variables</a></li>
     <li><a href="#functions">Module functions</a></li>
+    <li><a href="#commonmacros">CommonMacros</a></li>
     <li><a href="#types">Types</a></li>
     <li><a href="#runnable">Runnable</a></li>
+    <li><a href="#taskstreamindex">TaskStreamIndex</a></li>
     <li><a href="#task">Task</a></li>
     <li><a href="#taskprovider">TaskProvider</a></li>
     <li><a href="#workitem">WorkItem</a></li>
@@ -64,6 +66,7 @@
     <li><a href="../TaskSystemRedesign.md">Task system redesign</a></li>
     <li><a href="../design/TaskSystemInternals_Design.html">Task system internals</a></li>
     <li><a href="../design/EngineClock_Design.html">Engine clock design</a></li>
+    <li><a href="../design/AssertMacros_Design.html">Assertion design</a></li>
   </ul>
 </nav>
 
@@ -173,7 +176,7 @@
   <tr><td><code>CountOf</code></td><td><code>T (&amp;)[size]</code></td><td><code>size_t</code></td><td>Element count of a C array; the size is deduced, so a pointer decays to a compile error</td></tr>
 </table>
 
-<h3>Debug (<code>Engine/Core/Debug.h</code>)</h3>
+<h3 id="debug">Debug (<code>Engine/Core/Debug.h</code>)</h3>
 
 <p>
   The engine is exception-free, so these are the failure tools. <code>Assert</code> is active in Debug and
@@ -193,7 +196,25 @@
   the assertion.
 </div>
 
-<h3>Time (<code>Engine/Core/Time.h</code>, <code>namespace hbe::time</code>)</h3>
+<div class="note">
+  <strong>Both configurations declare the same two overloads with the same exception specification.</strong>
+  The <code>__DEBUG__</code> and release branches of <code>Debug.h</code> must agree on signature and on
+  <code>noexcept</code>: a <code>noexcept</code> mismatch alone is enough to flip
+  <code>std::is_nothrow_*</code> traits between configurations, so code that compiles under one build can be
+  rejected by the other. The history behind the rule is in
+  <a href="../design/AssertMacros_Design.html">the assertion design document</a>.
+</div>
+
+<div class="gap">
+  <strong>In a Release build the arguments are dropped, not just the call.</strong> The release <code>Assert</code>
+  takes its parameters unnamed and unused, so the call inlines away — which means an argument with a side effect
+  is evaluated in Debug and never evaluated in Release. Same trap as any <code>assert</code>: put the side effect
+  on a line of its own. <code>TDebugVariable</code> exists for that split — <code>template &lt;typename T&gt;
+  using TDebugVariable = const T;</code> names a variable that only Debug reads, so an unused-variable warning
+  does not appear in Release.
+</div>
+
+<h3 id="time">Time (<code>Engine/Core/Time.h</code>, <code>namespace hbe::time</code>)</h3>
 
 <pre><code><span class="kw">namespace</span> hbe::time
 {
@@ -213,14 +234,34 @@
   <tr><td><code>Sleep</code></td><td><code>TMilliSec milli</code></td><td><code>void</code></td><td>Blocks the calling thread</td></tr>
 </table>
 
-<p>
-  Time also carries the engine-wide epoch and the base frame rate that task budgets are measured against —
-  <code>GetEngineEpoch</code>, <code>ResetEngineEpoch</code>, <code>ElapsedSinceEngineEpoch</code>,
-  <code>GetBaseFrameRate</code>, <code>GetBaseFramePeriod</code>. Their contract is in the header; the
-  reasoning for a single shared epoch and a duration rather than a rate is in
-  <a href="../TaskSystemRedesign.md">docs/TaskSystemRedesign.md</a>. They are listed here and not
-  summarised below, so this page does not become a second place to keep the same story right.
-</p>
+<table>
+  <tr><th>Function</th><th>Parameters</th><th>Returns</th><th>What a caller depends on</th></tr>
+  <tr><td><code>GetEngineEpoch</code></td><td>none</td><td><code>TEngineTimePoint</code></td><td>The instant the engine treats as its own beginning. One epoch for the whole engine: task deadlines, Render's <code>deltaTime</code> and the log timestamp all measure against this value, so a deadline set by one subsystem cannot disagree with another reading the same span. Reachable without <code>Engine::Get</code>, which asserts that an instance exists — logging has to keep working in a process that never constructed an Engine, and a clock requiring one would reintroduce that crash. Readable from any thread, which is the point of it.</td></tr>
+  <tr><td><code>ResetEngineEpoch</code></td><td>none</td><td><code>void</code></td><td>Moves the epoch to the current instant. <code>Engine</code>'s constructor calls it, so the epoch is engine construction rather than process load. Call it once, before anything has measured against it: moving it later shifts every earlier reading relative to the later ones, which shows up as log lines that seem to run backwards. For the thread constructing the engine.</td></tr>
+  <tr><td><code>ElapsedSinceEngineEpoch</code></td><td>none</td><td><code>TEngineDuration</code></td><td>Time elapsed since the epoch, which is what frame deltas and deadline checks are computed from.</td></tr>
+  <tr><td><code>GetBaseFrameRate</code></td><td>none</td><td><code>double</code></td><td>Target frame rate of the base stream, in hertz — the engine-wide yardstick for CPU budgets, so one number governs every stream and they cannot drift apart. Until something sets it, the engine's default target rate applies. It is the <em>target</em>: a stream must never read it as the frame rate it is actually achieving, and nothing here measures frames.</td></tr>
+  <tr><td><code>GetBaseFramePeriod</code></td><td>none</td><td><code>std::chrono::duration&lt;double&gt;</code></td><td>The period derived from <code>GetBaseFrameRate</code>, and the number budgets are measured against. Exposed as a duration rather than a rate on purpose: comparing an accumulated CPU span to a rate invites an inverted comparison that still compiles and silently inverts every budget in the engine.</td></tr>
+  <tr><td><code>SetBaseFrameRate</code></td><td><code>double hertz</code></td><td><code>void</code></td><td>Sets the target and moves the budget yardstick with it. The base stream's owner calls this during its configuration; everything else reads. A caller that sets it per frame makes every budget chase a moving target, which reads as work randomly being accepted and refused. A rate of zero or less is ignored, because a period of infinity silently disables every budget while looking like a normal configuration value.</td></tr>
+</table>
+
+<div class="note">
+  <strong>The epoch is <code>steady_clock</code>, deliberately.</strong> An epoch that jumped when the system clock
+  was adjusted would silently expire — or never expire — every deadline in flight. If nothing has set it, the
+  epoch is the first instant it was asked for, so readings stay meaningful instead of counting from 1970. The
+  reasoning for a single shared epoch sits in
+  <a href="../TaskSystemRedesign.md">docs/TaskSystemRedesign.md</a> and the representation in
+  <a href="../design/EngineClock_Design.html">the engine clock design document</a>.
+</div>
+
+<div class="gap">
+  <strong><code>TStopWatch</code> is <code>high_resolution_clock</code> while <code>GetNow</code> returns
+  <code>steady_clock::now()</code>.</strong> They are the same clock in the standard library this engine builds
+  against, which is why <code>TTime</code> accepts the conversion; the two are not the same type by the standard,
+  so <code>GetNow</code>'s result on some other library would be a compile error rather than a wrong number.
+  The engine epoch, by contrast, is <code>steady_clock</code> by name (<code>TEngineTimePoint</code>) and carries
+  no such ambiguity. Nothing in the engine currently mixes the two families — <code>TaskProduceContext::now</code>
+  is a <code>TEngineTimePoint</code> — and this page documents the split rather than silently unifying it.
+</div>
 
 <h2 id="types">Types (<code>Engine/Core/Types.h</code>)</h2>
 
@@ -276,6 +317,56 @@
 
     <span class="kw">return</span> endIndex - startIndex;
 }</code></pre>
+
+<h2 id="commonmacros">CommonMacros (<code>Engine/Core/CommonMacros.h</code>)</h2>
+
+<p>
+  Four one-statement control-flow shorthands and one idiom. Each expands to a keyword guarded by a
+  <code>static_cast&lt;bool&gt;</code> of its argument, so a type with an <code>explicit operator bool</code>
+  works and a type without one does not compile — which is the point of the cast, not an accident of it.
+</p>
+
+<table>
+  <tr><th>Macro</th><th>Expansion</th><th>Use it for</th></tr>
+  <tr><td><code>returnIf(cond)</code></td><td><code>if (static_cast&lt;bool&gt;(cond)) return</code></td><td>An early exit that returns nothing</td></tr>
+  <tr><td><code>returnValueIf(ret, cond)</code></td><td><code>if (static_cast&lt;bool&gt;(cond)) return ret</code></td><td>An early exit with a value</td></tr>
+  <tr><td><code>breakIf(cond)</code></td><td><code>if (static_cast&lt;bool&gt;(cond)) break</code></td><td>Leaving a loop on a condition, without the brace noise</td></tr>
+  <tr><td><code>continueIf(cond)</code></td><td><code>if (static_cast&lt;bool&gt;(cond)) continue</code></td><td>Skipping one iteration</td></tr>
+</table>
+
+<div class="note">
+  <strong><code>ONCE()</code> is <code>while (false)</code>, and it is written after a body.</strong> The idiom is
+  <code>do { … } ONCE();</code> — a block that runs exactly once and can still be left by <code>break</code>, which
+  is how a function exits early from the middle of a sequence without a goto and without an if-ladder. Because the
+  macro is the loop keyword, the trailing <code>;</code> is part of the syntax and belongs to it; a bare
+  <code>ONCE()</code> with no statement before it is a <code>while (false)</code> with no body to skip, and the
+  macro's own definition line is the only place that shows the idiom, so it is stated here rather than left as a
+  comment in a header nobody reads until they are confused.
+</div>
+
+<h2 id="taskstreamindex">TaskStreamIndex (<code>Engine/Core/TaskStreamIndex.h</code>)</h2>
+
+<p><code>using TStreamIndex = int;</code> — one value identifying one task stream.</p>
+
+<p>
+  The same value names a stream from every direction: a provider attaches to a list of them, a produce context
+  says which one is currently producing, and a successor task names the stream its result has to return to. Those
+  three uses disagreeing would be a silent mismatch, which is why there is one alias rather than three.
+</p>
+
+<div class="note">
+  <strong><a href="TaskStream/index.html">TaskStream</a> re-exports this alias rather than defining its own,</strong>
+  so a stream's identity cannot become two different widths in one build. It used to be the index type of the task
+  array itself, which tied a stream's identity to the container holding its tasks — a stream would then change
+  identity if its task storage changed size.
+</div>
+
+<div class="gap">
+  <strong>Named stream constants do not exist yet.</strong> <code>TaskSystem::GetBaseTaskStreamIndex</code> and
+  <code>GetIOTaskStreamIndex</code> are the only values in circulation, and an index that no stream table holds is
+  legal to name here — <a href="TaskProvider/index.html">TaskProvider</a> may attach to an index nothing owns
+  (see <a href="TaskProduceContext/index.html">TaskProduceContext</a>). Named constants arrive with the B4 work.
+</div>
 
 <h2 id="task">Task (<code>Engine/Core/Task.h</code>)</h2>
 
@@ -824,15 +915,18 @@ the arguments to <code>PrintArgs</code> and stores nothing, which is why there i
   <tr><th>Gap</th><th>Detail</th></tr>
   <tr>
     <td>Headers with no entry</td>
-    <td><code>CommonMacros.h</code>, <code>ResultContainer.h</code>, <code>TaskStreamIndex.h</code> —
-        three of the 26 Core headers, all of which came from the task-system work that post-dates the
-        reference this page was migrated from.</td>
+    <td><code>ResultContainer.h</code> — one of the Core headers that came from the task-system work which
+        post-dates the reference this page was migrated from. <code>CommonMacros.h</code> and
+        <code>TaskStreamIndex.h</code> are documented above as of the comment ban, which is what forced the
+        question rather than leaving the gap as an annotation.</td>
   </tr>
   <tr>
-    <td>Time functions not summarised</td>
-    <td><code>GetEngineEpoch</code>, <code>ResetEngineEpoch</code>, <code>ElapsedSinceEngineEpoch</code>,
-        <code>GetBaseFrameRate</code>, <code>GetBaseFramePeriod</code> are named above but not tabulated;
-        the header carries their contract.</td>
+    <td>Per-function pages</td>
+    <td>Every function in the <a href="#time">Time</a>, <a href="#debug">Debug</a> and
+        <a href="#commonmacros">CommonMacros</a> sections is tabulated on this page rather than given a page of its own, and
+        those headers carry an address to the section instead of to a page. The authoring convention asks for a
+        page per class, macro set or free-function namespace; a page per alias would be three sentences of
+        nothing, and the alias would still be read in the table above.</td>
   </tr>
   <tr>
     <td>Class properties</td>
