@@ -40,9 +40,7 @@ public:
 	static constexpr std::size_t DefaultInitialCapacityRecords = 4096;
 	static constexpr std::size_t DefaultGrowByRecords = DefaultInitialCapacityRecords;
 	static constexpr std::size_t DefaultMaxCapacityRecords = 0;
-
 	static constexpr std::size_t MaxBanks = 1024;
-
 	static constexpr std::size_t RecordSizeBytes = sizeof(Record);
 	static_assert(RecordSizeBytes == 256, "R28 prices a record at 256 bytes; re-measure and re-decide");
 	static_assert(RecordSizeBytes % 64 == 0, "Records must start on cache-line boundaries");
