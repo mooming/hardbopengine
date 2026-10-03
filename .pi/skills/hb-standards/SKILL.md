@@ -471,6 +471,14 @@ it owns the template grammar (properties as `Type + Name | Default Value | Descr
 This skill keeps the three gates that make the pages load-bearing, and keeps the authority to delete a
 comment only once `docs_coverage.py check-file` proves the page that receives it.
 
+**The order is one-directional: document with `hb-docs`, then strip.** No comment in `Engine/` is deleted
+before the entry it documents owns its page, which `docs_coverage.py check-file <path>` decides per file —
+so a header whose own reference is finished can be cleaned while its neighbours are still owed pages, and a
+file with one undocumented entry refuses the strip outright. `comments.py --strip` is the tool that performs
+the deletion, and it asks that checker first. Run `docs_page.py check <Module>` and
+`docs_methods.py <Module>` at 0 before the strip, and build all three configurations after it, because a
+comment that was load-bearing for compilation was never a comment.
+
 `docs_page.py` owns the chrome — the sidebar module list, the `current` marker, the breadcrumb depth, the
 prevnext footer, and the method list every page of a class must agree on. It does not own the prose: every
 sentence comes from a fragment file you wrote after reading the header, because a tool cannot know what a

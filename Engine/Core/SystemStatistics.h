@@ -16,6 +16,7 @@ class Engine;
 class StaticString;
 
 /// @brief Tracks engine runtime statistics including frame counts, timing, and memory usage.
+/// API reference: docs/Core/SystemStatistics/index.html
 class SystemStatistics final
 {
 private:
