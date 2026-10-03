@@ -1,5 +1,63 @@
 # Journal
 
+## 2026-10-04 02:40 — Engine/Core's comment ban closes at zero, and the gate that let it stay open
+
+**Cause.** "Remove what this session made redundant, then continue to finish Engine/Core fully." Redundancy came
+first (scratch artefacts, a restated skill claim, a help string restating its own function — `3cd727d`), then the
+module's remaining 161 comment findings, which split by nature rather than by size: 93 in eight `.cpp` files as
+implementation notes, 68 in six headers as user-facing contract.
+
+**The `.cpp` half.** Two design documents, each owning one question so the module does not grow a third document
+answering it: `docs/design/TaskSystemInternals_Design.html` for the invariants the running code guarantees and why
+the testlets observe them that way, `docs/design/EngineClock_Design.html` for the epoch's representation and the D5
+defect. Both link the shared stylesheet instead of embedding a copy — the two design documents already in `docs/`
+each carry their own ~150-line style block, which is how duplicated chrome rots — and reuse the module list with a
+table of contents generated from their own headings. Reusing the module index's sidebar instead gave 26 dead
+anchors per page. Stripped: 88 comments, every structural label surviving, all three configurations linking.
+
+**What the strip destroyed, and why it was not my code.** Five `} // namespace hbe` labels vanished. The scanner
+accumulates the text before a brace to ask whether it opens a namespace and **skipped newlines instead of
+accumulating a separator**, so `#ifdef __UNIT_TEST__` above `namespace hbe` produced `__UNIT_TEST__namespace hbe`:
+underscore and `n` are both word characters, `\bnamespace` refused to match, the namespace was never pushed, and
+its exempt label was reported as prose. Measured with both readers over `Engine/`'s sources: **17 files, 17
+exempt labels at risk**, 991 → 974 findings. A region that opens with an `#include` escaped by accident, because a
+closing quote is not a word character — which is why five files lost labels and their neighbours did not. This is
+the third stack-discipline bug in `label_expectations`, whose own docstring already records the first two.
+
+**Two gate blind spots, found by asking one file what it demanded.** `MACRO_SET` carried no `re.M`, so `^`
+anchored to the start of the file and **no macro set in the engine was ever demanded**; `Engine/Config/BuildConfig.h`
+already has the page the gate never asked for. And `entries_in` knew only class-shaped entries, so a header whose
+whole surface is aliases and free functions was invisible — `NAMESPACED_FUNCS` is defined and never used, so someone
+intended this and did not finish it. `Time.h` is the sharpest case: 6 documented `hbe::time` functions, billed
+nothing, because a `__UNIT_TEST__`-only class made the file look class-shaped.
+
+**The decision that avoided six duplicate pages.** The plan was six new reference pages. `docs/Core/index.html`
+already documents `Types`, `Runnable` and the `Debug` and `Time` functions, and its own Coverage section had
+already admitted the rest — *"Time functions not summarised … the header carries their contract"*, which is exactly
+the arrangement the comment ban reverses. So the gaps were closed in place and the address form became
+`docs/Core/index.html#<Stem>`: the id must exist, and it must name the file that carries it. Core demanded 6, and
+now reports 0 missing.
+
+| Layer, `Engine/Core` | Before | Now |
+|---|---|---|
+| comments | 161 | **0** |
+| blank lines / includes / layout / init order | 0 | **0** |
+| paragraph seams needing a reader | 8 files at the strip | **0** |
+| docs coverage, method pages, HTML validity | clean but incomplete | 0 missing, 0 gaps, 289 pages clean |
+| build and test | 374 of 375 | 374 of 375, `WindowTest`'s heap ceiling unchanged |
+
+**Mistakes made here, recorded because they are the reusable part.** (1) I ran `--strip` on a gate with an
+unverified false positive and deleted exempt labels; the check that was missing is not "did the gate pass" but
+"is every finding it reports genuinely prose", and it belongs *before* a destructive run. (2) I then wrote
+`ALIAS` and `FREE_FUNC` without `re.M` and hit the identical bug **one commit after writing the comment that
+explains it** — a pattern with `^` in these scripts needs the flag or a stated reason. (3) The plan file grew three
+overlapping status sections and was consolidated rather than appended to again. (4) I nearly authored six pages
+duplicating an index I had not finished reading; reading the receiving document is cheaper than writing a new one.
+
+**Surfaced, not fixed.** The newly honest kinds demand 11 pages tree-wide; 6 belong to Math, Memory, OSAL and
+Renderer and are backlog for their modules. `Engine/Container/AtomicStackView.h:17 ACCESS-EMPTY` is still open.
+
+
 ## 2026-10-04 01:05 — a strip re-opens the paragraph layer: two checkers taught, one skill step added
 
 **Cause.** "Has it reorganised code lines with blanks? TaskRegistry.h doesn't look like organised." Correct, and

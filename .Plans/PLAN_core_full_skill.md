@@ -1,72 +1,90 @@
 # PLAN: run `hb-standards` on every file of Engine/Core
 
-Owner's instruction, 2026-10-03: "Run hb-standards on every file of Engine/Core." The rule-set-A pass was
-already done (`8504000`..`5e0988b`); this plan covers the layers that were not, and states plainly what each
-one costs, because the last of them is authoring work, not a sweep.
+Owner decision that opened this: the earlier sweep deliberately stopped before `Engine/Core` while another
+session was editing it; the owner ruled that session finished and asked for the **full skill on every tracked
+file** of the module, not the rule-set-A blank-line pass alone. Plan approved in full, including the
+authoring that the comment ban implies.
 
-## Measured state of the module, per layer
+## Where the module stands
 
-| Layer | Check | State at `92405e0` | Work |
-|---|---|---|---|
-| 1 clang-format | seam-aware diff | **1 of 46** files: `Task.cpp` | sort its include block |
-| 2 mechanical fixes | `autofix.py --dry-run` | 0 fixes | none |
-| 2b rule set A | `blank_lines.py` | **0** | done already |
-| 2b rule set B | `includes.py` | 4 findings: B5 = 3, B2 = 1 | root-relative paths, sort block |
-| 3 comment ban | `comments.py` | **975 findings** | see the two-phase split below |
-| 4 member layout | `layout.py` | 46 clean, 0 violations, 2 waived | re-check after strip |
-| 5 docs | coverage / methods / validity | 0 missing pages, 0 methods without a page, 285 pages 0 problems | already complete |
-| 6 gate | build + suite | builds in 3 configs; `WindowTest::TC0` fails **pre-existing** | re-run each phase |
-
-## Why the comment ban is two phases, not one
-
-`docs_coverage.py check-file` decides per file, and it draws the line the AGENTS.md rule draws: an **API**
-contract has a page, so its `///` block can go; a `.cpp` comment is an **implementation note**, which belongs
-in an HTML design document — "a migration no tool can verify". It refuses those without `--force`.
-
-| Group | Files | Findings | What must happen first |
-|---|---|---|---|
-| **A — headers whose class page owns the prose** | 21 | ~760 | nothing: `check-file` passes, pages exist, class pointer present |
-| **B — refused, implementation notes** | 25 | ~215 | author the design document that receives each note |
-
-Phase A is a tool strip with a code-token proof. Phase B is authoring: read the file, decide what the note
-means for the system, write it into `docs/Core/`, then strip. `--force` exists, and using it to skip the
-migration would destroy the only copy of knowledge the repo holds — it is not the option.
-
-## Where it actually stands, after steps 1-5 ran
-
-Steps 1 to 5 are done and committed: `a4a7918` (rule set B), `0d5177b` (the checker's
-attribute-blind name reader), `4e228d2` (the 14-header strip, 815 lines deleted). Core is at 0 findings for
-clang-format, rule set A, rule set B, layout and member-init order; 374 of 375 testlets pass, the one failure
-the pre-existing `WindowTest` heap ceiling.
-
-Step 6 turned out to be two different jobs, because the refusal reason is the same sentence for both while the
-material is not.
-
-| Kind | Files | Findings | What the comments actually are | What must be authored |
-|---|---|---|---|---|
-| **B1 — `.cpp` implementation notes** | 8 | 93 | invariants, allocation strategy, locking protocol | a design document that receives them |
-| **B2 — headers with no page kind** | 6 | 68 | **user-facing** contract: `Time.h`'s epoch semantics and thread-safety, `Debug.h`, `Runnable.h`, `TaskStreamIndex.h`, `Types.h`, `CommonMacros.h` | the reference has no entry kind for a header of aliases and free functions, so nothing owns this prose yet |
-
-`Time.h` proves the gap: it declares type aliases and free functions (`Sleep`, `ResetEngineEpoch`,
-`SetBaseFrameRate`) and one `__UNIT_TEST__`-only class, so `docs_coverage.py` finds "no documented entry of
-its own" and demands no page — yet 35 comment lines state contract a caller depends on. The coverage model
-requires pages for types and macro sets, so a utilities header can never become strippable. Stripping it
-would delete the only copy; leaving it breaks the ban. This needs a ruling, not a sweep.
-
-## Execution order
-
-| Step | Action | Proof |
+| Layer | Checker | State |
 |---|---|---|
-| 1 | Fix rule set B (4 findings) and `Task.cpp` formatting | `includes.py` 0, seam-aware format diff 0, three-config build |
-| 2 | Strip group A headers, file by file | `strip_file` refuses if any code token moves; `comments.py` then 0 for that file |
-| 3 | Re-run clang-format, then the rule-set-A table (format first, table second) | seam-aware diff 0, `blank_lines.py` 0 |
-| 4 | Re-check layout and member-init order; re-check docs coverage | `layout.py` 0 violations, `docs_coverage.py`/`docs_methods.py` still 0 missing |
-| 5 | Gate: build Dev/Debug/Release, run `EngineTest` | links in all three; the one pre-existing failure stays pre-existing and is reported, not silenced |
-| 6 | Group B: per file, move implementation notes into a design document, then strip | design document named by the file it describes; `htmlcheck.py` 0 problems |
-| 7 | Regenerate the ledger, journal, commit per step | `file_ledger.py --write` |
+| clang-format | seam-aware `clang-format --dry-run -Werror` | clean (all 46 sources) |
+| blank lines, rule set A | `blank_lines.py` | **0 findings** |
+| include preamble, rule set B | `includes.py` | **0 findings** |
+| comments | `comments.py` | **66 findings, all in 6 headers** — see B2 |
+| member layout, twelve blocks | `layout.py` | 0 violations, 2 waived |
+| member-init order | `layout.py --init-order` | 0 violations |
+| paragraph seams | `blank_lines.py --paragraphs` | 0 files needing a reader |
+| docs coverage / methods / HTML | three docs scripts | 0 missing pages, 0 method gaps, 0 problems |
+| build and test | `./build.sh Applications/EngineTest -dev -debug -release -test` | links in 3 configs, 374 of 375 testlets |
 
-## What is explicitly out of scope
+`WindowTest::TC0` retains 101,552 bytes against `MaxRetainedGlobalBytes` = 65,536. Pre-existing, reproduced at
+`HEAD` with all edits stashed, and unchanged in Dev, Debug and Release.
+
+## What the cycle actually costs, learned here and recorded in SKILL.md
+
+`docs_coverage.py check-file` gates a strip per file, and it draws the line AGENTS.md draws: an **API**
+contract has a page, so its `///` block may go; an implementation note belongs in an HTML design document, so
+the tool refuses without `--force`. The refusal sentence is identical for both cases while the material is
+not, which is why the ban arrives in three groups rather than one sweep.
+
+| Group | Files | Findings | What it was | Outcome |
+|---|---|---|---|---|
+| A — header whose class page owns the prose | 14 | 815 | caller contract, already on a page | stripped at `4e228d2`, code tokens proven identical |
+| B1 — `.cpp` implementation notes | 8 | 93 | invariants, allocation strategy, locking, clock epoch | moved into two design documents, 88 deleted at `09250a4` |
+| B2 — headers with no page kind | 6 | 66 | **user-facing** contract | closed in place on the module page, stripped without `--force` |
+
+Two strips looked mechanical and were not. Stripping prose re-opens every paragraph it was grouping (owner
+challenge, then the owner's own edit to `TaskRegistry.h` settling the constants block), so step 4b re-decides
+seams; and `--strip` deleted exempt `} // namespace hbe` labels until `comments.py` learned that a newline is
+a token boundary.
+
+## B2 — the six headers, and why the gate cannot see them
+
+| Header | Findings | Documented surface |
+|---|---|---|
+| `Time.h` | 35 | `namespace hbe::time`: 6 free functions + duration aliases; `TimeTest` in its `__UNIT_TEST__` region makes the file class-shaped, so the functions are billed nothing |
+| `Debug.h` | 11 | logging macro machinery — the notes are design material, not macro reference |
+| `TaskStreamIndex.h` | 11 | one alias, `TStreamIndex`, whose contract spans providers, produce contexts and successors |
+| `Runnable.h` | 9 | one alias, `TRunnable`, whose return value drives re-invocation |
+| `Types.h` | 1 | canonical aliases plus their legacy spellings |
+| `CommonMacros.h` | 1 | `returnIf`, `returnValueIf`, `breakIf`, `continueIf`, `ONCE` |
+
+`entries_in()` knows `class|struct|union|enum` and macro sets. `NAMESPACED_FUNCS` is defined and never used —
+someone intended the free-function kind and did not finish it. Three gate defects, each measured:
+
+1. `MACRO_SET` lacked `re.M`, so `^` anchored to the start of the file and **no macro set in the engine was
+   ever demanded**. `Engine/Config/BuildConfig.h` already has the page the gate never asked for. Fixing it
+   newly demands 3 pages, 2 missing (`CommonMacros`, `OSAbstractLayer`).
+2. No alias entry kind. Across every engine header with no class entry, 20 declare aliases, free functions or
+   macro sets; 11 have no page — 5 in Core, 6 in Math, Memory, OSAL, Renderer.
+3. A file that owns both a class and namespace-scope free functions demands the class page only.
+
+### Order of work — done, and the route changed once
+1. `MACRO_SET` gains `re.M` — one line, and the page for `CommonMacros` becomes demanded rather than optional.
+2. Alias and free-function kinds in `entries_in`, one `utility header` entry per header rather than one per alias.
+3. **Route change, with the owner's ruling.** The plan said six new pages. `docs/Core/index.html` already documents
+   `Types`, `Runnable` and the `Debug` and `Time` functions, and its Coverage section already declared the rest a
+   gap — "Time functions not summarised … the header carries their contract". Writing the pages would have put the
+   same claim in two places, so the gaps were closed on the index and both checkers learned the address
+   `docs/<Module>/index.html#<Stem>`, with the id required to exist and to name the file carrying it.
+4. `docs/design/AssertMacros_Design.html` received `Debug.h`'s implementation notes; its `noexcept` asymmetry
+   against `FatalAssert` is recorded as an open question rather than given an invented rationale.
+5. All six stripped **without `--force`** — `check-file` passed for each first. Code tokens proved identical against
+   bytes taken from `HEAD`; clang-format, then the rule-set-A table (five files needed the mandated second blank at
+   the preamble seam), then step 4b, which reported nothing undecided.
+
+## Where this leaves the reference gate
+
+`docs_coverage` now demands a documented surface for aliases, free functions and macro sets, and accepts either a
+page or a module-page section as its address. Tree-wide that newly demands 11 pages; 5 were Core's and are closed,
+6 belong to Math, Memory, OSAL and Renderer. Those six are backlog for their modules and were deliberately not
+touched here.
+
+## Explicitly out of scope
 
 - Raising `MaxRetainedGlobalBytes` to make `WindowTest::TC0` green. The harness's own words are "Free it, or
-  raise the ceiling with a reason that survives review", and the reason is an `Engine/OSAL` question.
-- `--force` on any file before its notes have a home.
+  raise the ceiling with a reason that survives review", and that reason is an `Engine/OSAL` question.
+- The 6 non-Core pages the new entry kinds expose (Math, Memory, OSAL, Renderer), and
+  `Engine/Container/AtomicStackView.h:17` `ACCESS-EMPTY`.

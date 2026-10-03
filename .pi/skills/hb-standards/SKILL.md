@@ -334,6 +334,14 @@ rather than above its declaration, and `docs_coverage.py` rejects a page whose h
 all. The form is exact for that reason: a pointer allowed to grow a sentence is a `@brief` comment that
 escaped the ban, which is what it replaced.
 
+A header whose whole surface is aliases, free functions and macros is a documented surface too — `docs_coverage.py`
+calls it a `utility header` and demands the same proof a class gets. Its address is usually a section of the
+module's page rather than a page of its own: `/// API reference: docs/<Module>/index.html#<Stem>`, where the id must
+exist on that page and must name the file carrying the pointer. An anchor above a type is refused, because a class
+owns a page under its own name and the exemption must not become a way to hide one. This form exists because a page
+per alias would duplicate the table the module page already carries: the demand is that the claim live in one
+addressable place, not that a file exist at one particular path.
+
 Two properties of this script are easy to misread. It **exits 1 while any comment remains**, which is the
 normal state of a module that still owes reference pages — a nonzero exit here is a count, not a failed
 step, and a driver that treats it as a failure marks a correct run as broken. And its exemption for
