@@ -1,14 +1,13 @@
 // Copyright (c) 2026 Hansol Park (mooming.go@gmail.com). All rights reserved.
 
-
 #include "MainThreadTaskQueue.h"
 
 #include <mutex>
 #include <optional>
 
+
 namespace hbe
 {
-
 MainThreadTaskQueue::MainThreadTaskQueue()
 	: isRunning(true)
 {
@@ -52,6 +51,7 @@ size_t MainThreadTaskQueue::ProcessTasks() noexcept
 bool MainThreadTaskQueue::HasPendingTasks() const noexcept
 {
 	std::lock_guard lock(queueLock);
+
 	return !queue.IsEmpty();
 }
 
@@ -64,5 +64,4 @@ bool MainThreadTaskQueue::IsRunning() const noexcept
 {
 	return isRunning;
 }
-
 } // namespace hbe

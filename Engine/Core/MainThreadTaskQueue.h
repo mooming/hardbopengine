@@ -2,15 +2,15 @@
 
 #pragma once
 
-
 #include <atomic>
 #include <functional>
 #include <mutex>
+
 #include "Container/BoundedPriorityQueue.h"
+
 
 namespace hbe
 {
-
 /// @brief Thread-safe task queue for the main thread.
 /// @details Workers can enqueue tasks to be executed on the main thread.
 /// Uses BoundedPriorityQueue internally for efficient task management.
@@ -87,5 +87,4 @@ public:
 	void RequestStop() noexcept;
 	[[nodiscard]] bool IsRunning() const noexcept;
 };
-
 } // namespace hbe

@@ -2,9 +2,9 @@
 
 #pragma once
 
+
 namespace hbe
 {
-
 /// @brief Identifies one task stream, to the scheduler, to providers, and to outcome delivery.
 /// @details The same value names a stream from every direction: a provider attaches to a list of them, a
 ///          produce context says which one is currently producing, and a successor task names the stream
@@ -16,5 +16,4 @@ namespace hbe
 /// @note Named stream constants arrive with B4. Until then TaskSystem::BaseStreamIndex and IOStreamIndex
 ///       are the only values in circulation.
 using TStreamIndex = int;
-
 } // namespace hbe

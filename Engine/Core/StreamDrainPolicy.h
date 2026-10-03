@@ -5,9 +5,9 @@
 #include <chrono>
 #include <cstdint>
 
+
 namespace hbe
 {
-
 /// @brief Decides which of a stream's two task lanes is taken from next, and when the stream has to stop.
 /// @details A stream holds a FIFO lane and a priority lane, and the caller states a FIFO:priority rate per
 ///          stream. That rate is a share of the stream's CPU allowance rather than a count of tasks: each
@@ -136,7 +136,6 @@ private:
 
 	[[nodiscard]] int64_t PriorityCredit() const noexcept;
 };
-
 } // namespace hbe
 
 #ifdef __UNIT_TEST__
@@ -144,7 +143,6 @@ private:
 
 namespace hbe
 {
-
 /// @brief Test collection for the two-lane drain decision.
 class StreamDrainPolicyTest final : public TestCollection
 {
@@ -157,6 +155,5 @@ public:
 protected:
 	void Prepare() override;
 };
-
 } // namespace hbe
 #endif //__UNIT_TEST__

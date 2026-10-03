@@ -106,7 +106,6 @@ void hbe::TaskStreamAffinityTest::Prepare()
 		{
 			affinity.Unset(i);
 		}
-
 		{
 			constexpr unsigned int PrintCount = 3;
 			const auto numBits = affinity.GetNumBits();
@@ -114,10 +113,12 @@ void hbe::TaskStreamAffinityTest::Prepare()
 			{
 				ls << i << ": affinity " << affinity.Get(i) << lf;
 			}
+
 			if (numBits > PrintCount * 2)
 			{
 				ls << "... " << (numBits - PrintCount * 2) << " similar lines omitted ..." << lf;
 			}
+
 			for (unsigned int i = std::max(PrintCount, numBits - PrintCount); i < numBits; ++i)
 			{
 				ls << i << ": affinity " << affinity.Get(i) << lf;
@@ -149,7 +150,6 @@ void hbe::TaskStreamAffinityTest::Prepare()
 				affinity.Set(i);
 			}
 		}
-
 		{
 			constexpr unsigned int PrintCount = 3;
 			const auto numBits = affinity.GetNumBits();
@@ -157,10 +157,12 @@ void hbe::TaskStreamAffinityTest::Prepare()
 			{
 				ls << i << ": affinity " << affinity.Get(i) << lf;
 			}
+
 			if (numBits > PrintCount * 2)
 			{
 				ls << "... " << (numBits - PrintCount * 2) << " similar lines omitted ..." << lf;
 			}
+
 			for (unsigned int i = std::max(PrintCount, numBits - PrintCount); i < numBits; ++i)
 			{
 				ls << i << ": affinity " << affinity.Get(i) << lf;

@@ -14,9 +14,9 @@
 #include "TaskProvider.h"
 #include "TaskSystem.h"
 
+
 namespace hbe
 {
-
 TaskStream::TaskQueueItem::TaskQueueItem(uint8_t priority, const WorkItem& task)
 	: priority(priority)
 	, task(task)
@@ -100,6 +100,7 @@ bool TaskStream::AttachProvider(TaskProvider& provider, StreamDrainPolicy::ELane
 	list.items[static_cast<size_t>(list.count)] = &provider;
 	++list.count;
 	cv.notify_one();
+
 	return true;
 }
 
@@ -128,6 +129,7 @@ bool TaskStream::DetachProvider(TaskProvider& provider, StreamDrainPolicy::ELane
 
 		list.items[static_cast<size_t>(list.count - 1)] = nullptr;
 		--list.count;
+
 		return true;
 	}
 
@@ -249,6 +251,7 @@ void TaskStream::Dequeue(std::optional<WorkItem>& outTask)
 	{
 		outTask = priorityQueue.Pop();
 		drainPolicy.CommitTake(StreamDrainPolicy::ELane::Priority);
+
 		return;
 	}
 
@@ -257,6 +260,7 @@ void TaskStream::Dequeue(std::optional<WorkItem>& outTask)
 		outTask = fifoQueue.Front();
 		fifoQueue.PopFront();
 		drainPolicy.CommitTake(StreamDrainPolicy::ELane::Fifo);
+
 		return;
 	}
 
@@ -305,6 +309,7 @@ void TaskStream::Start(TaskSystem& taskSys) noexcept
 	if (streamIndex == TaskSystem::BaseStreamIndex)
 	{
 		threadID = std::this_thread::get_id();
+
 		return;
 	}
 
@@ -315,7 +320,6 @@ void TaskStream::Start(TaskSystem& taskSys) noexcept
 	{
 		return;
 	}
-
 
 	auto func = [this]() { RunLoop(); };
 
@@ -394,7 +398,6 @@ bool TaskStream::Update() noexcept
 
 	std::optional<WorkItem> workItem;
 	StreamDrainPolicy::ELane lane = StreamDrainPolicy::ELane::None;
-
 	{
 		std::unique_lock lock(queueLock);
 
@@ -434,6 +437,7 @@ bool TaskStream::Update() noexcept
 		{
 			laneWorkRefusals.fetch_add(1, std::memory_order_relaxed);
 		}
+
 		switch (lane)
 		{
 			case StreamDrainPolicy::ELane::Fifo:
@@ -509,6 +513,7 @@ bool TaskStream::Update() noexcept
 	if (!workItem.has_value())
 	{
 		restore();
+
 		return false;
 	}
 
@@ -518,6 +523,7 @@ bool TaskStream::Update() noexcept
 		ReportReleasedTask(*workItem);
 		FireAbandonedNotice(*workItem);
 		restore();
+
 		return true;
 	}
 
@@ -531,6 +537,7 @@ bool TaskStream::Update() noexcept
 		ReportAgedOutWorkItem(*workItem, now - workItem->offerTime);
 		FireAbandonedNotice(*workItem);
 		restore();
+
 		return true;
 	}
 
@@ -541,7 +548,6 @@ bool TaskStream::Update() noexcept
 	{
 		budget.BeginTask();
 	}
-
 	{
 		time::ScopedTime timer(duration);
 		if (workItem->Run(*task))
@@ -584,6 +590,7 @@ bool TaskStream::Update() noexcept
 	}
 
 	restore();
+
 	return true;
 }
 
@@ -649,7 +656,6 @@ std::size_t TaskStream::AbandonHeldWork() noexcept
 			++abandoned;
 		}
 	}
-
 	while (!fifoQueue.IsEmpty())
 	{
 		const WorkItem item = fifoQueue.Front();

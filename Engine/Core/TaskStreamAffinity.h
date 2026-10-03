@@ -2,10 +2,12 @@
 // Created by Hansol Park (mooming.go@gmail.com), 2025
 
 #pragma once
-#include <algorithm>
 
+#include <algorithm>
 #include <cstdint>
+
 #include "Config/BuildConfig.h"
+
 
 namespace hbe
 {
@@ -91,6 +93,7 @@ public:
 		value = value >> numShift;
 
 		// 0: Set, 1: Unset
+
 		return (value & 1) == 0;
 	}
 
@@ -109,7 +112,6 @@ using TaskStreamAffinity = TaskStreamAffinityBase<64>;
 
 namespace hbe
 {
-
 class TaskStreamAffinityTest : public TestCollection
 {
 public:
@@ -121,6 +123,5 @@ public:
 protected:
 	void Prepare() override;
 };
-
 } // namespace hbe
 #endif //__UNIT_TEST__

@@ -8,6 +8,7 @@
 #include <mutex>
 #include <queue>
 #include <thread>
+
 #include "Container/Array.h"
 #include "Container/BoundedPriorityQueue.h"
 #include "Container/Deque.h"
@@ -20,6 +21,7 @@
 #include "Task.h"
 #include "TaskStreamIndex.h"
 #include "WorkItem.h"
+
 
 namespace hbe
 {
@@ -553,5 +555,4 @@ private:
 	///          is invisible to anyone not reading a debugger.
 	void ReportGeneralQueueRefusal() noexcept;
 };
-
 } // namespace hbe

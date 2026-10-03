@@ -2,9 +2,9 @@
 
 #include "StreamDrainPolicy.h"
 
+
 namespace hbe
 {
-
 void StreamDrainPolicy::ConfigureRate(uint32_t newFifoWeight, uint32_t newPriorityWeight) noexcept
 {
 	fifoWeight = newFifoWeight > 0 ? newFifoWeight : 1;
@@ -53,6 +53,7 @@ StreamDrainPolicy::ELane StreamDrainPolicy::ChooseLane(bool fifoHasWork, bool pr
 		const auto fifoRemaining = std::chrono::duration_cast<std::chrono::nanoseconds>(GetFifoShare()) - fifoUsed;
 		const auto priorityRemaining =
 				std::chrono::duration_cast<std::chrono::nanoseconds>(GetPriorityShare()) - priorityUsed;
+
 		return priorityRemaining > fifoRemaining ? ELane::Priority : ELane::Fifo;
 	}
 
@@ -187,13 +188,11 @@ int64_t StreamDrainPolicy::PriorityCredit() const noexcept
 {
 	return priorityCredit;
 }
-
 } // namespace hbe
 
 #ifdef __UNIT_TEST__
 namespace
 {
-
 using Lane = hbe::StreamDrainPolicy::ELane;
 
 /// @brief Count how many times each lane is chosen over a number of takes, charging the lane each time.
@@ -231,7 +230,6 @@ LaneCounts DriveTakes(hbe::StreamDrainPolicy& policy, int takes)
 
 	return counts;
 }
-
 } // namespace
 
 void hbe::StreamDrainPolicyTest::Prepare()
@@ -381,6 +379,7 @@ void hbe::StreamDrainPolicyTest::Prepare()
 		if (unlimited.IsOverAge(std::chrono::nanoseconds{1}, std::chrono::nanoseconds{10s}))
 		{
 			ls << "An unlimited stream aged out work 10s old; zero must mean unlimited, not 'drop everything'" << lferr;
+
 			return;
 		}
 
@@ -391,6 +390,7 @@ void hbe::StreamDrainPolicyTest::Prepare()
 		if (bounded.GetMaxAge() != 20ms)
 		{
 			ls << "SetMaxAge(20ms) reports " << bounded.GetMaxAge().count() << "ns" << lferr;
+
 			return;
 		}
 
@@ -399,12 +399,14 @@ void hbe::StreamDrainPolicyTest::Prepare()
 		if (bounded.IsOverAge(std::chrono::nanoseconds{0}, std::chrono::nanoseconds{10s}))
 		{
 			ls << "An unstamped item was aged out; a stream may not invent an age for work it cannot date" << lferr;
+
 			return;
 		}
 
 		if (!bounded.IsOverAge(std::chrono::nanoseconds{1}, std::chrono::nanoseconds{21ms}))
 		{
 			ls << "Work 21ms old survived a 20ms ceiling" << lferr;
+
 			return;
 		}
 
@@ -416,12 +418,14 @@ void hbe::StreamDrainPolicyTest::Prepare()
 		if (bounded.IsOverAge(1ms, 21ms))
 		{
 			ls << "Work exactly 20ms old survived out a 20ms ceiling; the comparison must be strict" << lferr;
+
 			return;
 		}
 
 		if (!bounded.IsOverAge(1ms, 21ms + 1ns))
 		{
 			ls << "Work 20ms and 1ns old survived a 20ms ceiling" << lferr;
+
 			return;
 		}
 	});
