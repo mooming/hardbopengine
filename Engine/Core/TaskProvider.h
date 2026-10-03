@@ -14,9 +14,9 @@
 #include "Core/WorkItem.h"
 #include "String/StaticString.h"
 
+
 namespace hbe
 {
-
 class TaskProvider;
 
 class TaskSystem;
@@ -101,7 +101,6 @@ public:
 ///          A separate HasWork predicate was rejected: by the time Produce runs, a HasWork answer is
 ///          already advisory because provider state can change in between, so the stream would be steering
 ///          on a reading it cannot trust.
-
 /// API reference: docs/Core/TaskProvider/index.html
 class TaskProvider
 {
@@ -251,7 +250,6 @@ public:
 		return name;
 	}
 
-
 protected:
 	/// @brief Declare a one-item join on `task` and return the item that fills it, for a provider whose Produce hands
 	/// work to a stream.
@@ -272,7 +270,6 @@ private:
 
 	void UnregisterFromStream(TStreamIndex stream, StreamDrainPolicy::ELane lane) noexcept;
 };
-
 } // namespace hbe
 
 #ifdef __UNIT_TEST__
@@ -281,7 +278,6 @@ private:
 
 namespace hbe
 {
-
 /// @brief Test collection for the provider interface and its control token.
 class TaskProviderTest final : public TestCollection
 {
@@ -290,7 +286,6 @@ public:
 		: TestCollection("TaskProviderTest")
 	{
 	}
-
 
 protected:
 	/// @brief The task system the probes attach to, taken when a test asks rather than when the collection is built.
@@ -303,6 +298,5 @@ protected:
 
 	void Prepare() override;
 };
-
 } // namespace hbe
 #endif //__UNIT_TEST__

@@ -6,9 +6,9 @@
 #include <cstdint>
 #include <cstring>
 
+
 namespace hbe
 {
-
 /// @brief One task's result: an 8-byte header over a 120-byte payload, embedded in the registry record.
 /// @details This is the whole of what the engine knows about results. A task writes one packet, and a task with
 ///          more to say than one packet holds puts a handle to memory it owns into the payload and owns that
@@ -127,7 +127,6 @@ public:
 		return payload;
 	}
 };
-
 } // namespace hbe
 
 static_assert(sizeof(hbe::ResultPacket) == hbe::ResultPacket::SizeBytes,
@@ -141,7 +140,6 @@ static_assert(alignof(hbe::ResultPacket) == sizeof(std::uint64_t),
 
 namespace hbe
 {
-
 /// @brief Test collection for the embedded result packet: its price, and the state a new record starts in.
 class ResultPacketTest final : public TestCollection
 {
@@ -154,6 +152,5 @@ public:
 protected:
 	void Prepare() override;
 };
-
 } // namespace hbe
 #endif //__UNIT_TEST__

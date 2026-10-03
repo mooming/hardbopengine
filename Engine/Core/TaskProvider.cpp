@@ -11,9 +11,9 @@
 #include "Log/Logger.h"
 #include "TaskSystem.h"
 
+
 namespace hbe
 {
-
 TaskProduceContext TaskProduceContext::ForStream(TStreamIndex streamIndex) noexcept
 {
 	return TaskProduceContext{streamIndex, std::chrono::steady_clock::now()};
@@ -62,6 +62,7 @@ void TaskProvider::AttachTo(TStreamIndex stream, StreamDrainPolicy::ELane lane) 
 			   << " with no lane, so nothing was attached. An attachment with no lane sits in a slot that no"
 			   << " drain ever reads.";
 		});
+
 		return;
 	}
 
@@ -96,6 +97,7 @@ void TaskProvider::AttachTo(TStreamIndex stream, StreamDrainPolicy::ELane lane) 
 			   << static_cast<unsigned int>(laneBit) << ": it already feeds " << dropped
 			   << " streams. The attachment was dropped, and the stream will never ask this provider for work.";
 		});
+
 		return;
 	}
 
@@ -136,6 +138,7 @@ void TaskProvider::DetachFrom(TStreamIndex stream) noexcept
 		attached[static_cast<size_t>(attachedCount - 1)] = 0;
 		lanes[static_cast<size_t>(attachedCount - 1)] = 0;
 		--attachedCount;
+
 		return;
 	}
 }
@@ -159,6 +162,7 @@ void TaskProvider::RegisterOnStream(TStreamIndex stream, StreamDrainPolicy::ELan
 			   << ", which this engine does not have. The attachment is recorded and nothing will ever ask this"
 			   << " provider for work.";
 		});
+
 		return;
 	}
 
@@ -170,6 +174,7 @@ void TaskProvider::RegisterOnStream(TStreamIndex stream, StreamDrainPolicy::ELan
 			ls << "TaskProvider " << name.c_str() << " could not register on stream " << stream
 			   << ". The lane list already holds this provider or is full, so the drain will not ask it.";
 		});
+
 		return;
 	}
 
@@ -243,13 +248,11 @@ TaskHandle TaskProvider::GetHandle() noexcept
 {
 	return TaskHandle{*this};
 }
-
 } // namespace hbe
 
 #ifdef __UNIT_TEST__
 namespace
 {
-
 /// @brief Provider that records what it was handed, so the interface can be observed rather than assumed.
 class RecordingProvider final : public hbe::TaskProvider
 {
@@ -454,7 +457,6 @@ bool WaitFor(const std::function<bool()>& done, int attempts) noexcept
 
 	return done();
 }
-
 } // namespace
 
 void hbe::TaskProviderTest::Prepare()
@@ -496,6 +498,7 @@ void hbe::TaskProviderTest::Prepare()
 		{
 			ls << "This engine has no worker stream past the IO stream, so the drain cannot be observed at all."
 			   << lferr;
+
 			return;
 		}
 
@@ -548,6 +551,7 @@ void hbe::TaskProviderTest::Prepare()
 		if (!taskSystem.HasStream(worker))
 		{
 			ls << "This engine has no worker stream past the IO stream." << lferr;
+
 			return;
 		}
 
@@ -589,6 +593,7 @@ void hbe::TaskProviderTest::Prepare()
 		if (!taskSystem.HasStream(worker))
 		{
 			ls << "This engine has no worker stream past the IO stream." << lferr;
+
 			return;
 		}
 
@@ -643,6 +648,7 @@ void hbe::TaskProviderTest::Prepare()
 		if (!taskSystem.HasStream(worker))
 		{
 			ls << "This engine has no worker stream past the IO stream." << lferr;
+
 			return;
 		}
 
@@ -656,6 +662,7 @@ void hbe::TaskProviderTest::Prepare()
 			provider.release.store(true, std::memory_order_release);
 			ls << "The stream never entered Produce, so the detach had nothing to wait for and this test proved"
 			   << " nothing about the window it exists to close." << lferr;
+
 			return;
 		}
 
@@ -699,6 +706,7 @@ void hbe::TaskProviderTest::Prepare()
 		if (!taskSystem.HasStream(worker))
 		{
 			ls << "This engine has no worker stream past the IO stream." << lferr;
+
 			return;
 		}
 

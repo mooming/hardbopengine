@@ -8,9 +8,9 @@
 #include "Log/Logger.h"
 #include "Memory/MemoryManager.h"
 
+
 namespace hbe
 {
-
 TaskRegistry::TaskRegistry() noexcept
 	: name("None")
 	, bankCount(0)
@@ -72,6 +72,7 @@ TaskID TaskRegistry::Create(StaticString taskName, TRunnable func, void* userDat
 	if (freeRecordHead == TaskID::NullIndex)
 	{
 		ReportNoRoom(taskName);
+
 		return {};
 	}
 
@@ -127,6 +128,7 @@ void TaskRegistry::SetSuccessor(TaskID task, TaskID successor) noexcept
 			ls << name.c_str() << " was asked to record a successor for task record " << index << " generation "
 			   << generation << ", which it is not tracking, so nothing will be dispatched when that join closes. ";
 		});
+
 		return;
 	}
 
@@ -154,6 +156,7 @@ void TaskRegistry::Release(TaskID id) noexcept
 			   << ", which is not a task it is tracking. Nothing was freed, so this is either a double release or"
 			   << " an ID from a registry that did not issue it. ";
 		});
+
 		return;
 	}
 
@@ -166,6 +169,7 @@ void TaskRegistry::Release(TaskID id) noexcept
 bool TaskRegistry::Grow() noexcept
 {
 	std::scoped_lock<std::mutex> lock(registryLock);
+
 	return AllocateBank() != nullptr;
 }
 
@@ -208,12 +212,14 @@ TaskRegistry::TBank TaskRegistry::AllocateBank() noexcept
 	if (bankIndex >= MaxBanks)
 	{
 		ReportRefusedGrowth((bankIndex + 1) * recordsPerBank);
+
 		return nullptr;
 	}
 
 	if (maxCapacityRecords > 0 && (bankIndex + 1) * recordsPerBank > maxCapacityRecords)
 	{
 		ReportRefusedGrowth((bankIndex + 1) * recordsPerBank);
+
 		return nullptr;
 	}
 
@@ -227,6 +233,7 @@ TaskRegistry::TBank TaskRegistry::AllocateBank() noexcept
 			ls << name.c_str() << " could not take a bank of " << recordsPerBank << " task records, " << bankBytes
 			   << " bytes. The table keeps the capacity it has. ";
 		});
+
 		return nullptr;
 	}
 
@@ -246,6 +253,7 @@ TaskRegistry::TBank TaskRegistry::AllocateBank() noexcept
 		record.nextFreeRecord = nextFree;
 		nextFree = firstRecordOfBank + offset - 1;
 	}
+
 	freeRecordHead = firstRecordOfBank;
 
 	return records;
@@ -296,15 +304,12 @@ void TaskRegistry::ReportRefusedGrowth(std::size_t requestedCapacity) noexcept
 
 namespace hbe
 {
-
 namespace
 {
-
 TRunnable RegistryTestRunnable() noexcept
 {
 	return [](void*, std::size_t, std::size_t) -> std::size_t { return 1; };
 }
-
 } // namespace
 
 void TaskRegistryTest::Prepare()
@@ -333,11 +338,13 @@ void TaskRegistryTest::Prepare()
 			ls << "The engine's registry holds " << registry.GetCapacity() << " task records, not "
 			   << decidedInitialRecords << ", so the size R22 decided is not the size being built." << lferr;
 		}
+
 		if (registry.GetGrowBy() != decidedGrowByRecords)
 		{
 			ls << "The engine's registry grows by " << registry.GetGrowBy() << " records, not " << decidedGrowByRecords
 			   << '.' << lferr;
 		}
+
 		if (registry.GetMaxCapacity() != decidedMaxRecords)
 		{
 			ls << "The engine's registry caps itself at " << registry.GetMaxCapacity()
@@ -360,6 +367,7 @@ void TaskRegistryTest::Prepare()
 		{
 			ls << "A task created in a table with room to spare did not resolve, so nothing can be dispatched"
 			   << " through an identity." << lferr;
+
 			return;
 		}
 
@@ -376,6 +384,7 @@ void TaskRegistryTest::Prepare()
 			ls << "A released task still resolved through its identity, so a work item could run against a task"
 			   << " nobody owns." << lferr;
 		}
+
 		if (registry.GetCount() != 0)
 		{
 			ls << "Releasing did not return the record to the table; the count is " << registry.GetCount() << '.'
@@ -398,6 +407,7 @@ void TaskRegistryTest::Prepare()
 		if (second.IsNull())
 		{
 			ls << "A released record could not be issued again, so the table leaks records." << lferr;
+
 			return;
 		}
 
@@ -449,15 +459,18 @@ void TaskRegistryTest::Prepare()
 		{
 			ls << "Grow refused with no ceiling set, so growth is gated on something the caller cannot see." << lferr;
 		}
+
 		if (capacityBefore != 8)
 		{
 			ls << "A table built with 8 records in banks of 4 reports " << capacityBefore << '.' << lferr;
 		}
+
 		if (capacityAfter != expectedCapacityAfter)
 		{
 			ls << "Growing a 8-record table by 4 records gave " << capacityAfter << ", not " << expectedCapacityAfter
 			   << ", so growth is not the exact bank the design states." << lferr;
 		}
+
 		if (registry.Find(beforeGrowth) == nullptr)
 		{
 			ls << "Growing the table invalidated an identity that was live before it, so work already queued would"
@@ -491,11 +504,13 @@ void TaskRegistryTest::Prepare()
 			ls << "A growth landing exactly on the ceiling was refused, so the ceiling excludes the size it is set"
 			   << " to instead of the sizes above it." << lferr;
 		}
+
 		if (secondGrowth)
 		{
 			ls << "The table grew to " << registry.GetCapacity() << " records past a ceiling of " << ceiling
 			   << ", so the cap is decorative." << lferr;
 		}
+
 		if (registry.GetCapacity() != ceiling)
 		{
 			ls << "Capacity is " << registry.GetCapacity() << " after growth against a ceiling of " << ceiling << '.'
@@ -527,11 +542,13 @@ void TaskRegistryTest::Prepare()
 			ls << "A fifth task was tracked by a table holding 4 records, so records are being handed out that the"
 			   << " table cannot hold." << lferr;
 		}
+
 		if (capacity != 4)
 		{
 			ls << "Creation grew the table to " << capacity << " records. Growing is a decision for whoever owns"
 			   << " the registry, not something the dispatch path pays for." << lferr;
 		}
+
 		if (count != 4)
 		{
 			ls << "The count is " << count << " with four tasks tracked and one refused." << lferr;
@@ -566,6 +583,7 @@ void TaskRegistryTest::Prepare()
 			ls << "A double release left the count at " << count << ", so a record is counted twice as used or as"
 			   << " free." << lferr;
 		}
+
 		if (other.index != id.index)
 		{
 			ls << "The record released twice came back as " << other.index << " rather than " << id.index
@@ -582,6 +600,7 @@ void TaskRegistryTest::Prepare()
 			{
 				break;
 			}
+
 			++furtherAdmitted;
 		}
 
@@ -592,6 +611,7 @@ void TaskRegistryTest::Prepare()
 			ls << "A 4-record table with one record already held admitted " << furtherAdmitted
 			   << " further tasks, not 3, so the free list holds a record twice or has lost one." << lferr;
 		}
+
 		if (registry.GetCount() != 4)
 		{
 			ls << "The table reports " << registry.GetCount() << " records in use while holding four tasks." << lferr;
@@ -747,6 +767,7 @@ void TaskRegistryTest::Prepare()
 		if (task == nullptr)
 		{
 			ls << "The task system could not track a task, so identity cannot be checked at all." << lferr;
+
 			return;
 		}
 
@@ -761,6 +782,7 @@ void TaskRegistryTest::Prepare()
 			ls << "The task does not carry the identity it was issued, so a subtask generated from it cannot name"
 			   << " it." << lferr;
 		}
+
 		if (subtask.taskID != id)
 		{
 			ls << "The subtask carries a different identity from its task, which is what the generation check is"

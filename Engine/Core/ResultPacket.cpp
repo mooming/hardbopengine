@@ -11,15 +11,12 @@
 #ifdef __UNIT_TEST__
 namespace hbe
 {
-
 namespace
 {
-
 TRunnable PacketTestRunnable() noexcept
 {
 	return [](void*, std::size_t, std::size_t) -> std::size_t { return 1; };
 }
-
 } // namespace
 
 void ResultPacketTest::Prepare()
@@ -55,21 +52,25 @@ void ResultPacketTest::Prepare()
 			   << ". The task is not a handle to a buffer any more, so this width is the cost of the design rather"
 			   << " than an implementation detail." << lferr;
 		}
+
 		if (sizeof(Task) != decidedTaskBytes)
 		{
 			ls << "A task is " << sizeof(Task) << " bytes, not " << decidedTaskBytes << ", so the record no longer"
 			   << " costs what the decision priced it at." << lferr;
 		}
+
 		if (TaskRegistry::RecordSizeBytes != decidedRecordBytes)
 		{
 			ls << "A record is " << TaskRegistry::RecordSizeBytes << " bytes, not " << decidedRecordBytes
 			   << ". Every byte added here is multiplied by the registry's capacity." << lferr;
 		}
+
 		if (tableBytes / 1024 != decidedTableKib)
 		{
 			ls << "The default identity table costs " << tableBytes / 1024 << " KiB rather than " << decidedTableKib
 			   << " KiB." << lferr;
 		}
+
 		if (TaskRegistry::RecordSizeBytes % 64 != 0)
 		{
 			ls << "A record of " << TaskRegistry::RecordSizeBytes
@@ -88,6 +89,7 @@ void ResultPacketTest::Prepare()
 		if (firstTask == nullptr)
 		{
 			ls << "A registry with room did not issue a task, so nothing here can be checked." << lferr;
+
 			return;
 		}
 
@@ -104,11 +106,13 @@ void ResultPacketTest::Prepare()
 			   << ", so a reader would act on the previous occupant of this"
 			   << " record." << lferr;
 		}
+
 		if (packet.GetKind() != ResultPacket::KindNoResult)
 		{
 			ls << "A new record's packet reports kind " << static_cast<int>(packet.GetKind()) << " where"
 			   << " KindNoResult was expected." << lferr;
 		}
+
 		if (packet.GetDestinationStreamIndex() != ResultPacket::NoDestinationStream)
 		{
 			ls << "A new record's packet is addressed to stream "
@@ -131,12 +135,14 @@ void ResultPacketTest::Prepare()
 			ls << "A kind was set and the packet still says it holds no result, so the write and the read disagree"
 			   << " about where the kind lives." << lferr;
 		}
+
 		if (packet.GetPayload()[0] != 0xA5 || packet.GetPayload()[ResultPacket::PayloadBytes - 1] != 0xA5)
 		{
 			ls << "Writing the payload did not reach both ends of it: first byte "
 			   << static_cast<int>(packet.GetPayload()[0]) << ", last byte "
 			   << static_cast<int>(packet.GetPayload()[ResultPacket::PayloadBytes - 1]) << '.' << lferr;
 		}
+
 		if (reinterpret_cast<std::uintptr_t>(packet.GetPayload()) % sizeof(std::uint64_t) != 0)
 		{
 			ls << "The payload is not reachable in aligned words, so a producer reading it as integers needs the"
@@ -151,6 +157,7 @@ void ResultPacketTest::Prepare()
 		{
 			ls << "The registry could not issue the released record again, so the reuse case cannot be reached."
 			   << lferr;
+
 			return;
 		}
 
@@ -167,6 +174,7 @@ void ResultPacketTest::Prepare()
 			   << " task's result of kind " << static_cast<int>(reusedPacket.GetKind())
 			   << ". The generation check stops a stale reader, and nothing stops this." << lferr;
 		}
+
 		if (reusedPacket.GetPayload()[0] == 0xA5)
 		{
 			ls << "Record " << reusedID.index << " still holds the bytes the previous task wrote." << lferr;
@@ -190,6 +198,5 @@ void ResultPacketTest::Prepare()
 		}
 	});
 }
-
 } // namespace hbe
 #endif //__UNIT_TEST__

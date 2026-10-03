@@ -12,6 +12,7 @@
 #include "Task.h"
 #include "TaskID.h"
 
+
 namespace hbe
 {
 /// @brief Tracks every task the engine knows about, and issues the identity that replaces a task's address.
@@ -230,7 +231,6 @@ private:
 
 namespace hbe
 {
-
 /// @brief Test collection for the task registry: identity, recycling, growth and refusal.
 class TaskRegistryTest final : public TestCollection
 {
@@ -243,6 +243,5 @@ public:
 protected:
 	void Prepare() override;
 };
-
 } // namespace hbe
 #endif //__UNIT_TEST__
