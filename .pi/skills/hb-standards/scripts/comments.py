@@ -34,7 +34,27 @@ ANONYMOUS_HEAD = re.compile(r'\bnamespace\b(?!\s*[A-Za-z_:])')
 
 POINTER = re.compile(r'^///\s*API reference:\s*(\S+)\s*$')
 POINTER_SHAPE = re.compile(r'^docs/([^/]+)/([^/]+)/index\.html$')
-ENTRY_DECL = re.compile(r'^\s*(?:class|struct|union|enum(?:\s+class)?)\s+([A-Za-z_]\w*)')
+# An attribute-specifier-seq sits between a type keyword and the name it declares, so a pattern that reads
+# the first identifier after the keyword captures `alignas` instead of the entry. The same grammar is in
+# `docs_coverage.py`'s ENTRY, which found this on `Engine/Core/ResultPacket.h` first; the two are edited
+# together so the two readers of one fact cannot disagree about what a declaration is called.
+TYPE_HEAD = re.compile(r'^\s*(?:class|struct|union|enum(?:\s+(?:class|struct))?)\b')
+ATTRIBUTE_PREFIX = re.compile(r'\s*(?:alignas\s*\((?:[^()]|\([^()]*\))*\)|\[\[[^\]]*\]\]'
+                             r'|__attribute__\s*\(\(.*?\)\))')
+# A name that comes back one of these is not a name, so the reader says it cannot read the line rather than
+# hand back a token that would let a pointer be accepted, or refused, for the wrong reason. An export macro
+# (`struct HBE_API ScopedLock`) lands here on purpose: guessing which identifier is the macro and which is
+# the type is a coin toss, and a coin toss reported as a fact is worse than no answer.
+SPECIFIER_WORDS = frozenset(('alignas', 'alignof', 'declspec', '__declspec', 'attribute', 'final',
+                            'constexpr', 'consteval', 'constinit', 'inline', 'static', 'extern',
+                            'thread_local', 'mutable', 'friend', 'explicit', 'operator', 'struct',
+                            'class', 'union', 'enum', 'template', 'typename', 'void'))
+# What may legally follow the name a type keyword declares. A second bare identifier in that position means
+# the name was not the first identifier after all — an export macro (`struct HBE_API ScopedLock`), or an
+# attribute spelling this reader does not consume — and the difference between "that token is the name" and
+# "that token is a macro" cannot be settled from one line. So the reader declines, and says so, instead of
+# answering with a coin toss. `final` is the one keyword the standard allows there.
+AFTER_NAME = re.compile(r'^\s*(?:final\b|[{:;,=]|$)')
 ENTRY_ALIAS = re.compile(r'^\s*using\s+([A-Za-z_]\w*)\s*=')
 ENTRY_DEFINE = re.compile(r'^#\s*define\s+([A-Za-z_]\w*)\b')
 CONCEPT_DECL = re.compile(r'^\s*concept\s+([A-Za-z_]\w*)')
@@ -243,6 +263,35 @@ def is_label_comment(line_text, comment_col, body, allowed):
     return inner in allowed
 
 
+def entry_name_of(line):
+    """The entry name this line declares, or None when it declares none or cannot be read safely.
+
+    Handles the grammar a caller can actually write: an attribute-specifier-seq between the keyword and the
+    name (`alignas(std::uint64_t)`, `[[deprecated]]`, `__attribute__((packed))`), and `enum struct` beside
+    `enum class`. It stops rather than guesses when the next token is a specifier word, which is how an
+    export macro in that position is reported instead of invented into a class name.
+    """
+    head = TYPE_HEAD.match(line)
+    if not head:
+        for pattern in (ENTRY_ALIAS, ENTRY_DEFINE):
+            found = pattern.match(line)
+            if found:
+                return found.group(1)
+        return None
+    rest = line[head.end():]
+    while True:
+        attribute = ATTRIBUTE_PREFIX.match(rest)
+        if not attribute:
+            break
+        rest = rest[attribute.end():]
+    found = re.match(r'\s*([A-Za-z_]\w*)', rest)
+    if not found or found.group(1) in SPECIFIER_WORDS:
+        return None
+    if not AFTER_NAME.match(rest[found.end():]):
+        return None
+    return found.group(1)
+
+
 def entry_names(text):
     """Every name this file declares as a documented entry: a type, an alias or a macro.
 
@@ -252,10 +301,9 @@ def entry_names(text):
     """
     names = set()
     for line in text.split('\n'):
-        for pattern in (ENTRY_DECL, ENTRY_ALIAS, ENTRY_DEFINE):
-            found = pattern.match(line)
-            if found:
-                names.add(found.group(1))
+        name = entry_name_of(line)
+        if name:
+            names.add(name)
     return names
 
 
@@ -275,10 +323,11 @@ def declaration_below(lines, lineno):
         found = CONCEPT_DECL.match(lines[index])
         if found:
             return ('concept', found.group(1))
-        for pattern in (ENTRY_DECL, ENTRY_ALIAS, ENTRY_DEFINE):
-            found = pattern.match(lines[index])
-            if found:
-                return ('entry', found.group(1))
+        name = entry_name_of(lines[index])
+        if name:
+            return ('entry', name)
+        if TYPE_HEAD.match(lines[index]):
+            return ('unreadable', lines[index].strip()[:40])
         return ('other', stripped[:40])
     return ('none', '')
 
@@ -303,9 +352,12 @@ def pointer_violation(path, target, lines, lineno, names):
     if shape.group(1) != module:
         return ('POINTER-MODULE', 'names module %s while this file belongs to %s' % (shape.group(1), module))
     named = shape.group(2)
+    kind, declared = declaration_below(lines, lineno)
+    if kind == 'unreadable':
+        return ('POINTER-UNREADABLE', 'the declaration below it (%s) is a shape this reader cannot name, so '
+                                      'neither the pointer nor the page can be trusted here' % declared)
     if named not in names:
         return ('POINTER-ENTRY', '%s declares no entry called %s' % (path, named))
-    kind, declared = declaration_below(lines, lineno)
     if kind != 'entry' or declared != named:
         return ('POINTER-POSITION', 'points at %s but the next declaration is %s%s' %
                 (named, declared, ' (a concept, which owns no page)' if kind == 'concept' else ''))
@@ -613,6 +665,22 @@ SELFTEST_CASES.append(('api reference pointer on a member is reported', POINTER_
                        '\n'.join(['class WorkItem final', '{', 'public:',
                                   '\t/// API reference: docs/Core/WorkItem/index.html',
                                   '\tvoid Run() {}', '};', '']), [4]))
+
+POINTER_PACKET = 'Engine/Core/ResultPacket.h'
+SELFTEST_CASES.append(('alignas between the keyword and the name still names its entry', POINTER_PACKET,
+                       '\n'.join(['/// API reference: docs/Core/ResultPacket/index.html',
+                                  'class alignas(std::uint64_t) ResultPacket final', '{', '};', '']), []))
+SELFTEST_CASES.append(('bracket attribute between the keyword and the name still names its entry',
+                       POINTER_PACKET,
+                       '\n'.join(['/// API reference: docs/Core/ResultPacket/index.html',
+                                  'class [[deprecated]] ResultPacket final', '{', '};', '']), []))
+SELFTEST_CASES.append(('enum struct is read as an entry name', POINTER_PACKET,
+                       '\n'.join(['/// API reference: docs/Core/ResultPacket/index.html',
+                                  'enum struct ResultPacket : std::uint8_t', '{', '};', '']), []))
+SELFTEST_CASES.append(('a declaration name this reader cannot settle is reported, not guessed',
+                       POINTER_PACKET,
+                       '\n'.join(['/// API reference: docs/Core/ResultPacket/index.html',
+                                  'struct HBE_API_EXPORT ResultPacket final', '{', '};', '']), [1]))
 SELFTEST_CASES.append(('api reference pointer is not prose and survives a strip', POINTER_WORKITEM,
                        '\n'.join(['/// API reference: docs/Core/WorkItem/index.html',
                                   '/// @brief Prose that must go.',
