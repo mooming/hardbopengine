@@ -5,13 +5,14 @@
 #include <atomic>
 #include <mutex>
 #include <vector>
+
 #include "Config/BuildConfig.h"
 #include "Memory/AllocStats.h"
 #include "Time.h"
 
+
 namespace hbe
 {
-
 class Engine;
 class StaticString;
 
@@ -109,5 +110,4 @@ public:
 		return deltaTime;
 	}
 };
-
 } // namespace hbe

@@ -4,6 +4,7 @@
 
 #include "Time.h"
 
+
 namespace hbe::time
 {
 /// API reference: docs/Core/ScopedTime/index.html

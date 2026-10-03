@@ -3,7 +3,9 @@
 #pragma once
 
 #include <chrono>
+
 #include "Types.h"
+
 
 namespace hbe::time
 {
@@ -21,18 +23,21 @@ using TMilliSecs = std::chrono::milliseconds;
 [[nodiscard]] inline float ToFloat(TStopWatch::duration duration) noexcept
 {
 	std::chrono::duration<float> delta = duration;
+
 	return delta.count();
 }
 
 [[nodiscard]] inline double ToDouble(TStopWatch::duration duration) noexcept
 {
 	std::chrono::duration<double> delta = duration;
+
 	return delta.count();
 }
 
 [[nodiscard]] inline TMilliSecs::rep ToMilliSeconds(TStopWatch::duration duration) noexcept
 {
 	auto delta = std::chrono::duration_cast<TMilliSecs>(duration);
+
 	return delta.count();
 }
 
@@ -87,7 +92,6 @@ void ResetEngineEpoch() noexcept;
 /// @note A rate that is zero or negative is ignored, because a period of infinity silently disables every
 ///       budget while looking like a normal configuration value.
 void SetBaseFrameRate(double hertz) noexcept;
-
 } // namespace hbe::time
 
 #ifdef __UNIT_TEST__
@@ -95,7 +99,6 @@ void SetBaseFrameRate(double hertz) noexcept;
 
 namespace hbe
 {
-
 class TimeTest : public TestCollection
 {
 public:
@@ -107,6 +110,5 @@ public:
 protected:
 	void Prepare() override;
 };
-
 } // namespace hbe
 #endif //__UNIT_TEST__

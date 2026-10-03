@@ -8,9 +8,9 @@
 #include "String/StaticString.h"
 #include "String/StringUtil.h"
 
+
 namespace hbe
 {
-
 SystemStatistics::SystemStatistics(Engine& engine)
 	: frameCount(0)
 	, slowFrameCount(0)
@@ -32,6 +32,7 @@ SystemStatistics::SystemStatistics(Engine& engine)
 const StaticString& SystemStatistics::GetName() const noexcept
 {
 	static StaticString name("SystemStatistics");
+
 	return name;
 }
 
@@ -57,7 +58,6 @@ void SystemStatistics::Report(const AllocStats& stats)
 void SystemStatistics::ReportSysMemAlloc(size_t usage)
 {
 	size_t localTotalUsage = 0;
-
 	{
 		std::lock_guard lock(sysMemReportLock);
 		++allocCount;
@@ -137,5 +137,4 @@ void SystemStatistics::PrintAllocatorProfiles() noexcept
 	log.Out("================================================================");
 #endif // PROFILE_ENABLED
 }
-
 } // namespace hbe

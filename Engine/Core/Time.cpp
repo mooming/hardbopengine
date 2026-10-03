@@ -6,6 +6,7 @@
 #include <chrono>
 #include <thread>
 
+
 namespace hbe
 {
 namespace
@@ -22,6 +23,7 @@ std::atomic<long long>& EpochNanosStorage() noexcept
 	const auto nanos = static_cast<long long>(std::chrono::duration_cast<std::chrono::nanoseconds>(sinceEpoch).count());
 
 	static std::atomic<long long> epochNanos{nanos};
+
 	return epochNanos;
 }
 
@@ -30,6 +32,7 @@ constexpr double defaultBaseFrameRate = 60.0;
 std::atomic<double>& BaseFrameRateStorage() noexcept
 {
 	static std::atomic<double> rate{defaultBaseFrameRate};
+
 	return rate;
 }
 } // namespace
@@ -82,13 +85,11 @@ void time::SetBaseFrameRate(double hertz) noexcept
 
 	BaseFrameRateStorage().store(hertz, std::memory_order_release);
 }
-
 } // namespace hbe
 
 #ifdef __UNIT_TEST__
 namespace hbe
 {
-
 void TimeTest::Prepare()
 {
 	AddTest("Elapsed time advances", [this](auto& ls)
@@ -167,6 +168,5 @@ void TimeTest::Prepare()
 		time::SetBaseFrameRate(60.0);
 	});
 }
-
 } // namespace hbe
 #endif //__UNIT_TEST__

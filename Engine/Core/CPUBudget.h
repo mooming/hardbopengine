@@ -6,9 +6,9 @@
 #include <chrono>
 #include <optional>
 
+
 namespace hbe
 {
-
 /// @brief One stream's allowance of measured CPU time, configured as a duration and spent as work runs.
 /// @details A stream asks CanTakeWork before it dequeues, and stops taking work while the allowance is
 ///          spent. Nothing is preempted: a task already running runs to completion, so a single long task
@@ -90,7 +90,6 @@ public:
 	/// @return True while the allowance is not spent, and always true for an unlimited budget.
 	[[nodiscard]] bool CanTakeWork() const noexcept;
 };
-
 } // namespace hbe
 
 #ifdef __UNIT_TEST__
@@ -98,7 +97,6 @@ public:
 
 namespace hbe
 {
-
 /// @brief Test collection for the measured-CPU budget.
 class CPUBudgetTest final : public TestCollection
 {
@@ -111,6 +109,5 @@ public:
 protected:
 	void Prepare() override;
 };
-
 } // namespace hbe
 #endif //__UNIT_TEST__
