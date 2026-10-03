@@ -33,7 +33,6 @@ class TaskSystem;
 /// API reference: docs/Core/TaskStream/index.html
 class TaskStream final
 {
-public:
 private:
 	template <typename T>
 	using TVector = hbe::HVector<T>;
@@ -68,7 +67,9 @@ private:
 	StaticString name;
 	TThreadID threadID;
 	TStreamIndex streamIndex;
+
 	std::uint64_t loopCount;
+
 	MultiPoolAllocator allocator;
 
 	TaskSystem* taskSystem = nullptr;
@@ -79,15 +80,17 @@ private:
 
 	std::mutex queueLock;
 	std::condition_variable cv;
+
 	std::thread thread;
+
 	Deque<WorkItem> fifoQueue;
 	BoundedPriorityQueue<WorkItem> priorityQueue;
+
 	StreamDrainPolicy drainPolicy;
 
 	std::atomic<bool> windowAdvanceRequested{false};
 
 	std::atomic<bool> closeRequested{false};
-
 	std::atomic<bool> isClosed{false};
 
 	std::uint64_t drivenPassCount = 0;
@@ -95,19 +98,19 @@ private:
 	MainThreadTaskQueue postedTasks;
 
 	bool isPumping = false;
-
 	bool nestedPumpAllowed = false;
 
 	bool isDrainingForShutdown = false;
+
 	std::atomic<std::size_t> abandonedWorkNoticeCount{0};
 	std::atomic<std::size_t> agedOutWorkCount{0};
+
 	bool drivenByShutdownPump{false};
 
 	std::chrono::milliseconds shutdownDrainDeadline{2000};
+
 	std::atomic<unsigned> generalQueueRefusals{0};
-
 	std::atomic<unsigned> laneWorkRefusals{0};
-
 	std::atomic<unsigned> providerAsksWhileSpent{0};
 
 public:
@@ -116,7 +119,6 @@ public:
 	~TaskStream() = default;
 
 	void EnqueueFifo(const WorkItem& task) noexcept;
-
 	void EnqueuePriority(const WorkItem& task) noexcept;
 
 	void ConfigureRate(uint32_t fifoWeight, uint32_t priorityWeight) noexcept;
@@ -144,11 +146,9 @@ public:
 	void WakeUp() noexcept;
 
 	void ConfigureBudget(std::chrono::duration<double> allowance) noexcept;
-
 	void RequestBudget(std::chrono::duration<double> allowance) noexcept;
 
 	[[nodiscard]] bool MayTakeNewWork() const noexcept;
-
 	[[nodiscard]] std::chrono::nanoseconds GetAccumulatedCPUTime() const noexcept;
 
 	void RequestWindowAdvance() noexcept
@@ -207,13 +207,10 @@ public:
 	}
 
 	bool AttachProvider(TaskProvider& provider, StreamDrainPolicy::ELane lane) noexcept;
-
 	bool DetachProvider(TaskProvider& provider, StreamDrainPolicy::ELane lane) noexcept;
-
 	[[nodiscard]] bool IsProviderAttached(const TaskProvider& provider, StreamDrainPolicy::ELane lane) noexcept;
 
 	void Start(TaskSystem& taskSys) noexcept;
-
 	bool Update() noexcept;
 
 	void RequestClose() noexcept
@@ -225,7 +222,6 @@ public:
 	void SetNestedPumpAllowed(bool allowed) noexcept;
 
 	void DispatchPostedTasks(MainThreadTaskQueue::TTaskFunc taskFunc, void* userData, uint8_t priority = 128) noexcept;
-
 	size_t ProcessPostedTasks() noexcept;
 
 	[[nodiscard]] bool HasPostedTasks() const noexcept;
@@ -236,7 +232,6 @@ public:
 	}
 
 	void CloseDrivenStream() noexcept;
-
 	std::size_t AbandonHeldWork() noexcept;
 
 	[[nodiscard]] std::uint64_t GetDrivenPassCount() const noexcept

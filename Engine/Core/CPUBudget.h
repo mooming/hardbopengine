@@ -18,24 +18,20 @@ private:
 	std::chrono::duration<double> allowance{};
 
 	std::atomic<long long> requestedAllowanceNanos{PendingAllowanceNone};
-
 	std::atomic<long long> accumulatedNanos{0};
 
 	std::chrono::nanoseconds taskStart{};
-
 	bool isMeasuring = false;
 
 public:
 	void Configure(std::chrono::duration<double> allowance) noexcept;
 
 	void RequestAllowance(std::chrono::duration<double> allowance) noexcept;
-
 	std::optional<std::chrono::duration<double>> ApplyRequestedAllowance() noexcept;
 
 	[[nodiscard]] std::chrono::duration<double> GetAllowance() const noexcept;
 
 	void BeginTask() noexcept;
-
 	void EndTask() noexcept;
 
 	[[nodiscard]] std::chrono::nanoseconds GetAccumulated() const noexcept;

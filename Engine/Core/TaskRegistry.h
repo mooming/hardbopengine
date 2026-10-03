@@ -24,11 +24,11 @@ private:
 	struct Record final
 	{
 		Task task;
-
 		TaskID successor;
 
 		std::atomic<TaskID::TGeneration> generation;
 		std::atomic<bool> inUse;
+
 		std::size_t nextFreeRecord;
 
 		std::byte reservedToCacheLine[24];
@@ -37,18 +37,13 @@ private:
 	using TBank = Record*;
 
 public:
-public:
 	static constexpr std::size_t DefaultInitialCapacityRecords = 4096;
-
 	static constexpr std::size_t DefaultGrowByRecords = DefaultInitialCapacityRecords;
-
 	static constexpr std::size_t DefaultMaxCapacityRecords = 0;
 
 	static constexpr std::size_t MaxBanks = 1024;
 
-public:
 	static constexpr std::size_t RecordSizeBytes = sizeof(Record);
-
 	static_assert(RecordSizeBytes == 256, "R28 prices a record at 256 bytes; re-measure and re-decide");
 	static_assert(RecordSizeBytes % 64 == 0, "Records must start on cache-line boundaries");
 
@@ -66,20 +61,16 @@ private:
 public:
 	TaskRegistry() noexcept;
 	~TaskRegistry() noexcept;
-
-	void Initialize(StaticString registryName, std::size_t initialCapacityRecords, std::size_t growByRecords) noexcept;
-
 	TaskRegistry(const TaskRegistry&) = delete;
 	TaskRegistry& operator=(const TaskRegistry&) = delete;
 
-	void SetSuccessor(TaskID task, TaskID successor) noexcept;
+	void Initialize(StaticString registryName, std::size_t initialCapacityRecords, std::size_t growByRecords) noexcept;
 
+	void SetSuccessor(TaskID task, TaskID successor) noexcept;
 	[[nodiscard]] TaskID GetSuccessor(TaskID task) noexcept;
 
 	[[nodiscard]] TaskID Create(StaticString taskName, TRunnable func, void* userData) noexcept;
-
 	[[nodiscard]] Task* Find(TaskID id) noexcept;
-
 	void Release(TaskID id) noexcept;
 
 	[[nodiscard]] bool Grow() noexcept;

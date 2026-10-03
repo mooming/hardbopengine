@@ -18,7 +18,6 @@
 namespace hbe
 {
 class TaskProvider;
-
 class TaskSystem;
 
 /// API reference: docs/Core/TaskHandle/index.html
@@ -29,7 +28,6 @@ private:
 
 public:
 	TaskHandle() = default;
-
 	explicit TaskHandle(TaskProvider& provider) noexcept;
 
 	[[nodiscard]] explicit operator bool() const noexcept
@@ -43,7 +41,6 @@ public:
 	}
 
 	[[nodiscard]] bool IsStopRequested() const noexcept;
-
 	void RequestStop() const noexcept;
 };
 
@@ -52,7 +49,6 @@ struct TaskProduceContext final
 {
 public:
 	TStreamIndex stream = 0;
-
 	time::TEngineTimePoint now{};
 
 	[[nodiscard]] static TaskProduceContext ForStream(TStreamIndex streamIndex) noexcept;
@@ -65,18 +61,14 @@ public:
 	static constexpr TStreamIndex MaxAttachedStreams = 64;
 
 	static constexpr std::uint8_t LaneBitFifo = 1U << 0;
-
 	static constexpr std::uint8_t LaneBitPriority = 1U << 1;
 
 private:
 	StaticString name;
-
 	TaskSystem& taskSystem;
 
 	std::array<TStreamIndex, static_cast<size_t>(MaxAttachedStreams)> attached{};
-
 	std::array<std::uint8_t, static_cast<size_t>(MaxAttachedStreams)> lanes{};
-
 	TStreamIndex attachedCount = 0;
 
 	int registeredCount = 0;
@@ -92,19 +84,14 @@ public:
 	}
 
 	explicit TaskProvider(StaticString name, TaskSystem& targetSystem) noexcept;
-
 	virtual ~TaskProvider();
-
 	TaskProvider(const TaskProvider&) = delete;
-
 	TaskProvider& operator=(const TaskProvider&) = delete;
 
 	virtual std::optional<WorkItem> Produce(const TaskProduceContext& context) noexcept = 0;
 
 	void AttachTo(TStreamIndex stream, StreamDrainPolicy::ELane lane) noexcept;
-
 	void DetachFrom(TStreamIndex stream) noexcept;
-
 	void DetachAll() noexcept;
 
 	[[nodiscard]] TStreamIndex GetAttachedCount() const noexcept
@@ -113,9 +100,7 @@ public:
 	}
 
 	[[nodiscard]] TStreamIndex GetAttachedStream(TStreamIndex index) const noexcept;
-
 	[[nodiscard]] bool IsAttachedTo(TStreamIndex stream) const noexcept;
-
 	[[nodiscard]] std::uint8_t GetAttachedLanes(TStreamIndex stream) const noexcept;
 
 	void Stop() noexcept;
@@ -137,7 +122,6 @@ protected:
 
 private:
 	void RegisterOnStream(TStreamIndex stream, StreamDrainPolicy::ELane lane) noexcept;
-
 	void UnregisterFromStream(TStreamIndex stream, StreamDrainPolicy::ELane lane) noexcept;
 };
 } // namespace hbe

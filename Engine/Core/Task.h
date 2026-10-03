@@ -29,17 +29,13 @@ public:
 
 private:
 	TaskID id;
-
 	StaticString name;
 
 	TNumSubTasks numSubTasks;
-
 	TNumSubTasks numGeneratedSubTasks;
-
 	std::atomic<TNumSubTasks> numFinishedSubTasks;
 
 	TRunnable func;
-
 	void* userData;
 
 	FAbandonedNotice abandonedNotice{nullptr};
@@ -59,7 +55,6 @@ public:
 		numSubTasks = count;
 	}
 
-public:
 	[[nodiscard]] auto GetName() const noexcept
 	{
 		return name;

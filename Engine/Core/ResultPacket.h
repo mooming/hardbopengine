@@ -14,19 +14,14 @@ class alignas(std::uint64_t) ResultPacket final
 {
 public:
 	static constexpr std::size_t HeaderBytes = 8;
-
 	static constexpr std::size_t PayloadBytes = 120;
-
 	static constexpr std::size_t SizeBytes = HeaderBytes + PayloadBytes;
 
 	static constexpr std::uint8_t KindNoResult = 0;
-
 	static constexpr std::uint8_t FirstApplicationKind = 64;
 
 	static constexpr std::size_t KindByteIndex = 0;
-
 	static constexpr std::size_t DestinationByteIndex = 1;
-
 	static constexpr std::uint8_t NoDestinationStream = 0xFF;
 
 	static_assert(SizeBytes == 128, "A result packet must be the 128 bytes the design fixed");
