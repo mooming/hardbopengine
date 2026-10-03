@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TaskStream::GetLoopCount — Core module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a class="current" href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Core</a> /
+  <a href="index.html">TaskStream</a> / GetLoopCount
+</p>
+
+<h1><span class="fn">GetLoopCount</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::TaskStream</span>
+  <span class="tag">Engine/Core/TaskStream.h</span>
+  How many passes reached the lane decision, written by the stream's own driver.
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>[[nodiscard]] auto GetLoopCount() const noexcept</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  Declared and defined in the header <code>Engine/Core/TaskStream.h</code>; there is no counterpart in
+  <code>Engine/Core/TaskStream.cpp</code>. How many passes reached the point of deciding what to run, as <code>std::uint64_t</code>.
+</p>
+
+<div class="note">
+  <strong>The header states this field's thread rule in one clause, and the clause is a convention.</strong>
+  "Written by the single thread driving this stream, so it needs no atomic."
+  (<code>Engine/Core/TaskStream.h</code>) The field is a plain <code>std::uint64_t</code>; the rule is true of a worker whose loop is the only driver and is a
+  promise rather than a mechanism for a driven stream, where the "single thread" can be whichever host thread arrives
+  (<a href="start.html">Start</a>). A cross-thread read of it is unsynchronised, and nothing detects that.
+</div>
+
+<div class="gap">
+  <strong>It is not <a href="getdrivenpasscount.html">GetDrivenPassCount</a>, and the gap between them is a diagnostic.</strong>
+  <a href="update.html">Update</a> raises the driven count before anything else happens and the loop count only after the stream index and allocator scope have
+  been entered and the posted callables run — so a pass that returned early on a close request advanced one counter and not the other
+  (<code>Engine/Core/TaskStream.cpp</code>). A stream whose driven count leads its loop count by a lot has been pumped repeatedly while declining to take work,
+  which is what a closed-but-still-driven stream looks like.
+</div>
+
+<div class="note">
+  <strong>Nothing in the engine reads it.</strong> No line in <code>Engine/</code> or <code>Applications/</code> calls this accessor
+  (<code>Engine/Core/TaskStream.cpp</code>); the class writes the field for whoever is watching from outside — a harness that wants to prove a stream was driven
+  at least <em>N</em> times, which the shutdown pump proves nothing about on its own
+  (<a href="isdrivenbyshutdownpump.html">IsDrivenByShutdownPump</a>).
+</div>
+
+<div class="gap">
+  <strong>It never resets, and it counts attempts rather than work.</strong>
+  A pass that found nothing, a pass that only ran posted callables, and a pass that dropped a dead item all count here
+  (<code>Engine/Core/TaskStream.cpp</code>). It is a life total, so a non-zero value says only that this stream ran at some point since construction — the
+  counters that name a specific event are <a href="getlaneworkrefusalcount.html">GetLaneWorkRefusalCount</a>,
+  <a href="getagedoutworkcount.html">GetAgedOutWorkCount</a> and their siblings.
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<p>None.</p>
+
+<h2 id="return">Return value</h2>
+
+<table>
+  <tr><th>Type</th><th>What you get</th></tr>
+  <tr><td><code>auto</code> deducing <code>std::uint64_t</code></td><td>Passes that reached the lane decision, since construction, read without synchronisation</td></tr>
+</table>
+
+<h2 id="example">Examples</h2>
+
+<p class="meta">From Engine/Core/TaskStream.cpp, TaskStream::Update()</p>
+
+<pre><code>TaskSystem&amp; taskSys = *taskSystem;
+++loopCount;</code></pre>
+
+<p>
+  The one increment, sitting after the pass has resolved its task system and entered the stream's index and allocator — the position that makes this a count of
+  passes with a future, rather than of passes that were entered
+  (<code>Engine/Core/TaskStream.cpp</code>).
+</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; TaskStream</a></span>
+  <span><a href="index.html#methods">All TaskStream methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

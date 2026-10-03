@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CommandLineArguments::CommandLineArguments — Core module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a class="current" href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Core</a> /
+  <a href="index.html">CommandLineArguments</a> / CommandLineArguments
+</p>
+
+<h1><span class="fn">CommandLineArguments</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::CommandLineArguments</span>
+  <span class="tag">Engine/Core/CommandLineArguments.h</span>
+  Default constructor deleted; the taking one forwards to Parse and stores nothing itself.
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>CommandLineArguments() = delete
+
+CommandLineArguments(int argc, const char* argv[])</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  Two declarations, one page, because they are one decision: an instance exists only if a real command line made it. The default constructor is deleted in the
+  header <code>Engine/Core/CommandLineArguments.h</code>; the taking constructor is defined in <code>Engine/Core/CommandLineArguments.cpp</code> and its whole
+  body is <code>Parse(argc, argv);</code>.
+</p>
+
+<div class="gap">
+  <strong>The taking constructor stores nothing itself, and the function it calls stores nothing either — so a constructed object is empty whatever the command
+  line was.</strong>
+  <a href="parse.html">Parse</a> asserts <code>argc &gt; 0</code>, echoes each <code>argv</code> entry to <code>std::cout</code>, and returns; it never assigns
+  <code>executablePath</code>, never assigns <code>executableFilename</code>, and never appends to <code>arguments</code>
+  (<code>Engine/Core/CommandLineArguments.cpp</code>). The three members therefore hold what their own default constructors give them: two empty
+  <a href="../../String/index.html"><code>String</code></a>s and an empty <a href="../../Container/Array/index.html"><code>Array</code></a>. The header's
+  <code>@brief</code> — "Parses and stores command line arguments passed to the application" — describes an intention the body does not carry out
+  (<code>Engine/Core/CommandLineArguments.h</code>).
+</div>
+
+<div class="note">
+  <strong>Deleting the default constructor is what makes the empty object impossible to make by accident — which is the only guarantee this class gives.</strong>
+  Every instance must name an <code>argc</code> and an <code>argv</code>, so a reader can at least tell where the (empty) contents came from. Note what is
+  <em>not</em> deleted: the copy operations are implicit, and the <a href="getarguments.html"><code>Array</code></a> member is non-copyable
+  (<code>Engine/Container/Array.h</code> deletes both), so the implicit copy constructor and copy assignment of this class are defined as deleted. The class is
+  <code>final</code> and movable in nothing but name — the array's move operations are what would decide that, and they are the array's own business.
+</div>
+
+<div class="gap">
+  <strong>Nothing in the engine or any application ever constructs one.</strong>
+  No line in <code>Engine/</code> or <code>Applications/</code> mentions this class outside its own two files, so the engine's command line is not routed
+  through it at all (<code>Engine/Core/CommandLineArguments.h</code>). That makes every statement on these five pages a reading of the source rather than an
+  observation of behavior — including the echoing in <a href="parse.html">Parse</a>, which would print one line per argument if it ever ran.
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<table>
+  <tr><th>Name</th><th>Type</th><th>Meaning</th></tr>
+  <tr><td><code>argc</code></td><td><code>int</code></td><td>Argument count, passed to <a href="parse.html">Parse</a> and asserted to be positive; not stored</td></tr>
+  <tr><td><code>argv</code></td><td><code>const char*[]</code></td><td>Argument vector, printed by <a href="parse.html">Parse</a>; not stored, and no copy of any string is taken</td></tr>
+</table>
+
+<h2 id="return">Return value</h2>
+
+<p>None — a constructor. The object it produces reports an empty path, an empty filename and zero arguments, whatever was passed in.</p>
+
+<h2 id="example">Examples</h2>
+
+<p>
+  There is no call site to quote. The shape the interface invites is
+  <code>CommandLineArguments(args, argc, argv)</code>-style construction in an application entry point followed by <a href="print.html">Print</a> — and the
+  reason no such code appears here is that no such code exists in the tree
+  (<code>Engine/Core/CommandLineArguments.h</code>).
+</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; CommandLineArguments</a></span>
+  <span><a href="index.html#methods">All CommandLineArguments methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

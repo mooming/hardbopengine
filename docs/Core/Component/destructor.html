@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Component::~Component — Core module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a class="current" href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Core</a> /
+  <a href="index.html">Component</a> / ~Component
+</p>
+
+<h1><span class="fn">~Component</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::Component</span>
+  <span class="tag">Engine/Core/Component.h</span>
+  Virtual and defaulted, and the only place a component can learn it was dropped without a release.
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>virtual ~Component() = default</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  Defined in the header <code>Engine/Core/Component.h</code>; nothing in <code>Engine/Core/Component.cpp</code>. Virtual, so a
+  <code>Component*</code> deletes the real object — though no code in the repository holds a component by pointer: the system stores them by value in an
+  <code>HVector</code> and destroys them by emptying that vector.
+</p>
+
+<div class="note">
+  <strong>The destructor is the last thing to run on a dead component, and it runs without any further callback.</strong>
+  <a href="destroy.html">Destroy</a> only sets a flag; the release, the disable and the death notice have to happen first, in
+  <code>ComponentSystem::ProcessTransition</code>, and the object is then destroyed when that function clears its working list
+  (<code>Engine/Core/ComponentSystem.h</code>). A subclass that needs to know it is being torn down cannot ask this class anything —
+  <a href="getstate.html">GetState</a> still answers <code>DEAD</code>, which is the same answer it gave a moment earlier.
+</div>
+
+<div class="gap">
+  <strong>Declaring a destructor here is what makes subclasses immobile.</strong>
+  A user-declared destructor suppresses the implicit move constructor and move assignment operator, so every subclass that the system must move has to
+  declare its own — the contract stated in <a href="constructors.html">the constructor page</a> and proved by a compiler probe of the real headers. The
+  only subclass in the repository declares one, and it uses it to detect being destroyed the wrong way:
+</div>
+
+<pre><code>~Test() override
+{
+    if (!isValid)
+        return;
+
+    if (!isInit || !isOnEnableCalled || !isOnDisableCalled || !isReleased)
+    {
+        testResult = false;
+        ls &lt;&lt; "Test object is destroyed accidently." &lt;&lt; lferr;
+    }
+}</code></pre>
+
+<p class="meta">From Engine/Core/ComponentSystem.cpp, ComponentSystemTest</p>
+
+<p>
+  The move constructor marks the moved-from shell <code>isValid = false</code> so only the surviving object is judged. The assertion it makes is the real
+  lifecycle contract of this class: a component that is destroyed without having seen <a href="init.html">Init</a>,
+  <a href="onenable.html">OnEnable</a>, <a href="ondisable.html">OnDisable</a> and <a href="release.html">Release</a> was dropped rather than retired — which
+  is what happens to a component parked in the system's sleep list when the system itself dies
+  (<code>Engine/Core/ComponentSystem.h</code>).
+</p>
+
+<h2 id="parameters">Parameters</h2>
+
+<p>None.</p>
+
+<h2 id="return">Return value</h2>
+
+<p>None. The destructor is <code>default</code>ed, so it releases nothing of this class's own beyond the <code>String</code> name.</p>
+
+<h2 id="example">Examples</h2>
+
+<p>
+  Nothing in the engine deletes a component directly; both destruction paths are the system emptying a list — the dead components at the end of
+  <code>ProcessTransition</code>, and everything still alive when the system is destroyed. The test above is therefore the only place the ordering is
+  checked, and it checks it from the destructor because that is the only moment a component can tell it was never released.
+</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; Component</a></span>
+  <span><a href="index.html#methods">All Component methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

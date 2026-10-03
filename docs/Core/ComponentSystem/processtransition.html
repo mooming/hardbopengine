@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ComponentSystem::ProcessTransition — Core module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a class="current" href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Core</a> /
+  <a href="index.html">ComponentSystem</a> / ProcessTransition
+</p>
+
+<h1><span class="fn">ProcessTransition</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::ComponentSystem</span>
+  <span class="tag">Engine/Core/ComponentSystem.h</span>
+  Private: run the re-enable, sleep or death path each component chose during its update.
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>void ProcessTransition()</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  Private, defined in the header <code>Engine/Core/ComponentSystem.h</code>; the third and last phase of <a href="update.html">Update</a>. It walks the
+  transition list — everything <a href="processupdate.html">ProcessUpdate</a> found no longer enabled — and asks each component's
+  <a href="../Component/getstate.html">GetState</a>, because "not enabled" covers three different intentions. The answer decides which callbacks run and which
+  list, if any, the component lands on. Then the transition list is cleared, and with it the dead are destroyed.
+</p>
+
+<pre><code>switch (compo.GetState())
+{
+    case ComponentState::ALIVE:
+        compo.OnEnable();
+        updateList.push_back(std::move(compo));
+        break;
+
+    case ComponentState::SLEEP:
+        compo.OnDisable();
+        sleepList.push_back(std::move(compo));
+        break;
+
+    case ComponentState::DEAD:
+        compo.SetState(ComponentState::SLEEP);
+        compo.OnDisable();
+        compo.SetState(ComponentState::DEAD);
+        compo.Release();
+        break;</code></pre>
+
+<p class="meta">From Engine/Core/ComponentSystem.h, ComponentSystem::ProcessTransition()</p>
+
+<div class="note">
+  <strong>The death case writes <code>SLEEP</code> before disabling and restores <code>DEAD</code> before releasing, and that two-step is the reason a
+  component can have one disable callback instead of two.</strong>
+  Both exits reach this function, and a component's <a href="../Component/ondisable.html">OnDisable</a> is specified to see <code>SLEEP</code> in both
+  (<a href="../Component/index.html">the lifecycle table</a>). Without the temporary write, the death path would call the disable with the state already
+  <code>DEAD</code>, and a component that wanted to behave identically on both exits would have to test for two states. The repository's subclass asserts the
+  contract on every one of the four callbacks (<code>Engine/Core/ComponentSystem.cpp</code>).
+</div>
+
+<div class="note">
+  <strong>The <code>ALIVE</code> case is the re-enable path, and it is the only way back to running.</strong>
+  A component reaches it by having been found not enabled at the end of its update and having since become <code>ALIVE</code> again — in practice, a component
+  that changed its own state more than once inside <a href="../Component/update.html">Update</a>. It gets
+  <a href="../Component/onenable.html">OnEnable</a> and a place on the update list, so it is ticked again next pass
+  (<code>Engine/Core/ComponentSystem.h</code>). A component already parked in the sleep list can never reach this case: nothing in the class reads that list,
+  which is the trap stated on <a href="../Component/setenable.html">SetEnable</a> and on
+  <a href="operator-bool.html">the conversion to <code>bool</code></a>.
+</div>
+
+<div class="gap">
+  <strong>The default case is a Debug-only assert, and the component is destroyed either way.</strong>
+  The switch handles <code>ALIVE</code>, <code>SLEEP</code> and <code>DEAD</code>; any other value — <code>NONE</code> or <code>BORN</code>, both reachable by
+  a component calling <a href="../Component/setstate.html">SetState</a> with them during its update, or any value outside the enum — falls to:
+</div>
+
+<pre><code>default:
+    Assert(false,
+           "Unexpected component state %d on processing "
+           "transition.\n",
+           compo.GetState());
+    break;</code></pre>
+
+<p class="meta">From Engine/Core/ComponentSystem.h, ComponentSystem::ProcessTransition()</p>
+
+<p>
+  <code>Assert</code> compiles to nothing unless <code>__DEBUG__</code> is defined, and only the Debug configuration defines it
+  (<code>Engine/Core/Debug.h</code>). In Dev and Release the fall-through is silent: the component is neither enabled, disabled nor released, and the
+  <code>transitionList.clear()</code> that ends the function destroys it without any callback
+  (<a href="../Component/release.html">Release</a>). The repository's component is written so this cannot pass unnoticed — its destructor fails the test if it
+  was destroyed without having seen all four callbacks (<code>Engine/Core/ComponentSystem.cpp</code>) — but nothing outside a Debug build reports which state
+  caused it.
+</p>
+
+<h2 id="parameters">Parameters</h2>
+
+<p>None. It reads the state each component carries, and does not take the elapsed time — a transition is not a tick.</p>
+
+<h2 id="return">Return value</h2>
+
+<p><code>void</code>. Nothing reports how many components were re-enabled, parked or destroyed, and there is no accessor for the sleep list's size, so a system full of sleeping components is indistinguishable from an empty one except through <a href="operator-bool.html">the conversion to <code>bool</code></a>, which claims it is non-empty.</p>
+
+<h2 id="example">Examples</h2>
+
+<p>
+  The path a retired component takes, end to end, in one call to <a href="update.html">Update</a> — the repository's components all leave this way:
+</p>
+
+<pre><code>++updateCount;
+
+if (updateCount &gt; updateNum)
+{
+    Destroy();
+}</code></pre>
+
+<p class="meta">From Engine/Core/ComponentSystem.cpp, ComponentSystemTest</p>
+
+<p>
+  <a href="../Component/destroy.html">Destroy</a> writes <code>DEAD</code>; <a href="processupdate.html">ProcessUpdate</a> notices and moves the component to
+  the transition list; this function runs the disable under <code>SLEEP</code>, the release under <code>DEAD</code>, and the final clear destroys the object.
+  Its destructor then confirms all four callbacks happened, which is the only assertion in the tree that the whole lifecycle ran
+  (<code>Engine/Core/ComponentSystem.cpp</code>).
+</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; ComponentSystem</a></span>
+  <span><a href="index.html#methods">All ComponentSystem methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

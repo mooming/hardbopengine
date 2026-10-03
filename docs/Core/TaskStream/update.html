@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TaskStream::Update — Core module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a class="current" href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Core</a> /
+  <a href="index.html">TaskStream</a> / Update
+</p>
+
+<h1><span class="fn">Update</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::TaskStream</span>
+  <span class="tag">Engine/Core/TaskStream.h</span>
+  Drive exactly one non-blocking pass of this stream on the calling thread.
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>bool Update() noexcept</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  Defined in <code>Engine/Core/TaskStream.cpp</code> as <code>TaskStream::Update()</code>. One pass of this stream, driven by the calling
+  thread: it drains posted callables, sweeps finished work off both lanes, chooses a lane by policy, takes at most one item, asks the providers
+  of an empty lane, falls back to the general queue, runs what it got, and re-queues a resumable item for the next pass. It never blocks. The
+  thread-owned loop calls it in a tight sequence and calls <a href="waitforwork.html">WaitForWork</a> only when it returns
+  <code>false</code>.
+</p>
+
+<table>
+  <tr><th>Step</th><th>What the pass does</th><th>What it decides</th></tr>
+  <tr><td>1</td><td>Records <code>threadID</code> if unset, asserts the pump is not already running, sets <code>isPumping</code>, increments
+    <code>drivenPassCount</code></td><td>Binds an undriven stream to its first driver, and makes a nested pump a checked error</td></tr>
+  <tr><td>2</td><td><code>postedTasks.ProcessTasks()</code></td><td>The engine loop's own work is served before this stream's queues are consulted</td></tr>
+  <tr><td>3</td><td>Returns <code>false</code> if <code>closeRequested</code></td><td>A stream asked to close takes nothing more; the close path owns what it holds</td></tr>
+  <tr><td>4</td><td>Enters this stream's index and <code>AllocatorScope</code>, registers a <code>restore</code> for the index</td><td>A shared driver does not belong to this stream for the whole of its life</td></tr>
+  <tr><td>5</td><td>Reopens the window if asked (<code>budget.Reset()</code>, <code>drainPolicy.EndRound()</code>); applies a pending allowance request; runs <code>RunBudgetWindowPass()</code> on the base stream</td><td>Both budget writes happen on this thread, by the thread whose CPU they charge</td></tr>
+  <tr><td>6</td><td>Under <code>queueLock</code>: drop finished items from the priority lane, add both re-add buffers, rotate the FIFO lane, then <code>drainPolicy.ChooseLane</code></td><td>The lanes a policy sees are the lanes after the sweep, not the ones a producer left</td></tr>
+  <tr><td>7</td><td>Counts a lane refusal when work exists and no lane was chosen; otherwise pops the chosen lane and <code>CommitTake</code>s it</td><td>The lane throttle, measured once per pass</td></tr>
+  <tr><td>8</td><td>If nothing was taken: for each empty lane, ask its providers under the budget gate</td><td>Provider probing, gated by R39</td></tr>
+  <tr><td>9</td><td>Outside the lock: if still nothing and the allowance permits, <code>taskSys.Dequeue</code> from the general queue; otherwise report a refusal</td><td>The acquire gate, and its only witness</td></tr>
+  <tr><td>10</td><td>Look the task up; if it is gone, report, fire the notice, restore and return <code>true</code></td><td>R7: a dead reference is dropped and announced, never followed</td></tr>
+  <tr><td>11</td><td>Judge age against <code>drainPolicy.IsOverAge</code>; if over age, count, report, notify, restore and return <code>true</code></td><td>Staleness is the stream's property, enforced once for both lanes</td></tr>
+  <tr><td>12</td><td>Optionally <code>budget.BeginTask()</code>, run the item under a <code>ScopedTime</code>, <code>EndTask()</code>, charge the spent time to the lane it came from</td><td>The only CPU measurement in the drain, and the lane book that consumes it</td></tr>
+  <tr><td>13</td><td>Warn if the pass exceeded the <code>TaskStreamDurationThreshold</code>; push the item onto a re-add buffer if it did not finish; restore and return <code>true</code></td><td>A resumable item comes back on the next pass, on the lane it was taken from</td></tr>
+</table>
+
+<div class="note">
+  <strong>Posted callables run before the close check, so a stream asked to close still runs what was posted to it.</strong>
+  "Posted callables first: they are the engine loop's own work, and the frame budget is spent on them before the stream's queues are asked for
+  anything. They run with the queue's lock released, so a posted callable may post again."
+  (<code>Engine/Core/TaskStream.cpp</code>) The consequence is that closing a stream never loses posted work, and that a posted callable can
+  always re-post itself — which is exactly why the IO stream's shutdown drain has no deadline
+  (<a href="drainforshutdown.html">DrainForShutdown</a>).
+</div>
+
+<p>
+  <strong>The return value means "the pass was worth doing", and a dropped item counts.</strong> Both failure paths — a task already released, and
+  an item older than the stream's max age — return <code>true</code> after firing the item's notice:
+</p>
+
+<pre><code>auto* task = taskSys.FindTask(workItem-&gt;taskID);
+if (task == nullptr)
+{
+    ReportReleasedTask(*workItem);
+    FireAbandonedNotice(*workItem);
+    restore();
+    return true;
+}</code></pre>
+
+<p>
+  <code>false</code> therefore means "nothing was taken and nothing was dropped", which is the only signal a driver has that
+  <a href="waitforwork.html">WaitForWork</a> is worth calling. A driver that reads <code>true</code> as "work ran" will spin on a stream whose
+  lanes are full of dead items until the age ceiling clears them.
+</p>
+
+<p>
+  <strong>The queue lock is held across the provider probe, and the sweep is O(n) per pass on both lanes.</strong> The whole of step 6 to step 8 runs
+  inside one <code>std::unique_lock</code>, and the FIFO sweep rotates every entry to drop finished ones:
+</p>
+
+<pre><code>const size_t fifoCount = fifoQueue.Size();
+for (size_t i = 0; i &lt; fifoCount; ++i)
+{
+    auto entry = fifoQueue.Front();
+    fifoQueue.PopFront();
+
+    if (!entry.HasFinished())
+    {
+        fifoQueue.PushBack(entry);
+    }
+}</code></pre>
+
+<p>
+  "Rotating the lane drops finished tasks in place and preserves arrival order for the rest, which is the same O(n)-per-loop price
+  <code>BoundedPriorityQueue::Remove</code> already pays." (<code>Engine/Core/TaskStream.cpp</code>) A deep lane therefore costs every pass, not
+  only the pass that empties it, and a provider asked inside that same lock must never touch this stream
+  (<a href="drainproviderslocked.html">DrainProvidersLocked</a>, R40).
+</p>
+
+<div class="note">
+  <strong>Two different counters see two different throttles, and a pass can raise both.</strong>
+  A lane refusal needs work waiting and no lane chosen — "the decline itself: <code>ChooseLane</code> returns a lane whenever work exists and the
+  allowance is unlimited, so nothing else produces this combination" — and is counted once per pass, "so it is a rate and not a queue depth". A
+  general-queue refusal needs an empty pair of lanes and a spent allowance.
+  <a href="getlaneworkrefusalcount.html">GetLaneWorkRefusalCount</a> and
+  <a href="getgeneralqueuerefusalcount.html">GetGeneralQueueRefusalCount</a> are read together for that reason: "the engine throttles from two
+  books, and a watch that reads only one cannot see work held by the other" (<code>Engine/Core/TaskStream.h</code>).
+</div>
+
+<p>
+  <strong>The CPU charge is conditional, and so is the lane charge that follows it.</strong>
+</p>
+
+<pre><code>const bool chargingBudget = budget.GetAllowance().count() &gt; 0.0;
+const auto chargedBefore = chargingBudget ? budget.GetAccumulated() : std::chrono::nanoseconds::zero();
+if (chargingBudget)
+{
+    budget.BeginTask();
+}</code></pre>
+
+<p>
+  With no allowance set, nothing is measured, so <a href="getaccumulatedcputime.html">GetAccumulatedCPUTime</a> stays zero and
+  <code>StreamDrainPolicy</code>'s lane book is never charged either — a lane ratio computed against a budget that is never spent is meaningless,
+  which is why the lane charge sits inside the same <code>if</code> as <code>EndTask</code>. The measurement itself is
+  <code>time::ScopedTime</code> around <code>WorkItem::Run</code>, and the elapsed time it records is what the slow-task warning compares against
+  the <code>TaskStreamDurationThreshold</code> configuration parameter (<code>Config/ConfigParam.h</code>, default 0.16 s).
+</p>
+
+<div class="note">
+  <strong>Age is judged after the lookup on purpose, and the order is the contract.</strong>
+  "Age is judged after the task lookup, not before: a task that no longer exists has no owner to explain a refusal to, and the released path
+  already owns that case. Both lanes pass this point, which is why one insertion covers the FIFO lane and the priority lane with one rule."
+  (<code>Engine/Core/TaskStream.cpp</code>) The instant is the engine epoch, so an age in a log line is comparable with the lane time book in the
+  same log (<a href="reportagedoutworkitem.html">ReportAgedOutWorkItem</a>).
+</div>
+
+<div class="gap">
+  <strong>One driver at a time, and that driver becomes the owner thread for the duration of the pass.</strong>
+  <code>IsBaseThread</code>, <code>IsIOThread</code>, the owner-thread budget asserts and the thread-local stream index all answer about the
+  thread inside <code>Update</code>, not about the thread that constructed the stream (<code>Engine/Core/TaskStream.h</code>). There is no lock
+  making concurrent passes safe: the <code>isPumping</code> check is an <code>Assert</code>, and an <code>Assert</code> compiles to nothing unless
+  <code>__DEBUG__</code> is defined, which the build sets for the Debug configuration only
+  (<code>Core/Debug.h</code>, <code>CMakeLists.txt</code>). Two threads driving one stream concurrently is unsynchronised in a Dev or Release
+  build, and the flag that would have caught it is not there.
+</div>
+
+<div class="note">
+  <strong>The pass resolves nothing global.</strong> "A driven stream must outlive the engine object that hosts the task system, so the pass
+  reads the task system recorded at registration and never the live engine" (<code>Engine/Core/TaskStream.h</code>) — hence
+  <code>TaskSystem&amp; taskSys = *taskSystem;</code> taken from the pointer <a href="start.html">Start</a> recorded. A stream whose system has
+  been destroyed dereferences that pointer with nothing to detect it.
+</div>
+
+<div class="gap">
+  <strong>The private <code>Dequeue</code> helper is not part of this pass.</strong>
+  <code>Update</code> pops both lanes itself inside one lock and consults the policy; the private
+  <code>Dequeue(std::optional&lt;WorkItem&gt;&amp;)</code> pops the priority lane first, ignores the policy entirely, and has no caller in
+  <code>Engine/</code> or <code>Applications/</code> — including <code>TaskSystemTest</code>, which is its friend
+  (<code>Engine/Core/TaskStream.cpp</code>). Its comment describes a caller that does not exist: "gating here would let a caller's refill stall on
+  an exhausted allowance." It is recorded here rather than documented as an interface because no interface calls it; the page is
+  <a href="dequeue.html">dequeue.html</a>.
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<p>None.</p>
+
+<h2 id="return">Return value</h2>
+
+<table>
+  <tr><th>Type</th><th>What you get</th></tr>
+  <tr><td><code>bool</code></td><td><code>true</code> when the pass took an item, ran one, or dropped one; <code>false</code> when it was asked to close or found nothing to take. It does not distinguish "ran a task" from "dropped a dead item", and it is not a count of work</td></tr>
+</table>
+
+<h2 id="example">Examples</h2>
+
+<p class="meta">From Engine/Core/TaskStream.cpp, TaskStream::RunLoop()</p>
+
+<pre><code>while (likely(!closeRequested.load(std::memory_order_acquire)))
+{
+    if (!Update())
+    {
+        WaitForWork(std::chrono::milliseconds(10));
+    }
+}</code></pre>
+
+<p>
+  The only loop in the engine that calls this, and the reason the return value is shaped as it is: a pass that got nothing buys a ten-millisecond
+  wait, and a pass that got something is worth running again immediately. A driven stream — the base stream and the IO stream — calls
+  <code>Update</code> from its host thread instead, on that host's own cadence
+  (<a href="start.html">Start</a>, <a href="waitforwork.html">WaitForWork</a>).
+</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; TaskStream</a></span>
+  <span><a href="index.html#methods">All TaskStream methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

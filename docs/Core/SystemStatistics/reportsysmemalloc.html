@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SystemStatistics::ReportSysMemAlloc — Core module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a class="current" href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Core</a> /
+  <a href="index.html">SystemStatistics</a> / ReportSysMemAlloc
+</p>
+
+<h1><span class="fn">ReportSysMemAlloc</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::SystemStatistics</span>
+  <span class="tag">Engine/Core/SystemStatistics.h</span>
+  Under PROFILE_ENABLED only: count one system allocation and track the running and peak totals.
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>void ReportSysMemAlloc(size_t usage) noexcept</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  Declared in <code>Engine/Core/SystemStatistics.h</code> under <code>#if PROFILE_ENABLED</code>, defined in <code>Engine/Core/SystemStatistics.cpp</code> under the same condition, compiled out in every configuration because <code>Engine/Config/BuildConfig.h</code> defines <code>PROFILE_ENABLED</code> as <code>0</code> unconditionally. This page is written from the source text; nothing here was observed running, and the build breakage recorded below is the reason nobody has.
+</p>
+
+<p>
+  Records one system-allocation event: under <code>sysMemReportLock</code> it increments <code>allocCount</code>, adds <code>usage</code> to
+  <code>totalUsage</code>, keeps <code>maxUsage</code> at the high-water mark, and reads the new total back out of the lock before warning if the total has
+  passed <code>Config::MemCapacity</code>.
+</p>
+
+<pre><code>size_t localTotalUsage = 0;
+
+{
+    std::lock_guard lock(sysMemReportLock);
+    ++allocCount;
+    totalUsage += usage;
+    maxUsage = std::max(maxUsage, totalUsage);
+    localTotalUsage = totalUsage;
+}
+
+if (unlikely(localTotalUsage &gt; Config::MemCapacity))
+{
+    ...
+    log.OutWarning([localTotalUsage](auto&amp; ls)
+    { ls &lt;&lt; "System Memory Usage " &lt;&lt; localTotalUsage &lt;&lt; " exceeds its limit " &lt;&lt; Config::MemCapacity; });
+}</code></pre>
+
+<p class="meta">From Engine/Core/SystemStatistics.cpp, SystemStatistics::ReportSysMemAlloc() (under PROFILE_ENABLED; elided: the logger lookup)</p>
+
+<div class="note">
+  <strong>The copy out of the lock, and the warning outside it, are the whole design of this function.</strong>
+  Logging while holding the statistics mutex would let a memory report block other memory reports; taking a snapshot of the total and warning afterwards
+  avoids that at the cost of a warning that may describe a total already overtaken. The counter updates themselves are never lost — they are inside the lock
+  (<code>Engine/Core/SystemStatistics.cpp</code>).
+</div>
+
+<div class="gap">
+  <strong>Nothing in a shipping build calls it, so the two figures it owns are permanently zero in the report.</strong>
+  The single caller is <code>MemoryManager::ReportAllocation</code>, and it too is inside a <code>#if PROFILE_ENABLED</code> region, reached only for the
+  system allocator's own traffic (<code>Engine/Memory/MemoryManager.cpp</code>). <a href="print.html">Print</a> therefore writes
+  "Allocation Count = 0 (Alloc), 0 (Dealloc)" and "System Memory Usage = 0 (0 MB) / 0 (0 MB)" in every build the engine produces, and reads those four fields
+  without the lock this function insists on (<code>Engine/Core/SystemStatistics.cpp</code>).
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<table>
+  <tr><th>Name</th><th>Type</th><th>Meaning</th></tr>
+  <tr><td><code>usage</code></td><td><code>size_t</code></td><td>Bytes handed out by this allocation, as the memory manager measured them — added to the running total, not maxed against it</td></tr>
+</table>
+
+<h2 id="return">Return value</h2>
+
+<p><code>void</code>. The only observable output is a warning through the logger, and only for the first moment the configured capacity is exceeded; there is no count of how many allocations were over the line.</p>
+
+<h2 id="example">Examples</h2>
+
+<pre><code>if (id == SystemAllocatorID)
+{
+    auto&amp; engine = Engine::Get();
+    auto&amp; statistics = engine.GetStatistics();
+    statistics.ReportSysMemAlloc(allocated);
+}</code></pre>
+
+<p class="meta">From Engine/Memory/MemoryManager.cpp, MemoryManager::ReportAllocation() (under PROFILE_ENABLED)</p>
+
+<p>
+  Only the system allocator's traffic is reported — pool allocations are the pools' own business
+  (<a href="incfallbackalloccount.html">IncFallbackAllocCount</a> counts the moment a pool falls back to the system, and is compiled in). The pairing on the
+  other side is <a href="reportsysmemdealloc.html">ReportSysMemDealloc</a>.
+</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; SystemStatistics</a></span>
+  <span><a href="index.html#methods">All SystemStatistics methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

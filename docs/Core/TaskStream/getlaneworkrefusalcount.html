@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TaskStream::GetLaneWorkRefusalCount — Core module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a class="current" href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Core</a> /
+  <a href="index.html">TaskStream</a> / GetLaneWorkRefusalCount
+</p>
+
+<h1><span class="fn">GetLaneWorkRefusalCount</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::TaskStream</span>
+  <span class="tag">Engine/Core/TaskStream.h</span>
+  Times this stream found lane work and was given no lane by the drain policy.
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>[[nodiscard]] unsigned GetLaneWorkRefusalCount() const noexcept</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  Declared and defined in the header <code>Engine/Core/TaskStream.h</code>; there is no counterpart in
+  <code>Engine/Core/TaskStream.cpp</code>. Times a pass found work waiting in a lane and chose no lane, which is the lane throttle itself — the
+  <a href="../StreamDrainPolicy/index.html">StreamDrainPolicy</a> allowance, not the CPU budget.
+</p>
+
+<div class="note">
+  <strong>One increment per pass, so the number is a rate, not a queue depth.</strong> The condition that raises it is stated where it is counted:
+  "A lane holding work with no lane chosen is the decline itself: <code>ChooseLane</code> returns a lane whenever work exists and the allowance is
+  unlimited, so nothing else produces this combination. Per pass, so it is a rate and not a queue depth."
+  (<code>Engine/Core/TaskStream.cpp</code>)
+</div>
+
+<pre><code>if (lane == StreamDrainPolicy::ELane::None &amp;&amp; (!fifoQueue.IsEmpty() || !priorityQueue.IsEmpty()))
+{
+    laneWorkRefusals.fetch_add(1, std::memory_order_relaxed);
+}</code></pre>
+
+<p class="meta">From Engine/Core/TaskStream.cpp, TaskStream::Update()</p>
+
+<div class="note">
+  <strong>What a non-zero value means, and what it does not.</strong> A non-zero reading means this stream had work it deliberately did not take — held by
+  the lane ratio's time book, waiting for the window that <a href="requestwindowadvance.html">RequestWindowAdvance</a> reopens. It is not a fault: it is the
+  throttle doing the job it was configured for. It becomes a diagnosis when it is non-zero on a stream that was never configured, because the lane book is
+  only charged when a CPU allowance is set, so on an unlimited stream this counter has nothing that can raise it
+  (<a href="configurebudget.html">ConfigureBudget</a>, <a href="getaccumulatedcputime.html">GetAccumulatedCPUTime</a>). Nothing resets it: it is a life total,
+  so a non-zero value can also be history — read it twice, or compare two runs of the same program, to see whether the throttle is firing now.
+</div>
+
+<div class="gap">
+  <strong>It sees a different gate from <a href="getgeneralqueuerefusalcount.html">GetGeneralQueueRefusalCount</a>, and only the pair explains a stalled
+  stream.</strong> "The engine throttles from two books, and a watch that reads only one cannot see work held by the other."
+  (<code>Engine/Core/TaskStream.h</code>) A stream refusing the general queue shows here as zero and there as non-zero; a stream ratio-limited on its own
+  lanes is the reverse. A third counter, <a href="getprovideraskwhilespentcount.html">GetProviderAskWhileSpentCount</a>, is not a throttle reading at all:
+  it is an invariant that must never move.
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<p>None.</p>
+
+<h2 id="return">Return value</h2>
+
+<table>
+  <tr><th>Type</th><th>What you get</th></tr>
+  <tr><td><code>unsigned</code></td><td>Passes on this stream's life in which lane work existed and no lane was granted. A relaxed read: it may lag the owner thread by as long as the compiler likes</td></tr>
+</table>
+
+<h2 id="example">Examples</h2>
+
+<p class="meta">From Engine/Core/TaskStream.h, TaskStream::GetGeneralQueueRefusalCount()</p>
+
+<pre><code>[[nodiscard]] unsigned GetGeneralQueueRefusalCount() const noexcept
+{
+    return generalQueueRefusals.load(std::memory_order_relaxed);
+}</code></pre>
+
+<p>
+  The sibling read, written in the same style for the same reason: both counters are the only place the two throttles are visible to anything that is not a
+  debugger (<code>Engine/Core/TaskStream.h</code>).
+</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; TaskStream</a></span>
+  <span><a href="index.html#methods">All TaskStream methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

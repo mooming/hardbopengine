@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ComponentSystem::ProcessUpdate — Core module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a class="current" href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Core</a> /
+  <a href="index.html">ComponentSystem</a> / ProcessUpdate
+</p>
+
+<h1><span class="fn">ProcessUpdate</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::ComponentSystem</span>
+  <span class="tag">Engine/Core/ComponentSystem.h</span>
+  Private: tick every enabled component and sort them by what their state says afterwards.
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>void ProcessUpdate(const float deltaTime)</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  Private, defined in the header <code>Engine/Core/ComponentSystem.h</code>; the second phase of <a href="update.html">Update</a>, and the only place a running
+  component's <a href="../Component/update.html">Update</a> is called. It walks the update list, ticks each component, and sorts them by what their state says
+  afterwards: still enabled goes to a scratch list, no longer enabled goes to the transition list. Then the two lists are swapped and the scratch list cleared.
+</p>
+
+<pre><code>for (auto&amp; compo : updateList)
+{
+    compo.Update(deltaTime);
+
+    if (!compo.IsEnabled())
+    {
+        transitionList.push_back(std::move(compo));
+    }
+    else
+    {
+        swapUpdateList.push_back(std::move(compo));
+    }
+}
+
+std::swap(updateList, swapUpdateList);
+swapUpdateList.clear();</code></pre>
+
+<p class="meta">From Engine/Core/ComponentSystem.h, ComponentSystem::ProcessUpdate()</p>
+
+<div class="note">
+  <strong>The <a href="../Component/isenabled.html">IsEnabled</a> test right after the tick is what makes a component's own decision take effect in the same
+  pass.</strong>
+  A component that calls <a href="../Component/destroy.html">Destroy</a> or <a href="../Component/setenable.html">SetEnable(false)</a> inside its update is
+  moved to the transition list the instant its update returns, and <a href="processtransition.html">ProcessTransition</a> — the very next phase of the same
+  call — runs its disable and release (<code>Engine/Core/ComponentSystem.h</code>). No component continues to be ticked after it has asked to stop, because the
+  walk moves it out of the list it is being walked from.
+</div>
+
+<div class="gap">
+  <strong>Every component is moved on every pass, and the shells left behind are destroyed at the end of this function.</strong>
+  The swap puts the old update list into <code>swapUpdateList</code>, and the <code>clear()</code> that follows destroys the moved-from objects it now holds
+  (<code>Engine/Core/ComponentSystem.h</code>). Two consequences for a component author: an address changes every pass, so a self-reference or an external
+  pointer is worthless once a pass ends; and a destructor runs on a moved-from object every pass, so a subclass destructor that does anything but release must
+  first detect that it is a shell. That is why the repository's component marks itself invalid in its move constructor — the statement
+  <code>rhs.isValid = false;</code> in that constructor is what tells the destructor below that the object never saw a callback because it was only ever moved
+  (<code>Engine/Core/ComponentSystem.cpp</code>):
+</div>
+
+<pre><code>~Test() override
+{
+    if (!isValid)
+        return;
+}</code></pre>
+
+<p class="meta">From Engine/Core/ComponentSystem.cpp, ComponentSystemTest</p>
+
+<p>
+  Without that flag the test would report a spurious failure for every component that merely moved, since a shell is destroyed having never seen a callback
+  (<a href="../Component/destructor.html">~Component</a>). A second reason not to trust an address: the lists are
+  <a href="../../HSTL/HVector/index.html"><code>HVector</code></a>s — a <code>std::vector</code> on the engine's allocator
+  (<code>Engine/HSTL/HVector.h</code>) — so the push_backs reallocate as they grow.
+</p>
+
+<div class="note">
+  <strong><code>swapUpdateList</code> must be empty on entry, and only this function's own clear keeps it that way.</strong>
+  The scratch list is a member rather than a local so its capacity is kept between passes — the point of the swap dance is to avoid rebuilding the update list
+  every frame. That holds only while the invariant does, and nothing else in the class touches <code>swapUpdateList</code>
+  (<code>Engine/Core/ComponentSystem.h</code>): these lines are its whole usage.
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<table>
+  <tr><th>Name</th><th>Type</th><th>Meaning</th></tr>
+  <tr><td><code>deltaTime</code></td><td><code>const float</code></td><td>Handed unchanged to every component's <a href="../Component/update.html">Update</a>, in list order, with no skipping, no per-component timing and no time measurement of any kind</td></tr>
+</table>
+
+<h2 id="return">Return value</h2>
+
+<p><code>void</code>. Nothing is reported about the pass. The outcome of the sort is visible only as the contents of the update, transition and sleep lists afterwards, and the class exposes none of them — there is no count, no emptiness test for an individual list, and no way for a caller to see that a component moved at all.</p>
+
+<h2 id="example">Examples</h2>
+
+<p>
+  The repository measures this function directly: thousands of components are created, then the system is pumped to empty and the total loop time reported
+  (<code>Engine/Core/ComponentSystem.cpp</code>). Its components do nothing but count ticks and retire after a fixed number of them, so the figure is the cost
+  of the bookkeeping itself — one tick, one state test and one move per component per pass.
+</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; ComponentSystem</a></span>
+  <span><a href="index.html#methods">All ComponentSystem methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

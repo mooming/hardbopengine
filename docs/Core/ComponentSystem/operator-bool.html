@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ComponentSystem::operator bool — Core module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a class="current" href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Core</a> /
+  <a href="index.html">ComponentSystem</a> / operator bool
+</p>
+
+<h1><span class="fn">operator bool</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::ComponentSystem</span>
+  <span class="tag">Engine/Core/ComponentSystem.h</span>
+  Whether the system still holds a component, counted from three of its four lists.
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>[[nodiscard]] explicit operator bool() const noexcept</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  Defined in the header <code>Engine/Core/ComponentSystem.h</code>. Answers "does this system still hold a component?", and its body enumerates three of the
+  four lists the class owns: <code>!initList.empty() || !updateList.empty() || !sleepList.empty()</code>. It is <code>explicit</code>, so it fires only in a
+  boolean context — an <code>if</code>, a <code>while</code>, a <code>!</code> — and not in an arithmetic or stream one.
+</p>
+
+<div class="note">
+  <strong>It is the pump's termination test, and the test loop is written on top of it.</strong>
+</div>
+
+<pre><code>while (testSystem)
+{
+    testSystem.Update(0.033f);
+
+    if (!testResult)
+        return;
+}</code></pre>
+
+<p class="meta">From Engine/Core/ComponentSystem.cpp, ComponentSystemTest</p>
+
+<p>
+  The loop runs until the system holds nothing, which is the intended shape: drive the system, do not count frames. It works for that test because every
+  component there eventually calls <a href="../Component/destroy.html">Destroy</a>, and a destroyed component is dropped by
+  <a href="processtransition.html">ProcessTransition</a> instead of being parked anywhere
+  (<code>Engine/Core/ComponentSystem.h</code>).
+</p>
+
+<div class="gap">
+  <strong>A system whose only members are sleeping answers <code>true</code> forever, so that loop above never ends.</strong>
+  <code>sleepList</code> is counted here and read by nothing else: <a href="processinit.html">ProcessInit</a> consumes the init list,
+  <a href="processupdate.html">ProcessUpdate</a> walks the update list, and <a href="processtransition.html">ProcessTransition</a> consumes the transition list
+  and moves anything that went to sleep <em>into</em> the sleep list, which no code ever drains (<code>Engine/Core/ComponentSystem.h</code>). A component parked
+  there keeps the system non-empty, and <a href="update.html">Update</a> on a system with an empty init and update list does nothing at all. The combination is
+  a livelock for a caller that pumps on this operator: the loop spins, <code>Update</code> returns immediately every time, and the condition never becomes
+  false. A component that parks itself with <a href="../Component/setenable.html">SetEnable(false)</a> therefore cannot be retired afterwards, and neither can
+  the system be driven to empty (<a href="../Component/setenable.html">SetEnable</a> states the same trap from the component's side).
+</div>
+
+<div class="note">
+  <strong>The transition list is deliberately not counted, and that is what makes the test correct.</strong>
+  <a href="processupdate.html">ProcessUpdate</a> moves anything that stopped being enabled into <code>transitionList</code>, and
+  <a href="processtransition.html">ProcessTransition</a> empties it in the same call, so the list is always empty when a call to
+  <a href="update.html">Update</a> returns (<code>Engine/Core/ComponentSystem.h</code>). Leaving it out of the answer avoids a system reading "alive" only in
+  the middle of a pass. The consequence in the other direction is that a system holding nothing but components that fell into the switch's default case reads
+  <code>false</code> while those objects still exist — which, since that case's only handling is a Debug-only assert, is a corner nobody in the tree reaches.
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<p>None.</p>
+
+<h2 id="return">Return value</h2>
+
+<table>
+  <tr><th>Type</th><th>What it tells the caller</th></tr>
+  <tr><td><code>bool</code></td><td><code>true</code> if the init, update or sleep list holds anything. It is not a statement that work is possible — a system containing only sleeping components returns <code>true</code> and can do nothing</td></tr>
+</table>
+
+<h2 id="example">Examples</h2>
+
+<pre><code>while (testSystem)
+{
+    testSystem.Update(0.033f);
+}</code></pre>
+
+<p class="meta">From Engine/Core/ComponentSystem.cpp, ComponentSystemTest</p>
+
+<p>
+  The only use in the repository, and the only shape of driver this class has ever had. If a component can sleep, a driver written like this needs its own
+  bound — a frame count or a deadline — because this operator cannot tell "still working" from "stuck asleep".
+</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; ComponentSystem</a></span>
+  <span><a href="index.html#methods">All ComponentSystem methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

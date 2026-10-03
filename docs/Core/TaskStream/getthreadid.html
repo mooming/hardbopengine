@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TaskStream::GetThreadID — Core module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a class="current" href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Core</a> /
+  <a href="index.html">TaskStream</a> / GetThreadID
+</p>
+
+<h1><span class="fn">GetThreadID</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::TaskStream</span>
+  <span class="tag">Engine/Core/TaskStream.h</span>
+  The identity of the thread the stream believes is driving it.
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>[[nodiscard]] auto GetThreadID() const noexcept</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  Declared and defined in the header <code>Engine/Core/TaskStream.h</code>; there is no counterpart in
+  <code>Engine/Core/TaskStream.cpp</code>. The identity of the thread the stream believes is driving it, as
+  <code>std::thread::id</code>.
+</p>
+
+<div class="note">
+  <strong>Three places write it, and none of them is the constructor.</strong>
+  <a href="start.html">Start</a> records the calling thread for the base stream only; <a href="runloop.html">RunLoop</a> records the worker's own thread as its
+  first act; and <a href="update.html">Update</a> records whatever thread arrives first if the field is still default — which is how the IO stream, whose
+  <a href="start.html">Start</a> returns without touching it, gets an owner. A stream nobody has ever driven therefore reports a default
+  <code>std::thread::id</code>, and that default is the value the class itself tests for: the two configuration checks run
+  <code>if (threadID != TThreadID{})</code> (<code>Engine/Core/TaskStream.cpp</code>).
+</div>
+
+<div class="gap">
+  <strong>The field is a plain member that one thread writes and others read, and the reads are the ones that police other threads.</strong>
+  <a href="configurebudget.html">ConfigureBudget</a> and <a href="configurerate.html">ConfigureRate</a> compare the caller's thread against this field from the
+  caller's thread, and a driven stream's first pass writes it while another thread may be asking those questions
+  (<code>Engine/Core/TaskStream.cpp</code>). There is no atomic and no lock on either side, so the check is a heuristic that can read a stale value; it is also
+  Debug-only, since it is an <code>Assert</code> (<code>Core/Debug.h</code>, <code>CMakeLists.txt</code>).
+</div>
+
+<div class="gap">
+  <strong>For a driven stream the answer is a historical record, not a current fact.</strong>
+  The base stream is driven by whatever thread runs the engine's loop, and the IO stream by the logger's driver thread; once recorded, the value never follows
+  a driver that changes, and the pass does not re-record it — the test is <code>if (threadID == TThreadID{})</code>, not "is this me"
+  (<a href="update.html">Update</a>). Two different threads driving the same stream therefore produce one answer and one unsynchronised race, and this accessor
+  reports neither.
+</div>
+
+<div class="note">
+  <strong>Two places ask the question this accessor exists for, and both are mapping a thread to a stream.</strong>
+  <code>TaskSystem::GetStreamIndex(TThreadID)</code> scans the streams for the one that claims a given thread, and the logger records which thread the IO stream
+  believes is driving it so its own allocations can be attributed to that thread
+  (<code>Engine/Core/TaskSystem.cpp</code>, <code>Engine/Log/Logger.cpp</code>). The class itself reads the field constantly for its checks, without the accessor
+  (<code>Engine/Core/TaskStream.cpp</code>). For the thread object — to join it or test it — use <a href="getthread.html">GetThread</a>.
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<p>None.</p>
+
+<h2 id="return">Return value</h2>
+
+<table>
+  <tr><th>Type</th><th>What you get</th></tr>
+  <tr><td><code>auto</code> deducing <code>std::thread::id</code></td><td>The first thread that claimed this stream, or a default <code>std::thread::id</code> if none has; the value is never updated after the first claim</td></tr>
+</table>
+
+<h2 id="example">Examples</h2>
+
+<p class="meta">From Engine/Core/TaskSystem.cpp, TaskSystem::GetStreamIndex()</p>
+
+<pre><code>if (auto&amp; stream = streams[i]; stream.GetThreadID() != id)
+{
+    continue;
+}</code></pre>
+
+<p>
+  The accessor as a lookup key: the stream whose recorded driver equals a thread's id is that thread's stream
+  (<code>Engine/Core/TaskSystem.cpp</code>). It works only because the id is recorded once and never revised — the limitation stated above.
+</p>
+
+<p class="meta">From Engine/Core/TaskStream.cpp, TaskStream::ConfigureBudget()</p>
+
+<pre><code>if (threadID != TThreadID{})
+{
+    Assert(std::this_thread::get_id() == threadID, "Stream ", name,
+           " had its budget configured from another thread while it is running. The allowance is an "
+           "unsynchronised field this stream reads every pass, so that is a data race. Use RequestBudget, "
+           "which the stream applies to itself.");
+}</code></pre>
+
+<p>
+  The field's real consumer: an owner-thread check that is skipped entirely while this accessor would report a default id
+  (<code>Engine/Core/TaskStream.cpp</code>, <a href="requestbudget.html">RequestBudget</a> for the form that needs no check).
+</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; TaskStream</a></span>
+  <span><a href="index.html#methods">All TaskStream methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TaskStream::GetPriorityWeight — Core module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a class="current" href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Core</a> /
+  <a href="index.html">TaskStream</a> / GetPriorityWeight
+</p>
+
+<h1><span class="fn">GetPriorityWeight</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::TaskStream</span>
+  <span class="tag">Engine/Core/TaskStream.h</span>
+  The priority lane's configured share of the stream's allowance.
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>[[nodiscard]] uint32_t GetPriorityWeight() const noexcept</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  Declared and defined in the header <code>Engine/Core/TaskStream.h</code>, returning <code>drainPolicy.GetPriorityWeight()</code>; there is no
+  counterpart in <code>Engine/Core/TaskStream.cpp</code>. The priority lane's configured share of the stream's allowance. The header's own note is a
+  pointer to its sibling: "The configured priority lane weight. See GetFifoWeight."
+</p>
+
+<div class="note">
+  <strong>The two weights are a pair, and only their ratio matters.</strong>
+  What the lanes get is a split of the stream's CPU allowance, so 3-and-1 and 300-and-100 choose lanes identically
+  (<a href="../StreamDrainPolicy/chooselane.html">StreamDrainPolicy::ChooseLane</a>). Read both or neither — a caller that reads one and configures
+  the pair has invented the other half (<a href="getfifoweight.html">GetFifoWeight</a>).
+</div>
+
+<div class="gap">
+  <strong>A weight of zero is stored as zero and served as one</strong>, exactly as on the FIFO side
+  (<a href="configurerate.html">ConfigureRate</a>); and with no allowance configured, the ratio has no book to divide, because the drain charges the
+  lanes only when it is measuring CPU (<a href="update.html">Update</a>, <a href="getaccumulatedcputime.html">GetAccumulatedCPUTime</a>).
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<p>None.</p>
+
+<h2 id="return">Return value</h2>
+
+<table>
+  <tr><th>Type</th><th>What you get</th></tr>
+  <tr><td><code>uint32_t</code></td><td>The stored priority weight. The pair with <a href="getfifoweight.html">GetFifoWeight</a> is the ratio; the pair is the constructed default unless a test re-rated it, since every <a href="configurerate.html">ConfigureRate</a> call site sits in a unit-test region</td></tr>
+</table>
+
+<h2 id="example">Examples</h2>
+
+<p class="note">Illustrative — no code reads a weight outside these two accessors; they exist so a caller that re-rates a shared stream can restore it.</p>
+
+<pre><code>const auto fifo = stream.GetFifoWeight();
+const auto priority = stream.GetPriorityWeight();
+
+stream.ConfigureRate(1, 4);
+
+RunPriorityBoundCollection();
+
+stream.ConfigureRate(fifo, priority);</code></pre>
+
+<p>
+  Saving both before re-rating is what makes the restore exact; a caller that restores <code>1, 1</code> instead has rewritten a stream it does not
+  own (<code>Engine/Core/TaskStream.h</code>).
+</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; TaskStream</a></span>
+  <span><a href="index.html#methods">All TaskStream methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SystemStatistics::Print — Core module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a class="current" href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Core</a> /
+  <a href="index.html">SystemStatistics</a> / Print
+</p>
+
+<h1><span class="fn">Print</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::SystemStatistics</span>
+  <span class="tag">Engine/Core/SystemStatistics.h</span>
+  The shutdown report, eleven lines: two live counters, six structurally zero, one uninitialized.
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>#endif
+
+	void Print() noexcept</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  Defined in <code>Engine/Core/SystemStatistics.cpp</code>. The shutdown report: eleven lines out through the logger under the name from
+  <a href="getname.html">GetName</a>, covering frames, logs, running time, system allocation and fallback allocation. It takes no lock, resets nothing, and
+  can be called any number of times — each call writes a fresh block.
+</p>
+
+<div class="note">
+  <strong>Two of the six counters are live, six lines are structurally zero, and one prints an uninitialized field.</strong>
+  What the report can honestly say in a build made from this tree:
+</div>
+
+<table>
+  <tr><th>Line</th><th>Source</th><th>Status in every shipping configuration</th></tr>
+  <tr><td>Frame Count</td><td><a href="incframecount.html">IncFrameCount</a></td><td>always <code>0</code> — no caller</td></tr>
+  <tr><td>Slow Frame Count</td><td><a href="incslowframecount.html">IncSlowFrameCount</a></td><td>always <code>0</code> — no caller</td></tr>
+  <tr><td>Engine Log Count</td><td><a href="incenginelogcount.html">IncEngineLogCount</a></td><td>live — <code>Engine::Log</code></td></tr>
+  <tr><td>Log Count / Long Log Count</td><td><a href="inclogcount.html">IncLogCount</a>, <a href="inclonglogcount.html">IncLongLogCount</a></td><td>always <code>0 / 0</code> — both increments sit inside <code>#if PROFILE_ENABLED</code></td></tr>
+  <tr><td>Running Time</td><td><code>timeSinceStart</code></td><td>indeterminate — <a href="updatecurrenttime.html">UpdateCurrentTime</a> is never called and the field is never initialized</td></tr>
+  <tr><td>Allocation Count / System Memory Usage</td><td><code>allocCount</code> and friends</td><td>always <code>0</code> — written only by the <code>PROFILE_ENABLED</code> reporters</td></tr>
+  <tr><td>Fallback Allocation Count</td><td><a href="incfallbackalloccount.html">IncFallbackAllocCount</a></td><td>live — both pool allocators</td></tr>
+</table>
+
+<div class="note">
+  <strong>The two log counters are read once, up front, and reused; the rest are read inline.</strong>
+</div>
+
+<pre><code>auto curLogCount = logCount.load(std::memory_order_relaxed);
+auto curLongLogCount = longLogCount.load(std::memory_order_relaxed);</code></pre>
+
+<p class="meta">From Engine/Core/SystemStatistics.cpp, SystemStatistics::Print()</p>
+
+<p>
+  That is a deliberate consistency choice, not an accident: the "Long Log Count = X / Y" line divides one counter by the other, and reading them at two
+  different moments could produce a ratio that never existed. The other counters appear once each, so they have nothing to be consistent with. Every load is
+  <code>relaxed</code> — no ordering is promised against the threads doing the incrementing, which is the right price for a statistics dump and the reason none
+  of these numbers can be used as evidence that something else has happened
+  (<code>Engine/Core/SystemStatistics.cpp</code>).
+</p>
+
+<div class="gap">
+  <strong>The four allocation figures are read plain, while their only writers hold a mutex.</strong>
+  <a href="reportsysmemalloc.html">ReportSysMemAlloc</a> and <a href="reportsysmemdealloc.html">ReportSysMemDealloc</a> update
+  <code>allocCount</code>, <code>deallocCount</code>, <code>totalUsage</code> and <code>maxUsage</code> under <code>sysMemReportLock</code>, and this function
+  reads all four with no lock (<code>Engine/Core/SystemStatistics.cpp</code>). In a build where profiling is off — that is, every build — the fields are never
+  written after construction, so the read is harmless and the numbers are zeros. Were <code>PROFILE_ENABLED</code> ever set to 1, a report from another thread
+  during this print would be a data race on plain <code>size_t</code>.
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<p>None.</p>
+
+<h2 id="return">Return value</h2>
+
+<p><code>void</code>. Output goes to the logger, not to a stream a caller controls, and there is no level argument: the report is written at the logger's default level under the "SystemStatistics" category.</p>
+
+<h2 id="example">Examples</h2>
+
+<pre><code>auto&amp; configSys = ConfigSystem::Get();
+
+auto&amp; staticStrTable = StaticStringTable::GetInstance();
+staticStrTable.PrintStringTable();
+configSys.PrintAllParameters();
+statistics.Print();
+statistics.PrintAllocatorProfiles();</code></pre>
+
+<p class="meta">From Engine/Engine/Engine.cpp, Engine::ShutDown()</p>
+
+<p>
+  One call, at shutdown, alongside the other end-of-run dumps, after the task system has been joined
+  (<code>Engine/Engine/Engine.cpp</code>) — so the counters are at their final values by then for everything that is incremented on a worker thread. The next
+  line is <a href="printallocatorprofiles.html">PrintAllocatorProfiles</a>, which in this configuration writes nothing at all.
+</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; SystemStatistics</a></span>
+  <span><a href="index.html#methods">All SystemStatistics methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

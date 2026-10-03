@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SystemStatistics — Core module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a class="current" href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This class</h3>
+  <ul>
+    <li><a href="#description">Class description</a></li>
+    <li><a href="#template">Template parameters</a></li>
+    <li><a href="#properties">Class properties</a></li>
+    <li><a href="#methods">Class methods</a></li>
+    <li><a href="#non-member">Non-member helper functions</a></li>
+    <li><a href="#coverage">Coverage</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Core</a> /
+  SystemStatistics
+</p>
+
+<h1>SystemStatistics</h1>
+<p class="subtitle">
+  <span class="tag">Engine/Core/SystemStatistics.h</span>
+  One instance of counters, timings and a shutdown report: two live figures, six structurally zero, one uninitialized.
+</p>
+
+<h2 id="description">Class description</h2>
+
+<p>
+  <code>class SystemStatistics final</code> at <code>Engine/Core/SystemStatistics.h</code>: one struct of counters, four time fields, and a shutdown report.
+  Six <code>std::atomic&lt;uint64_t&gt;</code> counters raised by the allocator and the log paths, four <code>size_t</code> allocation figures guarded by a
+  mutex and compiled out, four time fields written by a function nothing calls, and one instance that lives inside <code>Engine</code> for the length of a run
+  (<code>Engine/Engine/Engine.h</code>). It stores nothing else and owns no subsystem.
+</p>
+
+<div class="gap">
+  <strong>Of the eleven lines <a href="print.html">Print</a> writes, two report real counts, six are structurally zero, and one prints an uninitialized
+  field.</strong>
+  The engine increments only <a href="incenginelogcount.html">IncEngineLogCount</a> and
+  <a href="incfallbackalloccount.html">IncFallbackAllocCount</a>. <a href="incframecount.html">IncFrameCount</a> and
+  <a href="incslowframecount.html">IncSlowFrameCount</a> have no call site at all, and the log-line pair and the whole allocation bookkeeping are incremented
+  only inside <code>#if PROFILE_ENABLED</code> regions — a flag defined as <code>0</code> unconditionally in
+  <a href="../../Config/BuildConfig/index.html"><code>Engine/Config/BuildConfig.h</code></a>, with no <code>#ifndef</code> guard, so a build cannot set it from
+  the command line. And because <a href="updatecurrenttime.html">UpdateCurrentTime</a> is never called, the <code>Running Time</code> line prints
+  <code>timeSinceStart</code>, a <code>double</code> the constructor never initialized
+  (<code>Engine/Core/SystemStatistics.cpp</code>). The breakdown, line by line, is on <a href="print.html">Print</a>.
+</div>
+
+<div class="gap">
+  <strong>The profiling half is not merely unused — it does not compile.</strong>
+  <code>Report</code>, <a href="reportsysmemalloc.html">ReportSysMemAlloc</a> and <a href="reportsysmemdealloc.html">ReportSysMemDealloc</a> are declared
+  <code>noexcept</code> in the header and defined without it in the source, and a definition that omits the exception specification of its declaration is a
+  compile error (confirmed with a minimal translation unit). So the first person to set <code>PROFILE_ENABLED</code> to <code>1</code> finds these three pages
+  describing code that will not build, and the shutdown's allocation lines stay at zero until that is fixed
+  (<code>Engine/Core/SystemStatistics.h</code>, <code>Engine/Core/SystemStatistics.cpp</code>).
+</div>
+
+<div class="note">
+  <strong>Three locking disciplines in one small class, and a report that observes only the first.</strong>
+  The atomic counters are <code>fetch_add</code>/<code>load</code> with <code>std::memory_order_relaxed</code>: cheap, and carrying no ordering promise about
+  anything else. The allocation figures are plain <code>size_t</code> written under <code>sysMemReportLock</code> — but read by
+  <a href="print.html">Print</a> without it. The four time fields are plain and written by one non-atomic sequence
+  (<a href="updatecurrenttime.html">UpdateCurrentTime</a>). At class scope, before any member, a
+  <code>static_assert(std::atomic&lt;uint64_t&gt;::is_always_lock_free)</code> refuses to compile the class on a platform where those counters would be
+  mutex-backed (<code>Engine/Core/SystemStatistics.h</code>).
+</div>
+
+<h2 id="template">Template parameters</h2>
+
+<p>None. The class is <code>final</code>, is not a template, has one instance per engine, and is constructed by <code>Engine</code> as a direct member — there is no variant of it to parameterize.</p>
+
+<h2 id="properties">Class properties</h2>
+
+<table>
+  <tr><th>Type + Name</th><th>Default Value</th><th>Description</th></tr>
+  <tr><td><code>static_assert(std::atomic&lt;uint64_t&gt;::is_always_lock_free);</code> <span class="badge">private</span></td><td><span class="muted">compile-time</span></td><td>A build-time requirement, not a member: the class will not compile where a 64-bit atomic is not lock-free</td></tr>
+  <tr><td><code>std::atomic&lt;uint64_t&gt; frameCount;</code> <span class="badge">private</span></td><td><code>0</code> (constructor)</td><td>Frames — never incremented by anything; see <a href="incframecount.html">IncFrameCount</a></td></tr>
+  <tr><td><code>std::atomic&lt;uint64_t&gt; slowFrameCount;</code> <span class="badge">private</span></td><td><code>0</code> (constructor)</td><td>Slow frames — never incremented, and no threshold for calling a frame slow exists</td></tr>
+  <tr><td><code>std::atomic&lt;uint64_t&gt; engineLogCount;</code> <span class="badge">private</span></td><td><code>0</code> (constructor)</td><td>Engine log lines attempted; raised by <code>Engine::Log</code> (<a href="incenginelogcount.html">IncEngineLogCount</a>)</td></tr>
+  <tr><td><code>std::atomic&lt;uint64_t&gt; logCount;</code> <span class="badge">private</span></td><td><code>0</code> (constructor)</td><td>Short log lines; the increment is inside <code>PROFILE_ENABLED</code>, so it stays zero</td></tr>
+  <tr><td><code>std::atomic&lt;uint64_t&gt; longLogCount;</code> <span class="badge">private</span></td><td><code>0</code> (constructor)</td><td>Long log lines, which are the ones that take a system allocation; likewise compiled out (<a href="inclonglogcount.html">IncLongLogCount</a>)</td></tr>
+  <tr><td><code>std::atomic&lt;uint64_t&gt; fallbackAllocCount;</code> <span class="badge">private</span></td><td><code>0</code> (constructor)</td><td>Falls back to the system allocator; raised by both pool allocators in every build (<a href="incfallbackalloccount.html">IncFallbackAllocCount</a>)</td></tr>
+  <tr><td><code>std::mutex sysMemReportLock;</code> <span class="badge">private</span></td><td><span class="muted">none in the header</span></td><td>Guards the four figures below on the write side only — <a href="print.html">Print</a> reads them unlocked</td></tr>
+  <tr><td><code>size_t allocCount;</code> <span class="badge">private</span></td><td><code>0</code> (constructor)</td><td>System allocations recorded; written only by <a href="reportsysmemalloc.html">ReportSysMemAlloc</a></td></tr>
+  <tr><td><code>size_t deallocCount;</code> <span class="badge">private</span></td><td><code>0</code> (constructor)</td><td>System frees recorded; written only by <a href="reportsysmemdealloc.html">ReportSysMemDealloc</a></td></tr>
+  <tr><td><code>size_t totalUsage;</code> <span class="badge">private</span></td><td><code>0</code> (constructor)</td><td>Live system bytes; subtracted without a shipping-build guard, so it can wrap (<a href="reportsysmemdealloc.html">ReportSysMemDealloc</a>)</td></tr>
+  <tr><td><code>size_t maxUsage;</code> <span class="badge">private</span></td><td><code>0</code> (constructor)</td><td>High-water mark, raised only on the way up and never revised downward</td></tr>
+  <tr><td><code>time::TTime startTime;</code> <span class="badge">private</span></td><td>clock reading at construction</td><td>The epoch every engine log timestamp is measured from (<a href="getstarttime.html">GetStartTime</a>); written once, read unlocked, stable</td></tr>
+  <tr><td><code>time::TTime currentTime;</code> <span class="badge">private</span></td><td>equal to <code>startTime</code></td><td>Last sample; frozen at the constructor's value because nothing samples (<a href="getcurrenttime.html">GetCurrentTime</a>)</td></tr>
+  <tr><td><code>double timeSinceStart;</code> <span class="badge">private</span></td><td><span class="muted">none — not initialized anywhere</span></td><td>Seconds since construction at the last sample; never written, printed by <a href="print.html">Print</a> (<a href="gettimesincestart.html">GetTimeSinceStart</a>)</td></tr>
+  <tr><td><code>float deltaTime;</code> <span class="badge">private</span></td><td><span class="muted">none — not initialized anywhere</span></td><td>Seconds between the last two samples; never written and never read (<a href="getdeltatime.html">GetDeltaTime</a>)</td></tr>
+  <tr><td><code>std::vector&lt;AllocStats&gt; allocStats;</code> <span class="badge">private</span> <span class="badge">PROFILE_ENABLED only</span></td><td><span class="muted">empty</span></td><td>Collected allocator profiles, filled by <a href="report.html">Report</a> and read only by <a href="printallocatorprofiles.html">PrintAllocatorProfiles</a>; the member itself does not exist in a shipping build</td></tr>
+</table>
+
+<h2 id="methods">Class methods</h2>
+
+<table class="methods">
+  <tr><th>Name</th><th>Signature</th><th>What a caller depends on</th></tr>
+  <tr><td><a href="constructors.html"><code>SystemStatistics</code></a></td><td class="sig">explicit SystemStatistics(Engine&amp; engine)</td><td>Zeroes the counters and asserts the memory manager exists before announcing statistics ready; leaves the two derived time fields uninitialized.</td></tr>
+  <tr><td><a href="destructor.html"><code>~SystemStatistics</code></a></td><td class="sig">~SystemStatistics() = default</td><td>Reports nothing; a live increment or report during teardown is undefined, and the engine's shutdown order is what prevents it.</td></tr>
+  <tr><td><a href="getname.html"><code>GetName</code></a></td><td class="sig">[[nodiscard]] const StaticString&amp; GetName() const noexcept</td><td>A program-lifetime static "SystemStatistics" — the logger category for both reports.</td></tr>
+  <tr><td><a href="updatecurrenttime.html"><code>UpdateCurrentTime</code></a></td><td class="sig">void UpdateCurrentTime() noexcept</td><td>The only writer of the time fields; takes no argument, so its caller defines a frame, and no caller exists.</td></tr>
+  <tr><td><a href="incframecount.html"><code>IncFrameCount</code></a></td><td class="sig">void IncFrameCount() noexcept</td><td>Relaxed add of one; no call site, so the report's headline figure is always zero.</td></tr>
+  <tr><td><a href="incslowframecount.html"><code>IncSlowFrameCount</code></a></td><td class="sig">void IncSlowFrameCount() noexcept</td><td>Relaxed add of one; no call site, and no frame-time source or threshold to justify one.</td></tr>
+  <tr><td><a href="incenginelogcount.html"><code>IncEngineLogCount</code></a></td><td class="sig">void IncEngineLogCount() noexcept</td><td>One per attempted engine log line — counted before the print-level filter, so it measures demand.</td></tr>
+  <tr><td><a href="inclogcount.html"><code>IncLogCount</code></a></td><td class="sig">void IncLogCount() noexcept</td><td>Exists in the header always, but its only call site is compiled out with <code>PROFILE_ENABLED</code>.</td></tr>
+  <tr><td><a href="inclonglogcount.html"><code>IncLongLogCount</code></a></td><td class="sig">void IncLongLogCount() noexcept</td><td>Would count the log lines that allocate; compiled out, so the report's ratio line reads "0 / 0".</td></tr>
+  <tr><td><a href="incfallbackalloccount.html"><code>IncFallbackAllocCount</code></a></td><td class="sig">void IncFallbackAllocCount() noexcept</td><td>Live in every build, from both pool allocators; the one figure that means something when it is non-zero.</td></tr>
+  <tr><td><a href="getstarttime.html"><code>GetStartTime</code></a></td><td class="sig">[[nodiscard]] auto GetStartTime() const noexcept</td><td>The construction instant; stable, lock-free to read, and the base of every engine log timestamp.</td></tr>
+  <tr><td><a href="getcurrenttime.html"><code>GetCurrentTime</code></a></td><td class="sig">[[nodiscard]] auto GetCurrentTime() const noexcept</td><td>The last sample, which today equals the start instant; not a substitute for asking the clock.</td></tr>
+  <tr><td><a href="gettimesincestart.html"><code>GetTimeSinceStart</code></a></td><td class="sig">[[nodiscard]] auto GetTimeSinceStart() const noexcept</td><td>Seconds since start as of the last sample — uninitialized, and printed as if measured.</td></tr>
+  <tr><td><a href="getdeltatime.html"><code>GetDeltaTime</code></a></td><td class="sig">[[nodiscard]] auto GetDeltaTime() const noexcept</td><td>Seconds between samples — uninitialized and unread; not the engine's frame time.</td></tr>
+  <tr><td><a href="print.html"><code>Print</code></a></td><td class="sig">void Print() noexcept</td><td>Eleven lines to the logger, once at shutdown; reads the log pair first so the ratio is coherent, and the allocation figures with no lock.</td></tr>
+  <tr><td><a href="printallocatorprofiles.html"><code>PrintAllocatorProfiles</code></a></td><td class="sig">void PrintAllocatorProfiles() noexcept</td><td>Called unconditionally at shutdown; body compiled out, so it returns without writing a line.</td></tr>
+  <tr><td><a href="report.html"><code>Report</code></a><span class="badge">PROFILE_ENABLED only</span></td><td class="sig">void Report(const AllocStats&amp; allocStats) noexcept</td><td>Appends one profile record, unlocked and uncapped; the declaration/definition <code>noexcept</code> mismatch makes it unbuildable as written.</td></tr>
+  <tr><td><a href="reportsysmemalloc.html"><code>ReportSysMemAlloc</code></a><span class="badge">PROFILE_ENABLED only</span></td><td class="sig">void ReportSysMemAlloc(size_t usage) noexcept</td><td>Records one system allocation under the lock and warns outside it; the only writer of the high-water mark.</td></tr>
+  <tr><td><a href="reportsysmemdealloc.html"><code>ReportSysMemDealloc</code></a><span class="badge">PROFILE_ENABLED only</span></td><td class="sig">void ReportSysMemDealloc(size_t usage) noexcept</td><td>Records one free; the only guard against an unsigned underflow of the total is a Debug-only assert.</td></tr>
+</table>
+
+<h2 id="non-member">Non-member helper functions</h2>
+
+<p>
+  None. <code>Engine/Core/SystemStatistics.cpp</code> holds the out-of-line definitions — seven of them, three inside <code>#if PROFILE_ENABLED</code> — and a <code>using</code> of
+  <code>StringUtil</code> inside one function, and nothing else; the time helpers the definitions call — <code>time::ToFloat</code>,
+  <code>time::ToDouble</code>, <code>time::TStopWatch</code> — belong to <code>Engine/Core/Time.h</code> and to the time utilities, not to this class
+  (<code>Engine/Core/Time.h</code>).
+</p>
+
+<h2 id="coverage">Coverage</h2>
+
+<table>
+  <tr><th>Not documented here</th><th>Why</th></tr>
+  <tr>
+    <td>What a per-allocator profile line contains</td>
+    <td>The entries are <code>AllocStats</code> records printed by <code>AllocStats::Print</code>, which belongs to the memory module
+      (<a href="../../Memory/index.html">Memory</a>). This class only stores them (<a href="report.html">Report</a>) and iterates them
+      (<a href="printallocatorprofiles.html">PrintAllocatorProfiles</a>)</td>
+  </tr>
+  <tr>
+    <td>What <code>Config::MemCapacity</code> is, and who sets it</td>
+    <td>A compile-time figure in <a href="../../Config/EngineConfig/index.html">the engine configuration</a> — the threshold
+      <a href="reportsysmemalloc.html">ReportSysMemAlloc</a> warns against. Its meaning and tuning belong to that page</td>
+  </tr>
+  <tr>
+    <td>Whether <code>high_resolution_clock</code> is a distinct clock</td>
+    <td>The class's clock is <code>time::TStopWatch</code> (<code>high_resolution_clock</code>), and <code>Engine::Log</code> subtracts a
+      <code>steady_clock::now()</code> from <a href="getstarttime.html">GetStartTime</a>, which compiles because the two are the same type in the standard
+      library measured here. No claim is made about other standard libraries, because none was tested</td>
+  </tr>
+  <tr>
+    <td>A lock order for <code>sysMemReportLock</code></td>
+    <td>Nothing in the sources states one, and today the lock has one writer and no reader. The race that would exist in a profiling build is recorded on
+      <a href="print.html">Print</a>, and stating a lock hierarchy that no code declares would be an invention</td>
+  </tr>
+  <tr>
+    <td>Which thread is allowed to increment what</td>
+    <td>The atomics are used from the allocator paths and <code>Engine::Log</code>, on whichever threads those run, and every increment in the class is
+      relaxed, which is exactly the guarantee a statistics counter needs. No page here promises an ordering the code does not establish — for instance, a
+      non-zero fallback count is not evidence that anything else a thread did has become visible
+      (<a href="incfallbackalloccount.html">IncFallbackAllocCount</a>)</td>
+  </tr>
+</table>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; SystemStatistics</a></span>
+  <span><a href="index.html#methods">All SystemStatistics methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

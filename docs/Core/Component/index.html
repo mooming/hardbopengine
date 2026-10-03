@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Component — Core module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a class="current" href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This class</h3>
+  <ul>
+    <li><a href="#description">Class description</a></li>
+    <li><a href="#template">Template parameters</a></li>
+    <li><a href="#properties">Class properties</a></li>
+    <li><a href="#methods">Class methods</a></li>
+    <li><a href="#non-member">Non-member helper functions</a></li>
+    <li><a href="#coverage">Coverage</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Core</a> /
+  Component
+</p>
+
+<h1>Component</h1>
+<p class="subtitle">
+  <span class="tag">Engine/Core/Component.h</span>
+  The lifecycle interface a component inherits: five callbacks, a state and a name, driven by ComponentSystem.
+</p>
+
+<h2 id="description">Class description</h2>
+
+<p>
+  <code>class Component</code> at <code>Engine/Core/Component.h</code>: the lifecycle interface every engine component inherits —
+  <a href="init.html">Init</a>, <a href="update.html">Update</a>, <a href="release.html">Release</a>,
+  <a href="onenable.html">OnEnable</a>, <a href="ondisable.html">OnDisable</a> — plus two fields, a state and a name, and the four accessors that expose them.
+  It holds no resources and knows of no system: it is the half of a component that a component writes, and the other half — the pump that decides when each
+  callback runs — is <code>ComponentSystem</code>.
+</p>
+
+<div class="note">
+  <strong>The state field is the only coordination between the two halves, and each callback is defined by the state it is allowed to see.</strong>
+  The system writes the state and then calls the callback that documents it, so the state a component observes at the top of a callback is the system's
+  statement of what is happening to it:
+</div>
+
+<table>
+  <tr><th>Callback</th><th>State it must find</th><th>Set by</th></tr>
+  <tr><td><a href="init.html">Init</a></td><td><code>BORN</code></td><td><code>ComponentSystem::Create</code>, at creation</td></tr>
+  <tr><td><a href="onenable.html">OnEnable</a></td><td><code>ALIVE</code></td><td><code>ProcessInit</code> after <code>Init</code>, or the <code>ALIVE</code> case of <code>ProcessTransition</code></td></tr>
+  <tr><td><a href="update.html">Update</a></td><td><code>ALIVE</code></td><td>as above — this is the only state in which an update happens</td></tr>
+  <tr><td><a href="ondisable.html">OnDisable</a></td><td><code>SLEEP</code></td><td>the <code>SLEEP</code> case, or set to <code>SLEEP</code> by the <code>DEAD</code> case before the callback</td></tr>
+  <tr><td><a href="release.html">Release</a></td><td><code>DEAD</code></td><td>the <code>DEAD</code> case, after <code>OnDisable</code></td></tr>
+</table>
+
+<p>
+  The states themselves belong to <a href="../ComponentState/index.html"><code>ComponentState</code></a>; this class only aliases it privately as
+  <code>State</code>, which is why the signatures above read <code>State</code>
+  (<code>Engine/Core/Component.h</code>).
+</p>
+
+<div class="gap">
+  <strong>A component object does not stay where it was put, and this class is the reason it cannot.</strong>
+  The system stores components by value and moves every one of them between lists on every pass
+  (<code>Engine/Core/ComponentSystem.h</code>), so a pointer or reference to a component is stale the moment a pass ends
+  (<a href="update.html">Update</a>). That requirement reaches into this class's own special members: because the destructor here is user-declared, the
+  implicit move constructor and move assignment are not generated, and the implicit copy constructor is deleted because <code>String</code> can only be copied
+  from a non-const reference (<a href="../../String/index.html"><code>hbe::String</code></a>, <code>Engine/String/String.h</code>). A compiler probe of the real
+  headers confirms all four: <code>Component</code> is not copy-constructible, not move-constructible, copy-assignable, and not move-assignable. Every subclass
+  the system is to store must therefore declare its own move constructor and move the base through it — the one contract of this class that a subclass can
+  violate silently until it fails to compile (<a href="constructors.html">the constructor page</a>).
+</div>
+
+<div class="gap">
+  <strong>Nothing in the engine uses this class, and the only subclass is a unit-test type.</strong>
+  The sole derivation in the repository is <code>struct Test : public Component</code>, defined inside the <code>#ifdef __UNIT_TEST__</code> region of
+  <code>Engine/Core/ComponentSystem.cpp</code>, and the sole <code>ComponentSystem</code> instantiation is that test's
+  No subsystem in <code>Engine/</code> outside these two headers, and nothing in <code>Applications/</code>, declares a component or owns a system.
+  <code>Engine/Core/Component.cpp</code> includes the header, names the namespace, and defines nothing — the entire class lives inline in the header. What
+  follows is therefore documented from the interface, from the system that drives it, and from the behavior the test asserts, which is the only executable
+  statement of the lifecycle in the tree.
+</div>
+
+<h2 id="template">Template parameters</h2>
+
+<p>None. <code>Component</code> is not a template and is not <code>final</code>: it exists to be subclassed, and its five pure virtuals make it abstract — a component is always the derived type. The system that stores it is the template (<code>ComponentSystem&lt;TComponent&gt;</code>), not the base.</p>
+
+<h2 id="properties">Class properties</h2>
+
+<table>
+  <tr><th>Type + Name</th><th>Default Value</th><th>Description</th></tr>
+  <tr><td><code>using State = ComponentState;</code> <span class="badge">private</span> <span class="badge">member type</span></td><td><span class="muted">not applicable</span></td><td>The alias every signature on this page is written in; the enum itself is <a href="../ComponentState/index.html">ComponentState</a></td></tr>
+  <tr><td><code>State state;</code> <span class="badge">protected</span></td><td>set to <code>State::NONE</code> by the constructor</td><td>The lifecycle position, and the only thing the system and a component agree on. A plain enum value, not an atomic: written and read on the thread that drives the system (<a href="getstate.html">GetState</a>)</td></tr>
+  <tr><td><code>String name;</code> <span class="badge">protected</span></td><td>set from the constructor's argument</td><td>Label carried for whoever asks; written once, by the constructor, and read by nothing inside the engine (<a href="getname.html">GetName</a>). Its buffer is refcounted, so moving a component shares the name rather than stealing it</td></tr>
+</table>
+
+<h2 id="methods">Class methods</h2>
+
+<table class="methods">
+  <tr><th>Name</th><th>Signature</th><th>What a caller depends on</th></tr>
+  <tr><td><a href="constructors.html"><code>Component</code></a></td><td class="sig">Component(const char* name)</td><td>The only constructor; names the component, starts it in <code>NONE</code>, and is the reason a subclass must declare its own move constructor.</td></tr>
+  <tr><td><a href="destructor.html"><code>~Component</code></a></td><td class="sig">virtual ~Component() = default</td><td>Releases nothing; it is the only place a component can discover it was destroyed without ever being released.</td></tr>
+  <tr><td><a href="init.html"><code>Init</code></a></td><td class="sig">virtual void Init() = 0</td><td>Once, with the state <code>BORN</code>; there is no failure channel — the state is set to <code>ALIVE</code> the moment it returns.</td></tr>
+  <tr><td><a href="update.html"><code>Update</code></a></td><td class="sig">virtual void Update(const float deltaTime) = 0</td><td>Once per pass while <code>ALIVE</code>; the object is moved after every pass, and this is where a component decides to stop.</td></tr>
+  <tr><td><a href="release.html"><code>Release</code></a></td><td class="sig">virtual void Release() = 0</td><td>Once, with the state <code>DEAD</code>, immediately before the object is destroyed — and only for a component that asked to die.</td></tr>
+  <tr><td><a href="onenable.html"><code>OnEnable</code></a></td><td class="sig">virtual void OnEnable() = 0</td><td>Every time the component becomes active, always with the state <code>ALIVE</code>; cannot tell a first enable from a re-enable.</td></tr>
+  <tr><td><a href="ondisable.html"><code>OnDisable</code></a></td><td class="sig">virtual void OnDisable() = 0</td><td>Every time it stops running, always with the state <code>SLEEP</code>; cannot tell sleep from death, so permanent teardown belongs in <code>Release</code>.</td></tr>
+  <tr><td><a href="getstate.html"><code>GetState</code></a></td><td class="sig">[[nodiscard]] State GetState() const noexcept</td><td>The state by value, read from a plain field with no lock — safe only on the thread driving the system.</td></tr>
+  <tr><td><a href="setstate.html"><code>SetState</code></a></td><td class="sig">void SetState(State inState) noexcept</td><td>Assigns and nothing else: no callback, no movement, no validation, and no handling for a state the transition switch does not know.</td></tr>
+  <tr><td><a href="getname.html"><code>GetName</code></a></td><td class="sig">[[nodiscard]] const String&amp; GetName() const noexcept</td><td>Reference to the member, valid while the object is; the name is shared with anything moved from it.</td></tr>
+  <tr><td><a href="isenabled.html"><code>IsEnabled</code></a></td><td class="sig">[[nodiscard]] bool IsEnabled() const noexcept</td><td>True only in <code>ALIVE</code>; this is the question the system asks after every update to route the component.</td></tr>
+  <tr><td><a href="setenable.html"><code>SetEnable</code></a></td><td class="sig">void SetEnable(bool isEnabled) noexcept</td><td>Chooses <code>ALIVE</code> or <code>SLEEP</code>; turning a sleeping component back on changes the answer but never resumes it.</td></tr>
+  <tr><td><a href="destroy.html"><code>Destroy</code></a></td><td class="sig">void Destroy() noexcept</td><td>Sets <code>DEAD</code> and returns; the callbacks, the release and the destruction happen afterwards, in the system.</td></tr>
+</table>
+
+<h2 id="non-member">Non-member helper functions</h2>
+
+<p>
+  None. <code>Engine/Core/Component.cpp</code> contains the copyright notice, the include of its own header, and <code>using namespace hbe</code> — no helper,
+  no static, and no out-of-line definition of anything declared in the class. The one free function in the neighborhood,
+  <code>operator&lt;&lt;</code> for the state enum, belongs to <a href="../ComponentState/index.html">ComponentState</a> and lives inline in that header.
+</p>
+
+<h2 id="coverage">Coverage</h2>
+
+<table>
+  <tr><th>Not documented here</th><th>Why</th></tr>
+  <tr>
+    <td>Which list a component is on, and what moves it</td>
+    <td>That is <code>ComponentSystem</code>'s state, not this class's — the init, update, sleep and transition lists are the system's members and the three
+      <code>Process*</code> functions are the only code that moves a component. This page says what each callback is allowed to observe, which is the part a
+      component author can rely on; the pump's own contract belongs to its module page</td>
+  </tr>
+  <tr>
+    <td>A thread-safety guarantee for <code>state</code> and <code>name</code></td>
+    <td>The sources show a single-threaded pattern — one thread calls the system's <code>Update</code>, and every read and write in the engine is on that
+      thread — but nothing in <code>Engine/Core/Component.h</code> or <code>Engine/Core/ComponentSystem.h</code> states it as a rule, and neither field is an
+      atomic. The pages here say what the fields are and who writes them, and stop short of a promise the headers do not make</td>
+  </tr>
+  <tr>
+    <td>Use of a component outside a <code>ComponentSystem</code></td>
+    <td>There is no such use to document: no code constructs a component that no system owns, and this class provides no way to drive the lifecycle by hand —
+      <a href="init.html">Init</a> and <a href="release.html">Release</a> are callable, but nothing here decides the order, checks it, or moves the object.
+      Whether a hand-driven component is a supported arrangement is a question for the module's owner, not something this page can invent</td>
+  </tr>
+  <tr>
+    <td>The state enum's values and its stream operator</td>
+    <td>Documented on <a href="../ComponentState/index.html">their own page</a>, which owns the five values and the <code>operator&lt;&lt;</code> the test
+      diagnostics use</td>
+  </tr>
+</table>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; Component</a></span>
+  <span><a href="index.html#methods">All Component methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TaskStream::IsClosed — Core module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a class="current" href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Core</a> /
+  <a href="index.html">TaskStream</a> / IsClosed
+</p>
+
+<h1><span class="fn">IsClosed</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::TaskStream</span>
+  <span class="tag">Engine/Core/TaskStream.h</span>
+  Whether this stream has drained its work and left its loop, or been closed by its driver.
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>[[nodiscard]] bool IsClosed() const noexcept</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  Declared and defined in the header <code>Engine/Core/TaskStream.h</code>; there is no counterpart in
+  <code>Engine/Core/TaskStream.cpp</code>. Whether this stream has finished: drained what it intended to run and left its loop, or been marked closed by
+  the driver that owned it.
+</p>
+
+<div class="note">
+  <strong>Two writers, one per kind of stream, and both are the last word about that stream's work.</strong>
+  A worker sets it with a release store as the final statement of <a href="runloop.html">RunLoop</a>, after
+  <a href="drainforshutdown.html">DrainForShutdown</a> returns. A driven stream has it set by <a href="closedrivenstream.html">CloseDrivenStream</a>, which
+  uses an acquire-release exchange so a second caller sees the first one's <code>true</code> and stands down
+  (<code>Engine/Core/TaskStream.cpp</code>). Either way the answer implies the drain ran and the held items were either run or abandoned with a
+  notice (<a href="abandonheldwork.html">AbandonHeldWork</a>).
+</div>
+
+<div class="gap">
+  <strong>This is what a shutdown waiter watches, and there is nothing to wait on — the engine polls.</strong>
+  "Whoever orders the shutdown waits on this rather than on a thread handle, because a driven stream has no thread to join."
+  (<code>Engine/Core/TaskStream.h</code>) In practice that waiting is a loop, because <code>isClosed</code> is an atomic with no condition variable of
+  its own:
+</div>
+
+<pre><code>while (std::chrono::steady_clock::now() &lt; pumpDeadline &amp;&amp;
+       (!AreUserStreamsClosed() || baseStream.HasPostedTasks() || baseStream.CountPendingItems() &gt; 0))
+{
+    baseStream.Update();
+    std::this_thread::sleep_for(std::chrono::milliseconds(1));
+}</code></pre>
+
+<p class="meta">From Engine/Core/TaskSystem.cpp, TaskSystem::JoinAndClear()</p>
+
+<p>
+  The shutdown drives the base stream while it waits, because the streams that still have work to do are driven by that pump; a waiter that only slept
+  would be waiting for pumps nobody is running (<code>Engine/Core/TaskSystem.cpp</code>).
+</p>
+
+<div class="note">
+  <strong>The teardown asserts on it, in Debug only.</strong>
+  <code>TaskSystem::JoinAndClear</code> finishes with a per-stream check: "Stream <em>name</em> is being destroyed without having been closed. Every
+  stream must be closed - drained if it owns a thread, marked closed by its driver if it rides one - before the task system tears itself down."
+  (<code>Engine/Core/TaskSystem.cpp</code>) That check is an <code>Assert</code>, compiled away unless <code>__DEBUG__</code> is defined — Debug only
+  (<code>Core/Debug.h</code>, <code>CMakeLists.txt</code>).
+</div>
+
+<div class="gap">
+  <strong>Closed does not mean empty, and it does not mean the work ran.</strong>
+  A drain that reached its deadline abandons what was left, and an abandoned item is counted and notified rather than executed
+  (<a href="getabandonedworknoticecount.html">GetAbandonedWorkNoticeCount</a>). A <code>true</code> here says the stream is finished with the work; whether
+  that work was run or discarded is a different question, answered by the counters and the notices.
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<p>None.</p>
+
+<h2 id="return">Return value</h2>
+
+<table>
+  <tr><th>Type</th><th>What you get</th></tr>
+  <tr><td><code>bool</code></td><td><code>true</code> once the stream has been drained-or-closed and will run nothing further; <code>false</code> while it still owns a driver or has work in hand</td></tr>
+</table>
+
+<h2 id="example">Examples</h2>
+
+<p class="meta">From Engine/Core/TaskSystem.cpp, TaskSystem::AreUserStreamsClosed()</p>
+
+<pre><code>if (!stream.IsClosed())
+{
+    return false;
+}</code></pre>
+
+<p>
+  The engine's only aggregate use: every stream that owns a thread must report closed before the shutdown stops pumping the base stream. The base and IO
+  streams are excluded from that sweep because their drivers close them explicitly, later
+  (<code>Engine/Core/TaskSystem.cpp</code>, <a href="closedrivenstream.html">CloseDrivenStream</a>).
+</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; TaskStream</a></span>
+  <span><a href="index.html#methods">All TaskStream methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

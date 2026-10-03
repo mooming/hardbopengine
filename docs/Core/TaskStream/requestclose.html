@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TaskStream::RequestClose — Core module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a class="current" href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Core</a> /
+  <a href="index.html">TaskStream</a> / RequestClose
+</p>
+
+<h1><span class="fn">RequestClose</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::TaskStream</span>
+  <span class="tag">Engine/Core/TaskStream.h</span>
+  Ask this one stream to finish its work and close, and wake it if it is sleeping.
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>void RequestClose() noexcept</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  Declared and defined in the header <code>Engine/Core/TaskStream.h</code>; there is no counterpart in
+  <code>Engine/Core/TaskStream.cpp</code>. Ask one stream to finish its work and close, and wake it if it is sleeping. Asking is not closing:
+  <a href="isclosed.html">IsClosed</a> is the answer that says it happened.
+</p>
+
+<div class="note">
+  <strong>It is per stream by design, because the global switch is too blunt to order a shutdown.</strong>
+  "The counterpart to a shutdown request. One global flag stops every stream in the same instant, which abandons whatever each of them already holds and
+  closes the base stream along with the rest even though that stream still owns the end of the run. Closing is therefore per stream and ordered by
+  whoever drives the shutdown: everything else first, the base stream last." (<code>Engine/Core/TaskStream.h</code>) The engine uses it that way: every
+  user stream is asked first, and the base stream is asked last.
+</div>
+
+<pre><code>for (auto&amp; stream : streams)
+{
+    if (&amp;stream != &amp;baseStream &amp;&amp; &amp;stream != &amp;ioStream)
+    {
+        stream.RequestClose();
+    }
+}</code></pre>
+
+<p class="meta">From Engine/Core/TaskSystem.cpp, TaskSystem::RequestOtherStreamsClose()</p>
+
+<div class="gap">
+  <strong>What each kind of stream does with the flag is different, and one kind does not finish because of it.</strong>
+  A worker's <a href="runloop.html">RunLoop</a> tests it before every pass and leaves the loop when it is set, then drains and marks itself closed. A
+  driven stream has no loop: <a href="update.html">Update</a> sees the flag after processing posted callables and returns <code>false</code>, so it stops
+  taking work but never sets <code>isClosed</code> — that is <a href="closedrivenstream.html">CloseDrivenStream</a>'s job, and the header is explicit
+  about the consequence of forgetting it: "a stream whose closed state is never set is a stream that any correct future waiter would wait on forever"
+  (<code>Engine/Core/TaskStream.h</code>).
+</div>
+
+<div class="note">
+  <strong>Posted callables still run after the ask.</strong>
+  <a href="update.html">Update</a> pumps <code>postedTasks</code> before it tests the flag, so work posted before the close request is still executed by a
+  driven stream's next pass (<code>Engine/Core/TaskStream.cpp</code>). Work posted after the ask is queued and reaches a driven stream only if a pump runs
+  — which is why the shutdown reports <a href="haspostedtasks.html">HasPostedTasks</a> rather than assuming the queue is empty.
+</div>
+
+<div class="gap">
+  <strong>The release store carries nothing, and <code>notify_all</code> does not make the close immediate.</strong>
+  <a href="waitforwork.html">WaitForWork</a> has no predicate, so a wake-up only ends the sleep; the worker still has to run a pass that re-reads the flag
+  before it leaves. And nothing here drains: the ask starts the close, and
+  <a href="drainforshutdown.html">DrainForShutdown</a> is what runs the remaining work — with a deadline, after which the rest is reported abandoned
+  (<code>Engine/Core/TaskStream.h</code>).
+</div>
+
+<div class="gap">
+  <strong>The engine asks twice of the two driven streams, and the second ask is dead weight.</strong>
+  <a href="closedrivenstream.html">CloseDrivenStream</a> calls this itself as its first act, and <code>TaskSystem::JoinAndClear</code> then calls
+  <code>RequestClose()</code> on the IO stream and the base stream again after closing them
+  (<code>Engine/Core/TaskSystem.cpp</code>). Storing <code>true</code> twice is harmless — there is no counter and no edge to miss — but the ordering it
+  appears to express is already fixed by the close call above it.
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<p>None. There is no reason string, no drain timeout, and no way to withdraw the request.</p>
+
+<h2 id="return">Return value</h2>
+
+<p><code>void</code>. Nothing reports whether the stream was already closed or already asked; read <a href="iscloserequested.html">IsCloseRequested</a> and <a href="isclosed.html">IsClosed</a>.</p>
+
+<h2 id="example">Examples</h2>
+
+<p class="meta">From Engine/Core/TaskStream.cpp, TaskStream::CloseDrivenStream()</p>
+
+<pre><code>RequestClose();
+
+if (isClosed.exchange(true, std::memory_order_acq_rel))
+{
+    return;
+}</code></pre>
+
+<p>
+  The driven-stream path, where the ask and the closed mark happen in one call because there is no thread to do either afterwards
+  (<a href="closedrivenstream.html">CloseDrivenStream</a>, <code>Engine/Core/TaskStream.cpp</code>).
+</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; TaskStream</a></span>
+  <span><a href="index.html#methods">All TaskStream methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

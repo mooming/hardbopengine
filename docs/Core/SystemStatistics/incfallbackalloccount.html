@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SystemStatistics::IncFallbackAllocCount — Core module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a class="current" href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Core</a> /
+  <a href="index.html">SystemStatistics</a> / IncFallbackAllocCount
+</p>
+
+<h1><span class="fn">IncFallbackAllocCount</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::SystemStatistics</span>
+  <span class="tag">Engine/Core/SystemStatistics.h</span>
+  Add one when a pool allocator falls back to the system - live in every build.
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>void IncFallbackAllocCount() noexcept</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  Defined in the header <code>Engine/Core/SystemStatistics.h</code>. Adds one to <code>fallbackAllocCount</code> with
+  <code>fetch_add(1, std::memory_order_relaxed)</code>. Counts the moment a pool allocator has to go outside its pools — a new bank, which means a system allocation. Two call sites, both compiled in every configuration: this one and the same statement in <code>ThreadSafeMultiPoolAllocator</code> (<code>Engine/Memory/ThreadSafeMultiPoolAllocator.cpp</code>).
+</p>
+
+<div class="note">
+  <strong>Live, unlike everything else on this page — and the last line of the report.</strong>
+  This is one of only two counters the engine actually fills, and <a href="print.html">Print</a> gives it the final figure before the closing banner. A
+  non-zero value is a real signal: it says a pool ran short and the allocator fell back to the system, which is the event a memory review wants counted
+  (<code>Engine/Core/SystemStatistics.cpp</code>, <code>Engine/Memory/MultiPoolAllocator.cpp</code>).
+</div>
+
+<div class="note">
+  <strong>Called from the allocation path, so it is on the hot path's books.</strong>
+  One relaxed atomic add per fallback — negligible against the bank creation that follows it, which computes a block size and takes allocator locks
+  (<code>Engine/Memory/MultiPoolAllocator.cpp</code>). Both allocators, plain and thread-safe, raise the same counter on the same class of event, so the number
+  is per-engine rather than per-allocator.
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<p>None.</p>
+
+<h2 id="return">Return value</h2>
+
+<p><code>void</code>. The count is not returned; the only reader is <a href="print.html">Print</a>.</p>
+
+<h2 id="example">Examples</h2>
+
+<pre><code>void* MultiPoolAllocator::NewBankAllocate(size_t size)
+{
+    auto&amp; engine = Engine::Get();
+    auto&amp; statistics = engine.GetStatistics();
+    statistics.IncFallbackAllocCount();</code></pre>
+
+<p class="meta">From Engine/Memory/MultiPoolAllocator.cpp, MultiPoolAllocator::NewBankAllocate()</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; SystemStatistics</a></span>
+  <span><a href="index.html#methods">All SystemStatistics methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

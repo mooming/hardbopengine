@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TaskStream::GetStreamIndex — Core module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a class="current" href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Core</a> /
+  <a href="index.html">TaskStream</a> / GetStreamIndex
+</p>
+
+<h1><span class="fn">GetStreamIndex</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::TaskStream</span>
+  <span class="tag">Engine/Core/TaskStream.h</span>
+  This stream's index in the task system, the value every route uses.
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>[[nodiscard]] auto GetStreamIndex() const noexcept</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  Declared and defined in the header <code>Engine/Core/TaskStream.h</code>; there is no counterpart in
+  <code>Engine/Core/TaskStream.cpp</code>. This stream's index in the task system's stream array — the value every other type routes by.
+</p>
+
+<div class="note">
+  <strong>It is a constructor argument, not an assignment the system makes, and that is what closes the routing loop.</strong>
+  <code>TaskSystem</code> constructs each stream with its own slot index and never changes it
+  (<code>Engine/Core/TaskSystem.cpp</code>, <a href="constructors.html">TaskStream</a>), so the index a stream reports is the index its tasks were offered to.
+  The type is <code>hbe::TStreamIndex</code>, which is <code>int</code> (<code>Core/TaskStreamIndex.h</code>), and
+  <code>auto</code> in the declaration deduces that.
+</div>
+
+<div class="gap">
+  <strong>A default-constructed stream reports index 0, which is the base stream's index.</strong>
+  The default constructor initialises <code>streamIndex(0)</code> (<code>Engine/Core/TaskStream.cpp</code>), and <code>TaskSystem::BaseStreamIndex</code> is 0,
+  so the object that means "no stream" and the object that means "the engine's own stream" answer this question identically. The two are told apart by the name
+  (<a href="getname.html">GetName</a> is empty on the former) and by whether a task system was ever recorded
+  (<a href="start.html">Start</a>), never by the index alone.
+</div>
+
+<div class="note">
+  <strong>The index is what <a href="update.html">Update</a> publishes for the duration of a pass.</strong>
+  Each pass calls <code>TaskSystem::SetStreamIndex(streamIndex)</code> and restores the previous value on the way out, so code running inside a task can ask
+  which stream it is on — and code running on a driven thread can ask the same question while the answer belongs to whichever pass is in flight
+  (<a href="start.html">Start</a>, <code>Engine/Core/TaskStream.cpp</code>). The budget and provider paths also compare against it: the base stream is the only
+  one that runs the budget window pass (<a href="requestwindowadvance.html">RequestWindowAdvance</a>).
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<p>None.</p>
+
+<h2 id="return">Return value</h2>
+
+<table>
+  <tr><th>Type</th><th>What you get</th></tr>
+  <tr><td><code>auto</code> deducing <code>TStreamIndex</code></td><td>The stream's slot in the task system's array; 0 for a default-constructed stream, which is also the base stream's index</td></tr>
+</table>
+
+<h2 id="example">Examples</h2>
+
+<p class="meta">From Engine/Core/TaskStream.cpp, TaskStream::DrainProvidersLocked()</p>
+
+<pre><code>const TaskProduceContext context = TaskProduceContext::ForStream(streamIndex);</code></pre>
+
+<p>
+  The value the class uses most: it is the first fact a producer is told, so a provider can tell which of its attached streams is asking
+  (<a href="../TaskProduceContext/forstream.html">TaskProduceContext::ForStream</a>,
+  <a href="../TaskProvider/attachto.html">TaskProvider::AttachTo</a>).
+</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; TaskStream</a></span>
+  <span><a href="index.html#methods">All TaskStream methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SystemStatistics::GetStartTime — Core module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a class="current" href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Core</a> /
+  <a href="index.html">SystemStatistics</a> / GetStartTime
+</p>
+
+<h1><span class="fn">GetStartTime</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::SystemStatistics</span>
+  <span class="tag">Engine/Core/SystemStatistics.h</span>
+  The construction instant, and the epoch every engine log timestamp is measured from.
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>[[nodiscard]] auto GetStartTime() const noexcept</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  Defined in the header <code>Engine/Core/SystemStatistics.h</code>; nothing in <code>Engine/Core/SystemStatistics.cpp</code>. Returns <code>startTime</code> by
+  value — <code>auto</code> deducing <code>time::TTime</code>, which is a <code>std::chrono::time_point</code> over
+  <code>time::TStopWatch</code>, that is <code>std::chrono::high_resolution_clock</code> (<code>Engine/Core/Time.h</code>). The value is written once, by the
+  constructor, and never again.
+</p>
+
+<div class="note">
+  <strong>This is the one time getter with a live caller, and it is the origin of every timestamp in the engine's own log.</strong>
+</div>
+
+<pre><code>const auto diff = chrono::steady_clock::now() - statistics.GetStartTime();
+auto hours = chrono::duration_cast&lt;chrono::hours&gt;(diff);
+auto minutes = chrono::duration_cast&lt;chrono::minutes&gt;(diff);</code></pre>
+
+<p class="meta">From Engine/Engine/Engine.cpp, Engine::Log()</p>
+
+<p>
+  <code>Engine::Log</code> subtracts the start instant from the clock on every engine log line and prints the difference as
+  <code>[h:m:m.mmm]</code> (<code>Engine/Engine/Engine.cpp</code>). That subtraction only compiles because the two clock types are the same type in the standard
+  library this tree builds against — <code>high_resolution_clock</code> is an alias of <code>steady_clock</code> there; the pairing is a compile-time
+  dependency of the header's choice, and a probe of this toolchain confirms the two types are identical.
+</p>
+
+<div class="note">
+  <strong>It is a copy of a time point, so it is safe to hold; it is not a monotonic clock you can resample.</strong>
+  The value never changes after construction, which is what makes it usable as an epoch from any thread without a lock. For "how long has this been running"
+  the class offers <a href="gettimesincestart.html">GetTimeSinceStart</a>, which is never updated and never initialized
+  (<a href="updatecurrenttime.html">UpdateCurrentTime</a>) — so elapsed time is computed by whoever asks, from this origin.
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<p>None.</p>
+
+<h2 id="return">Return value</h2>
+
+<table>
+  <tr><th>Type</th><th>What it tells the caller</th></tr>
+  <tr><td><code>auto</code> → <code>time::TTime</code></td><td>The instant the constructor ran, by value. Stable for the life of the object, which is the life of the engine</td></tr>
+</table>
+
+<h2 id="example">Examples</h2>
+
+<pre><code>statistics.IncEngineLogCount();
+
+{
+    std::lock_guard lock(logLock);
+
+    if (levelAsValue &gt;= CPEnginePrintLogLevel.Get())
+    {
+        std::stringstream ss;
+        ss &lt;&lt; '[' &lt;&lt; intHours &lt;&lt; ':' &lt;&lt; intMins &lt;&lt; ':' &lt;&lt; intSecs &lt;&lt; '.' &lt;&lt; intMSecs &lt;&lt; "] ";</code></pre>
+
+<p class="meta">From Engine/Engine/Engine.cpp, Engine::Log()</p>
+
+<p>
+  The timestamp built from this instant, and the counter that counts the same event
+  (<a href="incenginelogcount.html">IncEngineLogCount</a>) — the two uses of this class that are actually alive in a shipping build.
+</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; SystemStatistics</a></span>
+  <span><a href="index.html#methods">All SystemStatistics methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

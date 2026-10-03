@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TaskStream::DrainForShutdown — Core module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a class="current" href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Core</a> /
+  <a href="index.html">TaskStream</a> / DrainForShutdown
+</p>
+
+<h1><span class="fn">DrainForShutdown</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::TaskStream</span>
+  <span class="tag">Engine/Core/TaskStream.h</span>
+  Run this stream's own remaining work inside a wall-clock window, then abandon what is left.
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>std::uint64_t DrainForShutdown() noexcept</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  Defined in <code>Engine/Core/TaskStream.cpp</code> as <code>TaskStream::DrainForShutdown()</code>. Run this stream's own remaining work, then stop: the
+  graceful half of closing, called by <a href="runloop.html">RunLoop</a> after its loop exits.
+</p>
+
+<pre><code>isDrainingForShutdown = true;
+const auto deadline = std::chrono::steady_clock::now() + shutdownDrainDeadline;
+
+std::uint64_t passes = 0;
+
+while (Update() &amp;&amp; std::chrono::steady_clock::now() &lt; deadline)
+{
+    ++passes;
+}
+
+isDrainingForShutdown = false;</code></pre>
+
+<p class="meta">From Engine/Core/TaskStream.cpp</p>
+
+<div class="note">
+  <strong>Provider probing is suspended for the whole drain, and the reason is that a provider has no reason to stop.</strong>
+  "Provider probing is suspended, because a provider can answer every request with another item and a drain that never ends is not a close."
+  (<code>Engine/Core/TaskStream.h</code>) The flag is read by <a href="update.html">Update</a>'s probe loop, so during the drain the stream runs what it
+  already holds and takes nothing new from its producers — while the general queue fallback stays live, since that is not provider probing
+  (<code>Engine/Core/TaskStream.cpp</code>).
+</div>
+
+<div class="gap">
+  <strong>The bound is a wall clock because a resumable task defeats any pass limit.</strong>
+  "The bound is a wall clock rather than a pass count, because a resumable task is re-added on every pass and would outrun any pass limit - a bound that
+  such work can defeat is not a bound." (<code>Engine/Core/TaskStream.h</code>) The window is <code>shutdownDrainDeadline</code>, and it differs by
+  stream: the constructor gives the base and IO streams <code>std::chrono::milliseconds::zero</code> and every worker 2000 ms
+  (<code>Engine/Core/TaskStream.cpp</code>). For the two engine streams the loop therefore runs exactly one pass — the first — and stops, by design:
+  "the IO stream's work is the log buffer, and writing a line re-posts the drain task, so draining it to emptiness is a loop that ends only at the
+  deadline - measured at over 2.6 million passes and the full window for no work but its own."
+</div>
+
+<div class="gap">
+  <strong>The returned count is not the number of passes that ran.</strong>
+  The condition is <code>Update() &amp;&amp; now &lt; deadline</code>, and <code>++passes</code> sits in the body — so the pass that ended the drain is never
+  counted, whether it ended by finding nothing or by arriving after the deadline. What the number is exactly: passes that took or dropped something
+  <em>and</em> were followed by a still-open window. A worker that ran three productive passes and then a final empty one reports
+  <code>2</code> (<code>Engine/Core/TaskStream.cpp</code>).
+</div>
+
+<div class="note">
+  <strong>Whatever is left when the deadline passes is abandoned with a notice, and the report says so in the open.</strong>
+  After the loop the drain calls <a href="abandonheldwork.html">AbandonHeldWork</a> and, if the count is non-zero, warns: "a task that cannot finish
+  inside the drain deadline is a defect in that task, and the shutdown must report it and proceed - reporting it means firing the notice as well, not only
+  naming a number." (<code>Engine/Core/TaskStream.cpp</code>) The deadline belongs to the task that overran it, not to the shutdown.
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<p>None. The window comes from <code>shutdownDrainDeadline</code>, which no public call sets — it is fixed per stream at construction.</p>
+
+<h2 id="return">Return value</h2>
+
+<table>
+  <tr><th>Type</th><th>What you get</th></tr>
+  <tr><td><code>std::uint64_t</code></td><td>Passes taken inside the window, excluding the one that ended the drain; <code>0</code> for the base and IO streams, whose window is zero. Abandoned items are reported by this call directly, not returned</td></tr>
+</table>
+
+<h2 id="example">Examples</h2>
+
+<p class="meta">From Engine/Core/TaskStream.cpp, TaskStream::RunLoop()</p>
+
+<pre><code>const auto drainPasses = DrainForShutdown();
+
+log.Out([name = name, drainPasses](auto&amp; ls)
+{ ls &lt;&lt; name.c_str() &lt;&lt; " closed after draining " &lt;&lt; drainPasses &lt;&lt; " pass(es)."; });
+
+isClosed.store(true, std::memory_order_release);</code></pre>
+
+<p>
+  The only caller: a worker's own exit path, where the drain runs before the close mark so that anything watching
+  <a href="isclosed.html">IsClosed</a> is entitled to assume the stream holds nothing it intends to run
+  (<code>Engine/Core/TaskStream.cpp</code>).
+</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; TaskStream</a></span>
+  <span><a href="index.html#methods">All TaskStream methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

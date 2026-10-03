@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TaskStream::WaitForWork — Core module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a class="current" href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Core</a> /
+  <a href="index.html">TaskStream</a> / WaitForWork
+</p>
+
+<h1><span class="fn">WaitForWork</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::TaskStream</span>
+  <span class="tag">Engine/Core/TaskStream.h</span>
+  Sleep on this stream's condition variable for at most the patience given.
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>void WaitForWork(std::chrono::milliseconds patience) noexcept</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  Defined in <code>Engine/Core/TaskStream.cpp</code> as <code>TaskStream::WaitForWork()</code>; the body is two lines.
+</p>
+
+<pre><code>std::unique_lock lock(queueLock);
+cv.wait_for(lock, patience);</code></pre>
+
+<p class="meta">From Engine/Core/TaskStream.cpp</p>
+
+<p>
+  Sleep on this stream's condition variable for at most <code>patience</code>. It takes the same lock the lanes are guarded by, releases it while
+  waiting, and reacquires it on the way out.
+</p>
+
+<div class="note">
+  <strong>There is no predicate, and the header says that is deliberate.</strong> "Separate from <code>Update</code> on purpose: a pass that found
+  nothing must not decide how long to wait, because a driver with several duties knows its own latency budget and this stream cannot."
+  (<code>Engine/Core/TaskStream.h</code>) The consequence of the missing predicate is that the wait cannot tell work from noise: it returns on any
+  notify and on a spurious wake, and it returns after <code>patience</code> even when work is sitting in a lane — the caller must look again, which
+  is exactly what <a href="runloop.html">RunLoop</a> does by looping.
+</div>
+
+<div class="gap">
+  <strong>Five things wake it, and none of them says which.</strong>
+  <a href="enqueuefifo.html">EnqueueFifo</a> and <a href="enqueuepriority.html">EnqueuePriority</a> each notify one waiter,
+  <a href="attachprovider.html">AttachProvider</a> notifies so a late provider gets asked, <a href="wakeup.html">WakeUp</a> notifies on request, and
+  <a href="requestclose.html">RequestClose</a> notifies all
+  (<code>Engine/Core/TaskStream.cpp</code>). A driver cannot use a wake as evidence of queue depth, and cannot use the elapsed time as evidence of
+  an idle period.
+</div>
+
+<div class="note">
+  <strong>The wait is on the queue lock, so a caller waiting here is out of the way of a producer taking that lock.</strong>
+  The two configuration calls are not covered: <a href="configurebudget.html">ConfigureBudget</a> and
+  <a href="configurerate.html">ConfigureRate</a> take no lock at all, which is why they carry the thread check rather than a mutex
+  (<code>Engine/Core/TaskStream.cpp</code>).
+</div>
+
+<div class="gap">
+  <strong>Nothing re-checks <code>closeRequested</code> here, so a close can cost up to one patience interval.</strong>
+  <a href="requestclose.html">RequestClose</a> notifies all waiters, which is what bounds the delay rather than the flag being part of the wait
+  condition; with the loop's 10 ms patience the stall is short, and with a driver that passes a long patience it is not
+  (<code>Engine/Core/TaskStream.cpp</code>).
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<table>
+  <tr><th>Parameter</th><th>Type</th><th>Requirement</th></tr>
+  <tr><td><code>patience</code></td><td><code>std::chrono::milliseconds</code></td><td>The ceiling on this one sleep, not a promise about work. The worker loop passes 10 ms; the logger's IO driver passes 20 ms</td></tr>
+</table>
+
+<h2 id="return">Return value</h2>
+
+<p><code>void</code>. Nothing reports whether it woke early or expired, and nothing reports whether a lane has work — the caller re-reads the lanes by calling <a href="update.html">Update</a>.</p>
+
+<h2 id="example">Examples</h2>
+
+<p class="meta">From Engine/Log/Logger.cpp, Logger::DriverLoop()</p>
+
+<pre><code>if (stream != nullptr)
+{
+    stream-&gt;WaitForWork(std::chrono::milliseconds(20));
+}</code></pre>
+
+<p>
+  The IO stream's driver: the logger's own thread pumps the stream it exists to feed — one <code>Update()</code> per turn, then a wait here — and the
+  stream has no thread of its own (<code>Engine/Log/Logger.cpp</code>). This is the call site that makes the IO stream's ride-on-thread arrangement real — the stream has no thread
+  of its own, and the thread that drives it is the one that needs the log flushed
+  (<a href="start.html">Start</a>).
+</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; TaskStream</a></span>
+  <span><a href="index.html#methods">All TaskStream methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CommandLineArguments::Print — Core module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a class="current" href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Core</a> /
+  <a href="index.html">CommandLineArguments</a> / Print
+</p>
+
+<h1><span class="fn">Print</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::CommandLineArguments</span>
+  <span class="tag">Engine/Core/CommandLineArguments.h</span>
+  Path, filename, count and one line per argument, straight to std::cout.
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>void Print()</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  Defined in <code>Engine/Core/CommandLineArguments.cpp</code>; declared without <code>noexcept</code> in the header. Writes a banner, the executable path, the
+  executable filename, an argument count, and one line per stored argument — to <code>std::cout</code>, not to the logger, which makes this one of the few
+  places in the engine that writes standard output directly.
+</p>
+
+<div class="gap">
+  <strong>Given the state the rest of the class can reach, the output is a fixed five-line block ending in an empty list.</strong>
+  <a href="parse.html">Parse</a> never fills the fields this prints, so "Path:" and "Executable Filename:" print empty strings and "Number of Arguments = 0"
+  is always true (<code>Engine/Core/CommandLineArguments.cpp</code>):
+</div>
+
+<pre><code>cout &lt;&lt; "## Command Line Arguments" &lt;&lt; endl;
+cout &lt;&lt; "# Path: " &lt;&lt; executablePath &lt;&lt; endl;
+cout &lt;&lt; "# Executable Filename: " &lt;&lt; executableFilename &lt;&lt; endl;
+cout &lt;&lt; "# Number of Arguments = " &lt;&lt; arguments.Size() &lt;&lt; endl;</code></pre>
+
+<p class="meta">From Engine/Core/CommandLineArguments.cpp, CommandLineArguments::Print()</p>
+
+<p>
+  Nothing here is wrong except the input: the fields exist, the printing is written, and the step that would populate them is missing. The class also has no
+  caller (<a href="constructors.html">the constructor page</a>), so in the tree as it stands this function has never been reachable.
+</p>
+
+<div class="note">
+  <strong>Standard output, unbuffered by any log level, and a method that can throw.</strong>
+  The output goes through <code>std::cout</code> with <code>using namespace std;</code> scoped inside the function
+  (<code>Engine/Core/CommandLineArguments.cpp</code>), so it bypasses the logger's categories, levels and IO stream entirely
+  (<a href="../../Log/index.html">the log module</a>) — it cannot be filtered, redirected to the IO stream, or suppressed by configuration, and it interleaves
+  with whatever else writes standard output. The declaration carries no <code>noexcept</code>, unlike
+  <a href="getarguments.html">GetArguments</a>, which is honest: stream insertion can throw.
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<p>None.</p>
+
+<h2 id="return">Return value</h2>
+
+<p><code>void</code>. Output is the effect; there is no way to obtain the same text as a string, and no indication of failure if the stream is unwritable.</p>
+
+<h2 id="example">Examples</h2>
+
+<p>
+  No call site exists in <code>Engine/</code> or <code>Applications/</code>, so the example is the function's own body above. For comparison, the engine's
+  end-of-run dumps go through the logger — <a href="../SystemStatistics/print.html">SystemStatistics::Print</a> is the sibling that made the opposite choice and
+  is the one that appears in a log file (<code>Engine/Core/SystemStatistics.cpp</code>).
+</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; CommandLineArguments</a></span>
+  <span><a href="index.html#methods">All CommandLineArguments methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

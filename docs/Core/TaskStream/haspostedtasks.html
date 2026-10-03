@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TaskStream::HasPostedTasks — Core module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a class="current" href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Core</a> /
+  <a href="index.html">TaskStream</a> / HasPostedTasks
+</p>
+
+<h1><span class="fn">HasPostedTasks</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::TaskStream</span>
+  <span class="tag">Engine/Core/TaskStream.h</span>
+  Whether a callable is waiting for this stream's driver.
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>[[nodiscard]] bool HasPostedTasks() const noexcept</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  Defined in <code>Engine/Core/TaskStream.cpp</code> as <code>TaskStream::HasPostedTasks()</code>; the body is one call,
+  <code>postedTasks.HasPendingTasks()</code> (<a href="../MainThreadTaskQueue/haspendingtasks.html">MainThreadTaskQueue::HasPendingTasks</a>). Whether any
+  callable is waiting to be run by this stream's driver.
+</p>
+
+<div class="gap">
+  <strong>The header bounds what a "no" is worth, and the bound is about the poster rather than the queue.</strong>
+  "A snapshot across another thread's queue: a false answer of 'none' is only sound once the poster has stopped."
+  (<code>Engine/Core/TaskStream.h</code>) This is the read that a shutdown uses to decide whether work remains, and a shutdown can only trust it after the
+  code that posts has finished posting — which is why the engine's shutdown checks it in the same breath as the lane depths rather than on its own
+  (<code>Engine/Core/TaskSystem.cpp</code>).
+</div>
+
+<pre><code>while (std::chrono::steady_clock::now() &lt; pumpDeadline &amp;&amp;
+       (!AreUserStreamsClosed() || baseStream.HasPostedTasks() || baseStream.CountPendingItems() &gt; 0))
+{
+    baseStream.Update();
+    std::this_thread::sleep_for(std::chrono::milliseconds(1));
+}</code></pre>
+
+<p class="meta">From Engine/Core/TaskSystem.cpp, TaskSystem::JoinAndClear()</p>
+
+<p>
+  The condition keeps pumping the base stream while any of the three sources still holds work: a user stream not closed, a posted callable unwritten, a lane
+  item untaken. Read as a stop condition, this accessor is "the main thread still owes somebody a callback".
+</p>
+
+<div class="note">
+  <strong>A "yes" is stale the moment it is read, and that direction is the harmless one.</strong>
+  A true answer only says at least one callable existed an instant ago; the pump that follows will run it, or find it already run by
+  <a href="update.html">Update</a> (<code>Engine/Core/TaskStream.cpp</code>). A false answer is the one that can end a shutdown too early, so the engine's
+  loop tests it once more after the loop before reporting: the abandoned-posted-work check that follows this same call is what catches work left behind by a
+  deadline that expired (<code>Engine/Core/TaskSystem.cpp</code>).
+</div>
+
+<div class="note">
+  <strong>It is a const method on a queue that is not const inside.</strong>
+  The pending count is read under the queue's own lock by the container
+  (<a href="../MainThreadTaskQueue/haspendingtasks.html">HasPendingTasks</a>), so this is one of the few reads of posted state that is
+  synchronised (<code>Engine/Core/MainThreadTaskQueue.h</code>) — unlike <a href="countpendingitems.html">CountPendingItems</a>, which reads the lane
+  containers with no lock at all.
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<p>None.</p>
+
+<h2 id="return">Return value</h2>
+
+<table>
+  <tr><th>Type</th><th>What you get</th></tr>
+  <tr><td><code>bool</code></td><td><code>true</code> if a callable was waiting at the instant of the read; <code>false</code> is only a conclusion about the whole system once no poster can post any more</td></tr>
+</table>
+
+<h2 id="example">Examples</h2>
+
+<p class="meta">From Engine/Core/TaskSystem.cpp, TaskSystem::JoinAndClear()</p>
+
+<pre><code>const bool hasAbandonedPostedWork = baseStream.HasPostedTasks();</code></pre>
+
+<p>
+  Taken after the pump loop, so a true answer here means the shutdown's window closed with callbacks still queued — the report that says work was cancelled
+  rather than run (<code>Engine/Core/TaskSystem.cpp</code>).
+</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; TaskStream</a></span>
+  <span><a href="index.html#methods">All TaskStream methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

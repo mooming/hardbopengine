@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ComponentSystem — Core module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a class="current" href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This class</h3>
+  <ul>
+    <li><a href="#description">Class description</a></li>
+    <li><a href="#template">Template parameters</a></li>
+    <li><a href="#properties">Class properties</a></li>
+    <li><a href="#methods">Class methods</a></li>
+    <li><a href="#non-member">Non-member helper functions</a></li>
+    <li><a href="#coverage">Coverage</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Core</a> /
+  ComponentSystem
+</p>
+
+<h1>ComponentSystem</h1>
+<p class="subtitle">
+  <span class="tag">Engine/Core/ComponentSystem.h</span>
+  A value-owning pump that drives components of one type through the Component lifecycle, in three phases per call.
+</p>
+
+<h2 id="description">Class description</h2>
+
+<p>
+  <code>template &lt;typename TComponent&gt; class ComponentSystem</code> at <code>Engine/Core/ComponentSystem.h</code>: a value-owning pump that drives
+  components of one concrete type through the <a href="../Component/index.html">Component</a> lifecycle. It holds five lists and one name, and its public
+  surface is three functions — <a href="update.html">Update</a>, <a href="getname.html">GetName</a> and
+  <a href="operator-bool.html">the conversion to <code>bool</code></a> — plus <code>Create</code>, which has no page of its own
+  (<a href="#coverage">Coverage</a>).
+</p>
+
+<div class="note">
+  <strong>The lists <em>are</em> the state machine, and a component's position among them is the only thing the system remembers about it.</strong>
+  The transition function is a switch on the state, and the cases differ only in which list they push onto:
+</div>
+
+<table>
+  <tr><th>List</th><th>Written by</th><th>Read by</th></tr>
+  <tr><td><code>initList</code></td><td><code>Create</code>, which also sets <code>BORN</code></td><td><a href="processinit.html">ProcessInit</a>, which consumes the whole list and clears it</td></tr>
+  <tr><td><code>updateList</code></td><td><a href="processinit.html">ProcessInit</a> and the <code>ALIVE</code> case of <a href="processtransition.html">ProcessTransition</a></td><td><a href="processupdate.html">ProcessUpdate</a>, every pass</td></tr>
+  <tr><td><code>swapUpdateList</code></td><td><a href="processupdate.html">ProcessUpdate</a> only, then swapped with the update list and cleared</td><td>nothing — it is scratch capacity kept between passes</td></tr>
+  <tr><td><code>sleepList</code></td><td>the <code>SLEEP</code> case of <a href="processtransition.html">ProcessTransition</a></td><td>nothing, except the emptiness test in <a href="operator-bool.html">the conversion to <code>bool</code></a></td></tr>
+  <tr><td><code>transitionList</code></td><td><a href="processupdate.html">ProcessUpdate</a>, for anything that stopped being enabled</td><td><a href="processtransition.html">ProcessTransition</a>, which consumes and clears it</td></tr>
+</table>
+
+<p>
+  Because every list is emptied by the phase that reads it, the state at the end of a pass is: init empty, update holding the live components, sleep holding
+  the parked ones, transition empty, swap empty (<code>Engine/Core/ComponentSystem.h</code>).
+</p>
+
+<div class="gap">
+  <strong>The sleep list is a dead end, and the two halves of the class combine into a livelock because of it.</strong>
+  Nothing moves a component out of <code>sleepList</code>: <a href="processinit.html">ProcessInit</a>,
+  <a href="processupdate.html">ProcessUpdate</a> and <a href="processtransition.html">ProcessTransition</a> each walk a different list, and the sleep list is
+  only ever pushed to. So <a href="../Component/setenable.html">SetEnable(false)</a> is permanent — the component never sees another callback, and
+  <a href="../Component/release.html">Release</a> is never called for it — while
+  <a href="operator-bool.html">the conversion to <code>bool</code></a> counts that same list, so the driver the class invites,
+  <code>while (system) { system.Update(dt); }</code>, keeps calling <a href="update.html">Update</a> on a system where all three phases do nothing. The one
+  driver in the repository avoids this only because none of its components ever sleeps: each counts updates and then calls
+  <a href="../Component/destroy.html">Destroy</a> (<code>Engine/Core/ComponentSystem.cpp</code>).
+</div>
+
+<div class="gap">
+  <strong>Every component is moved at least once per pass, and the moved-from shell is destroyed in the same function.</strong>
+  <a href="processupdate.html">ProcessUpdate</a> moves every entry into the scratch list, swaps the lists, and clears the scratch — so a subclass destructor runs
+  on a shell every pass, and an address is worthless once a pass ends
+  (<code>Engine/Core/ComponentSystem.h</code>). The lists are <a href="../../HSTL/HVector/index.html"><code>HVector</code></a>s — a
+  <code>std::vector</code> on the engine's allocator (<code>Engine/HSTL/HVector.h</code>) — so growth moves them again. A component that wants to act on being
+  destroyed rather than moved must detect it itself; the repository's component carries an <code>isValid</code> flag set to <code>false</code> by its move
+  constructor for exactly that reason (<code>Engine/Core/ComponentSystem.cpp</code>).
+</div>
+
+<div class="gap">
+  <strong>Nothing in the engine uses this class, and the only instantiation is a unit test.</strong>
+  The sole <code>ComponentSystem</code> object in the tree is <code>ComponentSystem&lt;Test&gt;</code> inside the <code>#ifdef __UNIT_TEST__</code> region of
+  <code>Engine/Core/ComponentSystem.cpp</code>, where <code>Test</code> is a local struct deriving from <a href="../Component/index.html">Component</a> and
+  asserting the state it sees at each of the five callbacks. No subsystem in <code>Engine/</code> outside these two headers, and nothing in
+  <code>Applications/</code>, owns a component system — so everything stated here comes from the header's own code plus the behavior that test pins down.
+</div>
+
+<h2 id="template">Template parameters</h2>
+
+<table>
+  <tr><th>Parameter</th><th>Requirement the code imposes</th></tr>
+  <tr>
+    <td><code>typename TComponent</code></td>
+    <td>
+      A concrete component type, stored by value — not a pointer and not the <a href="../Component/index.html">Component</a> base, which is abstract and cannot
+      be held in a vector. Four things the class does to it narrow the requirement: <code>Create</code> constructs it from whatever arguments the caller passes;
+      the three <code>Process*</code> functions call the five lifecycle methods on it; the phases move it, so it must be
+      move-constructible — which a subclass must declare itself, because the base's user-declared destructor suppresses its implicit move operations
+      (<a href="../Component/constructors.html">Component::Component</a>); and the swap-and-clear in <a href="processupdate.html">ProcessUpdate</a> destroys a
+      moved-from object every pass, so its destructor must tolerate being a shell
+    </td>
+  </tr>
+</table>
+
+<h2 id="properties">Class properties</h2>
+
+<table>
+  <tr><th>Type + Name</th><th>Default Value</th><th>Description</th></tr>
+  <tr><td><code>using TCompoList = hbe::HVector&lt;TComponent&gt;;</code> <span class="badge">private</span> <span class="badge">member type</span></td><td><span class="muted">not applicable</span></td><td>All five lists: a <code>std::vector</code> on the engine's allocator (<a href="../../HSTL/HVector/index.html">HVector</a>), so components are stored inline and moved on reallocation</td></tr>
+  <tr><td><code>String name;</code> <span class="badge">private</span></td><td>set from the constructor's argument</td><td>The system's label, returned as a C string by <a href="getname.html">GetName</a> and read by nothing else in the class</td></tr>
+  <tr><td><code>TCompoList initList;</code> <span class="badge">private</span></td><td><span class="muted">empty</span></td><td>Components created but not yet started; <code>Create</code> appends here and sets <code>BORN</code></td></tr>
+  <tr><td><code>TCompoList updateList;</code> <span class="badge">private</span></td><td><span class="muted">empty</span></td><td>The running set — everything ticked by <a href="processupdate.html">ProcessUpdate</a> this pass</td></tr>
+  <tr><td><code>TCompoList swapUpdateList;</code> <span class="badge">private</span></td><td><span class="muted">empty</span></td><td>Scratch for the swap dance, kept as a member so its capacity survives between passes; must be empty when <a href="processupdate.html">ProcessUpdate</a> starts</td></tr>
+  <tr><td><code>TCompoList sleepList;</code> <span class="badge">private</span></td><td><span class="muted">empty</span></td><td>Disabled components, parked here for good; only its emptiness is ever tested, by <a href="operator-bool.html">the conversion to <code>bool</code></a></td></tr>
+  <tr><td><code>TCompoList transitionList;</code> <span class="badge">private</span></td><td><span class="muted">empty</span></td><td>Components found not enabled at the end of their update, waiting for the switch in <a href="processtransition.html">ProcessTransition</a> to decide their fate</td></tr>
+</table>
+
+<h2 id="methods">Class methods</h2>
+
+<table class="methods">
+  <tr><th>Name</th><th>Signature</th><th>What a caller depends on</th></tr>
+  <tr><td><a href="constructors.html"><code>ComponentSystem</code></a></td><td class="sig">ComponentSystem(const char* name)</td><td>The only constructor, not <code>explicit</code>; names the system, leaves every list empty, so the new system converts to <code>false</code>.</td></tr>
+  <tr><td><code>Create</code><span class="badge">variadic template</span></td><td class="sig">template &lt;typename... Types&gt; TComponent&amp; Create(Types&amp;&amp;... args)</td><td>Public, and without a page of its own (<a href="#coverage">Coverage</a>): constructs in place on the init list, sets <code>BORN</code>, returns a reference that the next pass invalidates.</td></tr>
+  <tr><td><a href="update.html"><code>Update</code></a></td><td class="sig">void Update(const float deltaTime)</td><td>The pump, in three fixed phases; a created component is initialised, enabled, ticked and possibly destroyed inside this one call.</td></tr>
+  <tr><td><a href="processinit.html"><code>ProcessInit</code></a></td><td class="sig">void ProcessInit()</td><td>Private: <code>Init</code>, then <code>ALIVE</code>, then <code>OnEnable</code>, per waiting component, with no cap on how many start in one pass.</td></tr>
+  <tr><td><a href="processupdate.html"><code>ProcessUpdate</code></a></td><td class="sig">void ProcessUpdate(const float deltaTime)</td><td>Private: tick, then sort by <code>IsEnabled</code>, then swap and clear — the function that moves every component every pass.</td></tr>
+  <tr><td><a href="processtransition.html"><code>ProcessTransition</code></a></td><td class="sig">void ProcessTransition()</td><td>Private: the switch that re-enables, parks or destroys; its default case is an assert that exists only in Debug builds.</td></tr>
+  <tr><td><a href="getname.html"><code>GetName</code></a></td><td class="sig">[[nodiscard]] inline const char* GetName() const noexcept</td><td>A pointer into the system's own string; valid while the system lives, read by nothing in the engine.</td></tr>
+  <tr><td><a href="operator-bool.html"><code>operator bool</code></a></td><td class="sig">[[nodiscard]] explicit operator bool() const noexcept</td><td>Init, update or sleep list non-empty; a system holding only sleeping components answers <code>true</code> and can do nothing.</td></tr>
+</table>
+
+<h2 id="non-member">Non-member helper functions</h2>
+
+<p>
+  None. <code>Engine/Core/ComponentSystem.cpp</code> defines no helper and no out-of-line member — since the class is a template, everything about it must live
+  in the header. What the source file does contain, inside <code>#ifdef __UNIT_TEST__</code>, is <code>ComponentSystemTest::Prepare</code>, the suite entry that
+  builds the only component system in the engine and measures it; the class is declared in the same header, also under
+  <code>#ifdef __UNIT_TEST__</code>, and belongs to the test module rather than to this one.
+</p>
+
+<h2 id="coverage">Coverage</h2>
+
+<table>
+  <tr><th>Not documented here</th><th>Why</th></tr>
+  <tr>
+    <td><code>Create</code></td>
+    <td>It is a public member and it deserves a page; this page states what the declaration and body commit to — in-place construction on the init list, the
+      state set to <code>BORN</code>, and a returned reference into a vector that the next pass moves — so a caller is not left without the contract. It is named
+      and linked from <a href="constructors.html">the constructor page</a> and <a href="processinit.html">ProcessInit</a>. Declared here as an omission rather than
+      left silent, because nothing in this session's scope assigned it a page</td>
+  </tr>
+  <tr>
+    <td>A lock, or any statement that the class is thread-safe</td>
+    <td>The class has no mutex, no atomic and no assertion about the calling thread. The pattern the sources show is single-threaded — one caller enters
+      <a href="update.html">Update</a> and all five lists are touched inside it — but no header states that as a rule, and a promise here would be an invention.
+      What can be stated is on <a href="update.html">Update</a>: nothing guards a concurrent call</td>
+  </tr>
+  <tr>
+    <td>Reallocation and allocator behavior of the lists</td>
+    <td>Owned by <a href="../../HSTL/HVector/index.html">HVector</a> and the allocator module. This page notes the two consequences that reach a component
+      author — addresses change, and moved-from shells are destroyed — and leaves the growth policy to the container's own documentation</td>
+  </tr>
+  <tr>
+    <td>Any way to observe the system from outside</td>
+    <td>There is none to document: no accessor exposes a list's size or contents, no callback reports a component's birth or death, and
+      <a href="operator-bool.html">the conversion to <code>bool</code></a> is the only question a caller can ask. A caller that needs counts has to keep them
+      itself, and nothing in the tree does</td>
+  </tr>
+  <tr>
+    <td><code>ComponentSystemTest</code></td>
+    <td>A <code>TestCollection</code> subclass declared under <code>#ifdef __UNIT_TEST__</code> in this header and defined in the source file; it is the suite
+      entry point, not part of this class's interface. Its content is quoted throughout the method pages as the only executable evidence of the lifecycle's
+      behavior</td>
+  </tr>
+</table>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; ComponentSystem</a></span>
+  <span><a href="index.html#methods">All ComponentSystem methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

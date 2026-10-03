@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ComponentSystem::ProcessInit — Core module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a class="current" href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Core</a> /
+  <a href="index.html">ComponentSystem</a> / ProcessInit
+</p>
+
+<h1><span class="fn">ProcessInit</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::ComponentSystem</span>
+  <span class="tag">Engine/Core/ComponentSystem.h</span>
+  Private: start every waiting component - Init, ALIVE, OnEnable, onto the update list.
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>void ProcessInit()</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  Private, defined in the header <code>Engine/Core/ComponentSystem.h</code>; reached only from the first phase of <a href="update.html">Update</a>. It consumes
+  the init list in one go: for each component waiting there, it calls <a href="../Component/init.html">Init</a>, sets the state to <code>ALIVE</code>, calls
+  <a href="../Component/onenable.html">OnEnable</a>, and moves the component onto the update list. Then the init list is cleared.
+</p>
+
+<div class="note">
+  <strong>This is where the lifecycle's ordering promises are actually made.</strong>
+  A component's <a href="../Component/init.html">Init</a> is the only callback it ever sees with the state <code>BORN</code>, because the state is written
+  after <code>Init</code> returns and before <a href="../Component/onenable.html">OnEnable</a> is called
+  (<code>Engine/Core/ComponentSystem.h</code>). The repository's subclass depends on exactly that, at every callback entry, and its destructor fails the test if
+  any of the four callbacks was missed (<code>Engine/Core/ComponentSystem.cpp</code>).
+</div>
+
+<div class="gap">
+  <strong>Everything in the init list is started in the pass that reaches this, with no budget and no limit.</strong>
+  The loop has no cap, so a system given ten thousand components by <code>Create</code> calls ten thousand <a href="../Component/init.html">Init</a> bodies —
+  on the calling thread, inside the same call that then updates every one of them and runs the transitions
+  (<a href="update.html">Update</a>). The test does this with 4096&#215;5 components in non-Debug builds
+  (<code>Engine/Core/ComponentSystem.cpp</code>), so the behavior is measured rather than hypothetical: a system's hitch at first pump is proportional to how
+  much was created since the last pump.
+</div>
+
+<div class="note">
+  <strong>The components leave this function at a different address than they entered it.</strong>
+  They are moved onto the update list, and the vector they came from is cleared, so a reference handed out by <code>Create</code> is dead by the time
+  <a href="update.html">Update</a> returns — and the update list itself reallocates as it grows, since it is an
+  <a href="../../HSTL/HVector/index.html"><code>HVector</code></a>, that is, a <code>std::vector</code> on the engine's allocator
+  (<code>Engine/HSTL/HVector.h</code>). A component's own address must never be the way it is found again
+  (<a href="../Component/update.html">Component::Update</a>).
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<p>None.</p>
+
+<h2 id="return">Return value</h2>
+
+<p><code>void</code>. No count of what was started; a caller that wants to know whether the init list had anything in it must ask before the call, since this leaves the list empty whatever happened.</p>
+
+<h2 id="example">Examples</h2>
+
+<pre><code>for (auto&amp; compo : initList)
+{
+    compo.Init();
+    compo.SetState(ComponentState::ALIVE);
+    compo.OnEnable();
+    updateList.push_back(std::move(compo));
+}
+
+initList.clear();</code></pre>
+
+<p class="meta">From Engine/Core/ComponentSystem.h, ComponentSystem::ProcessInit()</p>
+
+<p>
+  The three statements in their only order. Note that the component is moved into the update list and then the source list is cleared — the objects in the init
+  list are moved-from shells at the end of this function, which is what the <code>isValid</code> flag in the test's destructor exists to survive
+  (<code>Engine/Core/ComponentSystem.cpp</code>).
+</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; ComponentSystem</a></span>
+  <span><a href="index.html#methods">All ComponentSystem methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

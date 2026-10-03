@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TaskStream::GetAccumulatedCPUTime — Core module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a class="current" href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Core</a> /
+  <a href="index.html">TaskStream</a> / GetAccumulatedCPUTime
+</p>
+
+<h1><span class="fn">GetAccumulatedCPUTime</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::TaskStream</span>
+  <span class="tag">Engine/Core/TaskStream.h</span>
+  CPU time this stream has charged to its budget in the current window.
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>[[nodiscard]] std::chrono::nanoseconds GetAccumulatedCPUTime() const noexcept</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  Defined in <code>Engine/Core/TaskStream.cpp</code> as <code>TaskStream::GetAccumulatedCPUTime()</code>; the body is one call,
+  <code>budget.GetAccumulated()</code> (<a href="../CPUBudget/getaccumulated.html">CPUBudget::GetAccumulated</a>). The CPU time this stream has
+  charged to its budget since the window last reopened.
+</p>
+
+<div class="note">
+  <strong>Zero usually means nothing was being measured, not that work was free.</strong>
+  "A stream with no allowance does not measure its tasks at all. A measurement that cannot change a decision is a syscall billed to every task for
+  nothing, and an unlimited budget cannot change a decision. Consequently GetAccumulatedCPUTime stays zero until an allowance is set - that is the
+  absence of accounting, not a task that cost nothing." (<code>Engine/Core/TaskStream.h</code>) The gate is one boolean in the pass —
+  <code>budget.GetAllowance().count() &gt; 0.0</code> — around <code>BeginTask</code> and <code>EndTask</code>
+  (<a href="update.html">Update</a>, <a href="configurebudget.html">ConfigureBudget</a>). One application sets an allowance — the engine-test
+  application gives the base stream a one-millisecond window — so on every other stream in every run this reads zero whether or not tasks ran
+  (<a href="configurebudget.html">ConfigureBudget</a>).
+</div>
+
+<div class="gap">
+  <strong>The number is reset, so it is a window reading rather than a life total.</strong>
+  The pass that reopens the window calls <code>budget.Reset()</code>, which clears the accumulated charge
+  (<a href="requestwindowadvance.html">RequestWindowAdvance</a>, <a href="../CPUBudget/reset.html">CPUBudget::Reset</a>). A reader comparing two reads
+  has to know whether a window closed between them; the counter that never resets is
+  <a href="getdrivenpasscount.html">GetDrivenPassCount</a>, and the counters that never reset but count refusals are
+  <a href="getlaneworkrefusalcount.html">GetLaneWorkRefusalCount</a> and its siblings.
+</div>
+
+<div class="note">
+  <strong>Readable from anywhere, written by one thread, and the header states exactly what a foreign reader sees.</strong>
+  "Readable from any thread, though it is written only by the stream's own thread; reading it elsewhere sees the value as of the last task that thread
+  finished." (<code>Engine/Core/TaskStream.h</code>) A task in flight is not in the number, which is the same boundary as the overshoot rule: a running
+  task is charged when it ends (<a href="maytakenewwork.html">MayTakeNewWork</a>).
+</div>
+
+<div class="gap">
+  <strong>The field itself is not atomic.</strong>
+  <a href="../CPUBudget/index.html">CPUBudget</a> keeps its accumulated charge as a plain duration written by the owning thread
+  (<a href="../CPUBudget/endtask.html">CPUBudget::EndTask</a>), so the header's "readable from any thread" describes intent rather than a
+  synchronised read: a concurrent read while the owner is charging a task is an unsynchronised read of a plain field, and nothing in either class
+  detects it (<code>Engine/Core/TaskStream.h</code>).
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<p>None.</p>
+
+<h2 id="return">Return value</h2>
+
+<table>
+  <tr><th>Type</th><th>What you get</th></tr>
+  <tr><td><code>std::chrono::nanoseconds</code></td><td>Charged CPU time in this window, or <code>0</code> when no allowance is set. It excludes any task running right now</td></tr>
+</table>
+
+<h2 id="example">Examples</h2>
+
+<p class="meta">From Engine/Core/TaskStream.cpp, TaskStream::Update()</p>
+
+<pre><code>const auto chargedBefore = chargingBudget ? budget.GetAccumulated() : std::chrono::nanoseconds::zero();
+if (chargingBudget)
+{
+    budget.BeginTask();
+}</code></pre>
+
+<p>
+  The pass reads the same field to price a single task: after <code>EndTask()</code> it subtracts this reading from the next one and charges the
+  difference to the lane the item came from (<code>Engine/Core/TaskStream.cpp</code>). That is the only consumer of the number inside the engine.
+</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; TaskStream</a></span>
+  <span><a href="index.html#methods">All TaskStream methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

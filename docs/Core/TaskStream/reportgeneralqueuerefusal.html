@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TaskStream::ReportGeneralQueueRefusal — Core module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a class="current" href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Core</a> /
+  <a href="index.html">TaskStream</a> / ReportGeneralQueueRefusal
+</p>
+
+<h1><span class="fn">ReportGeneralQueueRefusal</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::TaskStream</span>
+  <span class="tag">Engine/Core/TaskStream.h</span>
+  Private: count a general-queue refusal and warn about the first one this stream ever refuses.
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>void ReportGeneralQueueRefusal() noexcept</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  Declared <code>private</code> in <code>Engine/Core/TaskStream.h</code>, defined in <code>Engine/Core/TaskStream.cpp</code> as
+  <code>TaskStream::ReportGeneralQueueRefusal()</code>. Count one refusal of the general queue, and warn about the first one this stream ever refuses.
+</p>
+
+<pre><code>if (generalQueueRefusals.fetch_add(1, std::memory_order_relaxed) != 0)
+{
+    return;
+}
+
+auto log = Logger::Get(name);
+log.OutWarning([name = name, allowance = budget.GetAllowance()](auto&amp; ls)
+{
+    ls &lt;&lt; name.c_str() &lt;&lt; " has spent its allowance of "
+       &lt;&lt; std::chrono::duration_cast&lt;std::chrono::microseconds&gt;(allowance).count()
+       &lt;&lt; " us and is leaving tasks in the general queue until the budget window advances again.";
+});</code></pre>
+
+<p class="meta">From Engine/Core/TaskStream.cpp</p>
+
+<div class="note">
+  <strong>The count is per refusal and the log is per stream, because a throttled stream would otherwise log every pass.</strong>
+  "A throttled stream has to be visible somewhere or it looks like an idle one, and the count alone is invisible to anyone not reading a debugger."
+  (<code>Engine/Core/TaskStream.h</code>) The increment decides the logging: the fetch returns the previous value, so only the transition from zero
+  prints. Every later refusal is silent and counted, which means the log line is a claim about the first refusal only — the allowance it names was the
+  allowance at that moment, and a stream whose allowance was later changed by <a href="requestbudget.html">RequestBudget</a> has a line that no longer
+  describes it.
+</div>
+
+<div class="gap">
+  <strong>The count cannot be un-seen, and the warning cannot be re-shown.</strong>
+  Nothing resets <code>generalQueueRefusals</code>, so in a long-running process or a test suite the log line is printed once — ever
+  (<code>Engine/Core/TaskStream.cpp</code>). A verification that wants to see the message needs a fresh stream, and a verification that wants to see the
+  throttling needs <a href="getgeneralqueuerefusalcount.html">GetGeneralQueueRefusalCount</a>, which is the half a test can assert on.
+</div>
+
+<div class="note">
+  <strong>It is the counter's write-side companion and is called from exactly one place:</strong> the fallback branch of
+  <a href="update.html">Update</a>, taken when the lanes offered nothing and the budget refused the general queue
+  (<code>Engine/Core/TaskStream.cpp</code>). It does not refuse anything — the refusal is <code>budget.CanTakeWork()</code> answering
+  <code>false</code> — and it neither drops nor requeues a task: the tasks it names stay in the general queue for another stream or the next window
+  (<a href="requestwindowadvance.html">RequestWindowAdvance</a>).
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<p>None. Everything it reports — the name, the allowance — it reads from the stream.</p>
+
+<h2 id="return">Return value</h2>
+
+<p><code>void</code>. It reports rather than decides, so there is nothing for a caller to act on; the caller has already declined the work by not calling <code>TaskSystem::Dequeue</code>.</p>
+
+<h2 id="example">Examples</h2>
+
+<p class="meta">From Engine/Core/TaskStream.cpp, TaskStream::Update()</p>
+
+<pre><code>else
+{
+    ReportGeneralQueueRefusal();
+}</code></pre>
+
+<p>
+  The single call site, sitting in the <code>else</code> of the budget test that refused the dequeue
+  (<code>Engine/Core/TaskStream.cpp</code>). Because it is the <code>else</code>, a stream that never reaches the fallback never reports — the counter is a
+  record of hunger, not of effort.
+</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; TaskStream</a></span>
+  <span><a href="index.html#methods">All TaskStream methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

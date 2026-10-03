@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SystemStatistics::GetName — Core module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a class="current" href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Core</a> /
+  <a href="index.html">SystemStatistics</a> / GetName
+</p>
+
+<h1><span class="fn">GetName</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::SystemStatistics</span>
+  <span class="tag">Engine/Core/SystemStatistics.h</span>
+  A function-local static string, so the same name for every instance and valid after this object dies.
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>[[nodiscard]] const StaticString&amp; GetName() const noexcept</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  Defined in <code>Engine/Core/SystemStatistics.cpp</code>. Returns a name that is not a member: the body creates a function-local
+  <code>static StaticString name("SystemStatistics")</code> and returns a reference to it, so every instance of the class reports the same string, and the
+  string is the name of the class rather than of anything configurable.
+</p>
+
+<div class="note">
+  <strong>The static is the point, and it makes this the one accessor here that is safe to call at any time.</strong>
+  A function-local static is initialized once, by the first thread to reach it, and lives until the program ends
+  (<code>Engine/Core/SystemStatistics.cpp</code>) — so the reference stays valid after this object is destroyed, and two instances (there is only one, but the
+  reasoning holds) cannot disagree. The string is interned, which is what <code>StaticString</code> means in this engine: the name occupies a slot in the
+  static-string table rather than a buffer owned by this object.
+</div>
+
+<div class="note">
+  <strong>It exists to label the log lines this class writes, and the two printers are its only users.</strong>
+  Both <a href="print.html">Print</a> and <a href="printallocatorprofiles.html">PrintAllocatorProfiles</a> open their output with
+  <code>Logger::Get(GetName())</code>, so "SystemStatistics" is the logger category the shutdown report is filed under
+  (<code>Engine/Core/SystemStatistics.cpp</code>). No caller outside the class asks for the name.
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<p>None.</p>
+
+<h2 id="return">Return value</h2>
+
+<table>
+  <tr><th>Type</th><th>What it tells the caller</th></tr>
+  <tr><td><code>const StaticString&amp;</code></td><td>A reference to a program-lifetime static holding "SystemStatistics". Never empty, never null, and the same object for every caller — safe to keep, safe to compare by address</td></tr>
+</table>
+
+<h2 id="example">Examples</h2>
+
+<pre><code>auto log = Logger::Get(GetName());
+
+log.Out("= System Statistics ==========================");</code></pre>
+
+<p class="meta">From Engine/Core/SystemStatistics.cpp, SystemStatistics::Print()</p>
+
+<p>
+  The category is chosen once per print call, and the whole report goes out under it
+  (<code>Engine/Core/SystemStatistics.cpp</code>). <a href="printallocatorprofiles.html">PrintAllocatorProfiles</a> asks for the same name at a different level
+  (<code>ELogLevel::Verbose</code>), which is how the two reports are separated without being different categories.
+</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; SystemStatistics</a></span>
+  <span><a href="index.html#methods">All SystemStatistics methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Component::SetEnable — Core module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a class="current" href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Core</a> /
+  <a href="index.html">Component</a> / SetEnable
+</p>
+
+<h1><span class="fn">SetEnable</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::Component</span>
+  <span class="tag">Engine/Core/Component.h</span>
+  Select ALIVE or SLEEP; the callbacks and the list moves follow from the state, not from this call.
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>void SetEnable(bool isEnabled) noexcept</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  Defined in the header <code>Engine/Core/Component.h</code>. One line: <code>SetState(isEnabled ? State::ALIVE : State::SLEEP)</code>. Turning a component off
+  selects <code>SLEEP</code>, turning it on selects <code>ALIVE</code>, and neither calls <a href="onenable.html">OnEnable</a> or
+  <a href="ondisable.html">OnDisable</a> — those follow from the state, at the end of the pass
+  (<code>Engine/Core/ComponentSystem.h</code>).
+</p>
+
+<div class="note">
+  <strong>Turning a running component off takes effect at the end of its own update, and the disable callback runs in the same pass.</strong>
+  <code>ProcessUpdate</code> asks <a href="isenabled.html">IsEnabled</a> right after <a href="update.html">Update</a> returns, so a component that calls
+  <code>SetEnable(false)</code> inside its update is moved to the transition list immediately and gets its
+  <a href="ondisable.html">OnDisable</a> there, before the pass ends. It is not updated again in that pass, and it is not updated at all afterwards
+  (<code>Engine/Core/ComponentSystem.h</code>).
+</div>
+
+<div class="gap">
+  <strong>Turning a sleeping component back on does not wake it up. Nothing ever looks at the sleep list again.</strong>
+  The call writes <code>ALIVE</code>, and the answer to <a href="isenabled.html">IsEnabled</a> changes — but the component is sitting in the system's
+  <code>sleepList</code>, and no code in <code>Engine/Core/ComponentSystem.h</code> reads that list: <code>ProcessInit</code> consumes the init list,
+  <code>ProcessUpdate</code> walks the update list, <code>ProcessTransition</code> walks the transition list and clears it, and the sleep list is only ever
+  <em>pushed to</em>, in the <code>SLEEP</code> case, and tested for emptiness by the system's conversion to <code>bool</code>. So this call succeeds, reports
+  success by every question the component can ask, and the component never runs again; when the system is destroyed the component is destroyed with no
+  <a href="ondisable.html">OnDisable</a> and no <a href="release.html">Release</a>. Only a component still in the update list can be re-enabled — by setting
+  <code>ALIVE</code> during its own update, which routes it to the switch's <code>ALIVE</code> case and back onto the update list
+  (<code>Engine/Core/ComponentSystem.h</code>).
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<table>
+  <tr><th>Name</th><th>Type</th><th>Meaning</th></tr>
+  <tr><td><code>isEnabled</code></td><td><code>bool</code></td><td><code>true</code> selects <code>ALIVE</code>, <code>false</code> selects <code>SLEEP</code>. It is not a query of the previous state, and it cannot be used to toggle</td></tr>
+</table>
+
+<h2 id="return">Return value</h2>
+
+<p><code>void</code>. Nothing reports whether the callbacks will run — they are the system's decision, made from the state this writes, and the sleep-list limitation above is invisible to the caller.</p>
+
+<h2 id="example">Examples</h2>
+
+<pre><code>case ComponentState::SLEEP:
+    compo.OnDisable();
+    sleepList.push_back(std::move(compo));
+    break;</code></pre>
+
+<p class="meta">From Engine/Core/ComponentSystem.h, ComponentSystem::ProcessTransition()</p>
+
+<p>
+  Where a <code>false</code> answer ends up: one callback, then the list nothing reads. A component that needs to pause and resume should keep itself in the
+  update list and gate its own <a href="update.html">Update</a> body on its own flag, rather than using this call to park itself.
+</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; Component</a></span>
+  <span><a href="index.html#methods">All Component methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

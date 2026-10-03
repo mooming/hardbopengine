@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TaskStream::Dequeue — Core module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a class="current" href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Core</a> /
+  <a href="index.html">TaskStream</a> / Dequeue
+</p>
+
+<h1><span class="fn">Dequeue</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::TaskStream</span>
+  <span class="tag">Engine/Core/TaskStream.h</span>
+  Private helper that pops whichever lane holds work, ignoring the drain policy; declared and never called.
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>void Dequeue(std::optional&lt;WorkItem&gt;&amp; outTask)</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  Declared <code>private</code> in <code>Engine/Core/TaskStream.h</code>, defined in <code>Engine/Core/TaskStream.cpp</code> as
+  <code>TaskStream::Dequeue()</code>.
+</p>
+
+<pre><code>std::scoped_lock&lt;std::mutex&gt; lock(queueLock);
+
+if (!priorityQueue.IsEmpty())
+{
+    outTask = priorityQueue.Pop();
+    drainPolicy.CommitTake(StreamDrainPolicy::ELane::Priority);
+    return;
+}
+
+if (!fifoQueue.IsEmpty())
+{
+    outTask = fifoQueue.Front();
+    fifoQueue.PopFront();
+    drainPolicy.CommitTake(StreamDrainPolicy::ELane::Fifo);
+    return;
+}
+
+outTask.reset();</code></pre>
+
+<p class="meta">From Engine/Core/TaskStream.cpp</p>
+
+<p>
+  Pop the priority lane if it holds anything, else the FIFO lane, else clear the output. The design choice is stated where the helper was written:
+  it "serves work whenever there is any, without consulting the drain policy: the rate and the budget gate the stream's own loop, and gating here
+  would let a caller's refill stall on an exhausted allowance." (<code>Engine/Core/TaskStream.cpp</code>) It is the lane-taking half of
+  <a href="update.html">Update</a> extracted, minus the policy decision: the pass chooses a lane and takes from that lane alone, while this takes
+  from whichever lane is non-empty and always takes the priority lane first.
+</p>
+
+<div class="gap">
+  <strong>It has no caller. Not one.</strong>
+  <code>Update</code> does the same work inline under one lock and consults <code>ChooseLane</code> first
+  (<a href="update.html">Update</a>), and the only friendship that could reach a private member here is
+  <code>friend class TaskSystemTest</code>, whose tests do not call it: no line in <code>Engine/</code> or
+  <code>Applications/</code> calls this function (<code>Engine/Core/TaskStream.cpp</code>). Its comment describes a caller — "a caller's refill" —
+  that the codebase does not contain. It is compiled only because a private member function is never reported as unused, and it is the single member
+  of this class not declared <code>noexcept</code>.
+</div>
+
+<div class="gap">
+  <strong>It is not merely unused, it is not equivalent: it spends lane credit it never asked for.</strong>
+  Both branches call <code>drainPolicy.CommitTake</code>, which is the call that records a take against the lane the policy is balancing
+  (<code>StreamDrainPolicy::CommitTake</code>). A pass that took work through this helper would consume a lane's share without
+  <code>ChooseLane</code> having granted it, and would take the priority lane whenever it held anything regardless of the configured ratio — the
+  exact inversion of the reason <a href="update.html">Update</a> asks the policy first
+  (<code>Engine/Core/TaskStream.cpp</code>).
+</div>
+
+<div class="note">
+  <strong>What the helper does get right is the lock.</strong> It takes <code>queueLock</code> for the whole pop, so it is safe against a
+  concurrent producer — the guarantee that makes it look finished. The defect is not its body but its place: the class already has a correct lane
+  take inside the pass, and this is a second copy of the mechanism with a different policy
+  (<code>Engine/Core/TaskStream.cpp</code>).
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<table>
+  <tr><th>Parameter</th><th>Type</th><th>Requirement</th></tr>
+  <tr><td><code>outTask</code></td><td><code>std::optional&lt;WorkItem&gt;&amp;</code></td><td>Written on every path: assigned the item taken, or cleared to <code>nullopt</code>. It is never left untouched, so a caller need not clear it first</td></tr>
+</table>
+
+<h2 id="return">Return value</h2>
+
+<p><code>void</code> — the outcome arrives in <code>outTask</code>. It is not <code>noexcept</code>, although both queue pops and <code>CommitTake</code> are the same calls the <code>noexcept</code> pass makes.</p>
+
+<h2 id="example">Examples</h2>
+
+<p class="note">Illustrative — no call site for this exists in the repository, and none can be written outside the class or its friend.</p>
+
+<pre><code>std::optional&lt;WorkItem&gt; item;
+Dequeue(item);
+
+if (item.has_value())
+{
+    ...
+}</code></pre>
+
+<p>
+  The shape is the one <a href="update.html">Update</a> uses for the general queue, which is the call this helper most resembles — and that one is
+  gated by <code>budget.CanTakeWork()</code>, which this helper is explicitly written not to be
+  (<code>Engine/Core/TaskStream.cpp</code>).
+</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; TaskStream</a></span>
+  <span><a href="index.html#methods">All TaskStream methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

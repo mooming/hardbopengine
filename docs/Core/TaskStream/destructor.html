@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TaskStream::~TaskStream — Core module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a class="current" href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Core</a> /
+  <a href="index.html">TaskStream</a> / ~TaskStream
+</p>
+
+<h1><span class="fn">~TaskStream</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::TaskStream</span>
+  <span class="tag">Engine/Core/TaskStream.h</span>
+  Defaulted: members die, work held in the lanes goes with them, and nothing is said.
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>~TaskStream() = default</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  Declared <code>= default</code> in the public section of <code>Engine/Core/TaskStream.h</code>. It has no body to read: members are destroyed in reverse
+  declaration order, and nothing else happens — no drain, no abandonment, no notice, no join, and no assert.
+</p>
+
+<div class="gap">
+  <strong>Destroying a stream whose worker thread is still joinable ends the process.</strong>
+  <code>std::thread</code>'s own destructor calls <code>std::terminate</code> when the thread is joinable, and <code>thread</code> is declared after
+  <code>queueLock</code> and <code>cv</code>, so it is destroyed before them and while they are still intact to be raced
+  (<code>Engine/Core/TaskStream.h</code>). The class offers no guard against that; the shutdown offers two, and one of them is Debug-only:
+</div>
+
+<pre><code>Assert(stream.IsClosed(), "Stream ", stream.GetName(),
+       " is being destroyed without having been closed. Every stream must be closed - drained if it owns a "
+       "thread, "
+       "marked closed by its driver if it rides one - before the task system tears itself down.");</code></pre>
+
+<p class="meta">From Engine/Core/TaskSystem.cpp, TaskSystem::JoinAndClear()</p>
+
+<p>
+  The join sweep that precedes it skips a stream whose thread is not joinable
+  (<a href="getthread.html">GetThread</a>), so the contract in force is: <a href="requestclose.html">RequestClose</a>, then join or close, then destroy — and the
+  assert that would catch a breach is compiled away unless <code>__DEBUG__</code> is defined, which the build sets for Debug alone
+  (<code>Core/Debug.h</code>, <code>CMakeLists.txt</code>).
+</p>
+
+<div class="gap">
+  <strong>Work still held at destruction is destroyed in silence.</strong>
+  The lanes are ordinary containers, so their items go away without a log line and without a notice: the reporting is
+  <a href="abandonheldwork.html">AbandonHeldWork</a>'s job, and that call has to be made before this one
+  (<a href="closedrivenstream.html">CloseDrivenStream</a>, <a href="drainforshutdown.html">DrainForShutdown</a>). A stream destroyed without it has cancelled
+  every promise its items carried and told nobody — the failure the closing reports describe as "a promise cancelled silently"
+  (<code>Engine/Core/TaskStream.cpp</code>). Items parked in <code>readdingFifo</code> and <code>readdingPriority</code> are in the same position even when the
+  close path does call <a href="abandonheldwork.html">AbandonHeldWork</a>, because that call empties the lanes only.
+</div>
+
+<div class="note">
+  <strong>Nothing about the destructor depends on which kind of stream this was.</strong>
+  A worker and a ride-on stream are destroyed the same way; the difference is entirely in how each reached a destroyable state — a worker after
+  <a href="runloop.html">RunLoop</a> returned and its thread was joined, a ride-on stream after <a href="closedrivenstream.html">CloseDrivenStream</a> marked it
+  closed (<code>Engine/Core/TaskStream.h</code>). The defaulted destructor cannot tell those stories, which is why both paths print their own report before it.
+</div>
+
+<div class="note">
+  <strong>No virtual destructor, and none is needed.</strong>
+  The class is <code>final</code> and is never a base: streams live in an array inside <code>TaskSystem</code> by value
+  (<code>Engine/Core/TaskSystem.cpp</code>) and nothing deletes one through a pointer, so the non-virtual defaulted destructor is the correct shape rather than an
+  oversight (<code>Engine/Core/TaskStream.h</code>).
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<p>None.</p>
+
+<h2 id="return">Return value</h2>
+
+<p>Nothing. It is <code>= default</code>, so it is also not <code>noexcept</code>-declared beyond what the members' own destructors imply — none of which are expected to throw.</p>
+
+<h2 id="example">Examples</h2>
+
+<p class="meta">From Engine/Core/TaskSystem.cpp, TaskSystem::JoinAndClear()</p>
+
+<pre><code>for (const auto&amp; stream : streams)
+{
+    Assert(stream.IsClosed(), "Stream ", stream.GetName(),</code></pre>
+
+<p>
+  The last word the engine gets before the streams go: a per-stream check placed after the join sweep, so a stream that was closed but not joined, or joined but
+  not closed, is named there (<code>Engine/Core/TaskSystem.cpp</code>). In a Dev or Release build that line is not in the binary, and the destructor that follows it
+  is silent.
+</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; TaskStream</a></span>
+  <span><a href="index.html#methods">All TaskStream methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

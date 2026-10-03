@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TaskStream::RequestWindowAdvance — Core module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a class="current" href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Core</a> /
+  <a href="index.html">TaskStream</a> / RequestWindowAdvance
+</p>
+
+<h1><span class="fn">RequestWindowAdvance</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::TaskStream</span>
+  <span class="tag">Engine/Core/TaskStream.h</span>
+  Signal that the budget window closed, so this stream reopens its allowance on its own thread.
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>void RequestWindowAdvance() noexcept</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  Declared and defined in the header <code>Engine/Core/TaskStream.h</code>; there is no counterpart in
+  <code>Engine/Core/TaskStream.cpp</code>. Mark that the budget window has closed, so this stream reopens its allowance on its next pass round the
+  loop. It is a signal: it writes one atomic and no budget field.
+</p>
+
+<div class="gap">
+  <strong>Why the signal exists at all — a reset on the wrong thread costs either a lost charge or the thread's whole life.</strong>
+  "A budget charges the CPU time of the thread that owns it, so a reset executed on another thread lands on the pairing between that thread's
+  <code>BeginTask</code> and <code>EndTask</code>, and the cost of breaking the pairing is either a lost charge or the thread's whole life billed to the
+  budget, which reads as a stream that refuses work forever." (<code>Engine/Core/TaskStream.h</code>) The consumer therefore does the reset itself, on
+  its own thread:
+</div>
+
+<pre><code>if (windowAdvanceRequested.exchange(false, std::memory_order_relaxed))
+{
+    budget.Reset();
+    drainPolicy.EndRound();
+}</code></pre>
+
+<p class="meta">From Engine/Core/TaskStream.cpp, TaskStream::Update()</p>
+
+<p>
+  The exchange both reads and clears the flag in one step, and it clears the lane book in the same branch — the two allowances always reopen together,
+  because the lane ratio is a split of the same figure (<a href="configurebudget.html">ConfigureBudget</a>).
+</p>
+
+<div class="note">
+  <strong>A reopen that cannot interrupt a task in flight is the honest shape, and the header says so.</strong>
+  "It means a window boundary falls between tasks, which is the overshoot rule <code>MayTakeNewWork</code> already states."
+  (<code>Engine/Core/TaskStream.h</code>) A long task therefore spends into the next window: the overshoot is bounded by the longest task, not by the
+  allowance (<a href="maytakenewwork.html">MayTakeNewWork</a>).
+</div>
+
+<div class="note">
+  <strong>The base stream's pass is the only caller, and it signals every stream at once.</strong>
+</div>
+
+<pre><code>for (auto&amp; stream : streams)
+{
+    stream.RequestWindowAdvance();
+}</code></pre>
+
+<p class="meta">From Engine/Core/TaskSystem.cpp, TaskSystem::RunBudgetWindowPass()</p>
+
+<p>
+  That pass is driven from inside the base stream's own <a href="update.html">Update</a>, once per configured period
+  (<code>Engine/Core/TaskSystem.cpp</code>). Windows are therefore engine-wide: every stream reopens on the pass after a period boundary, and a stream
+  that is not driven reopens when it is finally driven — a parked worker keeps a spent allowance until it wakes
+  (<a href="waitforwork.html">WaitForWork</a>).
+</p>
+
+<div class="gap">
+  <strong>The ordering is relaxed, and that is a claim about what the flag carries.</strong>
+  A relaxed store pairs with the consumer's relaxed exchange, and nothing needs to travel with the flag: the allowance a window reopens with was written
+  by the stream itself, either at configuration or by <a href="requestbudget.html">RequestBudget</a>'s apply on the same thread. The flag publishes no
+  data, so a caller must not use it to publish any (<code>Engine/Core/TaskStream.h</code>).
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<p>None. Every stream is signalled the same way, and there is no form that skips one.</p>
+
+<h2 id="return">Return value</h2>
+
+<p><code>void</code>. The flag is not exposed, so a caller cannot tell whether a stream has consumed the signal yet; the observable consequence is <a href="getaccumulatedcputime.html">GetAccumulatedCPUTime</a> dropping to zero.</p>
+
+<h2 id="example">Examples</h2>
+
+<p class="meta">From Engine/Core/TaskStream.h, TaskStream::RequestWindowAdvance()</p>
+
+<pre><code>windowAdvanceRequested.store(true, std::memory_order_relaxed);</code></pre>
+
+<p>
+  One store, one consumer, one flag per stream — the whole mechanism. It is also the reason the header's field comment says the flag is "set by the base
+  stream's pass, cleared by this stream's own thread", which is the rule that keeps every write to the budget on the thread whose CPU it charges
+  (<code>Engine/Core/TaskStream.h</code>).
+</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; TaskStream</a></span>
+  <span><a href="index.html#methods">All TaskStream methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

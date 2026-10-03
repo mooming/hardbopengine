@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TaskStream::SetMaxAge — Core module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a class="current" href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Core</a> /
+  <a href="index.html">TaskStream</a> / SetMaxAge
+</p>
+
+<h1><span class="fn">SetMaxAge</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::TaskStream</span>
+  <span class="tag">Engine/Core/TaskStream.h</span>
+  Set the oldest work this stream will still run; zero means unlimited.
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>void SetMaxAge(std::chrono::nanoseconds maxAge) noexcept</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  Declared and defined in the header <code>Engine/Core/TaskStream.h</code>, forwarding to <code>drainPolicy.SetMaxAge(maxAge)</code>; there is no
+  counterpart in <code>Engine/Core/TaskStream.cpp</code>. Set the oldest work this stream is still willing to run; zero means unlimited, and unlimited
+  is the default.
+</p>
+
+<div class="note">
+  <strong>The ceiling is a property of the stream, and the header explains why it is not a property of the task.</strong>
+  "A stream whose frame budget slipped can still be holding work whose context was destroyed, re-pointed or simply irrelevant several frames ago;
+  running it late is worse than not running it, because the work looks fresh to whoever queued it and stale to whoever owns the state it touches. The
+  ceiling is stated here rather than per task because staleness is a property of the stream: the same task is still worth running on a background
+  stream and worthless on a frame-bound one." (<code>Engine/Core/TaskStream.h</code>)
+</div>
+
+<div class="gap">
+  <strong>Over-age work is dropped, and dropping it is a three-part act.</strong>
+  The pass judges age after the task lookup and before the run:
+</div>
+
+<pre><code>if (const auto now = std::chrono::duration_cast&lt;std::chrono::nanoseconds&gt;(time::ElapsedSinceEngineEpoch());
+        drainPolicy.IsOverAge(workItem-&gt;offerTime, now))
+{
+    agedOutWorkCount.fetch_add(1, std::memory_order_relaxed);
+    ReportAgedOutWorkItem(*workItem, now - workItem-&gt;offerTime);
+    FireAbandonedNotice(*workItem);
+    restore();
+    return true;
+}</code></pre>
+
+<p class="meta">From Engine/Core/TaskStream.cpp, TaskStream::Update()</p>
+
+<p>
+  Counted, logged, and notified — "over-age work is dropped, reported and notified exactly like work whose task was released - it is never run, never
+  requeued, and never silently discarded" (<code>Engine/Core/TaskStream.h</code>;
+  <a href="reportagedoutworkitem.html">ReportAgedOutWorkItem</a>, <a href="fireabandonednotice.html">FireAbandonedNotice</a>,
+  <a href="getagedoutworkcount.html">GetAgedOutWorkCount</a>). The pass then returns <code>true</code>: a drop is a pass that did something.
+</p>
+
+<div class="note">
+  <strong>Age is measured from the item's offer time against the engine epoch, so the clock is shared and the ceiling is absolute.</strong>
+  The instant compared is <code>time::ElapsedSinceEngineEpoch()</code> and the stamp is <code>WorkItem::offerTime</code>, set when the item was built —
+  which means age keeps accruing while work waits behind a long task, and a stream that is starved by policy
+  (<a href="../StreamDrainPolicy/index.html">StreamDrainPolicy</a>) ages its whole lane whether or not it is running
+  (<code>Engine/Core/TaskStream.cpp</code>).
+</div>
+
+<div class="gap">
+  <strong>Only the item is dropped, not the task — and the task may never be finished by anyone.</strong>
+  A work item covers one index range of a task that declared a join. Dropping one sub-task leaves the declared count unfulfilled, so a caller that
+  tightens a ceiling on a stream that carries split work must be ready for a task that never completes; the notice fired here is the only signal it
+  gets (<a href="fireabandonednotice.html">FireAbandonedNotice</a>).
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<table>
+  <tr><th>Parameter</th><th>Type</th><th>Requirement</th></tr>
+  <tr><td><code>maxAge</code></td><td><code>std::chrono::nanoseconds</code></td><td>Oldest work the stream will still run; <code>0</code> disables the ceiling, which is the state a stream is constructed in</td></tr>
+</table>
+
+<h2 id="return">Return value</h2>
+
+<p><code>void</code>. Read it back with <a href="getmaxage.html">GetMaxAge</a>, which is how a caller restores what it found.</p>
+
+<h2 id="example">Examples</h2>
+
+<p class="meta">From Engine/Core/TaskStream.h, TaskStream::GetMaxAge()</p>
+
+<pre><code>[[nodiscard]] std::chrono::nanoseconds GetMaxAge() const noexcept
+{
+    return drainPolicy.GetMaxAge();
+}</code></pre>
+
+<p>
+  The getter's stated purpose is restoration: "Readable so a caller that temporarily tightens a shared stream can put back exactly what it found."
+  Set-and-restore is the whole idiom, and a caller that sets a ceiling without saving the previous value leaves it on the stream for whoever runs next
+  (<code>Engine/Core/TaskStream.h</code>).
+</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; TaskStream</a></span>
+  <span><a href="index.html#methods">All TaskStream methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

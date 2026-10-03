@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Component::IsEnabled — Core module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a class="current" href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Core</a> /
+  <a href="index.html">Component</a> / IsEnabled
+</p>
+
+<h1><span class="fn">IsEnabled</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::Component</span>
+  <span class="tag">Engine/Core/Component.h</span>
+  Whether the state is ALIVE - the question the system routes on after every update.
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>[[nodiscard]] bool IsEnabled() const noexcept</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  Defined in the header <code>Engine/Core/Component.h</code>. Its body is <code>state == State::ALIVE</code> — enabled means nothing more than
+  "the state is <code>ALIVE</code>", so <code>ALIVE</code> is the only state this reports as enabled and every other state, including
+  <code>BORN</code> and <code>NONE</code>, is reported as disabled.
+</p>
+
+<div class="note">
+  <strong>This is the routing question the system asks after every update.</strong>
+  <code>ProcessUpdate</code> calls <a href="update.html">Update</a> on each component and immediately asks this; a <code>false</code> answer moves the
+  component to the transition list, where <a href="getstate.html">GetState</a> decides which callbacks run
+  (<code>Engine/Core/ComponentSystem.h</code>). That is why a change of state made inside an update takes effect at the end of that same update, and why
+  <a href="destroy.html">Destroy</a> and <a href="setenable.html">SetEnable</a> have no other work to do.
+</div>
+
+<div class="gap">
+  <strong>It is <code>const noexcept</code> and lock-free on a plain field, and it cannot distinguish "not yet" from "no more".</strong>
+  A component in <code>NONE</code> or <code>BORN</code> answers the same as one in <code>DEAD</code>
+  (<a href="../ComponentState/index.html">ComponentState</a>). Inside <a href="init.html">Init</a> that means this returns <code>false</code> — the state is set
+  to <code>ALIVE</code> only after <code>Init</code> returns (<code>Engine/Core/ComponentSystem.h</code>) — so setup code must not gate work on being enabled.
+  Only <a href="getstate.html">GetState</a> can tell the difference.
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<p>None.</p>
+
+<h2 id="return">Return value</h2>
+
+<table>
+  <tr><th>Type</th><th>What it tells the caller</th></tr>
+  <tr><td><code>bool</code></td><td><code>true</code> only in <code>ALIVE</code>. Everything else — <code>NONE</code>, <code>BORN</code>, <code>SLEEP</code>, <code>DEAD</code>, and any value written by <a href="setstate.html">SetState</a> that is not one of the enum's five — answers <code>false</code> and will therefore be routed to the transition switch</td></tr>
+</table>
+
+<h2 id="example">Examples</h2>
+
+<pre><code>for (auto&amp; compo : updateList)
+{
+    compo.Update(deltaTime);
+
+    if (!compo.IsEnabled())
+    {
+        transitionList.push_back(std::move(compo));
+    }
+    else
+    {
+        swapUpdateList.push_back(std::move(compo));
+    }
+}</code></pre>
+
+<p class="meta">From Engine/Core/ComponentSystem.h, ComponentSystem::ProcessUpdate()</p>
+
+<p>
+  The one place in the engine where the answer changes what happens, and the reason a component's own update is the correct place to decide to stop
+  (<a href="destroy.html">Destroy</a>).
+</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; Component</a></span>
+  <span><a href="index.html#methods">All Component methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

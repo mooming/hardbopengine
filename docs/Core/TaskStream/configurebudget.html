@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TaskStream::ConfigureBudget — Core module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a class="current" href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Core</a> /
+  <a href="index.html">TaskStream</a> / ConfigureBudget
+</p>
+
+<h1><span class="fn">ConfigureBudget</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::TaskStream</span>
+  <span class="tag">Engine/Core/TaskStream.h</span>
+  Set this stream's CPU allowance for one window; zero means unlimited and switches measurement off.
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>void ConfigureBudget(std::chrono::duration&lt;double&gt; allowance) noexcept</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  Defined in <code>Engine/Core/TaskStream.cpp</code> as <code>TaskStream::ConfigureBudget()</code>. Set this stream's CPU allowance for one window,
+  expressed as a duration; zero means unlimited, and unlimited is the state every stream is constructed in.
+</p>
+
+<pre><code>if (threadID != TThreadID{})
+{
+    Assert(std::this_thread::get_id() == threadID, "Stream ", name,
+           " had its budget configured from another thread while it is running. The allowance is an "
+           "unsynchronised field this stream reads every pass, so that is a data race. Use RequestBudget, "
+           "which the stream applies to itself.");
+}
+
+budget.Configure(allowance);
+drainPolicy.ConfigureAllowance(allowance);</code></pre>
+
+<p class="meta">From Engine/Core/TaskStream.cpp</p>
+
+<div class="note">
+  <strong>The unit is a duration, and the yardstick is the base stream's frame period.</strong>
+  "The yardstick it is measured against is <code>time::GetBaseFramePeriod</code>, engine-wide, so a caller states how much CPU this stream may spend
+  per frame period of the base stream and leaves the arithmetic alone." (<code>Engine/Core/TaskStream.h</code>) An allowance of half a frame period
+  means half a frame period of measured CPU, not half a wall-clock interval.
+</div>
+
+<div class="gap">
+  <strong>An unlimited stream does not measure its tasks at all, and that is the reason <code>GetAccumulatedCPUTime</code> reads zero.</strong>
+  "A measurement that cannot change a decision is a syscall billed to every task for nothing, and an unlimited budget cannot change a decision.
+  Consequently GetAccumulatedCPUTime stays zero until an allowance is set - that is the absence of accounting, not a task that cost nothing."
+  (<code>Engine/Core/TaskStream.h</code>) The pass implements exactly that with one boolean:
+</div>
+
+<pre><code>const bool chargingBudget = budget.GetAllowance().count() &gt; 0.0;</code></pre>
+
+<p class="meta">From Engine/Core/TaskStream.cpp, TaskStream::Update()</p>
+
+<p>
+  The same boolean gates <code>budget.BeginTask()</code>, <code>budget.EndTask()</code> and the lane charges
+  <code>ChargeFifo</code>/<code>ChargePriority</code>, so setting an allowance is what turns on both the budget and the lane-ratio machinery that reads
+  it (<a href="update.html">Update</a>, <a href="getaccumulatedcputime.html">GetAccumulatedCPUTime</a>,
+  <a href="configurerate.html">ConfigureRate</a>).
+</p>
+
+<div class="gap">
+  <strong>Both books are written here, and both are unsynchronised.</strong>
+  <code>budget.Configure</code> and <code>drainPolicy.ConfigureAllowance</code> are plain writes read by the stream on its own thread every pass,
+  which is why the check exists and why the header offers <a href="requestbudget.html">RequestBudget</a> as the cross-thread form: "from elsewhere it
+  is a data race, not a late write" (<code>Engine/Core/TaskStream.h</code>). The check is an <code>Assert</code>, compiled away unless
+  <code>__DEBUG__</code> is defined — Debug only (<code>Core/Debug.h</code>, <code>CMakeLists.txt</code>) — and it is skipped while
+  <code>threadID</code> is still default, which is the IO stream until its first pass
+  (<a href="start.html">Start</a>).
+</div>
+
+<div class="note">
+  <strong>The window this allowance bounds is reopened by the base stream, not by this call.</strong>
+  A configuration sets the size of the allowance; <a href="requestwindowadvance.html">RequestWindowAdvance</a> is what closes the window and lets the
+  stream reopen it on its next pass, and only the owning thread performs the reopen because the budget charges the CPU time of the thread that owns it
+  (<a href="../CPUBudget/reset.html">CPUBudget::Reset</a>).
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<table>
+  <tr><th>Parameter</th><th>Type</th><th>Requirement</th></tr>
+  <tr><td><code>allowance</code></td><td><code>std::chrono::duration&lt;double&gt;</code></td><td>CPU time this stream may spend per window; <code>0</code> means unlimited and switches measurement off. Must be called before the stream starts, or from the stream's own thread</td></tr>
+</table>
+
+<h2 id="return">Return value</h2>
+
+<p><code>void</code>. Nothing reports the previous allowance; there is no getter for it on this class, and <a href="getaccumulatedcputime.html">GetAccumulatedCPUTime</a> reports what has been spent rather than what is permitted.</p>
+
+<h2 id="example">Examples</h2>
+
+<pre><code>constexpr auto BaseStreamPassBudget = std::chrono::duration&lt;double&gt;(0.001);
+
+hbe::Engine hengine;
+hengine.Initialize(argc, argv);
+
+hengine.GetTaskSystem().GetStream(hbe::TaskSystem::GetBaseTaskStreamIndex()).ConfigureBudget(BaseStreamPassBudget);</code></pre>
+
+<p class="meta">From Applications/EngineTest/TestMain.cpp</p>
+
+<p>
+  The one call site outside a unit-test region: a test application gives the base stream a one-millisecond allowance per window, and does it after
+  <code>Initialize</code> and before <code>Run</code> — the ordering this function asks for, because the stream is not yet bound to a driver
+  (<a href="start.html">Start</a>). Every other stream in that run is left unlimited, which means it is left unmeasured
+  (<a href="getaccumulatedcputime.html">GetAccumulatedCPUTime</a>). A change after the stream is bound belongs through
+  <a href="requestbudget.html">RequestBudget</a>, which the stream applies to itself.
+</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; TaskStream</a></span>
+  <span><a href="index.html#methods">All TaskStream methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

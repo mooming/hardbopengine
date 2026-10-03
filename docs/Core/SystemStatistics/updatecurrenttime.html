@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SystemStatistics::UpdateCurrentTime — Core module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a class="current" href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Core</a> /
+  <a href="index.html">SystemStatistics</a> / UpdateCurrentTime
+</p>
+
+<h1><span class="fn">UpdateCurrentTime</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::SystemStatistics</span>
+  <span class="tag">Engine/Core/SystemStatistics.h</span>
+  Sample the clock: the only writer of the delta and elapsed fields - and nothing calls it.
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>void UpdateCurrentTime() noexcept</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  Defined in <code>Engine/Core/SystemStatistics.cpp</code>; declared in <code>Engine/Core/SystemStatistics.h</code>. The only writer of elapsed time in this
+  class: it reads the clock, turns the time since the previous call into <code>deltaTime</code> (a <code>float</code>, in seconds), turns the time since the
+  constructor into <code>timeSinceStart</code> (a <code>double</code>, in seconds), and stores the new instant as <code>currentTime</code>.
+</p>
+
+<div class="gap">
+  <strong>Nothing calls it, so the four time fields it owns are frozen at construction — and two of them were never written at all.</strong>
+  No line in <code>Engine/</code> or <code>Applications/</code> calls <code>UpdateCurrentTime()</code>
+  (<code>Engine/Core/SystemStatistics.h</code>). The constructor sets <code>startTime</code> and makes <code>currentTime</code> equal to it, and leaves
+  <code>timeSinceStart</code> and <code>deltaTime</code> with no initializer at all, so those two hold indeterminate values for the life of the run
+  (<a href="constructors.html">the constructor page</a>). The consequence is visible in the shutdown report:
+  <a href="print.html">Print</a> prints <code>Running Time = " &lt;&lt; timeSinceStart &lt;&lt; " sec"</code> from that uninitialized field
+  (<code>Engine/Core/SystemStatistics.cpp</code>).
+</div>
+
+<div class="note">
+  <strong>The clock is this class's own, and the delta is measured from the previous call rather than from a frame boundary.</strong>
+</div>
+
+<pre><code>auto newTime = time::TStopWatch::now();
+const auto delta = newTime - currentTime;
+deltaTime = time::ToFloat(delta);
+currentTime = newTime;
+
+const auto fromStart = currentTime - startTime;
+timeSinceStart = time::ToDouble(fromStart);</code></pre>
+
+<p class="meta">From Engine/Core/SystemStatistics.cpp, SystemStatistics::UpdateCurrentTime()</p>
+
+<p>
+  <code>time::TStopWatch</code> is <code>std::chrono::high_resolution_clock</code>, and <code>time::ToFloat</code> / <code>time::ToDouble</code> return the
+  duration in seconds (<code>Engine/Core/Time.h</code>). Because the delta is "since I was last called", whoever calls this defines the unit of a frame: twice
+  per frame halves every <code>deltaTime</code>, and a caller that skips a frame sees the whole gap as one delta. It takes no argument, so nothing outside can
+  supply a curated frame time.
+</p>
+
+<h2 id="parameters">Parameters</h2>
+
+<p>None — the function takes its reading from the clock, not from a caller.</p>
+
+<h2 id="return">Return value</h2>
+
+<p><code>void</code>. The new values are read back through <a href="getcurrenttime.html">GetCurrentTime</a>, <a href="gettimesincestart.html">GetTimeSinceStart</a> and <a href="getdeltatime.html">GetDeltaTime</a>; <code>currentTime</code> is written last, so a caller that reads the deltas and the instant separately can see a torn pair on another thread.</p>
+
+<h2 id="example">Examples</h2>
+
+<p>
+  No call site exists, so there is no verbatim example to give. The shape the function invites is one call per frame from the engine loop, before anything
+  asks for a delta — and the honest statement of its current status is that the engine loop does not do that, which is why
+  <a href="getdeltatime.html">GetDeltaTime</a> and <a href="gettimesincestart.html">GetTimeSinceStart</a> have no callers either
+  (<code>Engine/Core/SystemStatistics.h</code>).
+</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; SystemStatistics</a></span>
+  <span><a href="index.html#methods">All SystemStatistics methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

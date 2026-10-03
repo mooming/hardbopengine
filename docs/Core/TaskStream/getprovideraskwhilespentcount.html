@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TaskStream::GetProviderAskWhileSpentCount — Core module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a class="current" href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Core</a> /
+  <a href="index.html">TaskStream</a> / GetProviderAskWhileSpentCount
+</p>
+
+<h1><span class="fn">GetProviderAskWhileSpentCount</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::TaskStream</span>
+  <span class="tag">Engine/Core/TaskStream.h</span>
+  Times a provider was asked against a spent allowance; the invariant that must stay zero.
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>[[nodiscard]] unsigned GetProviderAskWhileSpentCount() const noexcept</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  Declared and defined in the header <code>Engine/Core/TaskStream.h</code>; there is no counterpart in
+  <code>Engine/Core/TaskStream.cpp</code>. Times a provider was asked for work while this stream's allowance was already spent.
+</p>
+
+<div class="gap">
+  <strong>It must stay zero, and it is the only counter in this class of which that is true.</strong>
+  "The invariant, made countable so it holds in a Release build too, where the assert on the provider gate is compiled out. It must stay zero: a spent
+  stream that still manufactures work will run work it has no right to." (<code>Engine/Core/TaskStream.h</code>) It counts the failure of rule R39 — a stream
+  that has spent its CPU must not manufacture more of it — and it is a bug detector, not a throttle reading. A non-zero value means the drain's budget gate
+  stopped being consulted, and the work it let through is already in a lane by the time this number is read.
+</div>
+
+<div class="note">
+  <strong>It is the release-build half of the assert beside it.</strong> The pass checks the same condition twice, once to abort in Debug and once to count in
+  every configuration:
+</div>
+
+<pre><code>Assert(budget.CanTakeWork(), "Stream ", name,
+       " was asked for provider work while its allowance was spent. The drain gate is what keeps a "
+       "spent stream "
+       "from manufacturing work, so a provider ask here means that gate stopped consulting the "
+       "budget.");
+
+if (!budget.CanTakeWork())
+{
+    providerAsksWhileSpent.fetch_add(1, std::memory_order_relaxed);
+}</code></pre>
+
+<p class="meta">From Engine/Core/TaskStream.cpp, TaskStream::Update()</p>
+
+<p>
+  <code>Assert</code> is compiled away unless <code>__DEBUG__</code> is defined — the Debug configuration only (<code>Core/Debug.h</code>,
+  <code>CMakeLists.txt</code>) — so in Dev and Release this counter is the only witness. Reading it as zero in a Debug run proves nothing about a Release
+  build; the counter is the portable check, which is why it exists at all.
+</p>
+
+<div class="gap">
+  <strong>Nothing resets it, and nothing else increments it.</strong>
+  The single <code>fetch_add</code> above is the only writer, and no reset path touches it — not <a href="requestwindowadvance.html">RequestWindowAdvance</a>,
+  not the drain, not the close. So a non-zero reading is permanent for the life of the object and cannot be attributed to a window without a second read
+  (<code>Engine/Core/TaskStream.cpp</code>). A test that wants to prove the gate holds must read the counter, not merely assert it is zero at the end of a
+  run in which some other test already broke the gate.
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<p>None.</p>
+
+<h2 id="return">Return value</h2>
+
+<table>
+  <tr><th>Type</th><th>What you get</th></tr>
+  <tr><td><code>unsigned</code></td><td>Provider asks made against a spent allowance. Zero is the only correct answer; anything else is a defect in the drain gate, found after the fact</td></tr>
+</table>
+
+<h2 id="example">Examples</h2>
+
+<p class="meta">From Engine/Core/TaskStream.cpp, TaskStream::Update()</p>
+
+<pre><code>if (!laneIsEmpty || isDrainingForShutdown || !budget.CanTakeWork())
+{
+    continue;
+}</code></pre>
+
+<p>
+  The gate the counter polices: a lane with work in it, a stream draining for shutdown, or a spent allowance each skip the probe entirely, so a probe that
+  happens anyway has already passed all three tests and is the event this count records (<code>Engine/Core/TaskStream.cpp</code>).
+</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; TaskStream</a></span>
+  <span><a href="index.html#methods">All TaskStream methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

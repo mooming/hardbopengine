@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SystemStatistics::GetCurrentTime — Core module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a class="current" href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Core</a> /
+  <a href="index.html">SystemStatistics</a> / GetCurrentTime
+</p>
+
+<h1><span class="fn">GetCurrentTime</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::SystemStatistics</span>
+  <span class="tag">Engine/Core/SystemStatistics.h</span>
+  The last sampled instant - frozen at construction because nothing samples.
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>[[nodiscard]] auto GetCurrentTime() const noexcept</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  Defined in the header <code>Engine/Core/SystemStatistics.h</code>. Returns <code>currentTime</code> by value, a <code>time::TTime</code> over
+  <code>time::TStopWatch</code> (<code>Engine/Core/Time.h</code>) — the instant of the last <a href="updatecurrenttime.html">UpdateCurrentTime</a>. Since that
+  function is never called, this returns the construction instant forever, which is the same answer
+  <a href="getstarttime.html">GetStartTime</a> gives.
+</p>
+
+<div class="gap">
+  <strong>No caller, and the field it reads is frozen by the missing caller of another function.</strong>
+  Nothing in <code>Engine/</code> or <code>Applications/</code> calls this accessor, and the only writer of the field it returns has no caller either
+  (<code>Engine/Core/SystemStatistics.h</code>, <code>Engine/Core/SystemStatistics.cpp</code>). Unlike
+  <a href="gettimesincestart.html">GetTimeSinceStart</a> and <a href="getdeltatime.html">GetDeltaTime</a>, the value here is at least initialized — the
+  constructor sets <code>currentTime = startTime</code> — so the accessor is well-defined and merely stale.
+</div>
+
+<div class="note">
+  <strong>It is not a clock.</strong>
+  A caller wanting "now" asks the clock directly (<code>time::TStopWatch::now()</code>, or <code>Engine::Log</code>'s use of
+  <code>chrono::steady_clock::now()</code>); this reports when this class last sampled. Those are the same only while something samples regularly, and nothing
+  does (<a href="updatecurrenttime.html">UpdateCurrentTime</a>).
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<p>None.</p>
+
+<h2 id="return">Return value</h2>
+
+<table>
+  <tr><th>Type</th><th>What it tells the caller</th></tr>
+  <tr><td><code>auto</code> → <code>time::TTime</code></td><td>The last sampled instant, by value — in every build today, the moment the constructor ran</td></tr>
+</table>
+
+<h2 id="example">Examples</h2>
+
+<p>
+  No call site exists, so there is nothing to quote. The pairing it expects is with <a href="gettimesincestart.html">GetTimeSinceStart</a> and
+  <a href="getdeltatime.html">GetDeltaTime</a>: all three describe the last sample, and all three are only as fresh as the missing call to
+  <a href="updatecurrenttime.html">UpdateCurrentTime</a> (<code>Engine/Core/SystemStatistics.h</code>).
+</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; SystemStatistics</a></span>
+  <span><a href="index.html#methods">All SystemStatistics methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

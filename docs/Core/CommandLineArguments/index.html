@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CommandLineArguments — Core module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a class="current" href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This class</h3>
+  <ul>
+    <li><a href="#description">Class description</a></li>
+    <li><a href="#template">Template parameters</a></li>
+    <li><a href="#properties">Class properties</a></li>
+    <li><a href="#methods">Class methods</a></li>
+    <li><a href="#non-member">Non-member helper functions</a></li>
+    <li><a href="#coverage">Coverage</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Core</a> /
+  CommandLineArguments
+</p>
+
+<h1>CommandLineArguments</h1>
+<p class="subtitle">
+  <span class="tag">Engine/Core/CommandLineArguments.h</span>
+  The interface for a parsed command line - and a Parse that echoes argv and stores none of it.
+</p>
+
+<h2 id="description">Class description</h2>
+
+<p>
+  <code>class CommandLineArguments final</code> at <code>Engine/Core/CommandLineArguments.h</code>: three members — an executable path, an executable filename
+  and an <a href="../../Container/Array/index.html"><code>Array</code></a> of <a href="../../String/index.html"><code>String</code></a>s — one real
+  constructor, one accessor, and two printers. The interface is the shape of a finished class; the implementation of the step that would fill it is missing,
+  so the object is empty for all of its life.
+</p>
+
+<div class="gap">
+  <strong><a href="parse.html">Parse</a> prints the argument vector and stores nothing, so every member of every instance is at its default.</strong>
+  The function's body is an assertion that <code>argc &gt; 0</code> and a loop of <code>cout &lt;&lt; argv[i]</code>
+  (<code>Engine/Core/CommandLineArguments.cpp</code>). Nothing assigns <code>executablePath</code>, nothing assigns <code>executableFilename</code>, nothing
+  appends to <code>arguments</code>. The consequences are mechanical:
+</div>
+
+<table>
+  <tr><th>Member</th><th>What it holds after construction</th><th>What that costs the caller</th></tr>
+  <tr><td><code>executablePath</code></td><td>an empty <code>String</code></td><td><a href="print.html">Print</a>'s "Path:" line is always blank; the class cannot say where the executable was run from</td></tr>
+  <tr><td><code>executableFilename</code></td><td>an empty <code>String</code></td><td>The same line, and no way to name the running program</td></tr>
+  <tr><td><code>arguments</code></td><td>an empty <code>Array</code></td><td><a href="getarguments.html">GetArguments</a> always yields nothing and the count line always reads <code>0</code></td></tr>
+</table>
+
+<p>
+  The header's own <code>@brief</code> reads "Parses and stores command line arguments passed to the application"
+  (<code>Engine/Core/CommandLineArguments.h</code>) — the parsing half is a print, and the storing half is absent.
+</p>
+
+<div class="gap">
+  <strong>Nothing in the engine or in any application constructs one, so none of the above has ever been observed at runtime.</strong>
+  No line in <code>Engine/</code> or <code>Applications/</code> mentions this class outside its own two files
+  (<code>Engine/Core/CommandLineArguments.cpp</code>), so the command line the engine is started with is never routed through it — the application's
+  <code>argc</code>/<code>argv</code> are consumed elsewhere and this class is not part of that path. Everything on these pages is therefore a reading of the
+  source, stated as such on each page, and the argument echo the constructor would perform has never run.
+</div>
+
+<div class="note">
+  <strong>What the class does get right is the part a caller can rely on: it cannot be built without a command line, and its container cannot be mutated from
+  outside.</strong>
+  The default constructor is deleted (<a href="constructors.html">the constructor page</a>); <a href="getarguments.html">GetArguments</a> is a
+  <code>const</code> member returning a deduced <code>auto&amp;</code>, which is a const reference, and <code>Array</code> deletes its own copy operations so
+  nothing can smuggle a mutable copy out (<code>Engine/Container/Array.h</code>). The class is <code>final</code>, so there is no subclass to get the
+  contract wrong.
+</div>
+
+<h2 id="template">Template parameters</h2>
+
+<p>None. The class is <code>final</code> and not a template; the only generic piece is its member type <code>Array&lt;String&gt;</code>, fixed in the declaration of that member (<code>Engine/Core/CommandLineArguments.h</code>).</p>
+
+<h2 id="properties">Class properties</h2>
+
+<table>
+  <tr><th>Type + Name</th><th>Default Value</th><th>Description</th></tr>
+  <tr><td><code>String executablePath;</code> <span class="badge">private</span></td><td><span class="muted">empty</span></td><td>Intended: the directory the executable was run from. Never written; printed by <a href="print.html">Print</a></td></tr>
+  <tr><td><code>String executableFilename;</code> <span class="badge">private</span></td><td><span class="muted">empty</span></td><td>Intended: the executable's file name. Never written; printed by <a href="print.html">Print</a></td></tr>
+  <tr><td><code>Array&lt;String&gt; arguments;</code> <span class="badge">private</span></td><td><span class="muted">empty (length 0, no buffer)</span></td><td>Intended: the arguments, including or excluding <code>argv[0]</code> — the header does not say which, and no code decides. Exposed read-only by <a href="getarguments.html">GetArguments</a>; non-copyable, which is what makes the class itself non-copyable</td></tr>
+</table>
+
+<h2 id="methods">Class methods</h2>
+
+<table class="methods">
+  <tr><th>Name</th><th>Signature</th><th>What a caller depends on</th></tr>
+  <tr><td><a href="constructors.html"><code>CommandLineArguments</code></a><span class="badge">2 overloads</span></td><td class="sig">CommandLineArguments() = delete<br>CommandLineArguments(int argc, const char* argv[])</td><td>No default construction; the taking form forwards to <code>Parse</code> and keeps nothing from its arguments.</td></tr>
+  <tr><td><a href="destructor.html"><code>~CommandLineArguments</code></a></td><td class="sig">~CommandLineArguments() = default</td><td>Destroys two empty strings and an empty array; never virtual, because the class is final.</td></tr>
+  <tr><td><a href="getarguments.html"><code>GetArguments</code></a></td><td class="sig">[[nodiscard]] auto&amp; GetArguments() const noexcept</td><td>A const reference to the container — always empty in practice, and the only read path into it.</td></tr>
+  <tr><td><a href="print.html"><code>Print</code></a></td><td class="sig">void Print()</td><td>Five header lines plus one per argument, written to <code>std::cout</code> rather than the logger, so no level or category applies.</td></tr>
+  <tr><td><a href="parse.html"><code>Parse</code></a></td><td class="sig">void Parse(int argc, const char* argv[])</td><td>Private: asserts <code>argc &gt; 0</code> in Debug builds, echoes <code>argv</code>, and leaves all three members at their defaults.</td></tr>
+</table>
+
+<h2 id="non-member">Non-member helper functions</h2>
+
+<p>
+  None. <code>Engine/Core/CommandLineArguments.cpp</code> contains the three out-of-line definitions and, inside two of them, a function-local
+  <code>using namespace std;</code> — so <code>cout</code>, <code>endl</code> and <code>string</code> are spelled short within those bodies and nowhere else
+  (<code>Engine/Core/CommandLineArguments.cpp</code>). The included <code>Core/Debug.h</code> supplies the one <code>Assert</code> in
+  <a href="parse.html">Parse</a>.
+</p>
+
+<h2 id="coverage">Coverage</h2>
+
+<table>
+  <tr><th>Not documented here</th><th>Why</th></tr>
+  <tr>
+    <td>What <code>argv[0]</code> should become — path, filename, or an argument</td>
+    <td>Nothing in the sources decides: the members name two distinct intentions (a directory and a file name) and no code fills either, so the intended split
+      of <code>argv[0]</code> between them is a question for whoever completes the class. Recording a guess as a contract here would be the one thing this page
+      must not do</td>
+  </tr>
+  <tr>
+    <td><code>Array</code>'s growth, allocator and ownership rules</td>
+    <td>Owned by <a href="../../Container/Array/index.html">the container's own page</a>. This class only holds one and hands it out read-only
+      (<a href="getarguments.html">GetArguments</a>)</td>
+  </tr>
+  <tr>
+    <td>Whether writing standard output directly is permitted by the engine's logging policy</td>
+    <td><a href="print.html">Print</a> and <a href="parse.html">Parse</a> both write to <code>std::cout</code>, bypassing the logger's categories, levels and
+      IO stream (<a href="../../Log/index.html">the log module</a>). No document in the tree states a rule either way, so the pages here note the choice and its
+      consequence — output that cannot be filtered or redirected — without asserting a violation</td>
+  </tr>
+  <tr>
+    <td>How an application is expected to reach its command line instead</td>
+    <td>There is no such path to document in this class: no code in <code>Engine/</code> or <code>Applications/</code> references it at all. Whatever route the
+      engine's <code>Initialize(argc, argv)</code> takes for its own purposes is owned by the engine module
+      (<a href="../index.html">the Core index</a>), and no page there describes this class as part of it</td>
+  </tr>
+</table>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; CommandLineArguments</a></span>
+  <span><a href="index.html#methods">All CommandLineArguments methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

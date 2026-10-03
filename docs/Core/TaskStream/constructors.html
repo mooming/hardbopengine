@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TaskStream::TaskStream — Core module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a class="current" href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Core</a> /
+  <a href="index.html">TaskStream</a> / TaskStream
+</p>
+
+<h1><span class="fn">TaskStream</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::TaskStream</span>
+  <span class="tag">Engine/Core/TaskStream.h</span>
+  Build an inert stream: a name, an index, and a shutdown window chosen by index.
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>TaskStream()
+
+explicit TaskStream(StaticString name, TStreamIndex streamIndex)</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  Both defined in <code>Engine/Core/TaskStream.cpp</code> as <code>TaskStream::TaskStream()</code>. Neither starts anything: no thread is created, no task
+  system is recorded, and nothing is configured. A constructed stream is inert until <a href="start.html">Start</a> gives it a system and a driver.
+</p>
+
+<pre><code>TaskStream::TaskStream()
+    : streamIndex(0)
+    , loopCount(0)
+    , allocator("None")
+{
+    Assert(threadID == std::thread::id());
+}
+
+TaskStream::TaskStream(StaticString name, TStreamIndex streamIndex)
+    : name(name)
+    , streamIndex(streamIndex)
+    , loopCount(0)
+    , allocator(name)
+    , shutdownDrainDeadline(streamIndex == TaskSystem::BaseStreamIndex || streamIndex == TaskSystem::IOStreamIndex
+                                    ? std::chrono::milliseconds::zero()
+                                    : std::chrono::milliseconds(2000))
+{
+    auto log = Logger::Get(name);
+    log.Out([name = name](auto&amp; ls) { ls &lt;&lt; name.c_str() &lt;&lt; " is created."; });
+}</code></pre>
+
+<p class="meta">From Engine/Core/TaskStream.cpp</p>
+
+<div class="note">
+  <strong>The named constructor is where a stream's shutdown window is decided, and it is decided by index.</strong>
+  The base and IO streams get <code>std::chrono::milliseconds::zero</code> and every other index gets 2000 ms, because for the engine's own streams
+  "run until the queues are empty" is not what closing means — the IO stream's work is the log buffer, and writing a line re-posts the drain task
+  (<a href="drainforshutdown.html">DrainForShutdown</a>, <code>Engine/Core/TaskStream.h</code>). The comparison is against
+  <code>TaskSystem::BaseStreamIndex</code> and <code>TaskSystem::IOStreamIndex</code>, so the rule travels with the index and not with a name: construct a stream
+  with index 0 and it closes with no window (<code>Engine/Core/TaskStream.cpp</code>).
+</div>
+
+<div class="gap">
+  <strong>The default constructor is a placeholder that does not match any real stream.</strong>
+  It names its allocator pool "None", leaves <code>name</code> empty and <code>taskSystem</code> null, and takes
+  <code>streamIndex = 0</code> — the base stream's index — while leaving <code>shutdownDrainDeadline</code> at the member default of 2000 ms
+  (<code>Engine/Core/TaskStream.cpp</code>, <code>Engine/Core/TaskStream.h</code>). So a default-constructed stream reports the base stream's index with the base
+  stream's window not applied to it, and calling <a href="update.html">Update</a> on one dereferences the null task system
+  (<a href="start.html">Start</a> is what records it). It exists because <code>TaskSystem</code> builds its stream array by <code>Array&lt;TaskStream&gt;</code>
+  reallocation and element construction (<code>Engine/Core/TaskSystem.cpp</code>) and needs a default-constructible element type.
+</div>
+
+<div class="note">
+  <strong>The object cannot be copied or moved, and the reason is the members rather than a declaration.</strong>
+  Neither constructor declares copy control; the class holds <code>std::mutex</code>, <code>std::condition_variable</code> and
+  <code>std::thread</code>, whose own special members are deleted, so <code>TaskStream</code>'s copy constructor, copy assignment and move constructor are
+  implicitly deleted. That was confirmed by compiling a probe in which
+  <code>std::is_copy_constructible_v</code>, <code>std::is_copy_assignable_v</code> and <code>std::is_move_constructible_v</code> were each asserted false
+  (<code>c++ -std=c++2b -fsyntax-only</code>, no diagnostic). A stream therefore lives where it was constructed — which is what makes its
+  <code>streamIndex</code> a stable identity (<a href="getstreamindex.html">GetStreamIndex</a>) and the <code>this</code> captured by
+  <a href="start.html">Start</a>'s thread lambda always valid.
+</div>
+
+<div class="gap">
+  <strong>Nothing validates the index against the system that will own the stream.</strong>
+  The constructor takes <code>streamIndex</code> as given, and the only checks that ever compare it to anything are the base-stream tests inside
+  <a href="start.html">Start</a>, <a href="update.html">Update</a> and this constructor's own deadline rule
+  (<code>Engine/Core/TaskStream.cpp</code>). A stream constructed with an index beyond the array it is later placed in is not detected by this class; it simply
+  never runs the base-stream duties, and the shutdown's expectations about which index those belong to go unmet.
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<table>
+  <tr><th>Parameter</th><th>Type</th><th>Requirement</th></tr>
+  <tr><td><code>name</code></td><td><code>StaticString</code></td><td>Copied; names every log line this stream writes and labels its allocator pool. The default constructor leaves it empty</td></tr>
+  <tr><td><code>streamIndex</code></td><td><code>TStreamIndex</code></td><td>The stream's permanent index; also what selects the shutdown window (zero for base and IO, 2000 ms otherwise)</td></tr>
+</table>
+
+<h2 id="return">Return value</h2>
+
+<p>Nothing. Construction logs one line — "<em>name</em> is created." — and allocates nothing beyond the allocator pool's own naming.</p>
+
+<h2 id="example">Examples</h2>
+
+<p class="meta">From Engine/Core/TaskSystem.cpp, TaskSystem::BuildStreams()</p>
+
+<pre><code>auto index = GetBaseTaskStreamIndex();
+streams.Emplace(index, "Base", index);
+
+index = GetIOTaskStreamIndex();
+streams.Emplace(index, "IO", index);</code></pre>
+
+<p>
+  The named constructor in use: the index passed in is the slot being emplaced into, so identity is assigned once, at construction, before any thread exists
+  (<code>Engine/Core/TaskSystem.cpp</code>).
+</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; TaskStream</a></span>
+  <span><a href="index.html#methods">All TaskStream methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

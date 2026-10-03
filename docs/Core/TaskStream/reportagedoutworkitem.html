@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TaskStream::ReportAgedOutWorkItem — Core module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a class="current" href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Core</a> /
+  <a href="index.html">TaskStream</a> / ReportAgedOutWorkItem
+</p>
+
+<h1><span class="fn">ReportAgedOutWorkItem</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::TaskStream</span>
+  <span class="tag">Engine/Core/TaskStream.h</span>
+  Private: report work refused because it was older than the stream's max age.
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>void ReportAgedOutWorkItem(const WorkItem&amp; item, std::chrono::nanoseconds age) const noexcept</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  Declared <code>private</code> in <code>Engine/Core/TaskStream.h</code>, defined in <code>Engine/Core/TaskStream.cpp</code> as
+  <code>TaskStream::ReportAgedOutWorkItem()</code>. One warning line naming the work this stream refused because it was older than its max age.
+</p>
+
+<pre><code>auto log = Logger::Get(name);
+log.OutWarning([name = name, index = item.taskID.index, generation = item.taskID.generation, age](auto&amp; ls)
+{
+    ls &lt;&lt; name.c_str() &lt;&lt; " dropped a work item, record " &lt;&lt; index &lt;&lt; " generation " &lt;&lt; generation &lt;&lt; ", aged "
+       &lt;&lt; age.count() &lt;&lt; "ns, older than this stream's max age. Nothing was run.";
+});</code></pre>
+
+<p class="meta">From Engine/Core/TaskStream.cpp</p>
+
+<div class="note">
+  <strong>The wording is deliberately the same shape as a released task's, because the reader's question is the same.</strong>
+  "Same vocabulary as a released task on purpose: in both cases the engine had work, decided not to run it, and owes whoever queued it a sentence saying which.
+  <code>age</code> is measured against the engine's own epoch base, so it is comparable with the lane time book in the same log."
+  (<code>Engine/Core/TaskStream.h</code>) <a href="reportreleasedtask.html">ReportReleasedTask</a> is the sibling line; the difference a reader looks for is the
+  reason clause — "aged <em>N</em>ns, older than this stream's max age" against "because that task had already been released".
+</div>
+
+<div class="gap">
+  <strong>The caller computes the age, and the two callers compute it the same way.</strong>
+  <a href="update.html">Update</a> passes <code>now - workItem-&gt;offerTime</code> where <code>now</code> is
+  <code>time::ElapsedSinceEngineEpoch()</code> in nanoseconds, so the number in the line is elapsed-from-offer and the epoch base is shared with the policy's own
+  book (<a href="setmaxage.html">SetMaxAge</a>). Nothing here validates <code>age</code>, so a caller passing a wall-clock duration instead would print a
+  number that is not comparable with anything (<code>Engine/Core/TaskStream.cpp</code>).
+</div>
+
+<div class="note">
+  <strong>It reports only: it does not count, does not notify and does not drop.</strong>
+  The count is the caller's <code>agedOutWorkCount</code> increment and the notification is
+  <a href="fireabandonednotice.html">FireAbandonedNotice</a>, called on the line after this one
+  (<code>Engine/Core/TaskStream.cpp</code>). Splitting the three is what lets a future drop site log with a different sentence while still being unable to skip
+  the notice.
+</div>
+
+<div class="gap">
+  <strong>The line names a record by index and generation, not by task name.</strong>
+  A dropped item is a <code>WorkItem</code>, and the stream never looked the task up to print this — the lookup happens before, and its failure has its own
+  report (<a href="reportreleasedtask.html">ReportReleasedTask</a>). So the line is greppable by <code>TaskID</code> parts, and finding the task's name means
+  taking those numbers back to <a href="../TaskRegistry/find.html">TaskRegistry::Find</a> while the generation still matches
+  (<code>Engine/Core/TaskStream.cpp</code>).
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<table>
+  <tr><th>Parameter</th><th>Type</th><th>Requirement</th></tr>
+  <tr><td><code>item</code></td><td><code>const WorkItem&amp;</code></td><td>The item that was refused; only its <code>TaskID</code> is read</td></tr>
+  <tr><td><code>age</code></td><td><code>std::chrono::nanoseconds</code></td><td>How late it was, as <code>now - offerTime</code> against the engine epoch. Printed verbatim in nanoseconds and never checked</td></tr>
+</table>
+
+<h2 id="return">Return value</h2>
+
+<p><code>void</code>. Reporting is the whole job; the caller has already decided to drop the item before asking for this line.</p>
+
+<h2 id="example">Examples</h2>
+
+<p class="meta">From Engine/Core/TaskStream.cpp, TaskStream::Update()</p>
+
+<pre><code>agedOutWorkCount.fetch_add(1, std::memory_order_relaxed);
+ReportAgedOutWorkItem(*workItem, now - workItem-&gt;offerTime);
+FireAbandonedNotice(*workItem);
+restore();
+return true;</code></pre>
+
+<p>
+  Count, report, notify, restore the stream index, and report the pass as having done something — the five statements that end a stale item's life
+  (<code>Engine/Core/TaskStream.cpp</code>).
+</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; TaskStream</a></span>
+  <span><a href="index.html#methods">All TaskStream methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

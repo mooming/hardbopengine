@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TaskStream::ConfigureRate — Core module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a class="current" href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Core</a> /
+  <a href="index.html">TaskStream</a> / ConfigureRate
+</p>
+
+<h1><span class="fn">ConfigureRate</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::TaskStream</span>
+  <span class="tag">Engine/Core/TaskStream.h</span>
+  Set this stream's FIFO-to-priority ratio, which is a share of its CPU allowance.
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>void ConfigureRate(uint32_t fifoWeight, uint32_t priorityWeight) noexcept</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  Defined in <code>Engine/Core/TaskStream.cpp</code> as <code>TaskStream::ConfigureRate()</code>. Set this stream's FIFO-to-priority ratio, which is
+  a split of its CPU allowance rather than a count of items.
+</p>
+
+<pre><code>if (threadID != TThreadID{})
+{
+    Assert(std::this_thread::get_id() == threadID, "Stream ", name,
+           " had its lane rate configured from another thread while it is running. The drain policy's weights are "
+           "unsynchronised fields this stream reads when it chooses a lane, so that is a data race.");
+}
+
+drainPolicy.ConfigureRate(fifoWeight, priorityWeight);</code></pre>
+
+<p class="meta">From Engine/Core/TaskStream.cpp</p>
+
+<div class="note">
+  <strong>Zero means one, not "never serve this lane".</strong> The header states it in the declaration itself: "Zero weights are treated as one, not
+  as 'never serve this lane'." (<code>Engine/Core/TaskStream.h</code>) There is no way to park a lane through the ratio; the mechanism that stops a
+  lane being served is the allowance, which belongs to <a href="configurebudget.html">ConfigureBudget</a> and
+  <code>StreamDrainPolicy::ConfigureAllowance</code>.
+</div>
+
+<div class="gap">
+  <strong>The thread check is a Debug-only check of a real race.</strong>
+  The weights are plain fields of <a href="../StreamDrainPolicy/index.html">StreamDrainPolicy</a>, and the field they gate is read by
+  <code>ChooseLane</code> inside <a href="update.html">Update</a> — a lane choice that happens on every pass
+  (<a href="../StreamDrainPolicy/chooselane.html">ChooseLane</a>). Writing them from another thread while a stream runs is a data race, and the
+  detection is an <code>Assert</code>, which is compiled away unless <code>__DEBUG__</code> is defined — the Debug configuration only
+  (<code>Core/Debug.h</code>, <code>CMakeLists.txt</code>). In Dev and Release the call is unsynchronised and silent.
+</div>
+
+<div class="gap">
+  <strong>The check is also skipped while the stream is unbound.</strong>
+  It runs <code>if (threadID != TThreadID{})</code>, and <code>threadID</code> is default until a worker's <a href="runloop.html">RunLoop</a> records
+  it, until the base stream's <a href="start.html">Start</a> records it, or until a driven stream's first <a href="update.html">Update</a> records it
+  — the IO stream in particular has no thread id until its first pass
+  (<code>Engine/Core/TaskStream.cpp</code>). A rate change aimed at a stream that has not been driven yet is never detected, which is also the window
+  in which the change is meant to be made.
+</div>
+
+<div class="note">
+  <strong>The ratio takes effect on the next lane choice, and it is expressed in allowance units.</strong>
+  <a href="../StreamDrainPolicy/configurerate.html">StreamDrainPolicy::ConfigureRate</a> owns the arithmetic: the weights split the allowance the
+  stream was configured with, so a stream with an unlimited allowance has a ratio with nothing to divide — the lane book is only charged when a
+  budget is being measured (<a href="update.html">Update</a>, <a href="getaccumulatedcputime.html">GetAccumulatedCPUTime</a>).
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<table>
+  <tr><th>Parameter</th><th>Type</th><th>Requirement</th></tr>
+  <tr><td><code>fifoWeight</code></td><td><code>uint32_t</code></td><td>Share for the FIFO lane; 0 is read as 1</td></tr>
+  <tr><td><code>priorityWeight</code></td><td><code>uint32_t</code></td><td>Share for the priority lane; 0 is read as 1</td></tr>
+</table>
+
+<h2 id="return">Return value</h2>
+
+<p><code>void</code>. The values actually stored are readable again through <a href="getfifoweight.html">GetFifoWeight</a> and <a href="getpriorityweight.html">GetPriorityWeight</a>, which is how a temporary re-rate is undone exactly.</p>
+
+<h2 id="example">Examples</h2>
+
+<p class="meta">From Engine/Core/TaskStream.h, TaskStream::GetFifoWeight()</p>
+
+<pre><code>[[nodiscard]] uint32_t GetFifoWeight() const noexcept
+{
+    return drainPolicy.GetFifoWeight();
+}</code></pre>
+
+<p>
+  The pair exists for the caller that tightens a shared stream for one collection and must put it back; the header names the failure it prevents — a
+  test that configured a shared stream without restoring it "would leave every later collection running under someone else's policy"
+  (<code>Engine/Core/TaskStream.h</code>).
+</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; TaskStream</a></span>
+  <span><a href="index.html#methods">All TaskStream methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

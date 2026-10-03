@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Component::OnEnable — Core module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a class="current" href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Core</a> /
+  <a href="index.html">Component</a> / OnEnable
+</p>
+
+<h1><span class="fn">OnEnable</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::Component</span>
+  <span class="tag">Engine/Core/Component.h</span>
+  Pure virtual: called each time the component becomes active, with the state ALIVE.
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>virtual void OnEnable() = 0</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  Pure virtual, declared in <code>Engine/Core/Component.h</code>, implemented by nobody in the engine. Called every time a component becomes active: once
+  right after <a href="init.html">Init</a>, and again each time a sleeping component is brought back.
+</p>
+
+<div class="note">
+  <strong>The state is <code>ALIVE</code> on both paths, and that is the whole contract of this callback.</strong>
+  <code>ProcessInit</code> sets <code>ALIVE</code> and then calls this, and the transition switch calls it only in the <code>ALIVE</code> case — the case a
+  component reaches by having set itself back to <code>ALIVE</code> during <a href="update.html">Update</a>
+  (<code>Engine/Core/ComponentSystem.h</code>). The repository's subclass checks it:
+</div>
+
+<pre><code>void OnEnable() override
+{
+    if (GetState() != ComponentState::ALIVE)
+    {
+        ls &lt;&lt; "State failure, state = " &lt;&lt; GetState() &lt;&lt; ", but expected " &lt;&lt; ComponentState::ALIVE
+           &lt;&lt; lferr;
+
+        testResult = false;
+    }
+
+    isOnEnableCalled = true;
+}</code></pre>
+
+<p class="meta">From Engine/Core/ComponentSystem.cpp, ComponentSystemTest</p>
+
+<p>
+  Because the first call follows <a href="init.html">Init</a> unconditionally, an enable callback cannot tell "first time" from "again" by asking this class —
+  the state answers <code>ALIVE</code> both times. A component that must distinguish them keeps its own flag, as the test above does with
+  <code>isOnEnableCalled</code>.
+</p>
+
+<div class="gap">
+  <strong>The re-enable path is reachable only from inside <a href="update.html">Update</a>, and only for a component that is still running.</strong>
+  The <code>ALIVE</code> case of the transition switch is entered when a component was found not enabled at the end of its update but its state has since
+  become <code>ALIVE</code> again (<code>Engine/Core/ComponentSystem.h</code>) — in practice, a component that called
+  <a href="setenable.html">SetEnable</a> twice, or <a href="setstate.html">SetState</a>, during its own update. A component that has already been moved to the
+  system's sleep list is never examined again, so bringing it back from there does not call this
+  (<a href="setenable.html">SetEnable</a> states the consequence).
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<p>None.</p>
+
+<h2 id="return">Return value</h2>
+
+<p><code>void</code>. Nothing checks a return: the system places the component on its update list whatever this callback did, so refusing to be enabled means setting the state back again, not reporting failure.</p>
+
+<h2 id="example">Examples</h2>
+
+<pre><code>case ComponentState::ALIVE:
+    compo.OnEnable();
+    updateList.push_back(std::move(compo));
+    break;</code></pre>
+
+<p class="meta">From Engine/Core/ComponentSystem.h, ComponentSystem::ProcessTransition()</p>
+
+<p>
+  The re-enable branch: the callback runs first, then the component is moved back into the update list, so the first
+  <a href="update.html">Update</a> after this is the next pass. The other call site is the two-line sequence in
+  <code>ProcessInit</code> (<code>Engine/Core/ComponentSystem.h</code>).
+</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; Component</a></span>
+  <span><a href="index.html#methods">All Component methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

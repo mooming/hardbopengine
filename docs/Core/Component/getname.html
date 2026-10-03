@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Component::GetName — Core module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a class="current" href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Core</a> /
+  <a href="index.html">Component</a> / GetName
+</p>
+
+<h1><span class="fn">GetName</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::Component</span>
+  <span class="tag">Engine/Core/Component.h</span>
+  The name given at construction, as a reference to the held String.
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>[[nodiscard]] const String&amp; GetName() const noexcept</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  Defined in the header <code>Engine/Core/Component.h</code>. Returns the name given to <a href="constructors.html">the constructor</a>, as a reference to the
+  <a href="../../String/index.html"><code>hbe::String</code></a> this component holds.
+</p>
+
+<div class="note">
+  <strong>The name is shared, not copied, when a component moves — so a copy of a component is a second name-tag on one buffer.</strong>
+  <code>String</code> stores a <code>Shareable</code> character buffer (<code>Engine/String/String.h</code>), and a subclass's move constructor moves the base
+  from a non-const lvalue, which selects the sharing constructor:
+</div>
+
+<pre><code>Test(Test&amp;&amp; rhs) noexcept
+    : Component(rhs)</code></pre>
+
+<p class="meta">From Engine/Core/ComponentSystem.cpp, ComponentSystemTest</p>
+
+<p>
+  The consequence for a caller is benign but worth knowing: two components produced by moving one another report the same name, and neither can tell. The
+  buffer outlives any one of them, so the reference cannot dangle because a move happened — only because the object it was taken from died.
+</p>
+
+<div class="gap">
+  <strong>Nothing in the engine ever asks a component its name.</strong>
+  No line in <code>Engine/</code> or <code>Applications/</code> calls this accessor; the system that drives components reports its own name, not its
+  members' (<code>Engine/Core/ComponentSystem.h</code>). It exists for a subclass's own diagnostics and for whoever is looking at a component from outside —
+  and it is the one field of this class a subclass cannot set after construction, since the constructor is the only writer.
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<p>None.</p>
+
+<h2 id="return">Return value</h2>
+
+<table>
+  <tr><th>Type</th><th>What it tells the caller</th></tr>
+  <tr><td><code>const String&amp;</code></td><td>The member itself, not a copy. Valid while this component object is alive — and because the system moves components between lists every pass (<a href="update.html">Update</a>), a reference to a component is shorter-lived than the reference to its name's buffer</td></tr>
+</table>
+
+<h2 id="example">Examples</h2>
+
+<p>
+  The name is fixed at construction, which is the one place it can be given:
+</p>
+
+<pre><code>Test(bool&amp; testResult, TestCollection::TLogOut&amp; ls, TestCollection::LogFlush&amp; lferr)
+    : Component("Test")</code></pre>
+
+<p class="meta">From Engine/Core/ComponentSystem.cpp, ComponentSystemTest</p>
+
+<p>
+  A subclass that wants a per-instance label has to pass it here, because there is no setter and the field is header-private
+  (<a href="constructors.html">Component</a>).
+</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; Component</a></span>
+  <span><a href="index.html#methods">All Component methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

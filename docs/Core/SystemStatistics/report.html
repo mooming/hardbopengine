@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SystemStatistics::Report — Core module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a class="current" href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Core</a> /
+  <a href="index.html">SystemStatistics</a> / Report
+</p>
+
+<h1><span class="fn">Report</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::SystemStatistics</span>
+  <span class="tag">Engine/Core/SystemStatistics.h</span>
+  Under PROFILE_ENABLED only: append one AllocStats record for the profile dump.
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>#if PROFILE_ENABLED
+	void Report(const AllocStats&amp; allocStats) noexcept</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  Declared in <code>Engine/Core/SystemStatistics.h</code> under <code>#if PROFILE_ENABLED</code>, defined in <code>Engine/Core/SystemStatistics.cpp</code> under the same condition, and <code>PROFILE_ENABLED</code> is defined as <code>0</code> unconditionally in <code>Engine/Config/BuildConfig.h</code> — so neither half is compiled in any configuration the tree builds. This page is therefore written from the source text, and it says so plainly: no verification pass can see a declaration the preprocessor removes, and nothing here was observed running.
+</p>
+
+<p>
+  Its whole body is <code>allocStats.emplace_back(stats);</code> — it appends the memory module's <code>AllocStats</code> record
+  (<code>Engine/Memory/AllocStats.h</code>) to the vector that <a href="printallocatorprofiles.html">PrintAllocatorProfiles</a> would walk. It takes no lock,
+  unlike its two siblings.
+</p>
+
+<pre><code>void SystemStatistics::Report(const AllocStats&amp; stats)
+{
+    allocStats.emplace_back(stats);
+}</code></pre>
+
+<p class="meta">From Engine/Core/SystemStatistics.cpp, SystemStatistics::Report() (under PROFILE_ENABLED)</p>
+
+<div class="gap">
+  <strong>The declaration says <code>noexcept</code> and the definition does not, so the moment anyone sets <code>PROFILE_ENABLED</code> to 1 this translation
+  unit stops compiling.</strong>
+  A definition that omits an exception specification its declaration carries is rejected by the compiler — confirmed with a minimal translation unit
+  (<code>struct S { void F() noexcept; };</code> plus <code>void S::F() {}</code>, which clang refuses with "is missing exception specification
+  'noexcept'"). All three profile reporters have the same mismatch, so the profiling half of this class is not merely unused but unbuildable as written
+  (<code>Engine/Core/SystemStatistics.h</code>, <code>Engine/Core/SystemStatistics.cpp</code>).
+</div>
+
+<div class="note">
+  <strong>Its caller is the memory manager, behind the same flag.</strong>
+  The one call site is inside a <code>#if PROFILE_ENABLED</code> region of <code>Engine/Memory/MemoryManager.cpp</code>, alongside
+  <a href="reportsysmemalloc.html">ReportSysMemAlloc</a>. So the vector this fills and the function that would print it are both driven by the memory module,
+  and neither exists in a shipping build (<code>Engine/Memory/MemoryManager.cpp</code>).
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<table>
+  <tr><th>Name</th><th>Type</th><th>Meaning</th></tr>
+  <tr><td><code>allocStats</code></td><td><code>const AllocStats&amp;</code></td><td>One allocator's statistics record, copied into the vector; named <code>stats</code> in the definition, which is the same object under a different name</td></tr>
+</table>
+
+<h2 id="return">Return value</h2>
+
+<p><code>void</code>. Nothing reports whether the entry was stored, and the vector grows unboundedly — there is no cap and no clear, which matters only in a build that compiles this at all.</p>
+
+<h2 id="example">Examples</h2>
+
+<p>
+  There is no reachable call site to quote; the caller is described above and lives in the memory module. What the entry does with the record — printing a
+  per-allocator profile line — is <code>AllocStats::Print</code>'s duty
+  (<a href="../../Memory/index.html">the memory module</a>), reached only from
+  <a href="printallocatorprofiles.html">PrintAllocatorProfiles</a>.
+</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; SystemStatistics</a></span>
+  <span><a href="index.html#methods">All SystemStatistics methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TaskStream::GetThread — Core module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a class="current" href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Core</a> /
+  <a href="index.html">TaskStream</a> / GetThread
+</p>
+
+<h1><span class="fn">GetThread</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::TaskStream</span>
+  <span class="tag">Engine/Core/TaskStream.h</span>
+  The stream's thread object, for a shutdown that has to ask whether there is one.
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>[[nodiscard]] auto&amp; GetThread() noexcept
+
+[[nodiscard]] auto&amp; GetThread() const noexcept</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  Declared and defined in the header <code>Engine/Core/TaskStream.h</code>; there is no counterpart in
+  <code>Engine/Core/TaskStream.cpp</code>. Both overloads return the <code>std::thread</code> member by reference — the <code>const</code> form yielding a
+  reference to a const thread — because the only useful thing to do with a thread is to ask it whether it is joinable, and that question has to be asked of the
+  object, not a copy.
+</p>
+
+<div class="gap">
+  <strong>Two overloads, one difference that is not what it looks like.</strong>
+  The <code>const</code> overload can join nothing: <code>std::thread::join()</code> is not a <code>const</code> operation, so what it offers is inspection —
+  <code>joinable()</code>, <code>get_id()</code>, comparison. Both forms hand out a reference into the stream, so both die with it; a reference kept past the
+  stream's destruction is dangling, and unlike <a href="getname.html">GetName</a> there is no value form to keep instead
+  (<code>Engine/Core/TaskStream.h</code>).
+</div>
+
+<div class="note">
+  <strong>The engine uses this instead of <a href="join.html">Join</a>, and the reason is the check <a href="join.html">Join</a> lacks.</strong>
+</div>
+
+<pre><code>auto&amp; thread = stream.GetThread();
+if (unlikely(!thread.joinable()))
+{
+    continue;
+}
+
+thread.join();</code></pre>
+
+<p class="meta">From Engine/Core/TaskSystem.cpp, TaskSystem::JoinAndClear()</p>
+
+<p>
+  The base and IO streams never had a thread (<a href="start.html">Start</a> returns before creating one), so their entry in the sweep must be recognised and
+  skipped; joining a non-joinable thread throws, and <a href="join.html">Join</a> is <code>noexcept</code>, which turns the throw into
+  <code>std::terminate</code> (<code>Engine/Core/TaskStream.h</code>). This accessor is what makes the shutdown loop able to tell the two kinds of stream apart.
+</p>
+
+<div class="gap">
+  <strong>It is also the hole in <a href="start.html">Start</a>'s second-call guarantee.</strong>
+  The same reference is how a caller could reach the member <a href="start.html">Start</a> assigns to: assigning to a joinable <code>std::thread</code> calls
+  <code>std::terminate</code>, and nothing in the class marks a stream as started
+  (<code>Engine/Core/TaskStream.cpp</code>). Exposing the thread is the cost of making the shutdown joinable at all; the safety of both operations belongs to the
+  code that holds the stream.
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<p>None.</p>
+
+<h2 id="return">Return value</h2>
+
+<table>
+  <tr><th>Type</th><th>What you get</th></tr>
+  <tr><td><code>auto&amp;</code> deducing <code>std::thread&amp;</code></td><td>The thread member, whether or not a thread was ever created for this stream; a default-constructed thread reports <code>joinable() == false</code></td></tr>
+</table>
+
+<h2 id="example">Examples</h2>
+
+<p class="meta">From Engine/Core/TaskSystem.cpp, TaskSystem::JoinAndClear()</p>
+
+<pre><code>auto&amp; thread = stream.GetThread();
+if (unlikely(!thread.joinable()))</code></pre>
+
+<p>
+  The whole use, twice over: reach the thread, ask if it exists, and only then wait for it
+  (<code>Engine/Core/TaskSystem.cpp</code>).
+</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; TaskStream</a></span>
+  <span><a href="index.html#methods">All TaskStream methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

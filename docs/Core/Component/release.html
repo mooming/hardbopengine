@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Component::Release — Core module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a class="current" href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Core</a> /
+  <a href="index.html">Component</a> / Release
+</p>
+
+<h1><span class="fn">Release</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::Component</span>
+  <span class="tag">Engine/Core/Component.h</span>
+  Pure virtual: final teardown, called once with the state DEAD, just before the object dies.
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>virtual void Release() = 0</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  Pure virtual, declared in <code>Engine/Core/Component.h</code>, implemented by nobody in the engine. The last callback a component receives: called once,
+  immediately before the component is destroyed, for a component that has been asked to die.
+</p>
+
+<div class="note">
+  <strong>The state is <code>DEAD</code> by the time you are called, and the system arranged that deliberately.</strong>
+  The death branch sets <code>SLEEP</code> first, runs <a href="ondisable.html">OnDisable</a> under that state, then sets <code>DEAD</code> and only then
+  calls <a href="release.html">Release</a> (<code>Engine/Core/ComponentSystem.h</code>). A subclass checks it:
+</div>
+
+<pre><code>void Release() override
+{
+    if (GetState() != ComponentState::DEAD)
+    {
+        ls &lt;&lt; "State failure, state = " &lt;&lt; GetState() &lt;&lt; ", but expected " &lt;&lt; ComponentState::DEAD &lt;&lt; lferr;
+
+        testResult = false;
+    }
+
+    isReleased = true;
+}</code></pre>
+
+<p class="meta">From Engine/Core/ComponentSystem.cpp, ComponentSystemTest</p>
+
+<p>
+  The reason for the ordering is that <a href="ondisable.html">OnDisable</a> and <a href="release.html">Release</a> are two different duties — undo the
+  enablement, then let go of resources — and a component that branches on its own state in <a href="ondisable.html">OnDisable</a> must not see
+  <code>DEAD</code> there, or it cannot tell the two exits apart.
+</p>
+
+<div class="gap">
+  <strong>Not every component is released, and only a destructor can catch that.</strong>
+  <code>Release</code> is reached from exactly one place, the <code>DEAD</code> case of the transition switch
+  (<code>Engine/Core/ComponentSystem.h</code>). A component left sleeping when the system is destroyed is destroyed with no callback at all, and a component
+  whose state is none of <code>ALIVE</code>, <code>SLEEP</code> or <code>DEAD</code> at transition time falls to the switch's default case — where the only
+  statement is an <code>Assert</code>, which is compiled out unless <code>__DEBUG__</code> is defined. Outside Debug the object is destroyed silently by the
+  following <code>transitionList.clear()</code>. The repository's subclass is written to fail loudly in both cases:
+</div>
+
+<pre><code>if (!isInit || !isOnEnableCalled || !isOnDisableCalled || !isReleased)
+{
+    testResult = false;
+    ls &lt;&lt; "Test object is destroyed accidently." &lt;&lt; lferr;
+}</code></pre>
+
+<p class="meta">From Engine/Core/ComponentSystem.cpp, ComponentSystemTest</p>
+
+<h2 id="parameters">Parameters</h2>
+
+<p>None.</p>
+
+<h2 id="return">Return value</h2>
+
+<p><code>void</code>, and there is no second chance: the object is destroyed when the transition list is cleared in the same pass, so anything <a href="release.html">Release</a> does not free is freed by the destructor without being asked.</p>
+
+<h2 id="example">Examples</h2>
+
+<pre><code>case ComponentState::DEAD:
+    compo.SetState(ComponentState::SLEEP);
+    compo.OnDisable();
+    compo.SetState(ComponentState::DEAD);
+    compo.Release();
+    break;</code></pre>
+
+<p class="meta">From Engine/Core/ComponentSystem.h, ComponentSystem::ProcessTransition()</p>
+
+<p>
+  The dead component is not pushed onto any list, which is how it dies: the loop finishes, <code>transitionList.clear()</code> runs, and with it the
+  destructor (<code>Engine/Core/ComponentSystem.h</code>, <a href="destructor.html">~Component</a>).
+</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; Component</a></span>
+  <span><a href="index.html#methods">All Component methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

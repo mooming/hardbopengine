@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TaskStream::IsProviderAttached — Core module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a class="current" href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Core</a> /
+  <a href="index.html">TaskStream</a> / IsProviderAttached
+</p>
+
+<h1><span class="fn">IsProviderAttached</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::TaskStream</span>
+  <span class="tag">Engine/Core/TaskStream.h</span>
+  Whether a provider is registered on one lane of this stream, read from the list the drain uses.
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>[[nodiscard]] bool IsProviderAttached(const TaskProvider&amp; provider, StreamDrainPolicy::ELane lane) noexcept</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  Defined in <code>Engine/Core/TaskStream.cpp</code> as <code>TaskStream::IsProviderAttached()</code>. Whether one provider sits on one lane's
+  registration list right now.
+</p>
+
+<pre><code>const size_t slot = ProviderSlot(lane);
+if (slot &gt;= laneProviders.size())
+{
+    return false;
+}
+
+std::scoped_lock&lt;std::mutex&gt; lock(queueLock);
+const auto&amp; list = laneProviders[slot];</code></pre>
+
+<p class="meta">From Engine/Core/TaskStream.cpp (the elided lines scan the list for the provider's address)</p>
+
+<div class="note">
+  <strong>It is the same question <code>TaskProvider::IsAttachedTo</code> answers, about the list that matters.</strong>
+  The provider's own accessor reads its unsynchronised slot list; this one reads the stream's list — "the stream's list, not the provider's, is what
+  the drain reads" (R38, <code>Engine/Core/TaskStream.h</code>) — so the two disagree in exactly the two cases that matter: a provider whose
+  registration the stream refused, and a provider in the middle of being detached. When they differ, this is the answer that predicts whether
+  <a href="drainproviderslocked.html">DrainProvidersLocked</a> will ask.
+</div>
+
+<div class="gap">
+  <strong>The method is not <code>const</code>, because the answer takes the lock.</strong>
+  It locks <code>queueLock</code>, which is a non-mutable member, so the declaration cannot be <code>const</code> even though nothing is modified
+  (<code>Engine/Core/TaskStream.h</code>). The consequence for a caller holding a <code>const TaskStream&amp;</code> is that the question cannot be
+  asked without <code>const_cast</code>, while its neighbours <a href="countpendingitems.html">CountPendingItems</a> and
+  <a href="haspostedtasks.html">HasPostedTasks</a> are <code>const</code> — and <code>CountPendingItems</code> reads two container sizes with no
+  lock at all, so the two reads are not equally safe.
+</div>
+
+<div class="note">
+  <strong>A lane of <code>ELane::None</code> answers <code>false</code> without taking the lock.</strong>
+  <code>ProviderSlot</code> maps it to an index past the end of the two-element array, so the bounds test rejects it first
+  (<code>Engine/Core/TaskStream.cpp</code>) — the same four opening lines that <a href="attachprovider.html">AttachProvider</a> and
+  <a href="detachprovider.html">DetachProvider</a> use.
+</div>
+
+<div class="gap">
+  <strong>The answer is a snapshot, and the lock does not extend it.</strong>
+  The lock is released when this returns, so a <code>true</code> is a statement about one instant: an <a href="detachprovider.html">DetachProvider</a>
+  from another thread can empty the slot immediately after, and a provider may be destroyed afterwards with this stream's list holding its address
+  until that detach completes (<code>Engine/Core/TaskStream.cpp</code>). It is a diagnostic, not a reservation.
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<table>
+  <tr><th>Parameter</th><th>Type</th><th>Requirement</th></tr>
+  <tr><td><code>provider</code></td><td><code>const TaskProvider&amp;</code></td><td>Matched by address against the list's <code>TaskProvider*</code> entries; the const reference is why a provider that was never registered can be asked about safely</td></tr>
+  <tr><td><code>lane</code></td><td><code>StreamDrainPolicy::ELane</code></td><td>One lane. A provider on both lanes must be asked twice, since each lane has its own list</td></tr>
+</table>
+
+<h2 id="return">Return value</h2>
+
+<table>
+  <tr><th>Type</th><th>What you get</th></tr>
+  <tr><td><code>bool</code></td><td><code>true</code> only while this lane's list holds the provider's address; <code>false</code> for an unregistered provider and for <code>ELane::None</code> alike</td></tr>
+</table>
+
+<h2 id="example">Examples</h2>
+
+<p class="meta">From Engine/Core/TaskProvider.cpp, TaskProviderTest</p>
+
+<pre><code>if (taskSystem.GetStream(worker).IsProviderAttached(provider, StreamDrainPolicy::ELane::Fifo))
+{
+    ls &lt;&lt; "DetachAll left the provider registered on the stream, so the stream still holds a pointer to an"
+       &lt;&lt; " object about to die." &lt;&lt; lferr;
+}</code></pre>
+
+<p>
+  The accessor's real use is exactly the question it can answer that a provider cannot: after a <a href="../TaskProvider/detachall.html">DetachAll</a>, is the
+  stream still holding the address? The test asks the stream, not the provider, because the provider's slot list is bookkeeping about what its owner asked
+  for and this list is what the drain reads (R38, <code>Engine/Core/TaskStream.h</code>). Both call sites in the repository are in the unit-test region of
+  <code>Engine/Core/TaskProvider.cpp</code>.
+</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; TaskStream</a></span>
+  <span><a href="index.html#methods">All TaskStream methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

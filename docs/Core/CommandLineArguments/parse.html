@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CommandLineArguments::Parse — Core module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a class="current" href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Core</a> /
+  <a href="index.html">CommandLineArguments</a> / Parse
+</p>
+
+<h1><span class="fn">Parse</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::CommandLineArguments</span>
+  <span class="tag">Engine/Core/CommandLineArguments.h</span>
+  Private: assert argc, echo argv, and assign none of the three members.
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>void Parse(int argc, const char* argv[])</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  Private, defined in <code>Engine/Core/CommandLineArguments.cpp</code>; the only thing the taking constructor does. Its whole body is an assertion that
+  <code>argc</code> is positive and a loop that prints each entry of <code>argv</code>. It writes none of the three members, which is why
+  <a href="getarguments.html">GetArguments</a> is empty and <a href="print.html">Print</a> has nothing to print.
+</p>
+
+<pre><code>void CommandLineArguments::Parse(int argc, const char* argv[])
+{
+    using namespace std;
+
+    Assert(argc &gt; 0, "CommandLineArguments::Parse - Incorrect argc = ", argc);
+
+    for (int i = 0; i &lt; argc; ++i)
+    {
+        cout &lt;&lt; i &lt;&lt; " : " &lt;&lt; argv[i] &lt;&lt; endl;
+    }
+}</code></pre>
+
+<p class="meta">From Engine/Core/CommandLineArguments.cpp, CommandLineArguments::Parse()</p>
+
+<div class="gap">
+  <strong>The name promises storage and the body delivers a print, and the two members that would hold the path are untouched.</strong>
+  <code>executablePath</code> and <code>executableFilename</code> have no assignment anywhere in the file
+  (<code>Engine/Core/CommandLineArguments.cpp</code>), so <a href="print.html">Print</a>'s two path lines are permanently empty and the class cannot answer the
+  one question its fields advertise: which executable was run, and from where. The header's <code>@brief</code> says "Parses and stores"; the code stores
+  nothing (<code>Engine/Core/CommandLineArguments.h</code>). This is the class's central defect, and every other page here points at it.
+</div>
+
+<div class="gap">
+  <strong>It reads <code>argv[i]</code> up to <code>argc</code> without checking either, and its only guard is a Debug-only assert.</strong>
+  <code>Assert</code> compiles to nothing unless <code>__DEBUG__</code> is defined, which only the Debug configuration is
+  (<code>Engine/Core/Debug.h</code>). In Dev and Release, an <code>argc</code> of zero skips the loop harmlessly, but an
+  <code>argc</code> that overstates the array prints past it — and <code>argv[argc]</code> is guaranteed null by the platform, so printing one element too many
+  means passing a null <code>const char*</code> to a stream, which the standard library is allowed to reject. The assert is the only check on the pair, and it
+  is not present in the builds that ship.
+</div>
+
+<div class="note">
+  <strong>The print here is the reason the class has any observable effect at all.</strong>
+  One line per argument, to <code>std::cout</code>, at construction time — duplicating what <a href="print.html">Print</a> was written to do, without the banner
+  and without the empty count line (<code>Engine/Core/CommandLineArguments.cpp</code>). Neither has ever executed: the class has no construction site in
+  <code>Engine/</code> or <code>Applications/</code> (<a href="constructors.html">the constructor page</a>).
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<table>
+  <tr><th>Name</th><th>Type</th><th>Meaning</th></tr>
+  <tr><td><code>argc</code></td><td><code>int</code></td><td>Number of entries to read from <code>argv</code>; asserted positive in Debug builds, trusted everywhere</td></tr>
+  <tr><td><code>argv</code></td><td><code>const char*[]</code></td><td>The argument vector; each entry is printed and then discarded, with no copy taken into the class</td></tr>
+</table>
+
+<h2 id="return">Return value</h2>
+
+<p><code>void</code>. No report of what was parsed — because nothing is parsed, there is nothing to report; a caller cannot distinguish "no arguments" from "arguments seen and dropped".</p>
+
+<h2 id="example">Examples</h2>
+
+<p>
+  The call site is the constructor, and it is the only one
+  (<code>Engine/Core/CommandLineArguments.cpp</code>):
+</p>
+
+<pre><code>CommandLineArguments::CommandLineArguments(int argc, const char* argv[])
+{
+    Parse(argc, argv);
+}</code></pre>
+
+<p class="meta">From Engine/Core/CommandLineArguments.cpp, CommandLineArguments::CommandLineArguments()</p>
+
+<p>
+  Everything the object knows after construction is whatever <code>Parse</code> left in the members — which, reading the body above, is nothing at all.
+</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; CommandLineArguments</a></span>
+  <span><a href="index.html#methods">All CommandLineArguments methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TaskStream::DispatchPostedTasks — Core module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a class="current" href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Core</a> /
+  <a href="index.html">TaskStream</a> / DispatchPostedTasks
+</p>
+
+<h1><span class="fn">DispatchPostedTasks</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::TaskStream</span>
+  <span class="tag">Engine/Core/TaskStream.h</span>
+  Post a callable to be run by the thread driving this stream, from any thread.
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>void DispatchPostedTasks(MainThreadTaskQueue::TTaskFunc taskFunc, void* userData, uint8_t priority = 128) noexcept</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  Defined in <code>Engine/Core/TaskStream.cpp</code> as <code>TaskStream::DispatchPostedTasks()</code>; the body is one call,
+  <code>postedTasks.Enqueue(taskFunc, userData, priority)</code> (<a href="../MainThreadTaskQueue/enqueue.html">MainThreadTaskQueue::Enqueue</a>). Post
+  a callable to be run by the thread driving this stream, from any thread.
+</p>
+
+<div class="note">
+  <strong>The default priority is 128, which is the middle of the byte and what a plain engine-loop post uses.</strong>
+  "0 is the least urgent, 255 the most. The default is 128, matching a plain engine-loop post." (<code>Engine/Core/TaskStream.h</code>) The container
+  behind this has one bucket per value a <code>uint8_t</code> holds — <code>BoundedPriorityQueue&lt;TaskItem, 256, MaxQueueSize&gt;</code> — so the whole
+  byte is addressable and 128 is the neutral choice, not a low one (<code>Engine/Core/MainThreadTaskQueue.h</code>).
+</div>
+
+<div class="gap">
+  <strong>It cannot refuse the work, but not for the reason the header gives.</strong>
+  The header states: "Cannot refuse the work. The queue is bounded; a post past the bound is a programming error and reports itself." The first sentence is
+  what the code does; the rest does not hold. <code>MaxQueueSize</code> is the container's third template argument — the bucket size hint, not a capacity —
+  and <code>Enqueue</code> locks and pushes, returning <code>void</code> with no check and no log line
+  (<code>Engine/Core/MainThreadTaskQueue.h</code>, <code>Engine/Core/MainThreadTaskQueue.cpp</code>). A poster past any figure is accepted silently and the
+  queue grows; nothing reports it. The observable consequence is memory and latency, never a refusal.
+</div>
+
+<div class="note">
+  <strong>Where the callable runs is decided by which stream it was posted to, not by the word "main".</strong>
+  The queue lives on the stream (<code>postedTasks</code>), and <a href="update.html">Update</a> drains it at the top of every pass — before the close
+  check, and with the queue's lock released so "a posted callable may post again"
+  (<code>Engine/Core/TaskStream.cpp</code>, <a href="processpostedtasks.html">ProcessPostedTasks</a>). The engine posts to the base stream, so
+  "main thread" work is base-stream work (<code>Engine/Core/TaskSystem.cpp</code>).
+</div>
+
+<div class="gap">
+  <strong>Null checks are the poster's duty and nothing here enforces them.</strong>
+  The header marks <code>taskFunc</code> "Must not be null" and <code>userData</code> "May be null", and the drain is where the difference would surface:
+  <code>ProcessTasks</code> tests the function pointer before calling it and simply does not count an item whose function is null
+  (<code>Engine/Core/MainThreadTaskQueue.cpp</code>). So a null function is dropped without a word rather than crashing — and the count
+  <a href="processpostedtasks.html">ProcessPostedTasks</a> returns will not match the number of posts.
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<table>
+  <tr><th>Parameter</th><th>Type</th><th>Requirement</th></tr>
+  <tr><td><code>taskFunc</code></td><td><code>MainThreadTaskQueue::TTaskFunc</code></td><td>Invoked as <code>taskFunc(userData)</code> on the thread driving this stream. Must not be null; a null function is skipped silently</td></tr>
+  <tr><td><code>userData</code></td><td><code>void*</code></td><td>Passed through untouched; may be null. Its lifetime must outlast the run, which this call cannot arrange</td></tr>
+  <tr><td><code>priority</code></td><td><code>uint8_t</code>, default <code>128</code></td><td>0 least urgent, 255 most; ties run oldest first</td></tr>
+</table>
+
+<h2 id="return">Return value</h2>
+
+<p><code>void</code>. There is nothing to check: the call cannot fail, and there is no token, id or cancellation handle for what it queued.</p>
+
+<h2 id="example">Examples</h2>
+
+<p class="meta">From Engine/Core/TaskSystem.cpp, TaskSystem::DispatchToMainThread()</p>
+
+<pre><code>GetStream(GetBaseTaskStreamIndex()).DispatchPostedTasks(taskFunc, userData, priority);</code></pre>
+
+<p>
+  The engine-wide post is one line: it names the base stream and forwards the three arguments unchanged, which is what makes the base stream's driver the
+  main thread's executor (<code>Engine/Core/TaskSystem.cpp</code>).
+</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; TaskStream</a></span>
+  <span><a href="index.html#methods">All TaskStream methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

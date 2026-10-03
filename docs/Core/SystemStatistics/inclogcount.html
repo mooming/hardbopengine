@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SystemStatistics::IncLogCount — Core module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a class="current" href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Core</a> /
+  <a href="index.html">SystemStatistics</a> / IncLogCount
+</p>
+
+<h1><span class="fn">IncLogCount</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::SystemStatistics</span>
+  <span class="tag">Engine/Core/SystemStatistics.h</span>
+  Add one to the log-line count, behind a flag no configuration compiles.
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>void IncLogCount() noexcept</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  Defined in the header <code>Engine/Core/SystemStatistics.h</code>. Adds one to <code>logCount</code> with
+  <code>fetch_add(1, std::memory_order_relaxed)</code>. Intended to count short log lines — the ones stored inline in the line object rather than in a heap buffer. Its only call site is compiled out, so in every build the engine can produce the counter stays zero.
+</p>
+
+<div class="gap">
+  <strong>Both the increment and its sibling are behind a flag that no configuration sets.</strong>
+  <code>PROFILE_ENABLED</code> is defined as <code>0</code> unconditionally in <code>Engine/Config/BuildConfig.h</code>, so the block above is not compiled, and
+  <a href="print.html">Print</a> reports "Log Count = 0". The same condition removes <a href="inclonglogcount.html">IncLongLogCount</a>, which is why that line
+  reads "0 / 0" — the ratio it prints is computed from two fields that were never written (<code>Engine/Log/LogLine.cpp</code>,
+  <code>Engine/Core/SystemStatistics.cpp</code>).
+</div>
+
+<div class="note">
+  <strong>Printed as a pair, and read together on purpose.</strong>
+  <a href="print.html">Print</a> loads both counters before writing either line, so "Long Log Count = X / Y" cannot divide a long count from one moment by a
+  total from another (<code>Engine/Core/SystemStatistics.cpp</code>).
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<p>None.</p>
+
+<h2 id="return">Return value</h2>
+
+<p><code>void</code>. The count is not returned; the only reader is <a href="print.html">Print</a>.</p>
+
+<h2 id="example">Examples</h2>
+
+<pre><code>#if PROFILE_ENABLED
+    {
+        auto&amp; engine = Engine::Get();
+        auto&amp; stat = engine.GetStatistics();
+        stat.IncLogCount();
+    }
+#endif // PROFILE_ENABLED</code></pre>
+
+<p class="meta">From Engine/Log/LogLine.cpp</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; SystemStatistics</a></span>
+  <span><a href="index.html#methods">All SystemStatistics methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

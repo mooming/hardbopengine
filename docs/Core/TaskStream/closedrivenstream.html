@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TaskStream::CloseDrivenStream — Core module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a class="current" href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Core</a> /
+  <a href="index.html">TaskStream</a> / CloseDrivenStream
+</p>
+
+<h1><span class="fn">CloseDrivenStream</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::TaskStream</span>
+  <span class="tag">Engine/Core/TaskStream.h</span>
+  Close a stream that rides another thread: mark it closed and give away the work it holds.
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>void CloseDrivenStream() noexcept</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  Defined in <code>Engine/Core/TaskStream.cpp</code> as <code>TaskStream::CloseDrivenStream()</code>.
+</p>
+
+<pre><code>RequestClose();
+
+if (isClosed.exchange(true, std::memory_order_acq_rel))
+{
+    return;
+}
+
+if (const auto abandoned = AbandonHeldWork(); abandoned &gt; 0)
+{
+    ...warning naming the count...
+}
+
+Logger::Get(name).Out([name = name, passes = drivenPassCount](auto&amp; ls)
+{ ls &lt;&lt; name.c_str() &lt;&lt; " closed after " &lt;&lt; passes &lt;&lt; " driven pass(es)."; });</code></pre>
+
+<p class="meta">From Engine/Core/TaskStream.cpp (the elided block is the abandonment warning)</p>
+
+<p>
+  The close path for a stream that rides someone else's thread. It asks, marks itself closed, gives away the work it still holds, and reports — the four
+  things <a href="runloop.html">RunLoop</a> would have done on a thread this stream does not have.
+</p>
+
+<div class="note">
+  <strong>The exchange is both the mark and the re-entry guard.</strong> A second caller sees the first one's <code>true</code> and returns without
+  abandoning anything twice, so closing twice is safe in the order that matters: only the first call reports
+  (<a href="abandonheldwork.html">AbandonHeldWork</a>, <code>Engine/Core/TaskStream.cpp</code>). The header's precondition sits on the other side of that:
+  it must be called "after the driver has been withdrawn and can no longer be inside a pass", because nothing here stops a driver that is still running a
+  pass (<code>Engine/Core/TaskStream.h</code>).
+</div>
+
+<div class="gap">
+  <strong>It exists because a driven stream can never close itself, and a stream that never closes is a deadlock waiting to be written.</strong>
+  "A ride-on stream never enters <code>RunLoop</code>, so nothing there would drain it, report it, or mark it closed - and a stream whose closed state is
+  never set is a stream that any correct future waiter would wait on forever. Whoever drove it closes it, after the driver has been withdrawn and can no
+  longer be inside a pass." (<code>Engine/Core/TaskStream.h</code>) The engine has exactly two such streams — base and IO — and closes both
+  (<code>Engine/Core/TaskSystem.cpp</code>).
+</div>
+
+<pre><code>Logger::Get().SetIODriver(nullptr);
+GetIOTaskStream().CloseDrivenStream();
+baseStream.CloseDrivenStream();</code></pre>
+
+<p class="meta">From Engine/Core/TaskSystem.cpp, TaskSystem::JoinAndClear()</p>
+
+<p>
+  The IO driver is withdrawn first, which is the precondition in action: the logger's thread is the IO stream's driver, and clearing it is what makes the
+  following close legal (<code>Engine/Core/TaskSystem.cpp</code>).
+</p>
+
+<div class="gap">
+  <strong>Nothing is drained here, and the difference from a worker's exit is deliberate.</strong>
+  A worker's loop calls <a href="drainforshutdown.html">DrainForShutdown</a> before marking itself closed; this call goes straight from the ask to
+  <a href="abandonheldwork.html">AbandonHeldWork</a>. That is the same reasoning that gives the base and IO streams a zero-length shutdown window — for
+  them, "run until the queues are empty" is not what closing means, and the logger is flushed explicitly instead
+  (<a href="drainforshutdown.html">DrainForShutdown</a>, <code>Engine/Core/TaskStream.h</code>). Work that this drops was work the shutdown had already
+  stopped pumping.
+</div>
+
+<div class="note">
+  <strong>The report counts driven passes, not loops.</strong> The number printed is <code>drivenPassCount</code>, incremented at the top of every
+  <a href="update.html">Update</a> on whichever thread drove it (<a href="getdrivenpasscount.html">GetDrivenPassCount</a>) — which is the only pass
+  accounting a ride-on stream has.
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<p>None.</p>
+
+<h2 id="return">Return value</h2>
+
+<p><code>void</code>. Whether this call was the one that closed the stream is visible only in the log, since the exchange's earlier value is discarded.</p>
+
+<h2 id="example">Examples</h2>
+
+<p class="meta">From Engine/Core/TaskSystem.cpp, TaskSystem::JoinAndClear()</p>
+
+<pre><code>GetIOTaskStream().CloseDrivenStream();
+baseStream.CloseDrivenStream();
+
+GetStream(GetIOTaskStreamIndex()).RequestClose();</code></pre>
+
+<p>
+  IO first, base last, in the order the shutdown is ordered — and the trailing <a href="requestclose.html">RequestClose</a> repeats what the close already
+  did, harmless and redundant (<code>Engine/Core/TaskSystem.cpp</code>).
+</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; TaskStream</a></span>
+  <span><a href="index.html#methods">All TaskStream methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>
