@@ -136,6 +136,7 @@ def line_facts(text, own_stem=None):
         per_line.setdefault(comments.line_of(code_starts, match.start()) - 1, []).append(match.group(0))
 
     facts, brace, paren, seen_directive = [], 0, 0, False
+    continued_above = False                        # previous physical line ended with an odd backslash run
     text_starts = comments.line_starts(text)          # code_only strips trailing whitespace, so offsets differ
     inside_block = set()
     for begin, end, kind in comments.comment_spans(text):
@@ -164,6 +165,7 @@ def line_facts(text, own_stem=None):
             'comment': not tokens and bool(stripped),
             'blank': not stripped,
             'continuation': index in inside_block,
+            'continued_above': continued_above,
             'directive': directive,
             'kind': directive_kind(stripped, own_stem),
             'directive_above': seen_directive,
@@ -172,13 +174,24 @@ def line_facts(text, own_stem=None):
         })
         brace += open_b - close_b
         paren = pending
+        trailing = len(source.rstrip()) - len(source.rstrip().rstrip('\\'))
+        continued_above = trailing % 2 == 1         # an odd run of backslashes carries the logical line on
     return facts
 
 
 def first_body_index(facts):
-    """The first line that is code and is not a preprocessor directive."""
+    """The first line that starts a logical line of code and is not a preprocessor directive.
+
+    A backslash continuation is not the start of anything: `Engine/Core/CommonMacros.h` opens with
+    `#define returnIf(...)` continued over two more lines, and reading the continuation tail as the first body
+    line made rule A3 demand its two blanks **inside the macro**. Obeying that finding would have ended the
+    continuation chain, given `returnIf` an empty replacement list, and put `if (...)` at file scope — a checker
+    whose advice breaks the build is worse than one that says nothing. `Engine/Config/BuildConfig.h`, all
+    `#define`s and no tail, already proves the intended answer for a header like this: no A3 seam exists, so the
+    tail has to stop posing as a body.
+    """
     for fact in facts:
-        if fact['code'] and not fact['directive']:
+        if fact['code'] and not fact['directive'] and not fact['continued_above']:
             return fact['index']
     return -1
 
@@ -375,10 +388,16 @@ def boundaries(facts):
       * the interior of a block comment is one unit, not a run of solid lines. Treating ` * note` and
         ` */` as neighbours of each other asked for a blank between them and reported a well-formed
         comment as two A2 violations;
+      * a backslash continuation is one unit for the same reason. `Engine/Core/CommonMacros.h` opens with
+        `#define returnIf(...)` continued over two more lines, and reading a continuation tail as a
+        neighbour of the line above it asserted seams *inside* the macro — eight of them once the file
+        stopped looking like it had a body. A blank inserted there ends the continuation chain, gives the
+        macro an empty replacement list, and puts `if (...)` at file scope, so the finding would break the
+        build if anyone obeyed it. Only the line that starts the logical line can have a seam above it.
       * the count is of *blank* lines between the pair, not of index distance, once continuations are
         skipped — otherwise a five-line comment contributes four phantom blanks to the seam under it.
     """
-    solid = [fact for fact in facts if not fact['blank'] and not fact['continuation']]
+    solid = [fact for fact in facts if not fact['blank'] and not fact['continuation'] and not fact['continued_above']]
     found = []
     for position, fact in enumerate(solid):
         if position == 0:
@@ -582,6 +601,15 @@ case('a multi-line block comment is one unit, not four neighbours',
 
 case('A3 does not apply to a file with no preamble at all',
      'namespace hbe\n{\n\tvoid F();\n} // namespace hbe\n', [])
+
+case('A3 opens no seam inside a macro continuation, so a macro-only header has no seam at all',
+     '#pragma once\n\n#define returnIf(...)                                             \\\n'
+     '\tif (static_cast<bool>(__VA_ARGS__))                                              \\\n'
+     '\t\treturn\n', [])
+
+case('consecutive macros are one directive block, and a continuation tail never opens a seam',
+     '#pragma once\n\n#define A(x) f(x)                                                    \\\n'
+     '\textend(x)\n#define B(x) g(x)\n', [])
 
 
 # A collapse fixture is (name, text, what the text must become). The interesting rows are the two that
