@@ -4,15 +4,16 @@
 
 #include <atomic>
 #include <thread>
+
 #include "Container/Array.h"
 #include "Container/BoundedPriorityQueue.h"
 #include "TaskRegistry.h"
 #include "TaskStream.h"
 #include "Time.h"
 
+
 namespace hbe
 {
-
 /// API reference: docs/Core/TaskSystem/index.html
 class TaskSystem final
 {
@@ -119,14 +120,13 @@ public:
 private:
 	void BuildStreams();
 };
-
 } // namespace hbe
+
 #ifdef __UNIT_TEST__
 #include "Test/TestCollection.h"
 
 namespace hbe
 {
-
 class TaskSystemTest : public TestCollection
 {
 public:
@@ -138,6 +138,5 @@ public:
 protected:
 	void Prepare() override;
 };
-
 } // namespace hbe
 #endif //__UNIT_TEST__

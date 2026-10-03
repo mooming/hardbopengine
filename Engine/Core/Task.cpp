@@ -3,14 +3,13 @@
 #include "Task.h"
 
 #include "Time.h"
-
 #include "Engine/Engine.h"
 #include "Log/Logger.h"
 #include "TaskSystem.h"
 
+
 namespace hbe
 {
-
 Task::Task() noexcept
 	: numSubTasks(0)
 	, numGeneratedSubTasks(0)

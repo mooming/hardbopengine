@@ -14,9 +14,9 @@
 #include "Log/Logger.h"
 #include "TaskProvider.h"
 
+
 namespace hbe
 {
-
 namespace
 {
 thread_local StaticString ThreadName;
@@ -278,6 +278,7 @@ void TaskSystem::Dequeue(std::optional<WorkItem>& outTask) noexcept
 	if (taskQueue.IsEmpty())
 	{
 		outTask.reset();
+
 		return;
 	}
 
@@ -285,6 +286,7 @@ void TaskSystem::Dequeue(std::optional<WorkItem>& outTask) noexcept
 	if (!workItemOpt.has_value())
 	{
 		outTask.reset();
+
 		return;
 	}
 
@@ -295,6 +297,7 @@ void TaskSystem::Dequeue(std::optional<WorkItem>& outTask) noexcept
 	if (!affinity.Get(streamIndex))
 	{
 		affinity.Set(streamIndex);
+
 		return;
 	}
 
@@ -353,6 +356,7 @@ void TaskSystem::Enqueue(const TIndex streamIndex, const WorkItem& task, const S
 	if (!streams.IsValidIndex(streamIndex))
 	{
 		Assert(false, "Invalid stream index %d", streamIndex);
+
 		return;
 	}
 
@@ -433,6 +437,7 @@ void TaskSystem::DispatchSuccessor(TaskID finishedTask) noexcept
 			   << " record " << successorID.index << " generation " << successorID.generation
 			   << " was never dispatched. A chain that stops here has no symptom until something downstream waits. ";
 		});
+
 		return;
 	}
 
@@ -447,6 +452,7 @@ void TaskSystem::DispatchSuccessor(TaskID finishedTask) noexcept
 			   << " generation " << successorID.generation << ", and this engine has " << numStreams
 			   << " streams. Nothing was dispatched. ";
 		});
+
 		return;
 	}
 
@@ -461,6 +467,7 @@ void TaskSystem::DispatchSuccessor(TaskID finishedTask) noexcept
 			   << successorID.generation << ", is no longer tracked. A successor released while its producer ran"
 			   << " abandoned the outcome it asked for, so nothing was dispatched. ";
 		});
+
 		return;
 	}
 
@@ -474,6 +481,7 @@ void TaskSystem::DispatchSuccessor(TaskID finishedTask) noexcept
 			   << " outcome is delivered as one item covering the successor's whole range, which is one reserved"
 			   << " subtask. Nothing was dispatched. ";
 		});
+
 		return;
 	}
 
@@ -494,6 +502,7 @@ TaskID TaskSystem::ParallelFor(StaticString taskName, TRunnable func, void* user
 			ls << "ParallelFor of task " << taskName.c_str() << " named no stream to spread across, so nothing was"
 			   << " split. Naming the streams is the point of this form. ";
 		});
+
 		return {};
 	}
 
@@ -509,6 +518,7 @@ TaskID TaskSystem::ParallelFor(StaticString taskName, TRunnable func, void* user
 				   << numStreams << ", which this engine does not have, so the split was refused rather than run on"
 				   << " the streams that happened to be left. ";
 			});
+
 			return {};
 		}
 	}
@@ -529,6 +539,7 @@ TaskID TaskSystem::ParallelFor(StaticString taskName, TRunnable func, void* user
 			ls << "ParallelFor of task " << taskName.c_str() << " asked for " << numStreams
 			   << " streams, which is nothing to spread across, so nothing was split. ";
 		});
+
 		return {};
 	}
 
@@ -544,6 +555,7 @@ TaskID TaskSystem::ParallelFor(StaticString taskName, TRunnable func, void* user
 			   << " streams and this engine has no worker stream: every stream it has is the base stream or the IO"
 			   << " stream, and a split is never placed on either of its own accord. ";
 		});
+
 		return {};
 	}
 
@@ -586,6 +598,7 @@ TaskID TaskSystem::RunSplit(StaticString taskName, TRunnable func, void* userDat
 			   << " sub-jobs has nothing to queue. Counts of zero or less are refusals, not empty splits: these counts "
 				  "are signed, and a negative one becomes an enormous range the moment it is used as an index. ";
 		});
+
 		return {};
 	}
 
@@ -600,6 +613,7 @@ TaskID TaskSystem::RunSplit(StaticString taskName, TRunnable func, void* userDat
 				  "to write the routing into its packet, so this call is where that byte comes from, and a byte left "
 				  "unwritten is an outcome with nowhere to go. ";
 		});
+
 		return {};
 	}
 
@@ -623,6 +637,7 @@ TaskID TaskSystem::RunSplit(StaticString taskName, TRunnable func, void* userDat
 			ls << "ParallelFor could not get a record for task " << taskName.c_str()
 			   << ", so the split was not queued. The registry is at its capacity. ";
 		});
+
 		return {};
 	}
 
@@ -671,6 +686,7 @@ StaticString TaskSystem::GetStreamName(int index) const noexcept
 	if (unlikely(!streams.IsValidIndex(index)))
 	{
 		static StaticString unknown("Unknown");
+
 		return unknown;
 	}
 
@@ -745,7 +761,6 @@ void TaskSystem::BuildStreams()
 	log.Out("# Creating TaskStreams ======================");
 
 	streams.Swap(Array<TaskStream>(numHardwareThreads));
-
 	{
 		auto index = GetBaseTaskStreamIndex();
 		streams.Emplace(index, "Base", index);
@@ -793,10 +808,8 @@ void TaskSystem::BuildStreams()
 
 namespace hbe
 {
-
 namespace
 {
-
 template <typename TPredicate>
 bool AdvanceWindowsUntil(TaskSystem& taskSys, const TPredicate& holds, std::chrono::milliseconds patience) noexcept
 {
@@ -873,6 +886,7 @@ std::size_t RunStageOne(void* userData, TIndex startIndex, TIndex endIndex) noex
 	DeliveryFixture& fixture = *static_cast<DeliveryFixture*>(userData);
 	fixture.stageOneRuns.fetch_add(1, std::memory_order_relaxed);
 	WriteOutcome(fixture, fixture.self, ResultPacket::FirstApplicationKind, 0xA5);
+
 	return static_cast<std::size_t>(endIndex - startIndex);
 }
 
@@ -882,6 +896,7 @@ std::size_t RunStageTwo(void* userData, TIndex startIndex, TIndex endIndex) noex
 	fixture.stageTwoRuns.fetch_add(1, std::memory_order_relaxed);
 	fixture.taskSystem->SetSuccessor(fixture.self, fixture.next);
 	WriteOutcome(fixture, fixture.self, ResultPacket::FirstApplicationKind, 0x5A);
+
 	return static_cast<std::size_t>(endIndex - startIndex);
 }
 
@@ -904,6 +919,7 @@ std::size_t RunSentinel(void* userData, TIndex startIndex, TIndex endIndex) noex
 {
 	DeliveryFixture& fixture = *static_cast<DeliveryFixture*>(userData);
 	fixture.sentinelRuns.fetch_add(1, std::memory_order_relaxed);
+
 	return static_cast<std::size_t>(endIndex - startIndex);
 }
 
@@ -918,7 +934,6 @@ bool WaitFor(const TPredicate& holds, std::chrono::milliseconds patience) noexce
 
 	return holds();
 }
-
 } // namespace
 
 namespace
@@ -942,7 +957,6 @@ IsolationRecorder isolationRecords[2];
 std::size_t RecordIsolationRun(void* userData, std::size_t begin, std::size_t end)
 {
 	auto* record = static_cast<IsolationRecorder*>(userData);
-
 	{
 		std::lock_guard lock(record->idLock);
 		record->ids.push_back(std::this_thread::get_id());
@@ -965,6 +979,7 @@ std::atomic<int> abandonmentWorkRuns{0};
 std::size_t AbandonmentNoticeRunnable(void*, std::size_t, std::size_t endIndex) noexcept
 {
 	abandonmentWorkRuns.fetch_add(1, std::memory_order_relaxed);
+
 	return endIndex;
 }
 
@@ -973,6 +988,7 @@ std::atomic<int> maxAgeWorkRuns{0};
 std::size_t MaxAgeRunnable(void*, std::size_t, std::size_t endIndex) noexcept
 {
 	maxAgeWorkRuns.fetch_add(1, std::memory_order_relaxed);
+
 	return endIndex;
 }
 
@@ -992,6 +1008,7 @@ std::size_t RateCountingRunnable(void* userData, std::size_t, std::size_t endInd
 	{
 		static_cast<std::atomic<int>*>(userData)->fetch_add(1, std::memory_order_relaxed);
 	}
+
 	return endIndex;
 }
 
@@ -1001,6 +1018,7 @@ std::atomic<int> dropSiteNotices{0};
 std::size_t DropSiteRunnable(void*, std::size_t, std::size_t endIndex) noexcept
 {
 	dropSiteRuns.fetch_add(1, std::memory_order_relaxed);
+
 	return endIndex;
 }
 
@@ -1110,6 +1128,7 @@ void TaskSystemTest::Prepare()
 		if (fifoTask == nullptr || priorityTask == nullptr)
 		{
 			ls << "the lane reach test could not create its two tasks." << lferr;
+
 			return;
 		}
 
@@ -1165,6 +1184,7 @@ void TaskSystemTest::Prepare()
 		if (offered == 0)
 		{
 			ls << "the priority lane case offered nothing, so it proves nothing about that lane." << lferr;
+
 			return;
 		}
 
@@ -1220,6 +1240,7 @@ void TaskSystemTest::Prepare()
 		if (task == nullptr)
 		{
 			ls << "The wired abandonment notice test could not create its task." << lferr;
+
 			return;
 		}
 
@@ -1273,6 +1294,7 @@ void TaskSystemTest::Prepare()
 		if (askedTask == nullptr || silentTask == nullptr)
 		{
 			ls << "The abandonment notice test could not create its two tasks." << lferr;
+
 			return;
 		}
 
@@ -1424,6 +1446,7 @@ void TaskSystemTest::Prepare()
 		if (!taskSys.HasStream(chosenStreams[1]))
 		{
 			ls << "This engine has no second worker stream, so a split cannot be shown spreading." << lferr;
+
 			return;
 		}
 
@@ -1439,6 +1462,7 @@ void TaskSystemTest::Prepare()
 		if (splitID.IsNull())
 		{
 			ls << "ParallelFor refused a well-formed split over two real streams." << lferr;
+
 			return;
 		}
 
@@ -1542,6 +1566,7 @@ void TaskSystemTest::Prepare()
 		if (!taskSys.HasStream(workerIndex))
 		{
 			ls << "No worker stream at index " << workerIndex << ", so no lane could be observed." << lferr;
+
 			return;
 		}
 
@@ -1553,6 +1578,7 @@ void TaskSystemTest::Prepare()
 		auto countRun = [](void*, std::size_t, std::size_t) -> std::size_t
 		{
 			laneRuns.fetch_add(1, std::memory_order_relaxed);
+
 			return 1;
 		};
 
@@ -1596,6 +1622,7 @@ void TaskSystemTest::Prepare()
 		{
 			ls << "No worker stream at index " << workerIndex << ", so this test could not observe a stream at work."
 			   << lferr;
+
 			return;
 		}
 
@@ -1674,6 +1701,7 @@ void TaskSystemTest::Prepare()
 		if (workerIndex <= TaskSystem::GetIOTaskStreamIndex())
 		{
 			ls << "No separate worker stream to throttle, so the throttle could not be observed." << lferr;
+
 			return;
 		}
 
@@ -1801,6 +1829,7 @@ void TaskSystemTest::Prepare()
 		if (secondIndex <= TaskSystem::GetIOTaskStreamIndex())
 		{
 			ls << "Two worker streams are needed to observe isolation and the tree has fewer." << lferr;
+
 			return;
 		}
 
@@ -1861,6 +1890,7 @@ void TaskSystemTest::Prepare()
 		auto singleThread = [](IsolationRecorder& record)
 		{
 			std::lock_guard lock(record.idLock);
+
 			return record.ids.empty()
 						   ? false
 						   : std::all_of(record.ids.begin(), record.ids.end(),
@@ -1934,6 +1964,7 @@ void TaskSystemTest::Prepare()
 		if (workerIndex <= TaskSystem::GetIOTaskStreamIndex())
 		{
 			ls << "No worker stream of its own to observe, so this could not be measured." << lferr;
+
 			return;
 		}
 
@@ -2108,20 +2139,24 @@ void TaskSystemTest::Prepare()
 			ls << "Stream 0 is named \"" << baseName.c_str() << "\". It is the base stream, so the name that says"
 			   << " so belongs to it and to nothing else." << lferr;
 		}
+
 		if (ioName != StaticString("IO"))
 		{
 			ls << "Stream 1 is named \"" << ioName.c_str() << "\", which is what the rename was done next to." << lferr;
 		}
+
 		if (StaticString(TaskSystem::EngineLoopThreadName) != StaticString("EngineLoop"))
 		{
 			ls << "The thread driving Engine::Run is named \"" << TaskSystem::EngineLoopThreadName << "\" rather"
 			   << " than its own name, so two threads would log under one name again." << lferr;
 		}
+
 		if (!TaskSystem::IsBaseThread())
 		{
 			ls << "A test runs inside a task on the base stream, and that thread does not report itself as such -"
 			   << " so the predicate cannot be trusted to mean what it says anywhere." << lferr;
 		}
+
 		if (TaskSystem::GetCurrentStreamIndex() != TaskSystem::GetBaseTaskStreamIndex())
 		{
 			ls << "The base stream's thread reports stream index " << TaskSystem::GetCurrentStreamIndex() << '.'
@@ -2143,6 +2178,7 @@ void TaskSystemTest::Prepare()
 			foreignClaimsBase = TaskSystem::IsBaseThread();
 			foreignClaimsIO = TaskSystem::IsIOThread();
 		});
+
 		probe.join();
 
 		ls << "A thread nobody created as a stream reports index " << foreignIndex.load()
@@ -2155,15 +2191,18 @@ void TaskSystemTest::Prepare()
 			ls << "A thread that has no stream reports index " << foreignIndex.load() << ". With index 0 as the"
 			   << " default every thread the application creates claimed to be the base stream." << lferr;
 		}
+
 		if (foreignClaimsBase.load())
 		{
 			ls << "A thread that has no stream claimed to be the base thread, so that predicate cannot gate"
 			   << " anything - including the assert in BuildStreams, which passed on every thread." << lferr;
 		}
+
 		if (foreignClaimsIO.load())
 		{
 			ls << "A thread that has no stream claimed to be the IO thread." << lferr;
 		}
+
 		if (foreignIndex.load() < TaskStreamAffinity::GetNumBits())
 		{
 			ls << "The no-stream index " << foreignIndex.load() << " is inside the " << TaskStreamAffinity::GetNumBits()
@@ -2180,6 +2219,7 @@ void TaskSystemTest::Prepare()
 		{
 			ls << "No worker stream at index " << workerIndex << ", so no stream could be shown throttling itself."
 			   << lferr;
+
 			return;
 		}
 
@@ -2227,6 +2267,7 @@ void TaskSystemTest::Prepare()
 			stream.RequestBudget(std::chrono::duration<double>{});
 
 			std::this_thread::sleep_for(std::chrono::milliseconds(50));
+
 			return;
 		}
 
@@ -2283,6 +2324,7 @@ void TaskSystemTest::Prepare()
 		if (!taskSys.HasStream(TaskSystem::GetIOTaskStreamIndex()))
 		{
 			ls << "No IO stream, so no unlimited stream could be observed." << lferr;
+
 			return;
 		}
 
@@ -2308,6 +2350,7 @@ void TaskSystemTest::Prepare()
 		{
 			ls << "This engine has no stream " << successorStream << ", so a delivery cannot be shown crossing from"
 			   << " one stream to another." << lferr;
+
 			return;
 		}
 
@@ -2337,6 +2380,7 @@ void TaskSystemTest::Prepare()
 		{
 			ls << "The sentinel queued behind the producer never ran within 5 s, so the producer's work item never"
 			   << " left stream " << producerStream << " and no delivery could have been attempted." << lferr;
+
 			return;
 		}
 
@@ -2379,6 +2423,7 @@ void TaskSystemTest::Prepare()
 		if (!taskSys.HasStream(lastStream))
 		{
 			ls << "This engine has no stream " << lastStream << ", so a two-link chain cannot cross streams." << lferr;
+
 			return;
 		}
 
@@ -2446,6 +2491,7 @@ void TaskSystemTest::Prepare()
 		{
 			ls << "This engine has no stream " << workerStream + 1
 			   << ", so nothing could be shown staying undispatched." << lferr;
+
 			return;
 		}
 
@@ -2473,6 +2519,7 @@ void TaskSystemTest::Prepare()
 		{
 			ls << "The sentinel never ran, so the producer's item never completed and nothing here was tested."
 			   << lferr;
+
 			return;
 		}
 
@@ -2503,6 +2550,7 @@ void TaskSystemTest::Prepare()
 		if (!taskSys.HasStream(workerStream))
 		{
 			ls << "No worker stream, so no delivery could be attempted at all." << lferr;
+
 			return;
 		}
 
@@ -2529,6 +2577,7 @@ void TaskSystemTest::Prepare()
 		if (!WaitFor([&producer] { return producer.sentinelRuns.load() > 0; }, std::chrono::seconds(5)))
 		{
 			ls << "The sentinel never ran, so the delivery was never attempted." << lferr;
+
 			return;
 		}
 
@@ -2551,6 +2600,7 @@ void TaskSystemTest::Prepare()
 		if (!taskSys.HasStream(workerStream))
 		{
 			ls << "No worker stream, so the producing half of this test cannot run." << lferr;
+
 			return;
 		}
 
@@ -2578,6 +2628,7 @@ void TaskSystemTest::Prepare()
 		if (!WaitFor([&producer] { return producer.sentinelRuns.load() > 0; }, std::chrono::seconds(5)))
 		{
 			ls << "The sentinel never ran, so the delivery was never attempted." << lferr;
+
 			return;
 		}
 
@@ -2599,6 +2650,7 @@ void TaskSystemTest::Prepare()
 		if (!taskSys.HasStream(workerStream))
 		{
 			ls << "No worker stream, so no delivery could be attempted." << lferr;
+
 			return;
 		}
 
@@ -2653,6 +2705,7 @@ void TaskSystemTest::Prepare()
 		if (!taskSys.HasStream(workerStream))
 		{
 			ls << "No worker stream, so no delivery could be attempted." << lferr;
+
 			return;
 		}
 
@@ -2679,6 +2732,7 @@ void TaskSystemTest::Prepare()
 		if (!WaitFor([&producer] { return producer.sentinelRuns.load() > 0; }, std::chrono::seconds(5)))
 		{
 			ls << "The sentinel never ran, so the delivery was never attempted." << lferr;
+
 			return;
 		}
 
@@ -2701,6 +2755,7 @@ void TaskSystemTest::Prepare()
 		if (!taskSys.HasStream(workerStream))
 		{
 			ls << "No worker stream, so no split could be queued at all." << lferr;
+
 			return;
 		}
 
@@ -2728,6 +2783,7 @@ void TaskSystemTest::Prepare()
 		auto noteCollator = [](void* userData, std::size_t startIndex, std::size_t endIndex) -> std::size_t
 		{
 			static_cast<SplitShape*>(userData)->collatorRuns.fetch_add(1, std::memory_order_relaxed);
+
 			return endIndex - startIndex;
 		};
 
@@ -2742,6 +2798,7 @@ void TaskSystemTest::Prepare()
 		if (splitID.IsNull())
 		{
 			ls << "ParallelFor refused a split of 3 items into 10 sub-jobs, which is a clamp, not a refusal." << lferr;
+
 			return;
 		}
 
@@ -2782,6 +2839,7 @@ void TaskSystemTest::Prepare()
 		if (!taskSys.HasStream(workerStream))
 		{
 			ls << "No worker stream, so no split could be queued." << lferr;
+
 			return;
 		}
 
@@ -2802,16 +2860,19 @@ void TaskSystemTest::Prepare()
 			if (endIndex <= startIndex)
 			{
 				state.emptyRanges.fetch_add(1, std::memory_order_relaxed);
+
 				return 1;
 			}
 
 			state.itemsCovered.fetch_add(static_cast<unsigned>(endIndex - startIndex), std::memory_order_relaxed);
+
 			return endIndex - startIndex;
 		};
 
 		auto noteCollator = [](void* userData, std::size_t startIndex, std::size_t endIndex) -> std::size_t
 		{
 			static_cast<BigSplit*>(userData)->collatorRuns.fetch_add(1, std::memory_order_relaxed);
+
 			return endIndex - startIndex;
 		};
 
@@ -2875,6 +2936,7 @@ void TaskSystemTest::Prepare()
 		auto countRun = [](void* userData, std::size_t startIndex, std::size_t endIndex) -> std::size_t
 		{
 			static_cast<std::atomic<unsigned>*>(userData)->fetch_add(1, std::memory_order_relaxed);
+
 			return endIndex > startIndex ? endIndex - startIndex : 1;
 		};
 
@@ -2925,12 +2987,14 @@ void TaskSystemTest::Prepare()
 					state.nextSlot.fetch_add(1, std::memory_order_relaxed) % state.streamOfSubJob.size();
 			state.streamOfSubJob[slot].store(static_cast<int>(TaskSystem::GetCurrentStreamIndex()),
 											 std::memory_order_relaxed);
+
 			return endIndex > startIndex ? endIndex - startIndex : 1;
 		};
 
 		auto noteCollator = [](void* userData, std::size_t startIndex, std::size_t endIndex) -> std::size_t
 		{
 			static_cast<WhereRan*>(userData)->collatorRuns.fetch_add(1, std::memory_order_relaxed);
+
 			return endIndex - startIndex;
 		};
 
@@ -3001,6 +3065,7 @@ void TaskSystemTest::Prepare()
 			auto& log = *static_cast<ProgressLog*>(userData);
 			++log.calls;
 			log.startSum += start;
+
 			return 1;
 		};
 
@@ -3052,6 +3117,7 @@ void TaskSystemTest::Prepare()
 		if (!taskSys.HasStream(workerStream))
 		{
 			ls << "No worker stream to name." << lferr;
+
 			return;
 		}
 
@@ -3061,6 +3127,7 @@ void TaskSystemTest::Prepare()
 		auto countRun = [](void* userData, std::size_t startIndex, std::size_t endIndex) -> std::size_t
 		{
 			static_cast<std::atomic<unsigned>*>(userData)->fetch_add(1, std::memory_order_relaxed);
+
 			return endIndex > startIndex ? endIndex - startIndex : 1;
 		};
 
@@ -3111,6 +3178,7 @@ void TaskSystemTest::Prepare()
 			ls << "Refused splits still ran " << runs.load() << " time(s)." << lferr;
 		}
 	});
+
 	AddTest("Every slice carries the age the registry stamped, and a recycled record is dated afresh",
 			[this](TLogOut& ls)
 	{
@@ -3122,12 +3190,14 @@ void TaskSystemTest::Prepare()
 		{
 			ls << "CreateTask gave record " << first.index << " but FindTask could not find it, so the fixture"
 			   << " never ran" << lferr;
+
 			return;
 		}
 
 		if (firstTask->offerTime.count() <= 0)
 		{
 			ls << "A registry-loaded task carries no age stamp, so no stream could ever age its work out" << lferr;
+
 			return;
 		}
 
@@ -3138,6 +3208,7 @@ void TaskSystemTest::Prepare()
 		{
 			ls << "A slice was born with age " << lowSlice.offerTime.count() << "/" << highSlice.offerTime.count()
 			   << "ns while its task reports " << firstTask->offerTime.count() << "ns" << lferr;
+
 			return;
 		}
 
@@ -3152,6 +3223,7 @@ void TaskSystemTest::Prepare()
 			if (nextTask == nullptr)
 			{
 				ls << "The task created after a release could not be found, so the recycle was never observed" << lferr;
+
 				return;
 			}
 
@@ -3162,6 +3234,7 @@ void TaskSystemTest::Prepare()
 				{
 					ls << "Record " << next.index << " came back to a new task still dated "
 					   << nextTask->offerTime.count() << "ns, the previous tenant's age" << lferr;
+
 					return;
 				}
 			}
@@ -3169,12 +3242,14 @@ void TaskSystemTest::Prepare()
 			{
 				previousStamp = nextTask->offerTime;
 			}
+
 			taskSys.ReleaseTask(next);
 		}
 
 		if (!reusedTheRecord)
 		{
 			ls << "Eight create/release cycles never reused the freed record, so the recycle went unobserved" << lferr;
+
 			return;
 		}
 	});
@@ -3196,6 +3271,7 @@ void TaskSystemTest::Prepare()
 		{
 			taskSys.EnqueueTask(TaskSystem::GetBaseTaskStreamIndex(), *controlTask, 0, StreamDrainPolicy::ELane::Fifo);
 		}
+
 		const bool controlRan = TestHelper::DriveUntil(taskSys, "the ceiling-free fixture to run", []()
 		{ return maxAgeWorkRuns.load(std::memory_order_acquire) > 0; }, std::chrono::milliseconds{400});
 		taskSys.ReleaseTask(controlID);
@@ -3206,11 +3282,11 @@ void TaskSystemTest::Prepare()
 			ls << "control pass ran the work " << maxAgeWorkRuns.load(std::memory_order_acquire)
 			   << " time(s), DriveUntil reported " << (controlRan ? "true" : "false")
 			   << "; if the fixture cannot run, every assertion about work NOT running proves nothing" << lferr;
+
 			return;
 		}
 
 		baseStream.SetMaxAge(std::chrono::nanoseconds{1});
-
 		{
 			const std::size_t agedBefore = baseStream.GetAgedOutWorkCount();
 			const int noticesBefore = maxAgeNotices.load(std::memory_order_acquire);
@@ -3221,6 +3297,7 @@ void TaskSystemTest::Prepare()
 			{
 				taskSys.EnqueueTask(TaskSystem::GetBaseTaskStreamIndex(), *task, 0, StreamDrainPolicy::ELane::Fifo);
 			}
+
 			const bool dropped = TestHelper::DriveUntil(taskSys, "FIFO work to be aged out", [&baseStream, agedBefore]()
 			{ return baseStream.GetAgedOutWorkCount() > agedBefore; }, std::chrono::milliseconds{300});
 
@@ -3235,24 +3312,28 @@ void TaskSystemTest::Prepare()
 				ls << "FIFO pass: aged-out count moved by " << (aged - agedBefore) << ", DriveUntil reported "
 				   << (dropped ? "true" : "false") << "; a ceiling that drops work invisibly is the defect, not a fix"
 				   << lferr;
+
 				return;
 			}
+
 			if (runs != 1)
 			{
 				baseStream.SetMaxAge(ceilingFound);
 				ls << "FIFO pass: work older than the ceiling ran " << runs - 1 << " extra time(s); over-age work must"
 				   << " never run, that is the whole feature" << lferr;
+
 				return;
 			}
+
 			if (notices - noticesBefore != 1)
 			{
 				baseStream.SetMaxAge(ceilingFound);
 				ls << "FIFO pass: notified " << (notices - noticesBefore) << " requestor(s); work dropped for age"
 				   << " has to tell whoever queued it, in the same words as work dropped for a released task" << lferr;
+
 				return;
 			}
 		}
-
 		{
 			const std::size_t agedBefore = baseStream.GetAgedOutWorkCount();
 			const int noticesBefore = maxAgeNotices.load(std::memory_order_acquire);
@@ -3263,6 +3344,7 @@ void TaskSystemTest::Prepare()
 			{
 				taskSys.EnqueueTask(TaskSystem::GetBaseTaskStreamIndex(), *task, 0, StreamDrainPolicy::ELane::Priority);
 			}
+
 			const bool dropped =
 					TestHelper::DriveUntil(taskSys, "priority-lane work to be aged out", [&baseStream, agedBefore]()
 			{ return baseStream.GetAgedOutWorkCount() > agedBefore; }, std::chrono::milliseconds{300});
@@ -3278,21 +3360,26 @@ void TaskSystemTest::Prepare()
 				ls << "priority-lane pass: aged-out count moved by " << (aged - agedBefore) << ", DriveUntil reported "
 				   << (dropped ? "true" : "false") << "; the lane is chosen by the caller now, so both lanes have to"
 				   << " enforce the ceiling" << lferr;
+
 				return;
 			}
+
 			if (runs != 1)
 			{
 				baseStream.SetMaxAge(ceilingFound);
 				ls << "priority-lane pass: work older than the ceiling ran " << runs - 1
 				   << " extra time(s); a high priority is not a licence to run stale context" << lferr;
+
 				return;
 			}
+
 			if (notices - noticesBefore != 1)
 			{
 				baseStream.SetMaxAge(ceilingFound);
 				ls << "priority-lane pass: notified " << (notices - noticesBefore)
 				   << " requestor(s); the notice is the only signal a requestor gets that its work was refused"
 				   << lferr;
+
 				return;
 			}
 		}
@@ -3325,6 +3412,7 @@ void TaskSystemTest::Prepare()
 				++offered;
 			}
 		}
+
 		for (auto& id : priorityTasks)
 		{
 			id = taskSys.CreateTask("RatePriority", &RateCountingRunnable, &ratePriorityRuns);
@@ -3340,6 +3428,7 @@ void TaskSystemTest::Prepare()
 			baseStream.ConfigureRate(fifoWeightFound, priorityWeightFound);
 			ls << "only " << offered << " of 8 tasks could be offered, so the ratio below is not the ratio asked about"
 			   << lferr;
+
 			return;
 		}
 
@@ -3354,10 +3443,12 @@ void TaskSystemTest::Prepare()
 		{
 			taskSys.ReleaseTask(id);
 		}
+
 		for (auto& id : priorityTasks)
 		{
 			taskSys.ReleaseTask(id);
 		}
+
 		baseStream.ConfigureRate(fifoWeightFound, priorityWeightFound);
 
 		if (!allServed || fifoRuns != 4 || priorityRuns != 4)
@@ -3367,6 +3458,7 @@ void TaskSystemTest::Prepare()
 			   << " reported " << (allServed ? "true" : "false")
 			   << "; free borrowing is allowed to ignore the ratio, but a"
 			   << " lane that has work must never be starved by the weight of the other lane" << lferr;
+
 			return;
 		}
 	});
@@ -3392,6 +3484,7 @@ void TaskSystemTest::Prepare()
 		{
 			ls << "three created tasks moved the live count by " << registry.GetCount() - baseline
 			   << "; if the counter does not respond, every comparison against the baseline below is vacuous" << lferr;
+
 			return;
 		}
 
@@ -3400,6 +3493,7 @@ void TaskSystemTest::Prepare()
 		{
 			taskSys.EnqueueTask(TaskSystem::GetBaseTaskStreamIndex(), *task, 0, StreamDrainPolicy::ELane::Fifo);
 		}
+
 		taskSys.ReleaseTask(orphaned);
 
 		const bool orphanDropped = TestHelper::DriveUntil(taskSys, "queued work whose task was released", []()
@@ -3410,14 +3504,17 @@ void TaskSystemTest::Prepare()
 			baseStream.SetMaxAge(ceilingFound);
 			ls << "the released-task site reported " << dropSiteNotices.load(std::memory_order_acquire)
 			   << " notice(s); the drop has to be witnessed before its effect on the record can be judged" << lferr;
+
 			return;
 		}
+
 		if (registry.GetCount() != baseline + 2 || taskSys.FindTask(orphaned) != nullptr)
 		{
 			baseStream.SetMaxAge(ceilingFound);
 			ls << "after dropping work whose task was released the live count sits " << registry.GetCount() - baseline
 			   << " above the baseline; the release owned that record, so the drop site must neither free it again nor"
 			   << " resurrect it" << lferr;
+
 			return;
 		}
 
@@ -3426,6 +3523,7 @@ void TaskSystemTest::Prepare()
 		{
 			taskSys.EnqueueTask(TaskSystem::GetBaseTaskStreamIndex(), *task, 0, StreamDrainPolicy::ELane::Fifo);
 		}
+
 		baseStream.SetMaxAge(std::chrono::nanoseconds{1});
 		const std::size_t agedBefore = baseStream.GetAgedOutWorkCount();
 		const bool agedDropped =
@@ -3440,14 +3538,17 @@ void TaskSystemTest::Prepare()
 			   << " DriveUntil reported " << (agedDropped ? "true" : "false")
 			   << "; a task whose work was declined is still"
 			   << " a live task its requestor owns" << lferr;
+
 			return;
 		}
+
 		taskSys.ReleaseTask(agedOut);
 		if (registry.GetCount() != baseline + 1 || taskSys.FindTask(agedOut) != nullptr)
 		{
 			baseStream.SetMaxAge(ceilingFound);
 			ls << "a task that survived having its work aged out could not be released cleanly; live count sits "
 			   << registry.GetCount() - baseline << " above the baseline" << lferr;
+
 			return;
 		}
 
@@ -3456,6 +3557,7 @@ void TaskSystemTest::Prepare()
 		{
 			taskSys.EnqueueTask(TaskSystem::GetBaseTaskStreamIndex(), *task, 0, StreamDrainPolicy::ELane::Priority);
 		}
+
 		const int noticesBeforeClose = dropSiteNotices.load(std::memory_order_acquire);
 		const std::size_t abandoned = baseStream.AbandonHeldWork();
 
@@ -3464,15 +3566,19 @@ void TaskSystemTest::Prepare()
 			baseStream.SetMaxAge(ceilingFound);
 			ls << "closing reported " << abandoned << " item(s) abandoned and notified "
 			   << dropSiteNotices.load(std::memory_order_acquire) - noticesBeforeClose << " requestor(s)" << lferr;
+
 			return;
 		}
+
 		if (taskSys.FindTask(heldAtClose) == nullptr)
 		{
 			baseStream.SetMaxAge(ceilingFound);
 			ls << "abandoning held work destroyed its task record; the requestor still holds that ID and is entitled to"
 			   << " release it itself" << lferr;
+
 			return;
 		}
+
 		taskSys.ReleaseTask(heldAtClose);
 
 		if (registry.GetCount() != baseline)
@@ -3480,14 +3586,17 @@ void TaskSystemTest::Prepare()
 			baseStream.SetMaxAge(ceilingFound);
 			ls << "after all three drop sites the live count is off by " << registry.GetCount() - baseline
 			   << " from the baseline; a record left behind here leaks one task per dropped item" << lferr;
+
 			return;
 		}
+
 		if (dropSiteRuns.load(std::memory_order_acquire) != 0)
 		{
 			baseStream.SetMaxAge(ceilingFound);
 			ls << "work reported abandoned at one of the three sites also ran "
 			   << dropSiteRuns.load(std::memory_order_acquire)
 			   << " time(s); a drop that runs the work and reports it dropped is the worst of the shapes" << lferr;
+
 			return;
 		}
 
