@@ -8,9 +8,9 @@
 #include "String/StringUtil.h"
 #include "Time.h"
 
+
 namespace hbe
 {
-
 template <typename T>
 concept CLockable = requires(T t) {
 	t.lock();

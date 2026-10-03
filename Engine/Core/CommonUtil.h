@@ -4,6 +4,7 @@
 
 #include "Debug.h"
 
+
 namespace hbe
 {
 /// API reference: docs/Core/True_t/index.html
@@ -36,6 +37,7 @@ Type GetAs(void* src) noexcept
 {
 	Assert((((size_t) (src)) % sizeof(Type)) == 0, "Misaligned Address(", src, ") is provided. Required alignment is ",
 		   sizeof(Type), ".");
+
 	return *reinterpret_cast<Type*>(src);
 }
 

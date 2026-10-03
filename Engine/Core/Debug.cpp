@@ -5,6 +5,7 @@
 #include "../Engine/Engine.h"
 #include "Log/Logger.h"
 
+
 namespace hbe
 {
 void FlushLogs()

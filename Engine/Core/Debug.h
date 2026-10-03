@@ -14,6 +14,7 @@
 // included unconditionally on purpose: the project's include layout puts every include in one
 // block at the top of the file, and a guarded #include cannot satisfy it (see JOURNAL.md).
 
+
 namespace hbe
 {
 template <typename T>
@@ -25,7 +26,6 @@ void FlushLogs();
 #ifdef __DEBUG__
 namespace hbe
 {
-
 // Both sides of the __DEBUG__ guard below must declare exactly these two overloads, with the
 // same exception specification. They used to differ: the release branch demanded a const char*
 // as the second argument, so a message built from any other type compiled under __DEBUG__, ran
@@ -60,7 +60,6 @@ void Assert(bool shouldBeTrue, Types&&... args) noexcept
 	debugBreak();
 	std::abort();
 }
-
 } // namespace hbe
 
 #else // __DEBUG__
