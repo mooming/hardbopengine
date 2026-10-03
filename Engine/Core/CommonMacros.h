@@ -2,6 +2,7 @@
 
 #pragma once
 
+/// API reference: docs/Core/index.html#commonmacros
 #define returnIf(...)                                                                                                  \
 	if (static_cast<bool>(__VA_ARGS__))                                                                                \
 	return
@@ -14,4 +15,4 @@
 #define continueIf(...)                                                                                                \
 	if (static_cast<bool>(__VA_ARGS__))                                                                                \
 	continue
-#define ONCE() while (false) // do {} ONCE();
+#define ONCE() while (false)

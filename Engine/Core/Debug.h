@@ -10,13 +10,10 @@
 #include "Log/PrintArgs.h"
 #include "OSAL/Intrinsic.h"
 
-// The three standard headers above are used only by the __DEBUG__ branch below, but they are
-// included unconditionally on purpose: the project's include layout puts every include in one
-// block at the top of the file, and a guarded #include cannot satisfy it (see JOURNAL.md).
-
 
 namespace hbe
 {
+/// API reference: docs/Core/index.html#debug
 template <typename T>
 using TDebugVariable = const T;
 
@@ -26,11 +23,6 @@ void FlushLogs();
 #ifdef __DEBUG__
 namespace hbe
 {
-// Both sides of the __DEBUG__ guard below must declare exactly these two overloads, with the
-// same exception specification. They used to differ: the release branch demanded a const char*
-// as the second argument, so a message built from any other type compiled under __DEBUG__, ran
-// for days, then broke the Release build. A noexcept mismatch alone is enough to flip
-// std::is_nothrow_* traits between configurations, so both branches say noexcept.
 inline void Assert(bool shouldBeTrue, const std::source_location location = std::source_location::current()) noexcept
 {
 	if (likely(shouldBeTrue))
@@ -66,8 +58,6 @@ void Assert(bool shouldBeTrue, Types&&... args) noexcept
 
 namespace hbe
 {
-// The arguments are unnamed and unused on purpose: the call inlines away, which also means an
-// argument with a side effect is evaluated in Debug and dropped here. Same trap as any assert.
 inline void Assert(bool) noexcept
 {
 }

@@ -8,6 +8,7 @@
 
 namespace hbe
 {
+/// API reference: docs/Core/index.html#types
 using TByte = uint8_t;
 using TPointer = void*;
 using TIndex = size_t;
@@ -17,7 +18,6 @@ using TUInt = uint32_t;
 
 using TReal = float;
 
-// Backward-compatible aliases
 using Byte = TByte;
 using Pointer = TPointer;
 using Index = TIndex;
