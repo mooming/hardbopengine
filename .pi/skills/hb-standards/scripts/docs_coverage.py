@@ -144,7 +144,17 @@ ENTRY = re.compile(r'^\s*(?:template\s*<[^>]*>\s*)?(class|struct|union|enum)\s+(
                    r'([A-Za-z_]\w*)\s*(?:final\b)?\s*(?::[^;{]*)?(?=[;{])', re.M)
 NAMESPACE_HEAD = re.compile(r'(^|[^\w.])\bnamespace\b')
 ENUM_ANON = re.compile(r'^\s*enum\s+(?:class\s+)?[A-Za-z_]\w*\s*(?=\{|$)')
-MACRO_SET = re.compile(r'^\s*#\s*define\s+(HB_[A-Z0-9_]+|[A-Z][A-Z0-9_]{2,})\b')
+MACRO_SET = re.compile(r'^\s*#\s*define\s+(HB_[A-Z0-9_]+|[A-Z][A-Z0-9_]{2,})\b', re.M)
+# `re.M` is not decoration. Without it `^` anchors to the start of the file, so the pattern could only ever
+# match a `#define` written on line 1 - and no macro set in this engine was ever demanded by the gate. The
+# proof that the rule was meant to fire is `Engine/Config/BuildConfig.h`, whose `docs/Config/BuildConfig/
+# index.html` someone wrote and the gate never asked for. `returnIf`/`breakIf`/`continueIf` stay outside this
+# pattern by design, being spelled in camelCase; a header of only those is caught by ALIAS/FREE_FUNC instead.
+ALIAS = re.compile(r'^\s*using\s+([CTFCH][A-Za-z_]\w*)\s*=', re.M)
+# A namespace-scope function declaration: a name in front of `(`, and the statement ends at `;` rather than
+# opening a body. Inline definitions end with `}`, and a class's methods are at depth > 0, so neither matches.
+FREE_FUNC = re.compile(r'^\s*(?:\[\[[a-z_]+\]\]\s*)?[A-Za-z_][\w:<>,\s\*&\[\]]*?\b(\w+)\s*\([^)]*\)\s*'
+                       r'(?:noexcept)?\s*(?:const)?\s*\S*\s*;$', re.M)
 NAMESPACED_FUNCS = re.compile(r'^\s*(?:namespace\s+(\w+))', re.M)
 EXCLUDE_FILE_LINE = re.compile(r'auto-?generated|do not edit', re.I)
 
@@ -211,6 +221,22 @@ def entries_in(path):
             found.append((name, 'class'))
     if MACRO_SET.search(text) and not found:
         found.append((os.path.basename(path).rsplit('.', 1)[0], 'macro set'))
+    stem = os.path.basename(path).rsplit('.', 1)[0]
+    aliases = [match.group(1) for match in ALIAS.finditer(text)
+               if depths.get(text[:match.start()].count('\n') + 1, 1) == 0
+               and text[:match.start()].count('\n') + 1 not in guarded]
+    functions = [text[:m.start()].count('\n') + 1 for m in FREE_FUNC.finditer(text)]
+    functions = [line for line in functions if depths.get(line, 1) == 0 and line not in guarded]
+    owns_class = any(kind not in ('test-only', 'alias', 'macro set', 'utility header') for _, kind in found)
+    if (aliases or functions) and not owns_class and (stem, 'macro set') not in found:
+        # One page per utility header, not one per alias. The reference's granularity is set by
+        # .Plans/AUTHORING_method_and_class_pages.md — a page per class, macro set or free-function namespace —
+        # and a page for `TByte` would be three sentences of nothing. The same reasoning the nested-class
+        # exclusion above already uses applies: a name a reader cannot reach unambiguously is documented with
+        # its owner, and here the owner is the header. A `__UNIT_TEST__`-only class does not count as owning
+        # the file, which is what lets `Time.h` — 6 free functions in `hbe::time` plus its duration aliases,
+        # and a test class that made it look class-shaped — finally be demanded.
+        found.append((stem, 'utility header'))
     return found
 
 
@@ -227,7 +253,12 @@ def has_pointer(path, module, name):
         text = open(path, encoding='utf-8', errors='ignore').read()
     except OSError:
         return False
-    return any(line.strip() == wanted for line in text.split('\n'))
+    if any(line.strip() == wanted for line in text.split('\n')):
+        return True
+    # A utility header is addressed by the section of its module page that documents it, so the address is an
+    # anchor rather than a page path. `module_anchor` is asked to prove the id still exists and that it names
+    # this entry, which is the same two questions the page form answers by construction.
+    return module_anchor(path, module, name) is not None
 
 
 def comment_count(path):
@@ -249,6 +280,32 @@ def modules():
     return sorted(d for d in os.listdir(root) if os.path.isdir(os.path.join(root, d)))
 
 
+def module_anchor(path, module, entry=None):
+    """The anchor on the module page that a header points at, or None.
+
+    A utility header is documented in a section of its module's page rather than in a page of its own, so its
+    address is `docs/<Module>/index.html#section`. This resolves that address the way `comments.py` does, and
+    for the same reason: an anchor is a promise held by another file, and a gate that accepted `#section`
+    without proving the id still exists would let the reference rot while still reporting itself satisfied.
+    """
+    try:
+        text = open(path, encoding='utf-8', errors='ignore').read()
+    except OSError:
+        return None
+    for found in re.finditer(r'^\s*///\s*API\s+reference:\s*docs/([^/\s]+)/index\.html#(\S+)\s*$', text, re.M):
+        if found.group(1) != module:
+            continue
+        if entry is not None and found.group(2).lower() != entry.lower():
+            continue
+        page = os.path.join(DOCS, module, 'index.html')
+        if not os.path.isfile(page):
+            continue
+        if re.search(r'\bid=["\']%s["\']' % re.escape(found.group(2)),
+                     open(page, encoding='utf-8', errors='ignore').read()):
+            return found.group(2)
+    return None
+
+
 def ledger_rows():
     rows = []
     for path in sources():
@@ -257,13 +314,22 @@ def ledger_rows():
             continue
         for name, kind in entries_in(path):
             page = os.path.join(DOCS, module, name, 'index.html')
+            # A macro set is addressed the same way a utility header is when its module page carries the table,
+            # which is the shape this module already uses for CommonMacros: the demand is for the prose to exist
+            # somewhere addressable, not for a file to exist at one particular path.
+            anchor = module_anchor(path, module, name) if kind in ('utility header', 'macro set') else None
             rows.append({
                 'module': module,
                 'entry': name,
                 'kind': kind,
                 'source': os.path.relpath(path, REPO_ROOT),
                 'page': os.path.relpath(page, REPO_ROOT),
-                'exists': os.path.isfile(page),
+                # A utility header counts as documented when either form of address resolves. The page is what
+                # a header with real surface earns; the anchor is what a header of six aliases earns, and
+                # demanding a page for the latter would duplicate the module page that already carries its
+                # table — which is the whole reason this module documents Types and Runnable on the index.
+                'exists': os.path.isfile(page) or anchor is not None,
+                'anchor': anchor,
                 'test_only': kind == 'test-only',
                 'method_pages': len([f for f in os.listdir(os.path.dirname(page)) if f.endswith('.html') and f != 'index.html']) if os.path.isdir(os.path.dirname(page)) else 0,
                 'pointer': has_pointer(path, module, name),

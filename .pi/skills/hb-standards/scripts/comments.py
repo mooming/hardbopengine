@@ -34,6 +34,12 @@ ANONYMOUS_HEAD = re.compile(r'\bnamespace\b(?!\s*[A-Za-z_:])')
 
 POINTER = re.compile(r'^///\s*API reference:\s*(\S+)\s*$')
 POINTER_SHAPE = re.compile(r'^docs/([^/]+)/([^/]+)/index\.html$')
+# A small surface — a header of aliases, free functions and macros — is documented in a section of its module's
+# page rather than in a page of its own, because a page for `TByte` would be three sentences of nothing and the
+# module page already carries the tables for Types, Runnable and the Debug and Time functions. The address is
+# then the module page plus the anchor of the section that owns it, and `anchor_resolves` below is what stops
+# that from becoming a pointer to a heading somebody deleted.
+POINTER_ANCHOR = re.compile(r'^docs/([^/]+)/index\.html#([A-Za-z][\w:-]*)$')
 # An attribute-specifier-seq sits between a type keyword and the name it declares, so a pattern that reads
 # the first identifier after the keyword captures `alignas` instead of the entry. The same grammar is in
 # `docs_coverage.py`'s ENTRY, which found this on `Engine/Core/ResultPacket.h` first; the two are edited
@@ -349,8 +355,41 @@ def pointer_violation(path, target, lines, lineno, names):
     becoming a decorative comment on the wrong declaration.
     """
     shape = POINTER_SHAPE.match(target)
-    if not shape:
-        return ('POINTER-FORM', 'expected "/// API reference: docs/<Module>/<Entry>/index.html", got "%s"' % target)
+    if shape is None:
+        anchor = POINTER_ANCHOR.match(target)
+        if anchor is None:
+            return ('POINTER-FORM', 'expected "/// API reference: docs/<Module>/<Entry>/index.html", got "%s"' % target)
+        if not anchor_resolves(target):
+            return ('POINTER-PATH', '%s does not name an id on that module page, so the pointer leads nowhere'
+                    % target)
+        module = engine_module(path)
+        if module is None:
+            return ('POINTER-MODULE', '%s is outside Engine/, so it has no module reference page to point at'
+                    % path)
+        stem = os.path.basename(path).rsplit('.', 1)[0]
+        if anchor.group(2).lower() != stem.lower():
+            # The same discipline the page form enforces: an address has to name what it addresses. Without it a
+            # header could point at a neighbouring section and every checker would still be satisfied, which is
+            # how a reference ends up with a page nobody can find from the code it documents.
+            return ('POINTER-ENTRY', 'the section %s does not name %s, so this header is not what that address '
+                                     'documents' % (anchor.group(2), stem))
+        if anchor.group(1) != module:
+            return ('POINTER-MODULE', 'names module %s while this file belongs to %s' % (anchor.group(1), module))
+        # The address names a section of the module page, so there is no entry name to compare against and the
+        # position test has to be a different question: is what sits below a member of that surface, rather
+        # than a type that owns a page in its own right. Without that test, a class could be pointed at its
+        # module page and the reference tree would lose the class without a checker ever objecting.
+        for index in range(lineno, min(lineno + 12, len(lines))):
+            probe = lines[index].strip()
+            if not probe or probe.startswith('//') or probe.startswith('/*') or probe.startswith('*'):
+                continue
+            if TEMPLATE_LINE.match(lines[index]):
+                continue
+            if TYPE_HEAD.match(lines[index]):
+                return ('POINTER-POSITION', 'is a module-page section address while the declaration below is a '
+                                            'type, which owns a page under its own name')
+            break
+        return None
     if not pointer_resolves(target):
         return ('POINTER-PATH', '%s does not exist, so the pointer leads nowhere' % target)
     module = engine_module(path)
@@ -364,6 +403,25 @@ def pointer_violation(path, target, lines, lineno, names):
     if kind == 'unreadable':
         return ('POINTER-UNREADABLE', 'the declaration below it (%s) is a shape this reader cannot name, so '
                                       'neither the pointer nor the page can be trusted here' % declared)
+    stem = os.path.basename(path).rsplit('.', 1)[0]
+    if named == stem and named not in names:
+        # A utility header — one whose surface is aliases, free functions and macros — is addressed by its own
+        # stem, because there is no class name for a pointer to name and docs_coverage demands exactly that
+        # page for such a file. The licence is deliberately narrow: the declaration below may not be a type,
+        # since a class owns a page in its own right and a pointer wearing the file's name would quietly
+        # document the wrong thing. The page's existence was already proved above, so this cannot aim a
+        # pointer at nothing, and a header that does own a class is untouched by it.
+        for index in range(lineno, min(lineno + 12, len(lines))):
+            probe = lines[index].strip()
+            if not probe or probe.startswith('//') or probe.startswith('/*') or probe.startswith('*'):
+                continue
+            if TEMPLATE_LINE.match(lines[index]):
+                continue
+            if TYPE_HEAD.match(lines[index]):
+                return ('POINTER-POSITION', 'names the file %s while the declaration below is a type, which '
+                                            'owns a page under its own name' % stem)
+            break
+        return None
     if named not in names:
         return ('POINTER-ENTRY', '%s declares no entry called %s' % (path, named))
     if kind != 'entry' or declared != named:
@@ -486,6 +544,25 @@ def code_lines(text):
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 REPO_ROOT = os.path.abspath(os.path.join(SCRIPT_DIR, '..', '..', '..', '..'))
+
+
+def anchor_resolves(target):
+    """Whether `docs/<Module>/index.html#<id>` names an id that still exists on that page.
+
+    An anchor is a promise held by a different file than the one carrying the pointer, so it rots silently in
+    exactly the way a moved heading rots a wiki link. Checking the id rather than just the file is what keeps
+    `#time` honest after somebody renames the section, which is the failure this address form would otherwise
+    make invisible.
+    """
+    path, _, anchor = target.partition('#')
+    for candidate in (path, os.path.join(REPO_ROOT, path)):
+        if os.path.isfile(candidate):
+            try:
+                text = open(candidate, encoding='utf-8', errors='ignore').read()
+            except OSError:
+                return False
+            return re.search(r'\bid=["\']%s["\']' % re.escape(anchor), text) is not None
+    return False
 
 
 def pointer_resolves(target):
