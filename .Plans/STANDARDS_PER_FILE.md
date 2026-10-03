@@ -1,7 +1,7 @@
 # hb-standards per-file verdict
 
 **Generated — do not edit.** Every row measures a tracked source **as it stands on disk**, produced by
-`python3 .pi/skills/hb-standards/scripts/file_ledger.py --write`. Measured against 4e228d2 (tree dated 2026-10-03) with
+`python3 .pi/skills/hb-standards/scripts/file_ledger.py --write`. Measured against 6a6c7d9 (tree dated 2026-10-04) with
 `Homebrew clang-format version 22.1.8`.
 
 The previous edition of this file was hand-written and its labels had rotted: 246 of its 256
@@ -33,8 +33,8 @@ Two counts a reader should not act on alone, both named here because the rows ca
   line 28 and includes no `<utility>` — it builds today only because its consumers reach that header
   first, which is the same latent shape `Engine/Core/TaskSystem.cpp` carried before `50efdaa`.
 
-3 path(s) carried uncommitted edits while this ran, so those rows describe work in progress rather
-than 4e228d2.
+6 path(s) carried uncommitted edits while this ran, so those rows describe work in progress rather
+than 6a6c7d9.
 
 3 file(s) carry a column this run could not measure: unmeasured 3.
 
@@ -56,7 +56,7 @@ than 4e228d2.
 | Engine/Container/Array.cpp | clean | 2 | 0 | 0 | n/a (no class or struct defined here) |
 | Engine/Container/Array.h | clean | 9 | 0 | 2 | 0 (partial) |
 | Engine/Container/AtomicStackView.cpp | clean | 10 | 0 | 0 | 0 (partial) |
-| Engine/Container/AtomicStackView.h | clean | 7 | 0 | 1 | 2 (partial) |
+| Engine/Container/AtomicStackView.h | clean | 7 | 0 | 1 | 3 (partial) |
 | Engine/Container/BoundedPriorityQueue.cpp | clean | 31 | 0 | 5 | 0 (partial) |
 | Engine/Container/BoundedPriorityQueue.h | clean | 5 | 0 | 33 | 15 (partial) |
 | Engine/Container/Deque.cpp | clean | 24 | 0 | 0 | n/a (no class or struct defined here) |

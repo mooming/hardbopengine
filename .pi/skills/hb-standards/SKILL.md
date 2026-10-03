@@ -21,8 +21,9 @@ were **clang-format-clean but rule-non-clean** (include layout), so no single la
 |---|---|---|---|
 | 1 | Allman braces, tabs, 120 columns, include order, blank lines | clang-format | script, always, in every fix |
 | 2 | joined empty bodies, no exceptions, `m_` prefix, explicit `inline`, hygiene, include layout | greps; `scripts/autofix.py` applies the safe subset | script for five fixes, reviewer for the rest |
+| 2b | the paragraph seams (rule set A of `docs/CodingStandards.md`) and the include preamble (rule set B) | `scripts/blank_lines.py` sizes A1-A5, A10, A13-A16; `--paragraphs` reports stranded declarations; `scripts/includes.py` checks B1-B5 | reviewer decides every seam; **a strip re-opens this layer**, so it runs again after layer 3 |
 | 3 | comment ban in `.h` and `.cpp` | `scripts/comments.py`, a lexer; `--strip` deletes | reviewer writes the prose into `docs/`, script deletes, gate proves |
-| 4 | twelve-block member layout | `scripts/layout.py`, clang AST; `--init-order` for initializer lists | reviewer, gate-proved |
+| 4 | twelve-block member layout | `scripts/layout.py`, clang AST; `--init-order` for initializer lists; `ACCESS-EMPTY` is a finding and `ACCESS-REDUNDANT` is advice | reviewer, gate-proved |
 | 4b | grouping *inside* a block: one concern per group, one blank line at each seam | `scripts/prove_regroup.py` proves the edit moved nothing but order | reviewer decides, script proves |
 | 5 | every entry owns a page, every method owns a page, every page is valid HTML | `scripts/docs_coverage.py`, `scripts/docs_methods.py`, `scripts/htmlcheck.py`; the **hb-docs** skill writes them with `.pi/skills/hb-docs/scripts/docs_page.py` | reviewer authors via `hb-docs`, its generator builds chrome, these gates prove |
 | 6 | Dev, Debug, Release compile, `EngineTest` on request | cmake + ninja, `scripts/runtest.sh` | nobody fixes it; it decides whether the fix is real |
@@ -239,6 +240,19 @@ deleting a blank to satisfy a checker is the failure this layer exists to preven
 memorising: the seam after the include and define preamble is **two** blanks and is the only legal double
 blank in a file (A3); no closing brace may sit behind a blank, `} // namespace hbe` included (A5); a
 `return` that is not the only statement in its scope is preceded by exactly one (A10).
+
+**A strip re-opens this layer, and only a reader can close it.** Rule set A is a set of ceilings — *at most
+0, 1 or 2 blanks* — so a file in which every member sits alone between blanks scores **zero findings**, and
+that is precisely what a comment strip leaves behind: the prose was what grouped the members, the blanks that
+used to surround it stay, and they now surround nothing. `blank_lines.py --paragraphs <files>` reports the
+shape instead of pretending to judge it — the longest run of consecutive single-declaration paragraphs in
+member scope, namespace bodies transparent, inline definitions excluded because A11 gives a definition its own
+paragraph — and names a file from a run of five. Measured over the 14 headers of one real strip: the run was
+5 to 17 before a reader decided the seams, and 3 or less after. `layout.py` reports the two defects the same
+strip leaves in the access labels, which neither checker used to see: `ACCESS-EMPTY`, a section that declares
+nothing, is a **finding**; `ACCESS-REDUNDANT`, a label re-declaring the access already in force, is **advice**,
+because re-stating the access is how a twelve-block boundary is marked and only the author knows whether the
+label heads a group.
 
 **Includes — rule set B.** `includes.py` checks the preamble: own header first and excluded from the sort,
 then `<…>`, then `"…"`, each in byte order, one blank between blocks, no path twice, project paths
@@ -614,6 +628,7 @@ reorder can be checked by reading it. Work the pairs in order; nothing here need
 | 2 layout | `python3 scripts/layout.py <files>`, edit, run it again | 0 findings, **and** `python3 scripts/layout.py --init-order <files>` at 0, because data moved |
 | 3 reference | `python3 scripts/docs_coverage.py check <mod>` and `scripts/docs_methods.py <mod>`, then `.pi/skills/hb-docs/scripts/docs_page.py class` / `method` / `renav` / `check`; then replace the entry's doc block with its `/// API reference:` pointer line | both gates at 0 for the module, `htmlcheck` clean, and no `[NO POINTER]` row for an entry whose page now exists; step 4 is refused per file by `docs_coverage.py check-file <path>` until that file's own entries pass, which is what lets a finished header be cleaned while its neighbours are still owed pages |
 | 4 delete | `python3 scripts/comments.py <files>` for the count, then `--strip`, then `comments.py code_tokens <file> /tmp/pre_<name>.h` | token multisets identical per file, then `comments.py` reports 0 |
+| 4b paragraphs | `python3 scripts/blank_lines.py --paragraphs <files>`, then read every file it names and re-decide the seams by hand; `python3 scripts/layout.py <files>` and settle every `ACCESS-EMPTY` | advice is never a finding and never fails the gate, but no run of stranded declarations is left standing, every empty section is settled, and rule set A is back to 0 — clang-format first, because it re-inserts the seam before a nested definition, then the table. Step 4 moved prose out and left the blanks that held it, so this is where those paragraphs get decided again; skipping it ships a file that passes every checker and reads as a wall |
 | 5 build | `.pi/skills/hb-standards/scripts/gate.sh spawn --all --test`, read with `gate.sh wait` | `GATE_EXIT=0`; never a pass read off `ninja: no work to do`. The marker line is echoed by the reviewing agent, not captured by the harness, and `check.sh` exits 0 when its lint scope comes out empty — so a CLEAN verdict with nothing else quoted is not evidence. Re-run `check.sh` yourself and read `$?` before believing one |
 
 Inside step 2, four rules hold: the data block moves as a unit and never re-orders internally; only
@@ -625,7 +640,7 @@ reported. Step 4 is read by its output, not its exit code: `comments.py` exits 1
 still present, so the pre-strip count is a nonzero exit by design, and the pass is judged on the token
 proof and on the post-strip count.
 
-Three rules the cycle exists to enforce, each learned by being broken:
+Four rules the cycle exists to enforce, each learned by being broken:
 
 - **Snapshot before stripping.** The proof of a comment deletion is a token comparison against the exact
   bytes before it, and there is no way to recover that snapshot after the fact — one strip had to be
@@ -636,6 +651,11 @@ Three rules the cycle exists to enforce, each learned by being broken:
   the anchor it was inserted before. A mover that inserted `private:` plus members without re-opening
   `public:` produced a file that compiled and then failed three files away with "field of type `Buffer` has
   private default constructor" — after two days of notes said exactly this.
+- **A strip re-opens the paragraph decision.** Deleting the prose that grouped a block of members leaves every
+  one of them standing alone between blanks, which is legal under a rule set of ceilings and unreadable to a
+  person: 815 lines out of one module left 8 of its 14 headers with a run of five or more stranded
+  declarations, and every checker in the tree called them clean. Step 4b is not a polish pass — it is where
+  the file becomes readable again.
 
 Applications and Examples are not modules: they own no API pages, so a comment stripped from one
 of their files has no class page to move into and `docs_coverage.py check-file` has nothing to
