@@ -25,8 +25,6 @@ void ResultPacketTest::Prepare()
 	{
 		constexpr std::size_t decidedPacketBytes = 128;
 		constexpr std::size_t decidedTaskBytes = 200;
-		// R28: the successor is a full TaskID, which pushed the record past three cache lines, so it is padded to
-		// four. The task itself stayed at 176 - the join's generated counter went into padding it already had.
 		constexpr std::size_t decidedRecordBytes = 256;
 		constexpr std::size_t decidedTableKib = 1024;
 		constexpr std::size_t decidedWorkItemBytes = 80;

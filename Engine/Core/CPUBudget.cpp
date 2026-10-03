@@ -80,9 +80,6 @@ bool hbe::CPUBudget::CanTakeWork() const noexcept
 #ifdef __UNIT_TEST__
 namespace
 {
-/// @brief Keep the calling thread busy until it has consumed the given CPU time, or gives up.
-/// @details Bounded by CPU time rather than an iteration count so the same test means the same thing on a
-///          slow core, under a debugger, and in Release where an iteration count would be meaningless.
 void BurnCPU(std::chrono::milliseconds target) noexcept
 {
 	const auto start = OS::GetThreadCPUTime();

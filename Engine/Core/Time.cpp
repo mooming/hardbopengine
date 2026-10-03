@@ -11,12 +11,6 @@ namespace hbe
 {
 namespace
 {
-/// @brief The epoch, held as nanoseconds since the steady clock's own epoch.
-/// @details An atomic counter rather than a time_point so a read from another thread is a single
-///          acquire load: the epoch is read on every deadline check and every frame delta, while
-///          it is written at most once, by whoever constructs the engine.
-/// @note Initialised on first use, which is what keeps the clock meaningful in a process that never
-///       builds an Engine. A zero-initialised epoch reads as decades since 1970 - the D5 defect.
 std::atomic<long long>& EpochNanosStorage() noexcept
 {
 	const auto sinceEpoch = std::chrono::steady_clock::now().time_since_epoch();

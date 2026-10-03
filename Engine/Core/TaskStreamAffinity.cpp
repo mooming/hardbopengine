@@ -1,5 +1,4 @@
 // Copyright (c) 2026 Hansol Park (mooming.go@gmail.com). All rights reserved.
-// Created by Hansol Park (mooming.go@gmail.com)
 
 #ifdef __UNIT_TEST__
 #include "TaskStreamAffinity.h"

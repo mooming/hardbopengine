@@ -67,9 +67,6 @@ StreamDrainPolicy::ELane StreamDrainPolicy::ChooseLane(bool fifoHasWork, bool pr
 		return ELane::Priority;
 	}
 
-	// Both shares are spent while the stream total is still inside budget, which is borrowing: the work
-	// exists, the stream can still pay for it, and refusing here would idle the stream over a bookkeeping
-	// detail. Prefer the heavier lane, then FIFO, so the choice is never arbitrary.
 	if (fifoHasWork && priorityHasWork)
 	{
 		return priorityWeight > fifoWeight ? ELane::Priority : ELane::Fifo;
@@ -195,7 +192,6 @@ namespace
 {
 using Lane = hbe::StreamDrainPolicy::ELane;
 
-/// @brief Count how many times each lane is chosen over a number of takes, charging the lane each time.
 struct LaneCounts
 {
 	int fifo = 0;
@@ -270,7 +266,6 @@ void hbe::StreamDrainPolicyTest::Prepare()
 		policy.ConfigureRate(1, 1);
 		policy.ConfigureAllowance(std::chrono::duration<double, std::milli>{1});
 
-		// Only the priority lane has work, and it is given far more than its half-share.
 		policy.ChargePriority(
 				std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::duration<double, std::milli>{0.6}));
 
@@ -373,9 +368,6 @@ void hbe::StreamDrainPolicyTest::Prepare()
 		StreamDrainPolicy unlimited;
 		unlimited.ConfigureRate(1, 1);
 
-		// A stream that never opted in must not age anything out, however old the work is. This is the guard that
-		// decides whether the feature is off by default or merely unreadable: without it every existing stream
-		// starts dropping tasks whose age happens to exceed a zero ceiling.
 		if (unlimited.IsOverAge(std::chrono::nanoseconds{1}, std::chrono::nanoseconds{10s}))
 		{
 			ls << "An unlimited stream aged out work 10s old; zero must mean unlimited, not 'drop everything'" << lferr;
@@ -394,8 +386,6 @@ void hbe::StreamDrainPolicyTest::Prepare()
 			return;
 		}
 
-		// Work with no stamp cannot be dated. Hand-built tasks and anything constructed before the registry loaded
-		// it land here, and the safe answer for a stream is to run it, not to guess it is stale.
 		if (bounded.IsOverAge(std::chrono::nanoseconds{0}, std::chrono::nanoseconds{10s}))
 		{
 			ls << "An unstamped item was aged out; a stream may not invent an age for work it cannot date" << lferr;
@@ -410,11 +400,6 @@ void hbe::StreamDrainPolicyTest::Prepare()
 			return;
 		}
 
-		// The boundary, pinned on both sides rather than described. Work exactly as old as the ceiling is still
-		// admissible and one nanosecond more is not: pinning only the far side would let the comparison become
-		// >= unnoticed, and a ceiling that is one nanosecond stricter than documented is a starvation change
-		// nobody approved. Note the stamp is not zero here - it has to be a real instant for the delta to mean
-		// anything, which is the arithmetic this test originally got wrong in its own favour.
 		if (bounded.IsOverAge(1ms, 21ms))
 		{
 			ls << "Work exactly 20ms old survived out a 20ms ceiling; the comparison must be strict" << lferr;

@@ -253,7 +253,6 @@ TaskHandle TaskProvider::GetHandle() noexcept
 #ifdef __UNIT_TEST__
 namespace
 {
-/// @brief Provider that records what it was handed, so the interface can be observed rather than assumed.
 class RecordingProvider final : public hbe::TaskProvider
 {
 public:
@@ -269,10 +268,6 @@ public:
 
 	std::optional<hbe::WorkItem> itemToHand{};
 
-	/// @brief Detaches before the probe dies, because the contract R37 now enforces is detach-before-destruction.
-	/// @details The probes attach to stream indices that this engine really does have, so they register, and a provider
-	///          that is destroyed while registered is exactly the dangling pointer the assert exists to catch. A test
-	///          double that cleans up after itself keeps that rule strict for everyone else.
 	~RecordingProvider() override
 	{
 		DetachAll();
@@ -301,17 +296,11 @@ public:
 	std::atomic<int> ranOnStream{-1};
 };
 
-/// @brief Hands out a bounded number of real work items, so a drain can be observed doing what a drain is for.
-/// @details The probe deliberately owns nothing the stream has to know about: each item is a task created in the system
-///          the provider was built with, and the probe releases them only once the test has seen them run.
 class DrainingProvider final : public hbe::TaskProvider
 {
 public:
 	bool produceResult = true;
 
-	/// @brief Release each task the moment its item is built, so the item names a record that is already gone by the
-	///        time the stream can see it. The release happens inside `Produce`, which the stream calls under its queue
-	///        lock, so the ordering is arranged rather than raced.
 	bool releaseImmediately = false;
 
 private:
@@ -406,11 +395,6 @@ private:
 	}
 };
 
-/// @brief Waits until the predicate holds, or the bound is reached.
-/// @return True if the predicate held within the bound.
-/// @brief A provider that stays inside `Produce` until the test lets it go.
-/// @details The only way to test "a detach waits for a drain in flight" is to have a drain actually in flight, and a
-///          `Produce` that returns immediately is never in flight when the test looks.
 class BlockingProvider final : public hbe::TaskProvider
 {
 public:

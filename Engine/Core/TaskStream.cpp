@@ -66,7 +66,6 @@ void TaskStream::EnqueuePriority(const WorkItem& task) noexcept
 
 namespace
 {
-/// @brief Which list serves a lane, or an out-of-range index when the lane is `None`.
 constexpr size_t ProviderSlot(StreamDrainPolicy::ELane lane) noexcept
 {
 	return lane == StreamDrainPolicy::ELane::Fifo ? 0U : (lane == StreamDrainPolicy::ELane::Priority ? 1U : 2U);
@@ -245,8 +244,6 @@ void TaskStream::Dequeue(std::optional<WorkItem>& outTask)
 {
 	std::scoped_lock<std::mutex> lock(queueLock);
 
-	// Serves work whenever there is any, without consulting the drain policy: the rate and the budget gate
-	// the stream's own loop, and gating here would let a caller's refill stall on an exhausted allowance.
 	if (!priorityQueue.IsEmpty())
 	{
 		outTask = priorityQueue.Pop();
@@ -305,7 +302,6 @@ void TaskStream::Start(TaskSystem& taskSys) noexcept
 {
 	taskSystem = &taskSys;
 
-	// The base stream is a ride-on-thread stream, driven by the thread running the engine through Update.
 	if (streamIndex == TaskSystem::BaseStreamIndex)
 	{
 		threadID = std::this_thread::get_id();
@@ -313,9 +309,6 @@ void TaskStream::Start(TaskSystem& taskSys) noexcept
 		return;
 	}
 
-	// The IO stream is a ride-on-thread stream: it is driven by the logger's own thread through Update, because the
-	// logger has to work before the task system exists and after it is gone, and a thread of its own would make the
-	// logger's writing depend on a stream the logger is also responsible for feeding.
 	if (streamIndex == TaskSystem::IOStreamIndex)
 	{
 		return;
@@ -351,21 +344,13 @@ bool TaskStream::Update() noexcept
 
 	++drivenPassCount;
 
-	// Posted callables first: they are the engine loop's own work, and the frame budget is spent on them before the
-	// stream's queues are asked for anything. They run with the queue's lock released, so a posted callable may post
-	// again.
 	postedTasks.ProcessTasks();
 
-	// A stream that has been asked to close stops taking work. What it still holds is dealt with by the close path that
-	// asked, which reports anything it cannot run rather than leaving the driver to pump a stream that has said it is
-	// done.
 	if (closeRequested.load(std::memory_order_acquire))
 	{
 		return false;
 	}
 
-	// A driven stream shares its driver thread with whatever else that thread does, so the index and the allocator are
-	// entered and left around this pass rather than assumed for the lifetime of the thread.
 	const TStreamIndex previousStreamIndex = TaskSystem::GetCurrentStreamIndex();
 	TaskSystem::SetStreamIndex(streamIndex);
 	AllocatorScope scope(allocator);
@@ -384,8 +369,6 @@ bool TaskStream::Update() noexcept
 		drainPolicy.EndRound();
 	}
 
-	// The allowance is this thread's field to write, so a request made from elsewhere is applied here rather than
-	// landing in the middle of another thread's store.
 	if (auto applied = budget.ApplyRequestedAllowance(); applied.has_value())
 	{
 		drainPolicy.ConfigureAllowance(*applied);
@@ -401,8 +384,6 @@ bool TaskStream::Update() noexcept
 	{
 		std::unique_lock lock(queueLock);
 
-		// A task that finished elsewhere is released from its lane and put back on that same lane, so the
-		// sweep and the re-add are per lane and no task changes lane on the way.
 		priorityQueue.Remove([](const WorkItem& task) { return task.HasFinished(); });
 		priorityQueue.PushRange(readdingPriority);
 		readdingPriority.clear();
@@ -414,8 +395,6 @@ bool TaskStream::Update() noexcept
 
 		readdingFifo.clear();
 
-		// Rotating the lane drops finished tasks in place and preserves arrival order for the rest, which
-		// is the same O(n)-per-loop price BoundedPriorityQueue::Remove already pays.
 		const size_t fifoCount = fifoQueue.Size();
 		for (size_t i = 0; i < fifoCount; ++i)
 		{
@@ -430,9 +409,6 @@ bool TaskStream::Update() noexcept
 
 		lane = drainPolicy.ChooseLane(!fifoQueue.IsEmpty(), !priorityQueue.IsEmpty());
 
-		// A lane holding work with no lane chosen is the decline itself: ChooseLane returns a lane whenever work exists
-		// and the allowance is unlimited, so nothing else produces this combination. Per pass, so it is a rate and not
-		// a queue depth.
 		if (lane == StreamDrainPolicy::ELane::None && (!fifoQueue.IsEmpty() || !priorityQueue.IsEmpty()))
 		{
 			laneWorkRefusals.fetch_add(1, std::memory_order_relaxed);
@@ -455,8 +431,6 @@ bool TaskStream::Update() noexcept
 
 		if (!workItem.has_value())
 		{
-			// Both lanes offered nothing, so ask whoever attached to them - the lane that is empty is the one that
-			// asks, and a spent allowance means no asking at all (R39).
 			for (const auto probe : {StreamDrainPolicy::ELane::Fifo, StreamDrainPolicy::ELane::Priority})
 			{
 				const bool laneIsEmpty =
@@ -466,11 +440,6 @@ bool TaskStream::Update() noexcept
 					continue;
 				}
 
-				// The invariant, stated where it can be checked: a provider is asked only while this stream's allowance
-				// permits taking work. Asking while spent is the failure this gate exists to prevent - a spent stream
-				// would otherwise keep manufacturing work it has no right to run. Reading the budget a second time here
-				// is legal for one reason: this is the owning thread, the only thread ever allowed to read that
-				// unsynchronised field.
 				Assert(budget.CanTakeWork(), "Stream ", name,
 					   " was asked for provider work while its allowance was spent. The drain gate is what keeps a "
 					   "spent stream "
@@ -527,9 +496,6 @@ bool TaskStream::Update() noexcept
 		return true;
 	}
 
-	// Age is judged after the task lookup, not before: a task that no longer exists has no owner to explain a
-	// refusal to, and the released path already owns that case. Both lanes pass this point, which is why one
-	// insertion covers the FIFO lane and the priority lane with one rule.
 	if (const auto now = std::chrono::duration_cast<std::chrono::nanoseconds>(time::ElapsedSinceEngineEpoch());
 		drainPolicy.IsOverAge(workItem->offerTime, now))
 	{

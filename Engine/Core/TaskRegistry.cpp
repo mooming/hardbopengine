@@ -318,8 +318,6 @@ void TaskRegistryTest::Prepare()
 	{
 		auto& registry = Engine::Get().GetTaskSystem().GetRegistry();
 
-		// Written out rather than read back from the constants that produced them: a comparison against the
-		// constant that produced the value cannot fail.
 		constexpr std::size_t decidedInitialRecords = 4096;
 		constexpr std::size_t decidedGrowByRecords = 4096;
 		constexpr std::size_t decidedMaxRecords = 0;
@@ -447,8 +445,6 @@ void TaskRegistryTest::Prepare()
 		const bool grew = registry.Grow();
 		const auto capacityAfter = registry.GetCapacity();
 
-		// 8 records grown by 4 is 12. A doubling policy would give 16, and rounding to a power of two would give
-		// 16 as well, so this figure separates the arithmetic the design promises from the alternatives.
 		constexpr std::size_t expectedCapacityAfter = 12;
 
 		ls << "Capacity " << capacityBefore << " grown by " << registry.GetGrowBy() << " gave " << capacityAfter
@@ -590,9 +586,6 @@ void TaskRegistryTest::Prepare()
 			   << ", which means the free list now holds it twice or lost it." << lferr;
 		}
 
-		// The record released twice is held by "OtherTask" now, so a 4-record table owes exactly three more
-		// records. A double release that pushed the same record onto the free list twice shows up here as a fifth
-		// admission, which is one record the table never owned.
 		std::size_t furtherAdmitted = 0;
 		for (std::size_t index = 0; index < 8; ++index)
 		{
@@ -686,10 +679,6 @@ void TaskRegistryTest::Prepare()
 		const auto live = registry.Create("LiveTask", RegistryTestRunnable(), nullptr);
 		const auto other = registry.Create("OtherTask", RegistryTestRunnable(), nullptr);
 
-		// The case that matters is the one TaskID exists for: a stale identity naming a record that is still live,
-		// held by a different generation. It must not be able to route anything. A released-ID version of this
-		// test stayed green with the guard removed, because Create clears the field when it reissues a record -
-		// the write refusal is only observable against a record somebody is still using.
 		const TaskID staleIdentity{live.index, live.generation + 7};
 
 		registry.SetSuccessor(staleIdentity, other);
