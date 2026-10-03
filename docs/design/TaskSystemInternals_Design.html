@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Task system internals — Core module — HardBop Engine design document</title>
+<link rel="stylesheet" href="../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../Config/index.html">Config</a></li>
+    <li><a href="../Container/index.html">Container</a></li>
+    <li><a class="current" href="../Core/index.html">Core</a></li>
+    <li><a href="../Engine/index.html">Engine</a></li>
+    <li><a href="../HSTL/index.html">HSTL</a></li>
+    <li><a href="../Log/index.html">Log</a></li>
+    <li><a href="../Math/index.html">Math</a></li>
+    <li><a href="../Memory/index.html">Memory</a></li>
+    <li><a href="../OSAL/index.html">OSAL</a></li>
+    <li><a href="../Renderer/index.html">Renderer</a></li>
+    <li><a href="../Resource/index.html">Resource</a></li>
+    <li><a href="../String/index.html">String</a></li>
+    <li><a href="../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This document</h3>
+  <ul>
+    <li><a href="#drive">Who drives a stream</a></li>
+    <li><a href="#lanes">Lane selection, and the borrowing rule</a></li>
+    <li><a href="#allowance">The allowance, and who may be asked</a></li>
+    <li><a href="#queue">Order, release, and re-adding</a></li>
+    <li><a href="#close">Closing, abandoning, and shutdown</a></li>
+    <li><a href="#ageing">Ageing work out</a></li>
+    <li><a href="#records">Record layout and sizing, and what the numbers are for</a></li>
+    <li><a href="#tests">How the tests observe these mechanisms</a></li>
+    <li><a href="#seealso">Where else to look</a></li>  </ul>
+</nav>
+
+<main class="main">
+  <div class="breadcrumb"><a href="../index.html">Docs</a> / <a href="../Core/index.html">Core</a> / Task system internals</div>
+
+<h1>Task system internals</h1>
+<div class="subtitle">The invariants the running code holds, and how the unit tests are built to see them</div>
+
+<div class="note">
+  <strong>Scope.</strong> This document owns two questions: what <em>Engine/Core/TaskStream.cpp</em>,
+  <em>TaskProvider.cpp</em>, <em>TaskRegistry.cpp</em>, <em>StreamDrainPolicy.cpp</em>, <em>CPUBudget.cpp</em> and
+  <em>ResultPacket.cpp</em> guarantee while the engine runs, and why the testlets in those files are written the way
+  they are. It does not teach the API — that is <a href="../Core/TaskSystem/index.html">TaskSystem</a> and its
+  sibling class pages — and it does not re-argue the design decisions, which <a href="../TaskSystemRedesign.md">
+  docs/TaskSystemRedesign.md</a> records. Usage is <a href="../TaskSystemGuide.md">docs/TaskSystemGuide.md</a>.
+</div>
+
+<h2 id="drive">Who drives a stream</h2>
+<p>
+A stream is served by whoever calls <a href="../Core/TaskSystem/update.html">Update</a> on it. The base stream is a
+<em>ride-on-thread</em> stream driven by the thread running the engine. The IO stream is also ride-on-thread, and it
+is driven by the logger's own thread: the logger has to work before the task system exists and after it is gone, and
+giving it a thread of its own would make the logger's writing depend on a stream the logger is also responsible for
+feeding. That circularity is the whole reason the IO stream has no thread of its own.
+</p>
+<p>
+A driven stream shares its driver thread with whatever else that thread does, so the thread index and the allocator
+are entered and left around each pass rather than assumed for the lifetime of the thread. A pass that assumed the
+association would hold an index for a thread that is doing something else between passes.
+</p>
+<p>
+Posted callables are served before the queues: they are the engine loop's own work, and the frame budget is spent on
+them before the stream's queues are asked for anything. They run with the queue's lock released, which is what lets a
+posted callable post again — a requirement of any work that schedules more of itself.
+</p>
+
+<h2 id="lanes">Lane selection, and the borrowing rule</h2>
+<p>
+Which list serves a lane is fixed by the lane; an out-of-range index means the lane is <code>None</code>. The drain
+policy chooses a lane from what the lanes hold and what the allowance still permits.
+</p>
+<p>
+When both lane shares are spent while the stream total is still inside budget, the policy <em>borrows</em>: the work
+exists, the stream can still pay for it, and refusing here would idle the stream over a bookkeeping detail. The
+preference order is the heavier lane first, then FIFO, so the choice is never arbitrary — an arbitrary tie-break is
+the kind of thing that reads as starvation in a profile and cannot be reproduced.
+</p>
+<div class="note">
+  <strong>A lane holding work with no lane chosen is the decline itself.</strong>
+  <code>ChooseLane</code> returns a lane whenever work exists and the allowance is unlimited, so no other
+  combination produces that state. The stream counts it per pass, which makes the counter a <em>rate</em> and not a
+  queue depth.
+</div>
+
+<h2 id="allowance">The allowance, and who may be asked</h2>
+<p>
+A refill is served whenever there is any, without consulting the drain policy. The rate and the budget gate the
+stream's own loop; gating the refill as well would let a caller's refill stall on an exhausted allowance, which
+would make the thing that restores the budget depend on the budget.
+</p>
+<div class="note">
+  <strong>The provider invariant.</strong> A provider is asked only while this stream's allowance permits taking work.
+  Asking while spent is the failure the gate exists to prevent: a spent stream would otherwise keep manufacturing
+  work it has no right to run. Reading the budget a second time at that point is legal for exactly one reason — this
+  is the owning thread, the only thread ever allowed to read that unsynchronised field.
+</div>
+<p>
+The allowance is the owning thread's field to write, so a request made from elsewhere is <em>applied</em> on the
+owning thread rather than landing in the middle of another thread's store. When both lanes offered nothing, the
+stream asks whoever is attached to them; the lane that is empty is the one that asks, and a spent allowance means no
+asking at all.
+</p>
+
+<h2 id="queue">Order, release, and re-adding</h2>
+<p>
+A task that finished elsewhere is released from its lane and put back on that same lane, so the sweep and the re-add
+are per lane and no task changes lane on the way. Rotating a lane drops finished tasks in place and preserves arrival
+order for the rest, which is the same O(n)-per-loop price
+<a href="../Container/BoundedPriorityQueue/remove.html">BoundedPriorityQueue::Remove</a> already pays — the stream does not
+buy a cheaper structure by taking a subtler bug.
+</p>
+
+<h2 id="close">Closing, abandoning, and shutdown</h2>
+<p>
+A stream that has been asked to close stops taking work. What it still holds is dealt with by the close path that
+asked, which reports anything it cannot run rather than leaving the driver to pump a stream that has said it is done.
+Work that can never run is abandoned, and an abandoned task's notice fires so its owner learns rather than waiting.
+</p>
+
+<h2 id="ageing">Ageing work out</h2>
+<p>
+Age is judged <em>after</em> the task lookup, not before: a task that no longer exists has no owner to explain a
+refusal to, and the released path already owns that case. Both lanes pass this point, which is why one insertion
+covers the FIFO lane and the priority lane with one rule.
+</p>
+<p>
+Two boundaries are pinned rather than described. A stream that never opted in ages nothing out, however old the work
+is — without that guard the feature would be "off by default" in name only, and every existing stream would start
+dropping tasks whose age happens to exceed a zero ceiling. And work exactly as old as the ceiling is still
+admissible while one nanosecond more is not: pinning only the far side would let the comparison become
+<code>&gt;=</code> unnoticed, and a ceiling one nanosecond stricter than documented is a starvation change nobody
+approved. The stamp in that testlet is a real instant rather than zero, because a zero stamp makes the delta mean
+nothing — which is the arithmetic this test originally got wrong in its own favour.
+</p>
+<p>
+Work with no stamp cannot be dated. Hand-built tasks and anything constructed before the registry loaded it land
+here, and the safe answer for a stream is to run it, not to guess it is stale.
+</p>
+
+<h2 id="records">Record layout and sizing, and what the numbers are for</h2>
+<p>
+A registry record is priced at 256 bytes, which is four cache lines. The successor is a full
+<a href="../Core/TaskID/index.html">TaskID</a>, and that pushed the record past three cache lines, so it is padded to
+four rather than left straddling. The task inside it stayed at 176 bytes — the join's generated counter went into
+padding it already had. A record that straddles lines is a per-task cost paid by every lookup, so the padding is
+decided at compile time and asserted, not measured later.
+</p>
+<p>
+The growth arithmetic is asserted with literal figures: 8 records grown by 4 is 12. A doubling policy would give 16,
+and rounding to a power of two would give 16 as well, so 12 is the only figure that separates the arithmetic the
+design promises from the alternatives that would otherwise pass. The same reason governs the rest of the literals in
+these testlets: a comparison against the constant that produced the value cannot fail, so it tests nothing.
+</p>
+<p>
+Free-list accounting is checked by counting admissions. A record released twice is held by another task by the time
+it is counted, so a 4-record table owes exactly three more admissions; a double release that pushed the same record
+onto the free list twice shows up as a fifth admission — one record the table never owned.
+</p>
+
+<h2 id="tests">How the tests observe these mechanisms</h2>
+<p>
+Several behaviours cannot be reached by asking the production objects politely, so the testlets carry probes. Their
+shape is not incidental:
+</p>
+<ul>
+  <li><strong>A provider that records what it was handed</strong>, so the interface contract can be observed rather
+  than assumed.</li>
+  <li><strong>Probes detach before they die.</strong> The probes attach to stream indices this engine really does
+  have, so they register — and a provider destroyed while registered is exactly the dangling pointer the
+  detach-before-destruction assert exists to catch. A test double that cleans up after itself keeps that rule strict
+  for everyone else.</li>
+  <li><strong>A probe that hands out a bounded number of real work items</strong>, so a drain can be observed doing
+  what a drain is for. It deliberately owns nothing the stream has to know about: each item is a task created in the
+  system the provider was built with, released only once the test has seen it run.</li>
+  <li><strong>A probe that releases a task inside <code>Produce</code></strong>, so the item names a record that is
+  already gone by the time the stream can see it. The release happens under the stream's queue lock, which is where
+  the ordering is <em>arranged</em> rather than raced.</li>
+  <li><strong>A probe that stays inside <code>Produce</code></strong> until the test lets it go. The only way to test
+  "a detach waits for a drain in flight" is to have a drain actually in flight, and a <code>Produce</code> that
+  returns immediately never is.</li>
+  <li><strong>A spinner bounded by CPU time, not iterations</strong>, so the same test means the same thing on a slow
+  core, under a debugger, and in Release, where an iteration count is meaningless.</li>
+</ul>
+<p>
+Stale-identity handling is tested against a record that is <em>still live in a different generation</em> — the case
+<a href="../Core/TaskID/index.html">TaskID</a> exists for. A released-ID version of the same testlet stayed green with
+the guard removed, because <code>Create</code> clears the field when it reissues a record; the write refusal is only
+observable against a record somebody is still using.
+</p>
+
+<h2 id="seealso">Where else to look</h2>
+<p>
+Usage and the object model: <a href="../Core/TaskSystem/index.html">TaskSystem</a>,
+<a href="../Core/TaskStream/index.html">TaskStream</a>, <a href="../Core/TaskProvider/index.html">TaskProvider</a>,
+<a href="../Core/TaskRegistry/index.html">TaskRegistry</a>,
+<a href="../Core/StreamDrainPolicy/index.html">StreamDrainPolicy</a>, <a href="../Core/CPUBudget/index.html">CPUBudget</a>,
+<a href="../Core/ResultPacket/index.html">ResultPacket</a>. The decisions behind them:
+<a href="../TaskSystemRedesign.md">docs/TaskSystemRedesign.md</a>. How to use them from an application:
+<a href="../TaskSystemGuide.md">docs/TaskSystemGuide.md</a>. The clock these mechanisms measure against is
+<a href="EngineClock_Design.html">Engine clock design</a>.
+</p>
+
+  <footer class="prevnext">
+    <span><a href="../Core/index.html">← Core module</a></span>
+    <span><a href="../index.html">Module index →</a></span>
+  </footer>
+</main>
+</body>
+</html>

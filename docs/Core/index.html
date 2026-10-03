@@ -62,6 +62,8 @@
   <ul>
     <li><a href="../TaskSystemGuide.md">Task system guide</a></li>
     <li><a href="../TaskSystemRedesign.md">Task system redesign</a></li>
+    <li><a href="../design/TaskSystemInternals_Design.html">Task system internals</a></li>
+    <li><a href="../design/EngineClock_Design.html">Engine clock design</a></li>
   </ul>
 </nav>
 
@@ -91,7 +93,10 @@
   <a href="#tasksystem">TaskSystem</a>. How it is designed — stream accounting, budget windows, provider
   drain — is in <a href="../TaskSystemGuide.md">docs/TaskSystemGuide.md</a> and
   <a href="../TaskSystemRedesign.md">docs/TaskSystemRedesign.md</a>, not on this page: this page says
-  what you call, those say why it works that way.
+  what you call, those say why it works that way. What the running code guarantees and how the testlets are
+  built to see it is <a href="../design/TaskSystemInternals_Design.html">Task system internals</a>; the clock
+  everything measures against is
+  <a href="../design/EngineClock_Design.html">Engine clock design</a>.
 </p>
 
 <h2 id="classes">Module classes</h2>

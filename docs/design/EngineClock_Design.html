@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Engine clock design — Core module — HardBop Engine design document</title>
+<link rel="stylesheet" href="../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../Config/index.html">Config</a></li>
+    <li><a href="../Container/index.html">Container</a></li>
+    <li><a class="current" href="../Core/index.html">Core</a></li>
+    <li><a href="../Engine/index.html">Engine</a></li>
+    <li><a href="../HSTL/index.html">HSTL</a></li>
+    <li><a href="../Log/index.html">Log</a></li>
+    <li><a href="../Math/index.html">Math</a></li>
+    <li><a href="../Memory/index.html">Memory</a></li>
+    <li><a href="../OSAL/index.html">OSAL</a></li>
+    <li><a href="../Renderer/index.html">Renderer</a></li>
+    <li><a href="../Resource/index.html">Resource</a></li>
+    <li><a href="../String/index.html">String</a></li>
+    <li><a href="../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This document</h3>
+  <ul>
+    <li><a href="#oneepoch">One epoch for the whole engine</a></li>
+    <li><a href="#representation">Representation: an atomic counter, not a time point</a></li>
+    <li><a href="#firstuse">Initialised on first use, and the D5 defect</a></li>
+    <li><a href="#seealso">Where else to look</a></li>  </ul>
+</nav>
+
+<main class="main">
+  <div class="breadcrumb"><a href="../index.html">Docs</a> / <a href="../Core/index.html">Core</a> / Engine clock design</div>
+
+<h1>Engine clock design</h1>
+<div class="subtitle">One epoch, read constantly, written once — and the defect that shape exists to prevent</div>
+
+<div class="note">
+  <strong>Scope.</strong> This document owns how <em>Engine/Core/Time.cpp</em> represents engine time and why. The
+  callable contract — what <code>Sleep</code>, <code>ResetEngineEpoch</code> and <code>SetBaseFrameRate</code>
+  promise a caller — is on the reference pages, and the thread-safety claims belong there too.
+</div>
+
+<h2 id="oneepoch">One epoch for the whole engine</h2>
+<p>
+Task deadlines, <em>Render</em>'s <code>deltaTime</code> and the log timestamps all measure against a single value,
+so a deadline set by one subsystem cannot drift away from another reading the same span. Two clocks that agree by
+accident disagree as soon as one of them is re-based.
+</p>
+<p>
+The epoch is deliberately taken from the <em>steady</em> clock rather than the wall clock, because an epoch that jumps
+when the system clock is adjusted would silently expire every deadline in flight — or never expire any of them. A
+deadline is a statement about elapsed engine time, and only a monotonic source makes that statement mean anything.
+</p>
+
+<h2 id="representation">Representation: an atomic counter, not a time point</h2>
+<p>
+The epoch is held as nanoseconds since the steady clock's own epoch, in an atomic counter rather than a
+<code>time_point</code>. The reason is the read/write asymmetry: the epoch is read on every deadline check and every
+frame delta, while it is written at most once, by whoever constructs the engine. A counter makes the hot side a
+single acquire load.
+</p>
+
+<h2 id="firstuse">Initialised on first use, and the D5 defect</h2>
+<p>
+The epoch is initialised on first use, which is what keeps the clock meaningful in a process that never builds an
+<em>Engine</em>. A zero-initialised epoch reads as decades since 1970 — the D5 defect — and a timestamp that far in
+the past does not announce itself as a bug: it silently ages out every piece of work in the system the first time
+anything measures it.
+</p>
+<p>
+The epoch is reachable without <code>Engine::Get</code>, which asserts that an instance exists. Logging has to work
+in a process that never constructed an Engine, and a clock requiring one would reintroduce exactly that crash. If
+nothing has set the epoch, it is the first instant anyone asks for, so readings stay meaningful instead of counting
+from 1970.
+</p>
+
+<h2 id="seealso">Where else to look</h2>
+<p>
+The task mechanisms that measure against this epoch are in
+<a href="TaskSystemInternals_Design.html">Task system internals</a>; the CPU budget that bounds a task's consumption
+is <a href="../Core/CPUBudget/index.html">CPUBudget</a>; the logger that stamps with it is
+<a href="../Log/index.html">Log</a>.
+</p>
+
+  <footer class="prevnext">
+    <span><a href="../Core/index.html">← Core module</a></span>
+    <span><a href="../index.html">Module index →</a></span>
+  </footer>
+</main>
+</body>
+</html>
