@@ -476,6 +476,94 @@ def collapse_seam(text, path=None):
     return '\n'.join(line for index, line in enumerate(text.split('\n')) if index not in drop)
 
 
+# ----------------------------------------------------------------------- paragraphs
+
+RECORD_HEAD = re.compile(r'\s*(?:template\s*<.*>\s*)?(?:class|struct|union|enum(?:\s+(?:class|struct))?)\b')
+MEMBER_SKIP = re.compile(r'^(?:#|//|/\*|\*)|(?:public|protected|private)\s*:\s*$')
+
+
+def paragraph_shape(text):
+    """How much of this file's member scope is one declaration standing alone.
+
+    Rule set A is a set of ceilings: 'at most 0, 1 or 2 blanks'. A file in which every member sits alone
+    between blanks therefore scores zero findings, because no ceiling is broken — which is exactly the shape
+    a comment strip leaves behind, since the prose is what had been grouping the members and the blanks that
+    surrounded it stay. So a clean `blank_lines.py` run is not evidence that anyone has decided where the
+    paragraphs are, and this reports the shape instead of pretending to judge it: only a reader can say
+    whether two neighbours are one thought.
+
+    Only member scope is counted. A brace depth is member scope when every depth enclosing it belongs to a
+    class, struct or union body, so the statements and blanks inside an inline function body never enter the
+    tally, and neither do comments, preprocessor lines or access labels.
+    """
+    lines = text.split('\n')
+    record_depths = set()
+    pending_record = False
+    depth = 0
+    member_line = []
+    for raw in lines:
+        line = raw.strip()
+        if RECORD_HEAD.match(raw) and not line.startswith('friend '):
+            pending_record = True
+        opens, closes = raw.count('{'), raw.count('}')
+        if opens and pending_record:
+            record_depths.add(depth + 1)
+            pending_record = False
+        depth += opens - closes
+        # Member scope is the innermost enclosing body being a class, struct or union body: a namespace body
+        # in between is transparent, or every member of every class in the engine would read as file scope.
+        member_line.append(depth in record_depths and bool(line) and not MEMBER_SKIP.match(line)
+                           and '{' not in raw and '}' not in raw)
+
+    # A declaration whose next line opens a body is an inline definition, and rule A11 gives a definition its
+    # own paragraph by demanding a blank after it. Counting those as stranded members would call a file of
+    # inline accessors an artefact of a strip when the formatter itself is what spaced it.
+    for index, counted in enumerate(member_line):
+        if counted:
+            following = next((i for i in range(index + 1, len(lines)) if lines[i].strip()), None)
+            if following is not None and lines[following].lstrip().startswith('{'):
+                member_line[index] = False
+
+    groups = []
+    current = 0
+    start = 0
+    for index, counted in enumerate(member_line):
+        if counted:
+            if current == 0:
+                start = index + 1
+            current += 1
+        elif current:
+            groups.append((start, current))
+            current = 0
+    if current:
+        groups.append((start, current))
+
+    singles = [start for start, size in groups if size == 1]
+    longest, run_start, run, previous_last = 0, 0, 0, None
+    for start, size in groups:
+        if size == 1:
+            gap_blank = previous_last is not None \
+                and all(not lines[i].strip() for i in range(previous_last, start - 1))
+            run = run + 1 if run and gap_blank else 1
+            if run == 1:
+                run_start = start
+        else:
+            run = 0
+        if run > longest:
+            longest, run_start = run, run_start
+        previous_last = start - 1 + size
+    share = (100 * len(singles) // len(groups)) if groups else 0
+    return {'groups': len(groups), 'singles': len(singles), 'share': share,
+            'longest_run': longest, 'run_start': run_start}
+
+
+# A single declaration standing alone is normal — a distinct operation gets its own paragraph — so the share
+# of one-line groups is not the signal. What reads as a wall is a run of them: consecutive single declarations
+# separated by nothing but a blank. Measured over the 14 headers of the Core strip, the run was 5 to 17 before
+# a reader decided the seams and 3 or less after, so five is where the advice starts.
+PARAGRAPH_ADVICE_RUN = 5
+
+
 # ----------------------------------------------------------------------- fixtures --
 CASES = []
 
@@ -641,6 +729,22 @@ case('a file whose first code is inside a #if region owns no A3 seam but keeps A
      '#endif\n\n#define BAR 2\n', [('A1', 6)])
 
 
+PARAGRAPH_CASES = [
+    ('members sharing a paragraph are not stranded',
+     'class X final\n{\n\tint a;\n\tint b;\n\tint c;\n};\n', (1, 0, 0)),
+    ('every member alone is the strip artefact',
+     'class X final\n{\n\tint a;\n\n\tint b;\n\n\tint c;\n};\n', (3, 3, 3)),
+    ('inline bodies are paragraphs of their own and are not counted',
+     'class X final\n{\n\tint a;\n\n\tint Get() const noexcept\n\t{\n\t\treturn a;\n\t}\n\n\tint Get2() const noexcept\n\t{\n\t\treturn a;\n\t}\n};\n',
+     (1, 1, 1)),
+    ('a nested struct is counted in its own scope',
+     'class X final\n{\n\tstruct Inner final\n\t{\n\t\tint x;\n\n\t\tint y;\n\t};\n\n\tInner inner;\n};\n',
+     (3, 3, 2)),
+    ('statements inside a body are not members',
+     'class X final\n{\n\tvoid Run() noexcept\n\t{\n\t\tint a = 0;\n\n\t\tint b = 1;\n\t}\n};\n', (0, 0, 0)),
+]
+
+
 def run_selftest():
     failures = 0
     for name, source, expect in CASES:
@@ -662,7 +766,16 @@ def run_selftest():
             failures += 1
         else:
             print('ok   %-62s collapse' % name)
-    print('%d fixture(s), %d failure(s)' % (len(CASES) + len(COLLAPSE_CASES), failures))
+    for name, source, want in PARAGRAPH_CASES:
+        shape = paragraph_shape(source)
+        got = (shape['groups'], shape['singles'], shape['longest_run'])
+        if got != want:
+            print('FAIL %-62s want %s got %s' % (name, want, got))
+            failures += 1
+        else:
+            print('ok   %-62s paragraphs %s' % (name, got))
+    print('%d fixture(s), %d failure(s)' % (len(CASES) + len(COLLAPSE_CASES) + len(PARAGRAPH_CASES),
+                                            failures))
     return 1 if failures else 0
 
 
@@ -676,7 +789,28 @@ def main(argv):
                              'through this so the one place the standard and the formatter disagree cannot '
                              'fail a conforming file')
     parser.add_argument('--summary-only', action='store_true', help='print counts, not findings')
+    parser.add_argument('--paragraphs', action='store_true',
+                        help='report the member-scope paragraph shape of each file: how many groups hold a '
+                             'single declaration, and the longest run of them standing alone. This is advice, '
+                             'not a finding — rule set A is a set of ceilings, so a file whose every member '
+                             'sits alone between blanks is clean under A and still has no paragraphs. Only a '
+                             'reader can decide the seams; this says where to look.')
     args = parser.parse_args(argv)
+
+    if args.paragraphs:
+        flagged = 0
+        for path in args.files:
+            with open(path, encoding='utf-8') as handle:
+                shape = paragraph_shape(handle.read())
+            if shape['longest_run'] >= PARAGRAPH_ADVICE_RUN:
+                flagged += 1
+                print('    %s: longest run of stranded declarations %d from line %d (%d of %d group(s) '
+                      'hold one declaration, %d%%)'
+                      % (path, shape['longest_run'], shape['run_start'], shape['singles'], shape['groups'],
+                         shape['share']))
+        print('paragraph advice: %d file(s) where the seams were never decided by a reader'
+              ' — advice, not findings' % flagged)
+        return 0
 
     if args.collapse_seam:
         if args.files:
