@@ -1,5 +1,37 @@
 # Journal
 
+## 2026-10-03 21:46 — the rule-set-A sweep scoped from the trustworthy ledger, and one inference of mine refuted
+
+**Cause.** The owner said continue, and the next item the closing report listed was scoping the engine-wide
+blank-line sweep now that `.Plans/STANDARDS_PER_FILE.md` can be trusted. Scope, method and the module order are
+in `.Plans/PLAN_rule_set_A_sweep.md`. No source was edited.
+
+**The ledger's numbers first, because everything downstream reads them.** Its *blank lines* column was
+re-measured file by file against `blank_lines.py` run directly: **278 files, 0 disagreements**, 1501 findings in
+248 files. Module distribution: `Core` 340, `Container` 271, `Memory` 228, `OSAL` 174, `Math` 116, `Renderer`
+108, `String` 95, `Resource` 84, `Log` 43, `Test` 23, `Engine` 11, `HSTL` 8, and 0 in `Config`,
+`Applications`, `Examples`.
+
+| Fact measured | Value | Why it changes the plan |
+|---|---|---|
+| Findings in A10, A4, A5, A3 | 1279 of 1501 (85%) | The reader's judgement concentrates in the other 15%; still no `--fix`, because a blank deleted on a checker's say-so is the failure this layer prevents |
+| Files holding findings | 248, median 3, mean 6.1, max 125 | Half the files are a few minutes each |
+| Debt in the 37 densest files | 762 of 1501 (51%) | The tail is where the time goes; `Engine/Core/TaskSystem.cpp` alone is 125 (8% of the tree) |
+| Per-module dominant rules | `String` A10 30, `Math` A10 30 + A3 27, `Log` A4 14 | A module session is one repeated shape, not sixteen rules |
+
+**An inference I put in the plan and then destroyed.** I wrote that 90% of paragraph work would be redone after
+the comment ban, because 1919 comment findings still sit above 1355 of the blank findings, and `6dad493` is
+titled "the blank lines the comments held go with it". Measured on the two files that have already been through
+both passes it is wrong by an order of magnitude: stripping `TaskSystem.h`'s 234 comment findings removed **2**
+blank findings, and `TaskSystem.cpp`'s 201 removed **8**. The two debts are near-orthogonal, so ordering is not a
+cost question at all, and `SKILL.md`'s "before the comment sweep" stands on its unmeasured but sound reason —
+decide a seam while the prose naming that concern is still in the file. `Engine/Core`'s own history
+(`1d28c88` strip, then `f10a9c6` seams) did the opposite at a cost the table puts near zero.
+
+**`Engine/Core` is scoped last on purpose**, not by size: a concurrent session is editing `Engine/Core` and
+`docs/Core/` right now, and a paragraph edit colliding mid-file is resolved silently in favour of whoever
+commits second. That is the one sequencing choice the plan asks the owner to confirm rather than assume.
+
 ## 2026-10-03 21:30 — the per-file ledger was scheduling work for 164 finished files, so it is now generated
 
 **Cause.** The owner picked the ledger repair off the list this task closed with: `.Plans/STANDARDS_PER_FILE.md`
