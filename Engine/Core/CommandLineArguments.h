@@ -8,7 +8,6 @@
 
 namespace hbe
 {
-/// @brief Parses and stores command line arguments passed to the application.
 /// API reference: docs/Core/CommandLineArguments/index.html
 class CommandLineArguments final
 {
