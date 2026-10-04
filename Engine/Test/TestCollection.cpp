@@ -111,11 +111,20 @@ bool TestCollection::RunTestAt(const std::size_t testIndex)
 		const auto globalFreedBytesBefore = MemoryManager::GetGlobalFreeBytes();
 		const auto globalFreedCountBefore = MemoryManager::GetGlobalFreeCount();
 
+		const auto osBytesBefore = MemoryManager::GetOSAllocationBytes();
+		const auto osRequestsBefore = MemoryManager::GetOSAllocationCount();
+		const auto osFreedBytesBefore = MemoryManager::GetOSFreeBytes();
+		const auto osFreedCountBefore = MemoryManager::GetOSFreeCount();
+
 		testlet.Run(logStream);
 
 		const auto globalBytesOverBody = MemoryManager::GetGlobalAllocationBytes() - globalBytesBefore;
 		const auto globalRequestsOverBody = MemoryManager::GetGlobalAllocationCount() - globalRequestsBefore;
 		const auto globalFreedBytesOverBody = MemoryManager::GetGlobalFreeBytes() - globalFreedBytesBefore;
+
+		const auto osBytesOverBody = MemoryManager::GetOSAllocationBytes() - osBytesBefore;
+		const auto osRequestsOverBody = MemoryManager::GetOSAllocationCount() - osRequestsBefore;
+		const auto osFreedBytesOverBody = MemoryManager::GetOSFreeBytes() - osFreedBytesBefore;
 
 		/*
 		 * Retention is what a ceiling has to be about. A stress loop can request hundreds of megabytes while
@@ -123,8 +132,13 @@ bool TestCollection::RunTestAt(const std::size_t testIndex)
 		 * comparison is unsigned, so the clamp is not decoration: an unsized delete reports no size and releases
 		 * nothing against the total, which can push freed above requested.
 		 */
+		const auto engineBytesOverBody =
+				globalBytesOverBody > osBytesOverBody ? globalBytesOverBody - osBytesOverBody : 0;
+		const auto engineFreedBytesOverBody =
+				globalFreedBytesOverBody > osFreedBytesOverBody ? globalFreedBytesOverBody - osFreedBytesOverBody : 0;
+
 		const auto retainedBytesOverBody =
-				globalBytesOverBody > globalFreedBytesOverBody ? globalBytesOverBody - globalFreedBytesOverBody : 0;
+				engineBytesOverBody > engineFreedBytesOverBody ? engineBytesOverBody - engineFreedBytesOverBody : 0;
 
 		const auto retainedCeiling = testlet.GetMaxRetainedGlobalBytes();
 
@@ -136,7 +150,7 @@ bool TestCollection::RunTestAt(const std::size_t testIndex)
 			log.OutError([indexLabel, testName, retainedBytesOverBody, retainedCeiling](auto& ls)
 			{
 				ls << "# TC" << indexLabel << '.' << testName << " retained " << retainedBytesOverBody
-				   << " bytes of the global heap at the end of its body, over the " << retainedCeiling
+				   << " bytes of engine-owned global heap at the end of its body, over the " << retainedCeiling
 				   << " byte ceiling "
 				   << (retainedCeiling == MaxRetainedGlobalBytes ? "a testlet may hold"
 																 : "this testlet declared for itself")
@@ -147,7 +161,8 @@ bool TestCollection::RunTestAt(const std::size_t testIndex)
 			 * Recorded as an error as well as logged, because whether this testlet passed is decided by the
 			 * error count, and a guard that only prints is a comment with a number in it.
 			 */
-			errorMessages.push_back(std::string(testName) + " retained more global heap than the ceiling allows");
+			errorMessages.push_back(std::string(testName) +
+									" retained more engine-owned global heap than the ceiling allows");
 		}
 
 		globalAllocationBytes += globalBytesOverBody;
@@ -159,13 +174,20 @@ bool TestCollection::RunTestAt(const std::size_t testIndex)
 		if (globalRequestsOverBody != 0)
 		{
 			log.Out([indexLabel, testName, globalRequestsOverBody, globalBytesOverBody, globalFreedCountBefore,
-					 globalFreedBytesOverBody, retainedBytesOverBody, retainedCeiling](auto& ls)
+					 globalFreedBytesOverBody, retainedBytesOverBody, retainedCeiling, osRequestsOverBody,
+					 osBytesOverBody, osFreedCountBefore](auto& ls)
 			{
 				ls << "# TC" << indexLabel << '.' << testName << " global heap " << globalRequestsOverBody
 				   << " cumulative requests, " << globalBytesOverBody << " bytes requested, "
 				   << (MemoryManager::GetGlobalFreeCount() - globalFreedCountBefore) << " releases, retained "
 				   << retainedBytesOverBody << " bytes, freed " << globalFreedBytesOverBody
 				   << " bytes outside the allocator scope";
+
+				if (osRequestsOverBody != 0)
+				{
+					ls << ", of which OS-image " << osRequestsOverBody << " requests, " << osBytesOverBody
+					   << " bytes requested, " << (MemoryManager::GetOSFreeCount() - osFreedCountBefore) << " releases";
+				}
 
 				// A testlet that asked for its own budget says so on every line it produces, so the exception is
 				// legible in a log excerpt and not only in the source that registered it.

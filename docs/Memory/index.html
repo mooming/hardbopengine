@@ -414,7 +414,59 @@
     <td><code>static uint64_t GetGlobalFreeCount() noexcept</code></td>
     <td>Releases that reached the entry points since process start.</td>
   </tr>
+  <tr>
+    <td><code>static size_t GetOSAllocationBytes() noexcept</code></td>
+    <td>Of the requested total, the bytes whose allocation call was made by a caller living inside an OS system
+        image - see the buckets section below. Cumulative like the totals, and never larger than them.</td>
+  </tr>
+  <tr>
+    <td><code>static uint64_t GetOSAllocationCount() noexcept</code></td>
+    <td>Of the request total, the requests made by OS-image callers.</td>
+  </tr>
+  <tr>
+    <td><code>static size_t GetOSFreeBytes() noexcept</code></td>
+    <td>Of the released total, the bytes released by OS-image callers.</td>
+  </tr>
+  <tr>
+    <td><code>static uint64_t GetOSFreeCount() noexcept</code></td>
+    <td>Of the release total, the releases made by OS-image callers.</td>
+  </tr>
 </table>
+
+<h3>Engine and OS image buckets</h3>
+
+<p>
+  Every request reaches the same totals; four extra counters say how much of the total the <strong>OS</strong>
+  caused. Each entry point reads its immediate caller's return address and asks one question: does that address
+  fall inside the dyld shared cache - the single contiguous range holding every system image on macOS,
+  <code>Metal</code>, <code>AppKit</code>, <code>CoreText</code>, <code>libc++</code> included, one load of
+  <code>_dyld_get_shared_cache_range</code> cached in three atomics? A yes adds the same bytes to the OS bucket
+  that the totals already received; nothing is subtracted from the totals, so
+  <code>engine = total - OS</code> by definition and the monitor keeps full visibility. Deallocation classifies by
+  its own caller, so releases follow the same rule.
+</p>
+
+<p>
+  The reason the bucket exists is what the OS does on a first touch: the first window of a process booted the
+  Metal shader binary archive, the AGX device registration, the CoreText font cache and the AppleEvents coercion
+  tables - all through the replaced <code>operator new</code>, all charged to whichever testlet happened to
+  trigger them, and all retained for the process lifetime by design. Measured, a window-creation testlet body
+  made <strong>47,173</strong> global requests of which <strong>47,164</strong> were OS-image traffic, and
+  carried roughly 100 KB of retention no <code>reset()</code> could free. Over the whole unit-test process the OS
+  bucket holds 458,394 requests and 44,131,194 bytes against 68,676,703 requests in the total: system traffic,
+  visible, counted, and kept out of the budget the engine is graded on.
+</p>
+
+<p>
+  Two boundaries are part of the mechanism, not defects in it. The classification is of the <em>immediate</em>
+  caller, so engine code whose allocation happens inside an out-of-line shared-cache frame - a
+  <code>std::string</code> reallocated by <code>libc++</code>, for example - counts as OS even though the engine
+  asked for it; that moves bytes out of the engine bucket only, which loosens the test ceiling and never tightens
+  it. And a block allocated by one side and released by the other drifts a figure between buckets; the totals
+  never drift, and the cross case is rare because a framework frees its own caches from its own code. Outside
+  macOS the classification returns "engine", the OS counters stay zero, and the totals mean exactly what they
+  meant before the split.
+</p>
 
 <h3>Contract</h3>
 <table>
@@ -447,6 +499,11 @@
     <td>The over-aligned forms go through <code>posix_memalign</code> with the requested alignment rounded up into
         the size, which is what that API requires.</td>
   </tr>
+  <tr>
+    <td>Bucket identity</td>
+    <td>An OS-bucket increment happens only alongside the matching total increment, so the OS counters never
+        exceed the totals. Like the byte/count pairs, an allocation/free pair is not one instantaneous sample.</td>
+  </tr>
 </table>
 
 <h3>Decisions, with what decided them</h3>
@@ -475,8 +532,21 @@
         issued directly by the test's own translation unit - because callers inside the dyld shared cache are
         pre-bound and interposition cannot rebind them. Defining <code>operator new</code> in the binary caught
         every allocation of <code>std::string</code>, <code>std::vector</code> and a bare <code>operator new</code>
-        in the same program: 3 requests, 18,496 bytes. Allocations made <em>inside</em> system images still bypass
-        this, which is a boundary of the technique rather than a defect in it.</td>
+        in the same program: 3 requests, 18,496 bytes. C allocations made <em>inside</em> system images still
+        bypass this - pre-bound callers cannot be rebound - but <code>operator new</code> is a weak symbol, so the
+        replacement coalesces process-wide and C++ allocations from system images do arrive. Measured after the
+        split: <code>Metal</code>, <code>CoreText</code>, <code>libFontParser</code>, <code>AppleEvents</code> and
+        <code>libc++</code> all reach these entry points, which is what made the OS bucket both possible and
+        necessary.</td>
+  </tr>
+  <tr>
+    <td>OS traffic gets its own bucket, not an exclusion</td>
+    <td>Three ways to stop the first-touch caches failing a testlet existed. Raising the ceiling hides engine
+        regressions behind a number chosen to admit a system cost. Excluding OS allocations from the monitor
+        blinds it - a counter that silently drops traffic is not a monitor. Counting them in a second bucket keeps
+        the totals honest and lets a budget evaluate engine retention alone; the test ceiling does exactly that,
+        see <a href="../Test/TestCollection/memory-ceiling.html">the Test module's ceiling page</a>. The cost is
+        one address-range compare per entry point.</td>
   </tr>
   <tr>
     <td>Cost is accepted in all three configurations</td>
@@ -491,6 +561,8 @@
 <span class="kw">const auto</span> requestsBefore    = MemoryManager::GetGlobalAllocationCount();
 <span class="kw">const auto</span> bytesBefore       = MemoryManager::GetGlobalAllocationBytes();
 <span class="kw">const auto</span> freedBytesBefore  = MemoryManager::GetGlobalFreeBytes();
+<span class="kw">const auto</span> osBytesBefore     = MemoryManager::GetOSAllocationBytes();
+<span class="kw">const auto</span> osFreedBefore     = MemoryManager::GetOSFreeBytes();
 
 DoWork();
 
@@ -503,6 +575,16 @@ DoWork();
  *  clamp is not decoration - a block can be larger than the size that was asked
  *  for, so freed can slightly outrun bytes. */</span>
 <span class="kw">const auto</span> retained = bytes &gt; freed ? bytes - freed : 0;</code></pre>
+
+<pre><code><span class="cm">// Engine-only traffic: subtract the OS bucket from both sides, clamped, because</span>
+<span class="cm">// the counters are read separately and a concurrent OS allocation can land</span>
+<span class="cm">// between two reads. This is the quantity the unit test ceiling guards.</span>
+<span class="kw">const auto</span> osBytes = MemoryManager::GetOSAllocationBytes() - osBytesBefore;
+<span class="kw">const auto</span> osFreed = MemoryManager::GetOSFreeBytes() - osFreedBefore;
+
+<span class="kw">const auto</span> engineBytes    = bytes &gt; osBytes ? bytes - osBytes : 0;
+<span class="kw">const auto</span> engineFreed    = freed &gt; osFreed ? freed - osFreed : 0;
+<span class="kw">const auto</span> engineRetained = engineBytes &gt; engineFreed ? engineBytes - engineFreed : 0;</code></pre>
 
 <p>
   The unit test suite is the current consumer and shows the shape: it measures the delta around each testlet body,

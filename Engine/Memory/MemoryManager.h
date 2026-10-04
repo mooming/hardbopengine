@@ -82,6 +82,11 @@ public:
 	/// @brief Number of releases that reached a global deallocation entry point since process start.
 	[[nodiscard]] static uint64_t GetGlobalFreeCount() noexcept;
 
+	[[nodiscard]] static size_t GetOSAllocationBytes() noexcept;
+	[[nodiscard]] static uint64_t GetOSAllocationCount() noexcept;
+	[[nodiscard]] static size_t GetOSFreeBytes() noexcept;
+	[[nodiscard]] static uint64_t GetOSFreeCount() noexcept;
+
 	struct UsageRecord final
 	{
 		size_t allocCount = 0;
@@ -253,3 +258,22 @@ private:
 	friend class AllocatorScope;
 };
 } // namespace hbe
+
+#ifdef __UNIT_TEST__
+#include "Test/TestCollection.h"
+
+namespace hbe
+{
+class GlobalAllocationTest final : public TestCollection
+{
+public:
+	GlobalAllocationTest()
+		: TestCollection("GlobalAllocationTest")
+	{
+	}
+
+protected:
+	void Prepare() override;
+};
+} // namespace hbe
+#endif // __UNIT_TEST__

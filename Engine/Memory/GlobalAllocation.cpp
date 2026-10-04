@@ -9,6 +9,14 @@
 #include "MemoryManager.h"
 #include "OSAL/OSMemory.h"
 
+#if defined(__APPLE__)
+extern "C" const void* _dyld_get_shared_cache_range(size_t* length);
+
+#define HBE_ACCOUNTING_CALLER __builtin_return_address(0)
+#else
+#define HBE_ACCOUNTING_CALLER nullptr
+#endif
+
 /*
  * The engine's global allocation entry points, and the accounting that goes with them.
  *
@@ -32,7 +40,6 @@
  * size and alignment keeps the information that throwing would lose.
  */
 
-
 namespace
 {
 std::atomic<size_t> globalAllocationBytes{0};
@@ -40,6 +47,64 @@ std::atomic<uint64_t> globalAllocationCount{0};
 
 std::atomic<size_t> globalFreeBytes{0};
 std::atomic<uint64_t> globalFreeCount{0};
+
+std::atomic<size_t> globalOSAllocationBytes{0};
+std::atomic<uint64_t> globalOSAllocationCount{0};
+
+std::atomic<size_t> globalOSFreeBytes{0};
+std::atomic<uint64_t> globalOSFreeCount{0};
+
+std::atomic<uintptr_t> osImageRangeBase{0};
+std::atomic<size_t> osImageRangeSize{0};
+std::atomic<bool> osImageRangeQueried{false};
+
+bool IsOSImageCaller(void* caller) noexcept
+{
+#if defined(__APPLE__)
+	const uintptr_t address = reinterpret_cast<uintptr_t>(caller);
+
+	if (!osImageRangeQueried.load(std::memory_order_acquire))
+	{
+		size_t sharedCacheSize = 0;
+		const void* const sharedCacheBase = _dyld_get_shared_cache_range(&sharedCacheSize);
+
+		osImageRangeBase.store(reinterpret_cast<uintptr_t>(sharedCacheBase), std::memory_order_relaxed);
+		osImageRangeSize.store(sharedCacheSize, std::memory_order_relaxed);
+		osImageRangeQueried.store(true, std::memory_order_release);
+	}
+
+	const uintptr_t base = osImageRangeBase.load(std::memory_order_relaxed);
+	const size_t size = osImageRangeSize.load(std::memory_order_relaxed);
+
+	return size != 0 && address - base < size;
+#else
+	(void) caller;
+
+	return false;
+#endif
+}
+
+void RecordAllocation(size_t size, void* caller) noexcept
+{
+	hbe::MemoryManager::RecordGlobalAllocation(size);
+
+	if (IsOSImageCaller(caller))
+	{
+		globalOSAllocationBytes.fetch_add(size, std::memory_order_relaxed);
+		globalOSAllocationCount.fetch_add(1, std::memory_order_relaxed);
+	}
+}
+
+void RecordDeallocation(size_t size, void* caller) noexcept
+{
+	hbe::MemoryManager::RecordGlobalFree(size);
+
+	if (IsOSImageCaller(caller))
+	{
+		globalOSFreeBytes.fetch_add(size, std::memory_order_relaxed);
+		globalOSFreeCount.fetch_add(1, std::memory_order_relaxed);
+	}
+}
 
 void ReportAllocationFailure(size_t size, std::align_val_t alignment) noexcept
 {
@@ -55,7 +120,7 @@ void ReportAllocationFailure(size_t size, std::align_val_t alignment) noexcept
 	std::abort();
 }
 
-void* AllocateAccounted(size_t size)
+void* AllocateAccounted(size_t size, void* caller)
 {
 	const size_t requestSize = size == 0 ? 1 : size;
 
@@ -64,7 +129,7 @@ void* AllocateAccounted(size_t size)
 		void* ptr = std::malloc(requestSize);
 		if (ptr != nullptr)
 		{
-			hbe::MemoryManager::RecordGlobalAllocation(size);
+			RecordAllocation(size, caller);
 
 			return ptr;
 		}
@@ -79,7 +144,7 @@ void* AllocateAccounted(size_t size)
 	}
 }
 
-void* AllocateAccountedAligned(size_t size, std::align_val_t alignment)
+void* AllocateAccountedAligned(size_t size, std::align_val_t alignment, void* caller)
 {
 	const size_t requestSize = size == 0 ? 1 : size;
 	const size_t requestAlignment = static_cast<size_t>(alignment);
@@ -102,7 +167,7 @@ void* AllocateAccountedAligned(size_t size, std::align_val_t alignment)
 
 	if (ptr != nullptr)
 	{
-		hbe::MemoryManager::RecordGlobalAllocation(size);
+		RecordAllocation(size, caller);
 
 		return ptr;
 	}
@@ -112,25 +177,25 @@ void* AllocateAccountedAligned(size_t size, std::align_val_t alignment)
 	return nullptr;
 }
 
-void* TryAllocateAccounted(size_t size) noexcept
+void* TryAllocateAccounted(size_t size, void* caller) noexcept
 {
 	void* ptr = std::malloc(size == 0 ? 1 : size);
 	if (ptr != nullptr)
 	{
-		hbe::MemoryManager::RecordGlobalAllocation(size);
+		RecordAllocation(size, caller);
 	}
 
 	return ptr;
 }
 
-void* TryAllocateAccountedAligned(size_t size, std::align_val_t alignment) noexcept
+void* TryAllocateAccountedAligned(size_t size, std::align_val_t alignment, void* caller) noexcept
 {
 	const size_t requestSize = size == 0 ? 1 : size;
 	const size_t requestAlignment = static_cast<size_t>(alignment);
 
 	if (requestAlignment <= alignof(std::max_align_t))
 	{
-		return TryAllocateAccounted(size);
+		return TryAllocateAccounted(size, caller);
 	}
 
 	void* ptr = nullptr;
@@ -141,7 +206,7 @@ void* TryAllocateAccountedAligned(size_t size, std::align_val_t alignment) noexc
 		return nullptr;
 	}
 
-	hbe::MemoryManager::RecordGlobalAllocation(size);
+	RecordAllocation(size, caller);
 
 	return ptr;
 }
@@ -153,11 +218,11 @@ void* TryAllocateAccountedAligned(size_t size, std::align_val_t alignment) noexc
  * the same as one that leaks. The answer is the block size, which can exceed the size requested, so the released
  * total can slightly outrun the requested total; the clamp on retention absorbs that.
  */
-void Deallocate(void* ptr, size_t size) noexcept
+void Deallocate(void* ptr, size_t size, void* caller) noexcept
 {
 	if (ptr != nullptr)
 	{
-		hbe::MemoryManager::RecordGlobalFree(size != 0 ? size : OS::GetAllocSize(ptr));
+		RecordDeallocation(size != 0 ? size : OS::GetAllocSize(ptr), caller);
 		std::free(ptr);
 	}
 }
@@ -196,6 +261,26 @@ uint64_t MemoryManager::GetGlobalFreeCount() noexcept
 {
 	return globalFreeCount.load(std::memory_order_relaxed);
 }
+
+size_t MemoryManager::GetOSAllocationBytes() noexcept
+{
+	return globalOSAllocationBytes.load(std::memory_order_relaxed);
+}
+
+uint64_t MemoryManager::GetOSAllocationCount() noexcept
+{
+	return globalOSAllocationCount.load(std::memory_order_relaxed);
+}
+
+size_t MemoryManager::GetOSFreeBytes() noexcept
+{
+	return globalOSFreeBytes.load(std::memory_order_relaxed);
+}
+
+uint64_t MemoryManager::GetOSFreeCount() noexcept
+{
+	return globalOSFreeCount.load(std::memory_order_relaxed);
+}
 } // namespace hbe
 
 /*
@@ -205,90 +290,155 @@ uint64_t MemoryManager::GetGlobalFreeCount() noexcept
 
 void* operator new(size_t size)
 {
-	return AllocateAccounted(size);
+	return AllocateAccounted(size, HBE_ACCOUNTING_CALLER);
 }
 
 void* operator new[](size_t size)
 {
-	return AllocateAccounted(size);
+	return AllocateAccounted(size, HBE_ACCOUNTING_CALLER);
 }
 
 void* operator new(size_t size, std::align_val_t alignment)
 {
-	return AllocateAccountedAligned(size, alignment);
+	return AllocateAccountedAligned(size, alignment, HBE_ACCOUNTING_CALLER);
 }
 
 void* operator new[](size_t size, std::align_val_t alignment)
 {
-	return AllocateAccountedAligned(size, alignment);
+	return AllocateAccountedAligned(size, alignment, HBE_ACCOUNTING_CALLER);
 }
 
 void* operator new(size_t size, const std::nothrow_t&) noexcept
 {
-	return TryAllocateAccounted(size);
+	return TryAllocateAccounted(size, HBE_ACCOUNTING_CALLER);
 }
 
 void* operator new[](size_t size, const std::nothrow_t&) noexcept
 {
-	return TryAllocateAccounted(size);
+	return TryAllocateAccounted(size, HBE_ACCOUNTING_CALLER);
 }
 
 void* operator new(size_t size, std::align_val_t alignment, const std::nothrow_t&) noexcept
 {
-	return TryAllocateAccountedAligned(size, alignment);
+	return TryAllocateAccountedAligned(size, alignment, HBE_ACCOUNTING_CALLER);
 }
 
 void* operator new[](size_t size, std::align_val_t alignment, const std::nothrow_t&) noexcept
 {
-	return TryAllocateAccountedAligned(size, alignment);
+	return TryAllocateAccountedAligned(size, alignment, HBE_ACCOUNTING_CALLER);
 }
 
 void operator delete(void* ptr) noexcept
 {
-	Deallocate(ptr, 0);
+	Deallocate(ptr, 0, HBE_ACCOUNTING_CALLER);
 }
 
 void operator delete(void* ptr, size_t size) noexcept
 {
-	Deallocate(ptr, size);
+	Deallocate(ptr, size, HBE_ACCOUNTING_CALLER);
 }
 
 void operator delete[](void* ptr) noexcept
 {
-	Deallocate(ptr, 0);
+	Deallocate(ptr, 0, HBE_ACCOUNTING_CALLER);
 }
 
 void operator delete[](void* ptr, size_t size) noexcept
 {
-	Deallocate(ptr, size);
+	Deallocate(ptr, size, HBE_ACCOUNTING_CALLER);
 }
 
 void operator delete(void* ptr, std::align_val_t alignment) noexcept
 {
-	Deallocate(ptr, static_cast<size_t>(alignment));
+	Deallocate(ptr, static_cast<size_t>(alignment), HBE_ACCOUNTING_CALLER);
 }
 
 void operator delete(void* ptr, size_t size, std::align_val_t) noexcept
 {
-	Deallocate(ptr, size);
+	Deallocate(ptr, size, HBE_ACCOUNTING_CALLER);
 }
 
 void operator delete[](void* ptr, std::align_val_t alignment) noexcept
 {
-	Deallocate(ptr, static_cast<size_t>(alignment));
+	Deallocate(ptr, static_cast<size_t>(alignment), HBE_ACCOUNTING_CALLER);
 }
 
 void operator delete[](void* ptr, size_t size, std::align_val_t) noexcept
 {
-	Deallocate(ptr, size);
+	Deallocate(ptr, size, HBE_ACCOUNTING_CALLER);
 }
 
 void operator delete(void* ptr, const std::nothrow_t&) noexcept
 {
-	Deallocate(ptr, 0);
+	Deallocate(ptr, 0, HBE_ACCOUNTING_CALLER);
 }
 
 void operator delete[](void* ptr, const std::nothrow_t&) noexcept
 {
-	Deallocate(ptr, 0);
+	Deallocate(ptr, 0, HBE_ACCOUNTING_CALLER);
 }
+
+#ifdef __UNIT_TEST__
+#include <string>
+#include <vector>
+
+namespace hbe
+{
+void GlobalAllocationTest::Prepare()
+{
+	AddTest("Engine traffic reaches the global counters", [this](auto& ls)
+	{
+		const auto totalBefore = MemoryManager::GetGlobalAllocationCount();
+
+		std::vector<size_t> values;
+
+		for (size_t i = 0; i < 64; ++i)
+		{
+			values.push_back(i);
+		}
+
+		const auto totalAfter = MemoryManager::GetGlobalAllocationCount();
+
+		if (totalAfter <= totalBefore)
+		{
+			ls << "std::vector growth through operator new was not counted globally" << lferr;
+		}
+	});
+
+#if defined(__APPLE__)
+	AddTest("OS image traffic reaches its own bucket", [this](auto& ls)
+	{
+		const auto osRequestsBefore = MemoryManager::GetOSAllocationCount();
+		const auto osBytesBefore = MemoryManager::GetOSAllocationBytes();
+		const auto totalBefore = MemoryManager::GetGlobalAllocationCount();
+
+		std::string grow;
+
+		for (int i = 0; i < 4096; ++i)
+		{
+			grow.push_back('y');
+		}
+
+		const auto osRequestsAfter = MemoryManager::GetOSAllocationCount();
+		const auto osBytesAfter = MemoryManager::GetOSAllocationBytes();
+		const auto totalAfter = MemoryManager::GetGlobalAllocationCount();
+
+		if (osRequestsAfter <= osRequestsBefore)
+		{
+			ls << "A libc++ reallocation inside the shared cache was not bucketed as OS image traffic" << lferr;
+		}
+
+		if (osBytesAfter - osBytesBefore < grow.size())
+		{
+			ls << "The OS bucket did not see the string growth bytes" << lferr;
+		}
+
+		if (totalAfter <= totalBefore)
+		{
+			ls << "OS image traffic bypassed the global total" << lferr;
+		}
+	});
+#endif // defined(__APPLE__)
+}
+} // namespace hbe
+#endif // __UNIT_TEST__

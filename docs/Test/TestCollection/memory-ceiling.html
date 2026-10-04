@@ -116,6 +116,17 @@
   holds every byte without requesting more. A ceiling on bytes <em>requested</em> would refuse the honest test and
   pass the leak, so it is not a ceiling worth having.
 </p>
+<p>
+  The retention compared is <strong>engine-owned</strong> retention. The global totals count every allocation that
+  reaches the replaced <code>operator new</code>, including the C++ traffic caused inside OS system images, and the
+  engine's process-wide caches - Metal's shader binary archive, the AGX device registration, the CoreText font
+  caches, the AppleEvents tables - load on first touch and live for the process lifetime by design, charged to
+  whichever testlet happened to boot them. The accounting classifies that traffic into its own bucket by caller
+  image, see
+  <a href="../../Memory/index.html#global-allocation">Global allocation accounting</a>, and this guard subtracts
+  the bucket from both sides of the retention. Nothing hides: the per-testlet line prints the global figures with
+  the OS-image split beside them.
+</p>
 
 <h2 id="basis">The number, and what produced it</h2>
 <p>Measured, not picked. Over the 320 testlets that allocate at all:</p>
@@ -141,6 +152,13 @@
   the maximum 33.5 million, because the allocator performance tests allocate tens of millions of times for a reason.
   Any request ceiling that passes them today is not a guard.
 </p>
+<p>
+  The table predates the OS bucket. Measured when the split landed on 2026-10-05, window creation retained roughly
+  100 KB against this ceiling while the testlet itself held none of it - 47,164 of its 47,173 global requests were
+  OS-image traffic - and the failure was indistinguishable from an engine leak. With the OS bucket subtracted the
+  same testlet retains 0 engine-owned bytes, so the ceiling stays at 64 KiB: the exception moved into the
+  accounting, where a reason survives review, not into this number.
+</p>
 
 <h2 id="enforcement">How a breach behaves</h2>
 <p>
@@ -150,7 +168,7 @@
   <code>EngineTest: 7 test collection(s) FAILED</code>, runner exit non-zero.
 </p>
 <p>The refusal says whose ceiling was breached, so a declared budget is never mistaken for the default:</p>
-<pre><code><span class="cm"># TC0.Print CallStack retained 1568 bytes of the global heap at the end of its body,
+<pre><code><span class="cm"># TC0.Print CallStack retained 1568 bytes of engine-owned global heap at the end of its body,
    over the 256 byte ceiling this testlet declared for itself. Free it, or raise the
    ceiling with a reason that survives review #</span></code></pre>
 
@@ -177,6 +195,14 @@
     <td>A release through the unsized <code>operator delete</code> reports the block size the system heap chose, which
         can exceed the size asked for, so the released total can outrun the requested total a little. The clamp at zero
         absorbs it, and the direction is the safe one for a ceiling.</td>
+  </tr>
+  <tr>
+    <td>OS-image traffic is outside the budget</td>
+    <td>Allocations whose immediate caller lives inside the dyld shared cache are counted in the totals but
+        subtracted from the guarded quantity, because the engine cannot free a system cache a testlet never asked
+        for. The bias runs one way: engine code whose allocation happens inside a shared-cache frame - a
+        <code>std::string</code> grown by <code>libc++</code>, for example - is counted as OS, so the guard can
+        read slightly generous but never stricter.</td>
   </tr>
   <tr>
     <td>No test inside the suite covers the guard</td>

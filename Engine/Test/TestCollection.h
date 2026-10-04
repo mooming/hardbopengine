@@ -50,7 +50,7 @@ public:
 	 * static_assert in Testlet's constructor is what tells it so at the registration site.
 	 */
 	/*
-	 * The most global heap memory a single testlet may still be holding when its body ends.
+	 * The most engine-owned global heap memory a single testlet may still be holding when its body ends.
 	 *
 	 * Decided from the measured distribution rather than picked: across the 320 testlets that allocate at all,
 	 * median retention is 48 bytes, the 99th percentile is 3,072, and the largest single figure is 33,200, from

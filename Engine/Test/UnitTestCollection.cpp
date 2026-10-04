@@ -46,6 +46,7 @@
 #include "Memory/DefaultAllocator.h"
 #include "Memory/InlineMonotonicAllocator.h"
 #include "Memory/InlinePoolAllocator.h"
+#include "Memory/MemoryManager.h"
 #include "Memory/MonotonicAllocator.h"
 #include "Memory/MultiPoolAllocator.h"
 #include "Memory/Optional.h"
@@ -150,6 +151,7 @@ void RegisterSuite()
 	testEnv.AddTestCollection<MonotonicAllocatorTest>();
 	testEnv.AddTestCollection<MultiPoolAllocatorTest>();
 	testEnv.AddTestCollection<ThreadSafeMultiPoolAllocatorTest>();
+	testEnv.AddTestCollection<GlobalAllocationTest>();
 	testEnv.AddTestCollection<OSDebugTest>();
 	testEnv.AddTestCollection<OSInputOutputTest>();
 	testEnv.AddTestCollection<OSThreadTest>();

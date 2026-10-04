@@ -40,7 +40,9 @@ int main(int argc, const char* argv[]) noexcept
 			  << testEnv.GetTestletCountWithGlobalAllocations() << " of " << testEnv.GetExecutedTestletCount()
 			  << " testlets; whole process " << hbe::MemoryManager::GetGlobalAllocationCount()
 			  << " cumulative requests, " << hbe::MemoryManager::GetGlobalAllocationBytes()
-			  << " cumulative bytes requested" << std::endl;
+			  << " cumulative bytes requested, of which OS-image " << hbe::MemoryManager::GetOSAllocationCount()
+			  << " cumulative requests, " << hbe::MemoryManager::GetOSAllocationBytes() << " cumulative bytes requested"
+			  << std::endl;
 
 	if (failures > 0)
 	{
