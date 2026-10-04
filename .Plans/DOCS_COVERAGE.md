@@ -63,7 +63,7 @@ Source comments are banned, so a missing page means the contract is nowhere.
 | Core | Exception | class | `Engine/Core/Exception.h` | `docs/Core/Exception/index.html` | 1 | yes | documented |
 | Core | False_t | class | `Engine/Core/CommonUtil.h` | `docs/Core/False_t/index.html` | 0 | yes | documented |
 | Core | IsReferenceType | struct | `Engine/Core/CommonUtil.h` | `docs/Core/IsReferenceType/index.html` | 0 | yes | documented |
-| Core | MainThreadTaskQueue | class | `Engine/Core/MainThreadTaskQueue.h` | `docs/Core/MainThreadTaskQueue/index.html` | 7 | yes | documented |
+| Core | MainThreadTaskQueue | class | `Engine/Core/MainThreadTaskQueue.h` | `docs/Core/MainThreadTaskQueue/index.html` | 5 | yes | documented |
 | Core | ResultPacket | class | `Engine/Core/ResultPacket.h` | `docs/Core/ResultPacket/index.html` | 7 | yes | documented |
 | Core | ResultPacketTest | test-only | `Engine/Core/ResultPacket.h` | `docs/Core/ResultPacketTest/index.html` | 0 | — | test-only — owns a Coverage row |
 | Core | Runnable | utility header | `Engine/Core/Runnable.h` | `docs/Core/Runnable/index.html` | 0 | yes | documented |
@@ -80,7 +80,7 @@ Source comments are banned, so a missing page means the contract is nowhere.
 | Core | TaskProviderTest | test-only | `Engine/Core/TaskProvider.h` | `docs/Core/TaskProviderTest/index.html` | 0 | — | test-only — owns a Coverage row |
 | Core | TaskRegistry | class | `Engine/Core/TaskRegistry.h` | `docs/Core/TaskRegistry/index.html` | 20 | yes | documented |
 | Core | TaskRegistryTest | test-only | `Engine/Core/TaskRegistry.h` | `docs/Core/TaskRegistryTest/index.html` | 0 | — | test-only — owns a Coverage row |
-| Core | TaskStream | class | `Engine/Core/TaskStream.h` | `docs/Core/TaskStream/index.html` | 53 | yes | documented |
+| Core | TaskStream | class | `Engine/Core/TaskStream.h` | `docs/Core/TaskStream/index.html` | 52 | yes | documented |
 | Core | TaskStreamAffinityBase | class | `Engine/Core/TaskStreamAffinity.h` | `docs/Core/TaskStreamAffinityBase/index.html` | 6 | yes | documented |
 | Core | TaskStreamAffinityTest | test-only | `Engine/Core/TaskStreamAffinity.h` | `docs/Core/TaskStreamAffinityTest/index.html` | 0 | — | test-only — owns a Coverage row |
 | Core | TaskStreamIndex | utility header | `Engine/Core/TaskStreamIndex.h` | `docs/Core/TaskStreamIndex/index.html` | 0 | yes | documented |
