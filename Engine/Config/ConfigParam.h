@@ -31,9 +31,9 @@ private:
 	TValue value;
 	std::mutex lock;
 
-#ifdef __DEBUG__
+#if !RELEASE_BUILD
 	std::thread::id threadID;
-#endif // __DEBUG__
+#endif // !RELEASE_BUILD
 
 public:
 	ConfigParam(const char* inName, const char* inDesc, T defaultValue, std::thread::id id = std::this_thread::get_id())
@@ -44,9 +44,9 @@ public:
 #else // ENGINE_PARAM_DESC_ENABLED
 		: value(defaultValue)
 #endif // ENGINE_PARAM_DESC_ENABLED
-#ifdef __DEBUG__
+#if !RELEASE_BUILD
 		, threadID(id)
-#endif // __DEBUG__
+#endif // !RELEASE_BUILD
 	{
 		auto& settings = ConfigSystem::Get();
 		settings.Register(*this);
@@ -72,18 +72,18 @@ public:
 
 	[[nodiscard]] T Get() const noexcept
 	{
-#ifdef __DEBUG__
+#if !RELEASE_BUILD
 		Assert(IsAtomic || std::this_thread::get_id() == threadID);
-#endif // __DEBUG__
+#endif // !RELEASE_BUILD
 
 		return value;
 	}
 
 	void Set(const T& inValue) noexcept
 	{
-#ifdef __DEBUG__
+#if !RELEASE_BUILD
 		Assert(IsAtomic || std::this_thread::get_id() == threadID);
-#endif // __DEBUG__
+#endif // !RELEASE_BUILD
 
 		value = inValue;
 	}

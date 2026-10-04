@@ -157,9 +157,6 @@ void Engine::ShutDown()
 	{
 		auto& configSys = ConfigSystem::Get();
 
-#ifdef __DEBUG__
-#endif // __DEBUG__
-
 		auto& staticStrTable = StaticStringTable::GetInstance();
 		staticStrTable.PrintStringTable();
 		configSys.PrintAllParameters();

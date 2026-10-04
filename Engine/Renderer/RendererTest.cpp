@@ -24,8 +24,6 @@ void RendererTest::Prepare()
 
 		log << "isDeviceQueried=" << caps.isDeviceQueried << " maxTextureDimension2D=" << caps.maxTextureDimension2D;
 
-		// No device exists yet, so the only honest answer is "unknown". An uninitialised
-		// renderer used to answer 4096/16/16 as if it had asked the hardware.
 		Assert(!caps.isDeviceQueried, "A renderer without a device must not claim queried capabilities");
 		Assert(caps.maxTextureDimension2D == 0, "A renderer without a device must not report a texture limit");
 		Assert(caps.deviceName[0] == '\0', "A renderer without a device must not report a device name");
@@ -39,8 +37,6 @@ void RendererTest::Prepare()
 
 		log << "sizeof(RenderCapabilities)=" << sizeof(RenderCapabilities);
 
-		// Field-by-field, because the descriptor is a bit-field struct and holds a fixed array,
-		// so memcmp would compare padding and could report a difference that is not one.
 		Assert(caps.isDeviceQueried == unknown.isDeviceQueried, "Unqueried flag must match");
 		Assert(caps.deviceType == unknown.deviceType, "Unqueried device type must match");
 		Assert(caps.maxTextureDimension2D == unknown.maxTextureDimension2D, "Unqueried 2D limit must match");
@@ -53,9 +49,6 @@ void RendererTest::Prepare()
 		VulkanRenderer renderer;
 		OS::Window* window = nullptr;
 
-		// Initialize rejects a null window on purpose - the surface is built from the window,
-		// and queue family support is queried against that surface. The assertion said the
-		// opposite; it survived only because Assert() is compiled out outside __DEBUG__ builds.
 		Assert(!renderer.Initialize(window), "Initialize must reject a null window");
 		renderer.Render(0.016f);
 		Assert(!renderer.GetCapabilities().isDeviceQueried, "A rejected Initialize must leave capabilities unqueried");

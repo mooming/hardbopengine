@@ -89,8 +89,6 @@ const char* MemoryManager::GetName()
 	return "MemoryManager";
 }
 
-// Return name of an allocator with the given allocator ID.
-// It returns a valid name if "PROFILE_ENABLED" is on.
 const char* MemoryManager::GetAllocatorName(TAllocatorID id) const
 {
 	if (unlikely(!IsValid(id)))
@@ -110,7 +108,6 @@ const char* MemoryManager::GetAllocatorName(TAllocatorID id) const
 #endif // PROFILE_ENABLED
 }
 
-// Register a allocator
 MemoryManager::TId MemoryManager::RegisterAllocator(void* allocator, const char* name, bool isInline, size_t capacity,
 													TAllocBytes allocFunc, TDeallocBytes deallocFunc)
 {
@@ -175,7 +172,6 @@ AllocatorProxy& MemoryManager::GetAllocatorProxy(TId id)
 		Log(ELogLevel::Error, [funcName = __func__, id](auto& ls)
 		{ ls << "[" << funcName << "] Invalid allocator id(" << id << ") is provided."; });
 
-		// Return a dummy proxy
 		static AllocatorProxy dummy;
 		new (&dummy) AllocatorProxy();
 
@@ -215,9 +211,9 @@ void MemoryManager::DeregisterAllocator(TId id)
 		Log(ELogLevel::Error, [funcName = __func__, id](auto& ls)
 		{ ls << "[" << funcName << "] Allocator(" << id << ") Thread id is mismatched."; });
 
-#ifdef __DEBUG__
+#if !RELEASE_BUILD
 		debugBreak();
-#endif // __DEBUG__
+#endif // !RELEASE_BUILD
 
 		return;
 	}
@@ -232,9 +228,9 @@ void MemoryManager::DeregisterAllocator(TId id)
 			   << stats.usage << " / " << stats.capacity << " bytes";
 		});
 
-#ifdef __DEBUG__
+#if !RELEASE_BUILD
 		debugBreak();
-#endif // __DEBUG__
+#endif // !RELEASE_BUILD
 
 		return;
 	}
@@ -327,9 +323,9 @@ void MemoryManager::ReportAllocation(TId id, void* ptr, size_t requested, size_t
 			   << ", requested = " << requested << ", allocated = " << allocated;
 		});
 
-#ifdef __DEBUG__
+#if !RELEASE_BUILD
 		debugBreak();
-#endif // __DEBUG__
+#endif // !RELEASE_BUILD
 
 		return;
 	}
@@ -370,9 +366,9 @@ void MemoryManager::ReportAllocation(TId id, void* ptr, size_t requested, size_t
 			   << stats.capacity << ", ptr = " << ptr << ", requested = " << requested << ", allocated = " << allocated;
 		});
 
-#ifdef __DEBUG__
+#if !RELEASE_BUILD
 		debugBreak();
-#endif // __DEBUG__
+#endif // !RELEASE_BUILD
 
 		return;
 	}
@@ -386,9 +382,9 @@ void MemoryManager::ReportAllocation(TId id, void* ptr, size_t requested, size_t
 			   << ", allocated = " << allocated;
 		});
 
-#ifdef __DEBUG__
+#if !RELEASE_BUILD
 		debugBreak();
-#endif // __DEBUG__
+#endif // !RELEASE_BUILD
 	}
 
 	Log(ELogLevel::Info, [this, &stats, &rec, id, ptr, requested, allocated](auto& ls)
@@ -459,9 +455,9 @@ void MemoryManager::ReportDeallocation(TId id, void* ptr, size_t requested, size
 			   << ", requested = " << requested << ", allocated = " << allocated << ", usage = " << stats.usage;
 		});
 
-#ifdef __DEBUG__
+#if !RELEASE_BUILD
 		debugBreak();
-#endif // __DEBUG__
+#endif // !RELEASE_BUILD
 	}
 
 	stats.usage -= allocated;
@@ -476,9 +472,9 @@ void MemoryManager::ReportDeallocation(TId id, void* ptr, size_t requested, size
 			   << ", requested = " << requested << ", allocated = " << allocated << " > " << rec.totalUsage;
 		});
 
-#ifdef __DEBUG__
+#if !RELEASE_BUILD
 		debugBreak();
-#endif // __DEBUG__
+#endif // !RELEASE_BUILD
 
 		return;
 	}
@@ -535,9 +531,9 @@ void MemoryManager::ReportFallback(TId id, void* ptr, size_t requested)
 		Log(ELogLevel::Error, [funcName = __func__, id](auto& ls)
 		{ ls << '[' << funcName << "] Invalid allocator id(" << id << ") is provided."; });
 
-#ifdef __DEBUG__
+#if !RELEASE_BUILD
 		debugBreak();
-#endif // __DEBUG__
+#endif // !RELEASE_BUILD
 
 		return;
 	}
@@ -615,7 +611,7 @@ void* MemoryManager::Allocate(TId id, size_t nBytes)
 
 #if FORCE_USE_SYSTEM_MALLOC
 	id = SystemAllocatorID;
-#endif // __USE_SYSTEM_MALLOC__
+#endif // FORCE_USE_SYSTEM_MALLOC
 
 	using namespace std;
 
@@ -652,7 +648,7 @@ void MemoryManager::Deallocate(TId id, void* ptr, size_t nBytes)
 
 #if FORCE_USE_SYSTEM_MALLOC
 	id = SystemAllocatorID;
-#endif // __USE_SYSTEM_MALLOC__
+#endif // FORCE_USE_SYSTEM_MALLOC
 
 	using namespace std;
 
@@ -753,7 +749,6 @@ const MultiPoolAllocatorConfig& MemoryManager::LookUpMultiPoolConfig(StaticStrin
 			continue;
 		}
 
-		// uniqueName > item.uniqueName
 		start = mid + 1;
 	}
 
@@ -833,7 +828,7 @@ void MemoryManager::LoadMultiPoolConfigs()
 		return;
 	}
 
-#ifdef __DEBUG__
+#if !RELEASE_BUILD
 	constexpr auto logLevel = ELogLevel::Verbose;
 	if (!IsLogEnabled(logLevel))
 	{
@@ -855,7 +850,7 @@ void MemoryManager::LoadMultiPoolConfigs()
 			});
 		}
 	}
-#endif // __DEBUG__
+#endif // !RELEASE_BUILD
 }
 
 void MemoryManager::SaveMultiPoolConfigs()
@@ -888,7 +883,7 @@ void MemoryManager::SaveMultiPoolConfigs()
 		return;
 	}
 
-#ifdef __DEBUG__
+#if !RELEASE_BUILD
 	constexpr auto logLevel = ELogLevel::Verbose;
 	if (!IsLogEnabled(logLevel))
 	{
@@ -910,7 +905,7 @@ void MemoryManager::SaveMultiPoolConfigs()
 			});
 		}
 	}
-#endif // __DEBUG__
+#endif // !RELEASE_BUILD
 #endif // PROFILE_ENABLED
 }
 

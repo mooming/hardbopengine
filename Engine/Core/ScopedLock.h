@@ -43,9 +43,9 @@ public:
 		, srcLoc(srcLoc)
 	{
 		lockable.lock();
-#ifdef __DEBUG__
+#if !RELEASE_BUILD
 		ScopedLock::timeOutSec *= Config::DebugTimeOutMultiplier;
-#endif // __DEBUG__
+#endif // !RELEASE_BUILD
 	}
 #else // PROFILE_ENABLED
 	ScopedLock(TLockable& lockable)

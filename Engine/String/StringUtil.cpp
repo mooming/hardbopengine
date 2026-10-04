@@ -344,9 +344,9 @@ size_t StrLen(const char* text)
 {
 	if (unlikely(text == nullptr))
 	{
-#ifdef __DEBUG__
+#if !RELEASE_BUILD
 		debugBreak();
-#endif // __DEBUG__
+#endif // !RELEASE_BUILD
 		return 0;
 	}
 
@@ -357,9 +357,9 @@ size_t StrLen(const char* text, size_t n)
 {
 	if (unlikely(text == nullptr || n == 0))
 	{
-#ifdef __DEBUG__
+#if !RELEASE_BUILD
 		debugBreak();
-#endif // __DEBUG__
+#endif // !RELEASE_BUILD
 		return 0;
 	}
 
@@ -370,9 +370,9 @@ const char* StrCopy(char* dst, const char* src, size_t n)
 {
 	if (unlikely(dst == nullptr || src == nullptr || dst == src || n == 0))
 	{
-#ifdef __DEBUG__
+#if !RELEASE_BUILD
 		debugBreak();
-#endif // __DEBUG__
+#endif // !RELEASE_BUILD
 		return dst;
 	}
 
@@ -393,7 +393,7 @@ size_t CalculateHash(const char* text)
 	{
 		size_t ch = *text;
 		++text;
-		hashCode = ((hashCode << 5) + hashCode) + ch; /* hash * 33 + c */
+		hashCode = ((hashCode << 5) + hashCode) + ch;
 	}
 
 	return hashCode;
@@ -405,7 +405,7 @@ size_t CalculateHash(const std::string_view& str)
 
 	for (size_t ch : str)
 	{
-		hashCode = ((hashCode << 5) + hashCode) + ch; /* hash * 33 + c */
+		hashCode = ((hashCode << 5) + hashCode) + ch;
 	}
 
 	return hashCode;

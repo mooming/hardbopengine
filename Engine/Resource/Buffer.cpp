@@ -52,20 +52,20 @@ Buffer::~Buffer()
 		log.OutWarning([this, func = __func__](auto& ls)
 		{ ls << '[' << func << "] Releaser func is null, in spite of data is " << data; });
 
-#ifdef __DEBUG__
+#if !RELEASE_BUILD
 		size = 0;
 		data = nullptr;
-#endif // __DEBUG__
+#endif // !RELEASE_BUILD
 
 		return;
 	}
 
 	releaser(size, data);
 
-#ifdef __DEBUG__
+#if !RELEASE_BUILD
 	size = 0;
 	data = nullptr;
-#endif // __DEBUG__
+#endif // !RELEASE_BUILD
 }
 
 StaticString Buffer::GetClassName() const noexcept

@@ -20,7 +20,7 @@ using TDebugVariable = const T;
 void FlushLogs();
 } // namespace hbe
 
-#ifdef __DEBUG__
+#if !RELEASE_BUILD
 namespace hbe
 {
 inline void Assert(bool shouldBeTrue, const std::source_location location = std::source_location::current()) noexcept
@@ -54,7 +54,7 @@ void Assert(bool shouldBeTrue, Types&&... args) noexcept
 }
 } // namespace hbe
 
-#else // __DEBUG__
+#else // RELEASE_BUILD
 
 namespace hbe
 {
@@ -67,7 +67,7 @@ void Assert(bool, Types&&...) noexcept
 {
 }
 } // namespace hbe
-#endif // __DEBUG__
+#endif // !RELEASE_BUILD
 
 namespace hbe
 {

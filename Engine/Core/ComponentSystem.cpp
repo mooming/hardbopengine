@@ -13,13 +13,13 @@ void ComponentSystemTest::Prepare()
 {
 	AddTest("Update Component Test", [this](auto& ls)
 	{
-#ifdef __DEBUG__
+#if !RELEASE_BUILD
 		constexpr int componentNum = 1024;
 		constexpr int updateNum = 60;
-#else // !__DEBUG__
+#else // RELEASE_BUILD
 		constexpr int componentNum = 4096 * 5;
 		constexpr int updateNum = 600;
-#endif // __DEBUG__
+#endif // !RELEASE_BUILD
 
 		struct Test : public Component
 		{

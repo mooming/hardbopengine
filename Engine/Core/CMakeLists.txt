@@ -6,9 +6,9 @@ if (NOT CMAKE_BUILD_TYPE)
     set (CMAKE_BUILD_TYPE "Release" CACHE STRING "Build type" FORCE)
 endif ()
 
-set (CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -g -O0 -D__DEBUG__")
-set (CMAKE_CXX_FLAGS_DEV "${CMAKE_CXX_FLAGS_DEBUG} -O1")
-set (CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -O3")
+set (CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -g -O0 -DDEBUG_BUILD=1 -D__TEST__ -D__UNIT_TEST__")
+set (CMAKE_CXX_FLAGS_DEV "${CMAKE_CXX_FLAGS_DEV} -g -O1 -DDEV_BUILD=1 -D__TEST__ -D__UNIT_TEST__")
+set (CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -O3 -DRELEASE_BUILD=1")
 
 set (CMAKE_CXX_STANDARD 23)
 
@@ -34,13 +34,12 @@ include_directories ( ${CMAKE_SOURCE_DIR}
 
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/lib)
 add_library (Core STATIC 
+ CPUBudget.cpp
  CommandLineArguments.cpp
  Component.cpp
  ComponentSystem.cpp
- CPUBudget.cpp
  Debug.cpp
  MainThreadTaskQueue.cpp
- WorkItem.cpp
  ResultPacket.cpp
  ScopedLock.cpp
  StreamDrainPolicy.cpp
@@ -52,6 +51,8 @@ add_library (Core STATIC
  TaskStreamAffinity.cpp
  TaskSystem.cpp
  Time.cpp
+ WorkItem.cpp
+ CPUBudget.h
  CommandLineArguments.h
  CommonMacros.h
  CommonUtil.h
@@ -62,7 +63,6 @@ add_library (Core STATIC
  Debug.h
  Exception.h
  MainThreadTaskQueue.h
- WorkItem.h
  ResultPacket.h
  Runnable.h
  ScopedLock.h
@@ -79,6 +79,7 @@ add_library (Core STATIC
  TaskSystem.h
  Time.h
  Types.h
+ WorkItem.h
 ${PLATFORM_SOURCES}
 )
 

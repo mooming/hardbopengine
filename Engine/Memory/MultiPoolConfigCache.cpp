@@ -151,7 +151,7 @@ bool MultiPoolConfigCache::Deserialize(const Buffer& buffer)
 		data.emplace_back(key.GetID(), std::move(configs));
 	}
 
-#ifdef __DEBUG__
+#if !RELEASE_BUILD
 	for (auto& item : data)
 	{
 		auto& configs = item.configs;
@@ -172,7 +172,7 @@ bool MultiPoolConfigCache::Deserialize(const Buffer& buffer)
 			}
 		}
 	}
-#endif // __DEBUG__
+#endif // !RELEASE_BUILD
 
 	return true;
 }
