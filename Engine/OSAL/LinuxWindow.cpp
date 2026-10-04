@@ -7,7 +7,6 @@
 
 namespace OS
 {
-
 Window::Window()
 	: display(nullptr)
 	, window(0)
@@ -120,7 +119,6 @@ bool Window::IsClosed() const
 {
 	return closedFlag;
 }
-
 } // namespace OS
 
 #endif // PLATFORM_LINUX

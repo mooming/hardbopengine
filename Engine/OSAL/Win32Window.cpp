@@ -8,7 +8,6 @@
 
 namespace OS
 {
-
 Window::Window()
 	: hwnd(nullptr)
 	, width(0)
@@ -161,7 +160,6 @@ long Window::WindowProc(void* hwnd, unsigned int uMsg, unsigned long long wParam
 
 	return DefWindowProc(static_cast<HWND>(hwnd), uMsg, wParam, lParam);
 }
-
 } // namespace OS
 
 #endif // PLATFORM_WINDOWS

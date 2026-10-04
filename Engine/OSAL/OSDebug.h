@@ -5,12 +5,11 @@
 #include "Config/BuildConfig.h"
 #include "String/StaticString.h"
 
+
 namespace OS
 {
-
 /// @brief Get a stack backtrace for debugging purposes.
 hbe::StaticString GetBackTrace(uint16_t startIndex = 0, uint16_t maxDepth = 512);
-
 } // namespace OS
 
 #ifdef __UNIT_TEST__
@@ -18,7 +17,6 @@ hbe::StaticString GetBackTrace(uint16_t startIndex = 0, uint16_t maxDepth = 512)
 
 namespace hbe
 {
-
 /// @brief Test collection for OS debug operations.
 class OSDebugTest final : public TestCollection
 {
@@ -31,6 +29,5 @@ public:
 protected:
 	void Prepare() override;
 };
-
 } // namespace hbe
 #endif //__UNIT_TEST__

@@ -5,9 +5,9 @@
 #include "Application.h"
 #include "Config/BuildConfig.h"
 
+
 namespace OS
 {
-
 std::unique_ptr<Window> CreateWindow(const hbe::HString& title, int width, int height)
 {
 	auto window = std::make_unique<Window>();
@@ -19,7 +19,6 @@ std::unique_ptr<Window> CreateWindow(const hbe::HString& title, int width, int h
 
 	return nullptr;
 }
-
 } // namespace OS
 
 #ifdef __UNIT_TEST__
@@ -33,7 +32,6 @@ std::unique_ptr<Window> CreateWindow(const hbe::HString& title, int width, int h
 
 namespace hbe
 {
-
 void WindowTest::Prepare()
 {
 	AddTest("Create Window", [this](auto& ls)
@@ -77,6 +75,7 @@ void WindowTest::Prepare()
 			{
 				ls << "Failed to get an application instance" << lf;
 				windowPromise.set_value(nullptr);
+
 				return;
 			}
 
@@ -85,6 +84,7 @@ void WindowTest::Prepare()
 			{
 				ls << "Failed to create a window" << lferr;
 				windowPromise.set_value(nullptr);
+
 				return;
 			}
 
@@ -127,6 +127,7 @@ void WindowTest::Prepare()
 		if (!isReady)
 		{
 			ls << "The engine loop never ran the posted window creation, so there is no window to examine." << lferr;
+
 			return;
 		}
 
@@ -174,6 +175,7 @@ void WindowTest::Prepare()
 			{
 				ls << "Failed to get an application instance" << lf;
 				windowPromise.set_value(nullptr);
+
 				return;
 			}
 
@@ -182,6 +184,7 @@ void WindowTest::Prepare()
 			{
 				ls << "Failed to create a window" << lferr;
 				windowPromise.set_value(nullptr);
+
 				return;
 			}
 
@@ -239,6 +242,7 @@ void WindowTest::Prepare()
 		if (!isReady)
 		{
 			ls << "The engine loop never ran the posted window creation, so there is no window to examine." << lferr;
+
 			return;
 		}
 
@@ -286,6 +290,7 @@ void WindowTest::Prepare()
 			{
 				ls << "Failed to get an application instance" << lf;
 				windowPromise.set_value(nullptr);
+
 				return;
 			}
 
@@ -294,6 +299,7 @@ void WindowTest::Prepare()
 			{
 				ls << "Failed to create a window" << lferr;
 				windowPromise.set_value(nullptr);
+
 				return;
 			}
 
@@ -335,6 +341,7 @@ void WindowTest::Prepare()
 			{
 				ls << "Invalid final width: " << finalWidth << ", expected 1024" << lferr;
 			}
+
 			if (finalHeight != 768)
 			{
 				ls << "Invalid final height: " << finalHeight << ", expected 768" << lferr;
@@ -350,6 +357,7 @@ void WindowTest::Prepare()
 		if (!isReady)
 		{
 			ls << "The engine loop never ran the posted window creation, so there is no window to examine." << lferr;
+
 			return;
 		}
 
@@ -397,6 +405,7 @@ void WindowTest::Prepare()
 			{
 				ls << "Failed to get an application instance" << lf;
 				windowPromise.set_value(nullptr);
+
 				return;
 			}
 
@@ -405,6 +414,7 @@ void WindowTest::Prepare()
 			{
 				ls << "Failed to create a window" << lferr;
 				windowPromise.set_value(nullptr);
+
 				return;
 			}
 
@@ -463,6 +473,7 @@ void WindowTest::Prepare()
 		if (!isReady)
 		{
 			ls << "The engine loop never ran the posted window creation, so there is no window to examine." << lferr;
+
 			return;
 		}
 
@@ -510,6 +521,7 @@ void WindowTest::Prepare()
 			{
 				ls << "Failed to get an application instance" << lferr;
 				windowPromise.set_value(nullptr);
+
 				return;
 			}
 
@@ -518,6 +530,7 @@ void WindowTest::Prepare()
 			{
 				ls << "Failed to create a window" << lferr;
 				windowPromise.set_value(nullptr);
+
 				return;
 			}
 
@@ -568,6 +581,7 @@ void WindowTest::Prepare()
 		if (!isReady)
 		{
 			ls << "The engine loop never ran the posted window creation, so there is no window to examine." << lferr;
+
 			return;
 		}
 
@@ -615,6 +629,7 @@ void WindowTest::Prepare()
 			{
 				ls << "Failed to get an application instance" << lf;
 				windowPromise.set_value(nullptr);
+
 				return;
 			}
 
@@ -623,6 +638,7 @@ void WindowTest::Prepare()
 			{
 				ls << "Failed to create a window" << lferr;
 				windowPromise.set_value(nullptr);
+
 				return;
 			}
 
@@ -673,12 +689,12 @@ void WindowTest::Prepare()
 		if (!isReady)
 		{
 			ls << "The engine loop never ran the posted window creation, so there is no window to examine." << lferr;
+
 			return;
 		}
 
 		(void) windowFuture.get();
 	});
 }
-
 } // namespace hbe
 #endif // __UNIT_TEST__

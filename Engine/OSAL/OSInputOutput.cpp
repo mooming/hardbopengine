@@ -12,7 +12,6 @@
 
 namespace hbe
 {
-
 OSInputOutputTest::OSInputOutputTest() noexcept
 	: TestCollection(StringUtil::ToCompactClassName(__PRETTY_FUNCTION__))
 {
@@ -44,6 +43,7 @@ void OSInputOutputTest::Prepare()
 		else
 		{
 			ls << "File open failed. path = " << path << lferr;
+
 			return;
 		}
 
@@ -78,7 +78,6 @@ void OSInputOutputTest::Prepare()
 	AddTest("MapMemory", [&, this](auto& ls)
 	{
 		constexpr int TestSize = 256;
-
 		{
 			FileHandle fh;
 			FileOpenMode openMode;
@@ -94,9 +93,9 @@ void OSInputOutputTest::Prepare()
 			if (!Open(fh, path, openMode))
 			{
 				ls << "File open failed. path = " << path << lferr;
+
 				return;
 			}
-
 			{
 				uint8_t buffer[TestSize];
 				Write(fh, buffer, TestSize);
@@ -113,6 +112,7 @@ void OSInputOutputTest::Prepare()
 				Delete(path);
 
 				ls << "Memory Map failed." << path << lferr;
+
 				return;
 			}
 
@@ -140,7 +140,6 @@ void OSInputOutputTest::Prepare()
 			UnmapMemory(ptr, TestSize);
 			Close(std::move(fh));
 		}
-
 		{
 			FileHandle fh;
 			FileOpenMode openMode;
@@ -150,6 +149,7 @@ void OSInputOutputTest::Prepare()
 			{
 				Delete(path);
 				ls << "File open failed. path = " << path << lferr;
+
 				return;
 			}
 
@@ -157,6 +157,7 @@ void OSInputOutputTest::Prepare()
 			if (fileSize != TestSize)
 			{
 				ls << "File size(" << fileSize << ") is not valid. " << TestSize << " is expected." << lferr;
+
 				return;
 			}
 
@@ -191,6 +192,5 @@ void OSInputOutputTest::Prepare()
 		}
 	});
 }
-
 } // namespace hbe
 #endif //__UNIT_TEST__

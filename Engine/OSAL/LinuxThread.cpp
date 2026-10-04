@@ -1,7 +1,6 @@
 // Copyright (c) 2026 Hansol Park (mooming.go@gmail.com). All rights reserved.
 
 #include "OSThread.h"
-
 #include "Core/CommonMacros.h"
 #include "Log/Logger.h"
 

@@ -2,9 +2,9 @@
 
 #pragma once
 
+
 namespace OS
 {
-
 class MapSyncMode final
 {
 public:
@@ -19,5 +19,4 @@ public:
 	void SetSync() noexcept;
 	void Invalidate() noexcept;
 };
-
 } // namespace OS

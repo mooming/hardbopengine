@@ -20,6 +20,7 @@ size_t OS::GetAllocSize(void* ptr) noexcept
 size_t OS::GetPageSize() noexcept
 {
 	static size_t pageSize = sysconf(_SC_PAGESIZE);
+
 	return pageSize;
 }
 

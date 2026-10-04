@@ -2,9 +2,9 @@
 
 #pragma once
 
+
 namespace OS
 {
-
 class ProtectionMode final
 {
 public:
@@ -20,5 +20,4 @@ public:
 	void SetWritable() noexcept;
 	void SetExecutable() noexcept;
 };
-
 } // namespace OS

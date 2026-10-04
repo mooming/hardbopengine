@@ -6,7 +6,6 @@
 
 namespace OS
 {
-
 Application::Application() noexcept
 	: platformHandle(nullptr)
 {
@@ -23,7 +22,6 @@ void Application::Initialize()
 void Application::PollEvents()
 {
 }
-
 } // namespace OS
 
 #endif // PLATFORM_LINUX

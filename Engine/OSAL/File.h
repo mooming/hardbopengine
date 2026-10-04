@@ -7,9 +7,9 @@
 #include <string>
 #include <vector>
 
+
 namespace OS
 {
-
 /// @brief Represents a file in the file system with path access and comparison operators.
 class File
 {

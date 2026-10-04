@@ -1,7 +1,6 @@
 // Copyright (c) 2026 Hansol Park (mooming.go@gmail.com). All rights reserved.
 
 #include "OSFileHandle.h"
-
 #include "Config/BuildConfig.h"
 #include "Core/CommonMacros.h"
 #include "Intrinsic.h"
@@ -12,13 +11,12 @@
 
 namespace OS
 {
-
 namespace
 {
-
 int GetHandle(const FileHandle& handle)
 {
 	auto& fd = reinterpret_cast<const int&>(handle.data);
+
 	return fd;
 }
 
@@ -27,7 +25,6 @@ void SetHandle(FileHandle& outHandle, int fd)
 	int& data = reinterpret_cast<int&>(outHandle.data);
 	data = fd;
 }
-
 } // namespace
 
 FileHandle::FileHandle()
@@ -68,6 +65,7 @@ size_t FileHandle::GetFileSize() const noexcept
 bool FileHandle::IsValid() const noexcept
 {
 	auto fd = GetHandle(*this);
+
 	return fd >= 0;
 }
 
@@ -75,6 +73,5 @@ void FileHandle::Invalidate() noexcept
 {
 	SetHandle(*this, -1);
 }
-
 } // namespace OS
 #endif // PLATFORM_OSX

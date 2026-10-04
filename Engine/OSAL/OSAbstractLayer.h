@@ -17,6 +17,7 @@
 
 #ifdef WINDOWS
 #include <windows.h>
+
 #define PATH_MAX MAX_PATH
 #endif // WINDOWS
 
@@ -24,13 +25,12 @@
 #include <dirent.h>
 #endif // POSIX
 
+
 namespace OS
 {
-
 hbe::HString GetFullPath(const hbe::HString& path);
 
 bool IsDirectory(const char* path);
 
 hbe::HVector<hbe::HString> ListFilesInDirectory(const char* path);
-
 } // namespace OS

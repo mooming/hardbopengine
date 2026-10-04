@@ -8,6 +8,7 @@
 int OS::GetCPUIndex() noexcept
 {
 	auto index = GetCurrentProcessorNumber();
+
 	return static_cast<int>(index);
 }
 
@@ -42,6 +43,7 @@ std::chrono::nanoseconds OS::GetThreadCPUTime() noexcept
 		ULARGE_INTEGER ticks{};
 		ticks.LowPart = fileTime.dwLowDateTime;
 		ticks.HighPart = fileTime.dwHighDateTime;
+
 		return ticks.QuadPart * 100U;
 	};
 

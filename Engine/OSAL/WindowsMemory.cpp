@@ -14,6 +14,7 @@
 size_t OS::GetAllocSize(void* ptr) noexcept
 {
 	const auto allocSize = _msize(ptr);
+
 	return allocSize;
 }
 
@@ -23,6 +24,7 @@ size_t OS::GetPageSize() noexcept
 	{
 		SYSTEM_INFO sSysInfo;
 		GetSystemInfo(&sSysInfo);
+
 		return sSysInfo.dwPageSize;
 	};
 

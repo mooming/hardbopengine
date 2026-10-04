@@ -7,9 +7,9 @@
 #include "Config/BuildConfig.h"
 #include "HSTL/HString.h"
 
+
 namespace OS
 {
-
 /// @brief Platform-independent window facade.
 /// @details Concrete behaviour differs per OS and is implemented in the per-platform
 ///          units (LinuxWindow.cpp, OSXWindow.mm, Win32Window.cpp), selected at build
@@ -55,7 +55,6 @@ private:
 
 /// @brief Creates a Window owned by the caller.
 [[nodiscard]] std::unique_ptr<Window> CreateWindow(const hbe::HString& title, int width, int height);
-
 } // namespace OS
 
 #ifdef __UNIT_TEST__
@@ -63,7 +62,6 @@ private:
 
 namespace hbe
 {
-
 class WindowTest final : public TestCollection
 {
 public:
@@ -75,6 +73,5 @@ public:
 protected:
 	void Prepare() override;
 };
-
 } // namespace hbe
 #endif // __UNIT_TEST__

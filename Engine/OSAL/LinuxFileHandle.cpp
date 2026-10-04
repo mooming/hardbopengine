@@ -1,7 +1,6 @@
 // Copyright (c) 2026 Hansol Park (mooming.go@gmail.com). All rights reserved.
 
 #include "OSFileHandle.h"
-
 #include "Config/BuildConfig.h"
 #include "Core/CommonMacros.h"
 #include "Intrinsic.h"
@@ -12,7 +11,6 @@
 
 namespace OS
 {
-
 FileHandle::FileHandle()
 {
 	Invalidate();
@@ -56,6 +54,5 @@ void FileHandle::Invalidate()
 {
 	fd = -1;
 }
-
 } // namespace OS
 #endif // PLATFORM_LINUX

@@ -4,9 +4,9 @@
 
 #include "String/StaticString.h"
 
+
 namespace OS
 {
-
 class FileHandle;
 class FileOpenMode;
 class ProtectionMode;
@@ -24,7 +24,6 @@ bool Truncate(const FileHandle& handle, size_t size) noexcept;
 void* MapMemory(FileHandle& fileHandle, size_t size, ProtectionMode protection, size_t offset) noexcept;
 bool MapSync(void* ptr, size_t size, MapSyncMode syncMode) noexcept;
 bool UnmapMemory(void* ptr, size_t size) noexcept;
-
 } // namespace OS
 
 #ifdef __UNIT_TEST__
@@ -32,7 +31,6 @@ bool UnmapMemory(void* ptr, size_t size) noexcept;
 
 namespace hbe
 {
-
 /// @brief Test collection for OS input/output operations.
 class OSInputOutputTest final : public TestCollection
 {
@@ -42,6 +40,5 @@ public:
 protected:
 	void Prepare() override;
 };
-
 } // namespace hbe
 #endif //__UNIT_TEST__

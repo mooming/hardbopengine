@@ -1,7 +1,6 @@
 // Copyright (c) 2026 Hansol Park (mooming.go@gmail.com). All rights reserved.
 
 #include "OSMapSyncMode.h"
-
 #include "Config/BuildConfig.h"
 
 #ifdef PLATFORM_OSX
@@ -9,7 +8,6 @@
 
 namespace OS
 {
-
 void MapSyncMode::SetAsync() noexcept
 {
 	value |= MS_ASYNC;
@@ -24,7 +22,6 @@ void MapSyncMode::Invalidate() noexcept
 {
 	value |= MS_INVALIDATE;
 }
-
 } // namespace OS
 
 #endif // PLATFORM_OSX

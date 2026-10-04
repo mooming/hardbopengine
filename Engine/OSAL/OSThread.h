@@ -7,6 +7,7 @@
 
 #include "Config/BuildConfig.h"
 
+
 namespace OS
 {
 /// @brief Yield the current thread's time slice to the scheduler.
@@ -41,7 +42,6 @@ void SetThreadPriority(std::thread& thread, int priority) noexcept;
 
 namespace hbe
 {
-
 /// @brief Test collection for OS thread operations.
 class OSThreadTest final : public TestCollection
 {
@@ -54,6 +54,5 @@ public:
 protected:
 	void Prepare() override;
 };
-
 } // namespace hbe
 #endif //__UNIT_TEST__

@@ -1,7 +1,6 @@
 // Copyright (c) 2026 Hansol Park (mooming.go@gmail.com). All rights reserved.
 
 #include "OSInputOutput.h"
-
 #include "Log/Logger.h"
 #include "OSFileHandle.h"
 #include "OSFileOpenMode.h"
@@ -20,7 +19,6 @@
 
 namespace OS
 {
-
 bool Open(FileHandle& outHandle, hbe::StaticString filePath, FileOpenMode openMode) noexcept
 {
 	auto path = filePath.c_str();
@@ -78,12 +76,14 @@ bool Close(FileHandle&& inHandle) noexcept
 bool Exist(hbe::StaticString filePath) noexcept
 {
 	auto rc = access(filePath.c_str(), F_OK);
+
 	return rc == 0;
 }
 
 bool Delete(hbe::StaticString filePath) noexcept
 {
 	auto rc = remove(filePath.c_str());
+
 	return rc == 0;
 }
 
@@ -289,6 +289,5 @@ bool UnmapMemory(void* ptr, size_t size) noexcept
 
 	return true;
 }
-
 } // namespace OS
 #endif // PLATFORM_LINUX

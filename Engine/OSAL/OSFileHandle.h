@@ -4,9 +4,9 @@
 
 #include <cstddef>
 
+
 namespace OS
 {
-
 class FileHandle final
 {
 public:
@@ -26,5 +26,4 @@ public:
 	[[nodiscard]] bool IsValid() const noexcept;
 	void Invalidate() noexcept;
 };
-
 } // namespace OS

@@ -10,9 +10,9 @@
 
 #define HE_ALIGN alignas(hbe::Config::DefaultAlign)
 
+
 namespace OS
 {
-
 /// @brief Provides low-level memory management operations for platform-independent memory allocation,
 /// alignment, and protection.
 [[nodiscard]] bool IsValidAllocation(void* ptr) noexcept;
@@ -21,12 +21,14 @@ template <typename T>
 [[nodiscard]] bool CheckAligned(T* ptr, uint32_t alignBytes = hbe::Config::DefaultAlign) noexcept
 {
 	const size_t address = reinterpret_cast<size_t>(ptr);
+
 	return (address % alignBytes) == 0;
 }
 
 [[nodiscard]] constexpr size_t GetAligned(size_t size, uint32_t alignBytes = hbe::Config::DefaultAlign) noexcept
 {
 	const auto multiplier = (size + alignBytes - 1) / alignBytes;
+
 	return multiplier * alignBytes;
 }
 
@@ -35,7 +37,6 @@ template <typename T>
 void* VirtualAlloc(size_t size);
 void VirtualFree(void* address, std::size_t n) noexcept;
 void ProtectMemory(void* address, std::size_t n) noexcept;
-
 } // namespace OS
 
 #ifdef __UNIT_TEST__
@@ -43,7 +44,6 @@ void ProtectMemory(void* address, std::size_t n) noexcept;
 
 namespace hbe
 {
-
 /// @brief Test collection for OS memory operations.
 class OSMemoryTest final : public TestCollection
 {
@@ -56,6 +56,5 @@ public:
 protected:
 	void Prepare() override;
 };
-
 } // namespace hbe
 #endif //__UNIT_TEST__

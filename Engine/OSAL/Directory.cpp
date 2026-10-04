@@ -6,11 +6,11 @@
 #include "OSAbstractLayer.h"
 #include "String/StringUtil.h"
 
+
 using namespace std;
 
 namespace OS
 {
-
 Directory::Directory(const char* path)
 	: path(hbe::StringUtil::TrimPath(path))
 {
@@ -37,5 +37,4 @@ Directory::Directory(const char* path)
 		}
 	}
 }
-
 } // namespace OS

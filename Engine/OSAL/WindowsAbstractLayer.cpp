@@ -14,7 +14,6 @@ using namespace hbe;
 
 namespace OS
 {
-
 HString GetFullPath(const HString& path)
 {
 	using namespace StringUtil;
@@ -76,7 +75,6 @@ HVector<HString> ListFilesInDirectory(const char* path)
 
 	return fileList;
 }
-
 } // namespace OS
 
 #endif // PLATFORM_WINDOWS

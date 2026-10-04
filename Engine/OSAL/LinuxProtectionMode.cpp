@@ -1,7 +1,6 @@
 // Copyright (c) 2026 Hansol Park (mooming.go@gmail.com). All rights reserved.
 
 #include "OSProtectionMode.h"
-
 #include "Config/BuildConfig.h"
 
 #ifdef PLATFORM_LINUX
@@ -9,7 +8,6 @@
 
 namespace OS
 {
-
 void ProtectionMode::SetForbidden() noexcept
 {
 	value |= PROT_NONE;
@@ -29,7 +27,6 @@ void ProtectionMode::SetExecutable() noexcept
 {
 	value |= PROT_EXEC;
 }
-
 } // namespace OS
 
 #endif // PLATFORM_LINUX

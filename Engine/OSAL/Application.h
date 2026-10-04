@@ -4,9 +4,9 @@
 
 #include <memory>
 
+
 namespace OS
 {
-
 /// @brief Platform-independent application facade.
 /// @details Public interface is identical on every OS; the behaviour differs per
 ///          platform and lives in the per-platform implementation units
@@ -28,5 +28,4 @@ private:
 
 /// @brief Creates an Application owned by the caller.
 [[nodiscard]] std::unique_ptr<Application> CreateApplication() noexcept;
-
 } // namespace OS

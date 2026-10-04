@@ -2,9 +2,9 @@
 
 #pragma once
 
+
 namespace OS
 {
-
 class FileOpenMode final
 {
 public:
@@ -22,5 +22,4 @@ public:
 	void SetTruncate() noexcept;
 	void SetAppend() noexcept;
 };
-
 } // namespace OS

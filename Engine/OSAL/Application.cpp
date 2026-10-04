@@ -2,12 +2,11 @@
 
 #include "Application.h"
 
+
 namespace OS
 {
-
 std::unique_ptr<Application> CreateApplication() noexcept
 {
 	return std::make_unique<Application>();
 }
-
 } // namespace OS

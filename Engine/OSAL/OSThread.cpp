@@ -5,8 +5,9 @@
 #include <chrono>
 #include <thread>
 
-#include "../Engine/Engine.h"
+#include "Engine/Engine.h"
 #include "OSMemory.h"
+
 
 void OS::Yield() noexcept
 {
@@ -89,6 +90,7 @@ void hbe::OSThreadTest::Prepare()
 		if (cpuIndex < 0)
 		{
 			ls << "Invalid CPU index" << lferr;
+
 			return;
 		}
 
@@ -103,6 +105,7 @@ void hbe::OSThreadTest::Prepare()
 		if (pageSize == 0)
 		{
 			ls << "GetPageSize returned 0" << lferr;
+
 			return;
 		}
 
@@ -132,6 +135,7 @@ void hbe::OSThreadTest::Prepare()
 		if (newPriority != originalPriority && newPriority != 5)
 		{
 			ls << "Thread priority not changed as expected" << lferr;
+
 			return;
 		}
 

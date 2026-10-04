@@ -2,9 +2,9 @@
 
 #include "OSMemory.h"
 
-#include "../Engine/Engine.h"
 #include "Core/CommonMacros.h"
 #include "Core/Debug.h"
+#include "Engine/Engine.h"
 #include "Intrinsic.h"
 
 // OSMemory.cpp serves as a fallback implementation when platform-specific files
@@ -18,6 +18,7 @@
 
 // Skip fallback implementation if platform-specific files are being compiled
 #if defined(PLATFORM_LINUX) || defined(PLATFORM_OSX) || defined(PLATFORM_WINDOWS)
+
 // Platform-specific implementation will handle this
 #elif defined(__linux__)
 #include <cerrno>
@@ -79,6 +80,7 @@ size_t OS::GetAllocSize(void* ptr) noexcept
 size_t OS::GetPageSize() noexcept
 {
 	static size_t pageSize = sysconf(_SC_PAGESIZE);
+
 	return pageSize;
 }
 
@@ -122,6 +124,7 @@ void OS::ProtectMemory(void* address, size_t n) noexcept
 size_t OS::GetAllocSize(void* ptr) noexcept
 {
 	const auto allocSize = _msize(ptr);
+
 	return allocSize;
 }
 
@@ -131,6 +134,7 @@ size_t OS::GetPageSize() noexcept
 	{
 		SYSTEM_INFO sSysInfo;
 		GetSystemInfo(&sSysInfo);
+
 		return sSysInfo.dwPageSize;
 	};
 
@@ -188,7 +192,6 @@ static_assert(false, "System is not specified.");
 
 namespace hbe
 {
-
 void OSMemoryTest::Prepare()
 {
 	// BUG FIX TEST: VirtualFree on Linux/macOS was using free() instead of munmap()
@@ -201,6 +204,7 @@ void OSMemoryTest::Prepare()
 		if (!OS::IsValidAllocation(ptr))
 		{
 			ls << "VirtualAlloc failed" << lferr;
+
 			return;
 		}
 
@@ -310,6 +314,5 @@ void OSMemoryTest::Prepare()
 		}
 	});
 }
-
 } // namespace hbe
 #endif // __UNIT_TEST__

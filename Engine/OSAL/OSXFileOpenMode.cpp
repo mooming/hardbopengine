@@ -1,7 +1,6 @@
 // Copyright (c) 2026 Hansol Park (mooming.go@gmail.com). All rights reserved.
 
 #include "OSFileOpenMode.h"
-
 #include "Config/BuildConfig.h"
 
 #ifdef PLATFORM_OSX
@@ -9,7 +8,6 @@
 
 namespace OS
 {
-
 void FileOpenMode::SetReadOnly() noexcept
 {
 	value |= O_RDONLY;
@@ -39,7 +37,6 @@ void FileOpenMode::SetAppend() noexcept
 {
 	value |= O_APPEND;
 }
-
 } // namespace OS
 
 #endif // PLATFORM_OSX

@@ -3,11 +3,12 @@
 #pragma once
 
 #include <cstdint>
+
 #include "Intrinsic.h"
+
 
 namespace hbe
 {
-
 /// @brief Stores source code location information for debugging and logging.
 /// @details Used with macros like CallerFile(), CallerFunc(), CallerLine() to capture
 /// the location where a function is called.
@@ -68,5 +69,4 @@ private:
 	{
 	}
 };
-
 } // namespace hbe

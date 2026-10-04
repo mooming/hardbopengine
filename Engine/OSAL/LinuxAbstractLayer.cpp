@@ -14,7 +14,6 @@ using namespace hbe;
 
 namespace OS
 {
-
 HString GetFullPath(const HString& path)
 {
 	using namespace StringUtil;
@@ -38,6 +37,7 @@ bool IsDirectory(const char* path)
 	if (dir != nullptr)
 	{
 		closedir(dir);
+
 		return true;
 	}
 
@@ -66,7 +66,6 @@ HVector<HString> ListFilesInDirectory(const char* path)
 
 	return fileList;
 }
-
 } // namespace OS
 
 #endif // PLATFORM_LINUX
