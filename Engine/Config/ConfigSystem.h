@@ -15,6 +15,7 @@ class StaticString;
 template <typename T, bool IsAtomic>
 class ConfigParam;
 
+/// API reference: docs/Config/ConfigSystem/index.html
 class ConfigSystem final
 {
 	template <typename T>

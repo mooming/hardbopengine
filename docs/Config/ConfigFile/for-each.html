@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>ConfigFile::ForEach — Config — HardBop Engine API reference</title>
+<title>ConfigFile::ForEach — Config module — HardBop Engine API reference</title>
 <link rel="stylesheet" href="../../assets/hbe-docs.css">
 </head>
 <body>
@@ -13,7 +13,7 @@
 
   <h3>Modules</h3>
   <ul>
-    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a class="current" href="../../Config/index.html">Config</a></li>
     <li><a href="../../Container/index.html">Container</a></li>
     <li><a href="../../Core/index.html">Core</a></li>
     <li><a href="../../Engine/index.html">Engine</a></li>
@@ -35,16 +35,6 @@
     <li><a href="#parameters">Parameters</a></li>
     <li><a href="#return">Return value</a></li>
     <li><a href="#example">Examples</a></li>
-  </ul>
-
-  <h3><a href="index.html">ConfigFile</a> methods</h3>
-  <ul class="methods">
-    <li><a href="constructors.html">constructors</a></li>
-    <li><a href="destructor.html">destructor</a></li>
-    <li><a href="get-value.html">GetValue</a></li>
-    <li><a href="is-valid.html">IsValid</a></li>
-    <li><a class="current" href="for-each.html">ForEach</a></li>
-    <li><a href="parse.html">Parse</a></li>
   </ul>
 </nav>
 
@@ -151,9 +141,8 @@ settings.<span class="fn">ForEach</span>([&amp;recognised](<span class="kw">cons
   To change a value while walking, do not: this method is <code>const</code>, and inserting through the public map during iteration would
   invalidate the iterators the loop is using. Read everything you need into your own types inside the callback, then apply it after.
 </p>
-
 <footer class="prevnext">
-  <span><a href="index.html">← ConfigFile</a></span>
+  <span><a href="index.html">&larr; ConfigFile</a></span>
   <span><a href="index.html#methods">All ConfigFile methods</a></span>
 </footer>
 

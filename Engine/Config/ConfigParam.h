@@ -12,6 +12,7 @@
 
 namespace hbe
 {
+/// API reference: docs/Config/ConfigParam/index.html
 template <typename T, bool IsAtomic = false>
 class ConfigParam final
 {

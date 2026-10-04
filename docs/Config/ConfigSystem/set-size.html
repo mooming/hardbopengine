@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>ConfigSystem::SetSize — Config — HardBop Engine API reference</title>
+<title>ConfigSystem::SetSize — Config module — HardBop Engine API reference</title>
 <link rel="stylesheet" href="../../assets/hbe-docs.css">
 </head>
 <body>
@@ -13,7 +13,7 @@
 
   <h3>Modules</h3>
   <ul>
-    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a class="current" href="../../Config/index.html">Config</a></li>
     <li><a href="../../Container/index.html">Container</a></li>
     <li><a href="../../Core/index.html">Core</a></li>
     <li><a href="../../Engine/index.html">Engine</a></li>
@@ -35,26 +35,6 @@
     <li><a href="#parameters">Parameters</a></li>
     <li><a href="#return">Return value</a></li>
     <li><a href="#example">Examples</a></li>
-  </ul>
-
-  <h3><a href="index.html">ConfigSystem</a> methods</h3>
-  <ul class="methods">
-    <li><a href="constructors.html">constructors</a></li>
-    <li><a href="destructor.html">destructor</a></li>
-    <li><a href="get.html">Get</a></li>
-    <li><a href="get-name.html">GetName</a></li>
-    <li><a href="register.html">Register</a></li>
-    <li><a href="set-bool.html">SetBool</a></li>
-    <li><a href="set-byte.html">SetByte</a></li>
-    <li><a href="set-int.html">SetInt</a></li>
-    <li><a class="current" href="set-size.html">SetSize</a></li>
-    <li><a href="set-float.html">SetFloat</a></li>
-    <li><a href="get-bool.html">GetBool</a></li>
-    <li><a href="get-byte.html">GetByte</a></li>
-    <li><a href="get-int.html">GetInt</a></li>
-    <li><a href="get-size.html">GetSize</a></li>
-    <li><a href="get-float.html">GetFloat</a></li>
-    <li><a href="print-all-parameters.html">PrintAllParameters</a></li>
   </ul>
 </nav>
 
@@ -150,9 +130,8 @@ taskRegistry.SetMaxCapacity(maxRecords.<span class="fn">Get</span>());</code></p
 
 <pre><code><span class="kw">auto</span>&amp; settings = hbe::ConfigSystem::<span class="fn">Get</span>();
 settings.<span class="fn">SetSize</span>(<span class="st">"Task.RegistryMaxRecords"</span>, <span class="nu">8192</span>);   <span class="cm">// stored; the live registry does not notice</span></code></pre>
-
 <footer class="prevnext">
-  <span><a href="index.html">← ConfigSystem</a></span>
+  <span><a href="index.html">&larr; ConfigSystem</a></span>
   <span><a href="index.html#methods">All ConfigSystem methods</a></span>
 </footer>
 

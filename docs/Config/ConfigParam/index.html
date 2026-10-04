@@ -37,15 +37,6 @@
     <li><a href="#non-member">Non-member helpers</a></li>
     <li><a href="#coverage">Coverage</a></li>
   </ul>
-
-  <h3>Methods</h3>
-  <ul class="methods">
-    <li><a href="constructors.html">constructors</a></li>
-    <li><a href="get-name.html">GetName</a></li>
-    <li><a href="get-description.html">GetDescription</a></li>
-    <li><a href="get.html">Get</a></li>
-    <li><a href="set.html">Set</a></li>
-  </ul>
 </nav>
 
 <main class="main">
@@ -283,6 +274,17 @@
 
 <table>
   <tr><th>Gap</th><th>Detail</th></tr>
+  <tr>
+    <td>Signature pages cannot be machine-checked against this header</td>
+    <td>Every method of this class is <em>defined</em> in <code>ConfigParam.h</code>, so each method page prints the
+        declaration with the body elided and a trailing <code>;</code> added — which is what the authoring contract asks for
+        (<em>the Signature section is the declaration, never the body</em>), but it means no page's block is a byte-for-byte
+        substring of the header. <code>docs_pass.py signatures</code> is therefore not usable here: its declaration parser does
+        not stop at a <code>{</code> across the constructor's <code>#if ENGINE_PARAM_DESC_ENABLED</code> and
+        <code>#ifdef __DEBUG__</code> guards, and running it replaces the constructor's signature with
+        <code>#endif</code>, <code>public:</code> and the initialiser list while still reporting zero problems. The blocks here
+        are hand-checked instead: each equals the header's declaration text with the body removed</td>
+  </tr>
   <tr>
     <td>Explicit instantiations in <code>ConfigParam.cpp</code></td>
     <td>That source instantiates <code>ConfigParam&lt;T, true&gt;</code> and <code>ConfigParam&lt;T, false&gt;</code> for

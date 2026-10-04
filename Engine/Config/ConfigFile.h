@@ -10,6 +10,7 @@
 
 namespace hbe
 {
+/// API reference: docs/Config/ConfigFile/index.html
 class ConfigFile final
 {
 public:

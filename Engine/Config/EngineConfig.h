@@ -12,6 +12,7 @@ namespace hbe
 {
 namespace Config
 {
+/// API reference: docs/Config/EngineConfig/index.html
 static constexpr uint8_t EngineLogLevel = MEMORY_LOGGING_ENABLED ? 0 : 1;
 
 static constexpr uint8_t EngineLogLevelPrint = MEMORY_LOGGING_ENABLED ? 1 : 2;

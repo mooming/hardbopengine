@@ -37,26 +37,6 @@
     <li><a href="#non-member">Non-member helpers</a></li>
     <li><a href="#coverage">Coverage</a></li>
   </ul>
-
-  <h3>Methods</h3>
-  <ul class="methods">
-    <li><a href="constructors.html">constructors</a></li>
-    <li><a href="destructor.html">destructor</a></li>
-    <li><a href="get.html">Get</a></li>
-    <li><a href="get-name.html">GetName</a></li>
-    <li><a href="register.html">Register</a></li>
-    <li><a href="set-bool.html">SetBool</a></li>
-    <li><a href="set-byte.html">SetByte</a></li>
-    <li><a href="set-int.html">SetInt</a></li>
-    <li><a href="set-size.html">SetSize</a></li>
-    <li><a href="set-float.html">SetFloat</a></li>
-    <li><a href="get-bool.html">GetBool</a></li>
-    <li><a href="get-byte.html">GetByte</a></li>
-    <li><a href="get-int.html">GetInt</a></li>
-    <li><a href="get-size.html">GetSize</a></li>
-    <li><a href="get-float.html">GetFloat</a></li>
-    <li><a href="print-all-parameters.html">PrintAllParameters</a></li>
-  </ul>
 </nav>
 
 <main class="main">
@@ -231,10 +211,18 @@
 <table>
   <tr><th>Method</th><th>Signature</th><th>What a caller depends on</th></tr>
   <tr>
-    <td><a href="constructors.html">constructors</a><span class="badge">1 usable, 4 deleted</span></td>
-    <td class="sig">ConfigSystem() noexcept = default<br>ConfigSystem(const ConfigSystem&amp;) = delete<br>ConfigSystem(ConfigSystem&amp;&amp;) = delete</td>
+    <td><a href="constructors.html">constructors</a><span class="badge">1 usable, 2 deleted</span></td>
+    <td class="sig">ConfigSystem(const ConfigSystem&amp;) = delete<br>ConfigSystem(ConfigSystem&amp;&amp;) = delete<br>ConfigSystem() noexcept = default</td>
     <td>Default construction is public, so a second registry is legal — and it is a registry that knows none of the
         engine's parameters. Copy and move are gone, which is what makes a <code>ConfigSystem&amp;</code> a safe thing to hold</td>
+  </tr>
+  <tr>
+    <td><code>operator=</code><span class="badge">deleted</span></td>
+    <td class="sig">ConfigSystem&amp; operator=(const ConfigSystem&amp;) = delete<br>ConfigSystem&amp; operator=(ConfigSystem&amp;&amp;) = delete</td>
+    <td>No page: nothing can call it. Deleted for the same reason as the two constructors — a copied registry would
+        hold closures capturing <em>other objects'</em> parameters by reference — and they complete the four deletions
+        that give the class no value semantics at all. Obtain it through
+        <a href="get.html"><code>Get()</code></a> and hold it by reference</td>
   </tr>
   <tr>
     <td><a href="destructor.html">destructor</a></td>

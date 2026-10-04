@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>ConfigSystem::~ConfigSystem — Config — HardBop Engine API reference</title>
+<title>ConfigSystem::~ConfigSystem — Config module — HardBop Engine API reference</title>
 <link rel="stylesheet" href="../../assets/hbe-docs.css">
 </head>
 <body>
@@ -13,7 +13,7 @@
 
   <h3>Modules</h3>
   <ul>
-    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a class="current" href="../../Config/index.html">Config</a></li>
     <li><a href="../../Container/index.html">Container</a></li>
     <li><a href="../../Core/index.html">Core</a></li>
     <li><a href="../../Engine/index.html">Engine</a></li>
@@ -36,26 +36,6 @@
     <li><a href="#return">Return value</a></li>
     <li><a href="#example">Examples</a></li>
   </ul>
-
-  <h3><a href="index.html">ConfigSystem</a> methods</h3>
-  <ul class="methods">
-    <li><a href="constructors.html">constructors</a></li>
-    <li><a class="current" href="destructor.html">destructor</a></li>
-    <li><a href="get.html">Get</a></li>
-    <li><a href="get-name.html">GetName</a></li>
-    <li><a href="register.html">Register</a></li>
-    <li><a href="set-bool.html">SetBool</a></li>
-    <li><a href="set-byte.html">SetByte</a></li>
-    <li><a href="set-int.html">SetInt</a></li>
-    <li><a href="set-size.html">SetSize</a></li>
-    <li><a href="set-float.html">SetFloat</a></li>
-    <li><a href="get-bool.html">GetBool</a></li>
-    <li><a href="get-byte.html">GetByte</a></li>
-    <li><a href="get-int.html">GetInt</a></li>
-    <li><a href="get-size.html">GetSize</a></li>
-    <li><a href="get-float.html">GetFloat</a></li>
-    <li><a href="print-all-parameters.html">PrintAllParameters</a></li>
-  </ul>
 </nav>
 
 <main class="main">
@@ -63,7 +43,7 @@
 <p class="breadcrumb">
   <a href="../../index.html">Module Index</a> /
   <a href="../index.html">Config</a> /
-  <a href="index.html">ConfigSystem</a> / destructor
+  <a href="index.html">ConfigSystem</a> / ~ConfigSystem
 </p>
 
 <h1><span class="fn">~ConfigSystem</span></h1>
@@ -76,7 +56,7 @@
 
 <h2 id="signature">Signature</h2>
 
-<pre><code><span class="ty">ConfigSystem</span>::~<span class="ty">ConfigSystem</span>() = <span class="kw">default</span>;</code></pre>
+<pre><code>~ConfigSystem() = default;</code></pre>
 
 <h2 id="description">Function description</h2>
 
@@ -146,9 +126,8 @@ the only one and it runs at exit.</p>
   <code>Log.Level</code> is a real <code>uint8_t</code> parameter, registered from <code>Logger::AddLog</code>; see
   <a href="../../Log/index.html#logger">Log: Logger</a>.
 </p>
-
 <footer class="prevnext">
-  <span><a href="index.html">← ConfigSystem</a></span>
+  <span><a href="index.html">&larr; ConfigSystem</a></span>
   <span><a href="index.html#methods">All ConfigSystem methods</a></span>
 </footer>
 

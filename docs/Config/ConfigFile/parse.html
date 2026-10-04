@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>ConfigFile::Parse — Config — HardBop Engine API reference</title>
+<title>ConfigFile::Parse — Config module — HardBop Engine API reference</title>
 <link rel="stylesheet" href="../../assets/hbe-docs.css">
 </head>
 <body>
@@ -13,7 +13,7 @@
 
   <h3>Modules</h3>
   <ul>
-    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a class="current" href="../../Config/index.html">Config</a></li>
     <li><a href="../../Container/index.html">Container</a></li>
     <li><a href="../../Core/index.html">Core</a></li>
     <li><a href="../../Engine/index.html">Engine</a></li>
@@ -36,16 +36,6 @@
     <li><a href="#return">Return value</a></li>
     <li><a href="#example">Examples</a></li>
   </ul>
-
-  <h3><a href="index.html">ConfigFile</a> methods</h3>
-  <ul class="methods">
-    <li><a href="constructors.html">constructors</a></li>
-    <li><a href="destructor.html">destructor</a></li>
-    <li><a href="get-value.html">GetValue</a></li>
-    <li><a href="is-valid.html">IsValid</a></li>
-    <li><a href="for-each.html">ForEach</a></li>
-    <li><a class="current" href="parse.html">Parse</a></li>
-  </ul>
 </nav>
 
 <main class="main">
@@ -58,15 +48,18 @@
 
 <h1><span class="fn">Parse</span></h1>
 <p class="subtitle">
-  <span class="tag">private member of hbe::ConfigFile</span>
-  <span class="tag">Engine/Config/ConfigFile.cpp</span>
+  <span class="tag">member of hbe::ConfigFile</span>
+  <span class="tag">Engine/Config/ConfigFile.h</span>
+  <span class="tag">private</span>
   <span class="tag">not callable by a caller</span>
   the file format, defined here — first <code>=</code> splits, both sides trim, empty members drop
 </p>
 
 <h2 id="signature">Signature</h2>
 
-<pre><code><span class="kw">void</span> <span class="fn">Parse</span>(<span class="kw">const</span> <span class="kw">char</span>* fileName);   <span class="cm">// declared private in the header</span></code></pre>
+<pre><code>void Parse(const char* fileName);</code></pre>
+
+<p class="meta">Declared in Engine/Config/ConfigFile.h, defined in Engine/Config/ConfigFile.cpp as ConfigFile::Parse()</p>
 
 <h2 id="description">Function description</h2>
 
@@ -170,9 +163,8 @@ settings.<span class="fn">IsValid</span>();                              <span c
 settings.keymap.size();                         <span class="cm">// 4: max_particles, vsync, render.scale, path</span>
 settings.<span class="fn">GetValue</span>(<span class="st">"max_particles"</span>)-&gt;c_str();     <span class="cm">// "40000" — last assignment won</span>
 settings.<span class="fn">GetValue</span>(<span class="st">"blankvalue"</span>).<span class="fn">has_value</span>();     <span class="cm">// false — the empty-value guard dropped it</span></code></pre>
-
 <footer class="prevnext">
-  <span><a href="index.html">← ConfigFile</a></span>
+  <span><a href="index.html">&larr; ConfigFile</a></span>
   <span><a href="index.html#methods">All ConfigFile methods</a></span>
 </footer>
 

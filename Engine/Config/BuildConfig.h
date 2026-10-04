@@ -2,6 +2,7 @@
 
 #pragma once
 
+/// API reference: docs/Config/BuildConfig/index.html
 #ifdef __linux__
 #define PLATFORM_LINUX 1
 #elif defined __APPLE__

@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>ConfigFile::ConfigFile — Config — HardBop Engine API reference</title>
+<title>ConfigFile::ConfigFile (constructors) — Config module — HardBop Engine API reference</title>
 <link rel="stylesheet" href="../../assets/hbe-docs.css">
 </head>
 <body>
@@ -13,7 +13,7 @@
 
   <h3>Modules</h3>
   <ul>
-    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a class="current" href="../../Config/index.html">Config</a></li>
     <li><a href="../../Container/index.html">Container</a></li>
     <li><a href="../../Core/index.html">Core</a></li>
     <li><a href="../../Engine/index.html">Engine</a></li>
@@ -30,21 +30,11 @@
 
   <h3>This function</h3>
   <ul>
-    <li><a href="#signature">Signatures</a></li>
+    <li><a href="#signature">Signature</a></li>
     <li><a href="#description">Function description</a></li>
     <li><a href="#parameters">Parameters</a></li>
     <li><a href="#return">Return value</a></li>
     <li><a href="#example">Examples</a></li>
-  </ul>
-
-  <h3><a href="index.html">ConfigFile</a> methods</h3>
-  <ul class="methods">
-    <li><a class="current" href="constructors.html">constructors</a></li>
-    <li><a href="destructor.html">destructor</a></li>
-    <li><a href="get-value.html">GetValue</a></li>
-    <li><a href="is-valid.html">IsValid</a></li>
-    <li><a href="for-each.html">ForEach</a></li>
-    <li><a href="parse.html">Parse</a></li>
   </ul>
 </nav>
 
@@ -53,10 +43,10 @@
 <p class="breadcrumb">
   <a href="../../index.html">Module Index</a> /
   <a href="../index.html">Config</a> /
-  <a href="index.html">ConfigFile</a> / constructors
+  <a href="index.html">ConfigFile</a> / ConfigFile (constructors)
 </p>
 
-<h1><span class="fn">ConfigFile</span> <span class="cm">(constructors)</span></h1>
+<h1><span class="fn">ConfigFile (constructors)</span></h1>
 <p class="subtitle">
   <span class="tag">member of hbe::ConfigFile</span>
   <span class="tag">Engine/Config/ConfigFile.h</span>
@@ -64,17 +54,18 @@
   a path in, a parsed map out — loading is not a step you take, it is the construction
 </p>
 
-<h2 id="signature">Signatures</h2>
+<h2 id="signature">Signature</h2>
 
-<p>One page for the name, because the two forms state one contract and differ only in how the path is assembled:</p>
-
-<pre><code><span class="cm">/// treat `path` as the complete file path</span>
-<span class="kw">explicit</span> <span class="ty">ConfigFile</span>(<span class="kw">const</span> <span class="kw">char</span>* path);
-
-<span class="cm">/// join `path` + separator + `fileName`, then parse that</span>
-<span class="ty">ConfigFile</span>(<span class="kw">const</span> <span class="kw">char</span>* path, <span class="kw">const</span> <span class="kw">char</span>* fileName);</code></pre>
+<pre><code>explicit ConfigFile(const char* path);
+ConfigFile(const char* path, const char* fileName);</code></pre>
 
 <h2 id="description">Function description</h2>
+
+<p>
+  One page for the name, because the two forms state one contract and differ only in how the path is
+  assembled: the first treats <code>path</code> as the complete file path, the second joins
+  <code>path</code> + separator + <code>fileName</code> and parses that.
+</p>
 
 <p>
   Both set <a href="index.html#properties"><code>isValid</code></a> to <code>false</code> in their initialiser list and then call
@@ -168,9 +159,8 @@
   <code>keymap</code> is public, so the emptiness test above is legal without any accessor — see
   <a href="index.html#properties">Class properties</a> for what that costs in invariants.
 </p>
-
 <footer class="prevnext">
-  <span><a href="index.html">← ConfigFile</a></span>
+  <span><a href="index.html">&larr; ConfigFile</a></span>
   <span><a href="index.html#methods">All ConfigFile methods</a></span>
 </footer>
 

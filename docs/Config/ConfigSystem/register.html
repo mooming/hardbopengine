@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>ConfigSystem::Register — Config — HardBop Engine API reference</title>
+<title>ConfigSystem::Register — Config module — HardBop Engine API reference</title>
 <link rel="stylesheet" href="../../assets/hbe-docs.css">
 </head>
 <body>
@@ -13,7 +13,7 @@
 
   <h3>Modules</h3>
   <ul>
-    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a class="current" href="../../Config/index.html">Config</a></li>
     <li><a href="../../Container/index.html">Container</a></li>
     <li><a href="../../Core/index.html">Core</a></li>
     <li><a href="../../Engine/index.html">Engine</a></li>
@@ -30,31 +30,11 @@
 
   <h3>This function</h3>
   <ul>
-    <li><a href="#signature">Signatures</a></li>
+    <li><a href="#signature">Signature</a></li>
     <li><a href="#description">Function description</a></li>
     <li><a href="#parameters">Parameters</a></li>
     <li><a href="#return">Return value</a></li>
     <li><a href="#example">Examples</a></li>
-  </ul>
-
-  <h3><a href="index.html">ConfigSystem</a> methods</h3>
-  <ul class="methods">
-    <li><a href="constructors.html">constructors</a></li>
-    <li><a href="destructor.html">destructor</a></li>
-    <li><a href="get.html">Get</a></li>
-    <li><a href="get-name.html">GetName</a></li>
-    <li><a class="current" href="register.html">Register</a></li>
-    <li><a href="set-bool.html">SetBool</a></li>
-    <li><a href="set-byte.html">SetByte</a></li>
-    <li><a href="set-int.html">SetInt</a></li>
-    <li><a href="set-size.html">SetSize</a></li>
-    <li><a href="set-float.html">SetFloat</a></li>
-    <li><a href="get-bool.html">GetBool</a></li>
-    <li><a href="get-byte.html">GetByte</a></li>
-    <li><a href="get-int.html">GetInt</a></li>
-    <li><a href="get-size.html">GetSize</a></li>
-    <li><a href="get-float.html">GetFloat</a></li>
-    <li><a href="print-all-parameters.html">PrintAllParameters</a></li>
   </ul>
 </nav>
 
@@ -74,25 +54,25 @@
   installs a by-reference path to somebody else's parameter — the only way anything gets into the registry
 </p>
 
-<h2 id="signature">Signatures</h2>
+<h2 id="signature">Signature</h2>
+
+<pre><code>void Register(TConfigParam&lt;bool&gt;&amp; engineParam);
+void Register(TAtomicConfigParam&lt;bool&gt;&amp; engineParam);
+void Register(TConfigParam&lt;uint8_t&gt;&amp; engineParam);
+void Register(TAtomicConfigParam&lt;uint8_t&gt;&amp; engineParam);
+void Register(TConfigParam&lt;int&gt;&amp; engineParam);
+void Register(TAtomicConfigParam&lt;int&gt;&amp; engineParam);
+void Register(TConfigParam&lt;size_t&gt;&amp; engineParam);
+void Register(TAtomicConfigParam&lt;size_t&gt;&amp; engineParam);
+void Register(TConfigParam&lt;float&gt;&amp; engineParam);
+void Register(TAtomicConfigParam&lt;float&gt;&amp; engineParam);</code></pre>
+
+<h2 id="description">Function description</h2>
 
 <p>
   Five value types, each with a non-atomic and an atomic form. The two forms of one type install into the
-  <em>same</em> map, so the pair differs only in which <code>ConfigParam</code> specialization it accepts:
+  <em>same</em> map, so the pair differs only in which <code>ConfigParam</code> specialization it accepts.
 </p>
-
-<pre><code><span class="kw">void</span> <span class="fn">Register</span>(TConfigParam&lt;<span class="kw">bool</span>&gt;&amp; engineParam);
-<span class="kw">void</span> <span class="fn">Register</span>(TAtomicConfigParam&lt;<span class="kw">bool</span>&gt;&amp; engineParam);
-<span class="kw">void</span> <span class="fn">Register</span>(TConfigParam&lt;<span class="ty">uint8_t</span>&gt;&amp; engineParam);
-<span class="kw">void</span> <span class="fn">Register</span>(TAtomicConfigParam&lt;<span class="ty">uint8_t</span>&gt;&amp; engineParam);
-<span class="kw">void</span> <span class="fn">Register</span>(TConfigParam&lt;<span class="kw">int</span>&gt;&amp; engineParam);
-<span class="kw">void</span> <span class="fn">Register</span>(TAtomicConfigParam&lt;<span class="kw">int</span>&gt;&amp; engineParam);
-<span class="kw">void</span> <span class="fn">Register</span>(TConfigParam&lt;<span class="ty">size_t</span>&gt;&amp; engineParam);
-<span class="kw">void</span> <span class="fn">Register</span>(TAtomicConfigParam&lt;<span class="ty">size_t</span>&gt;&amp; engineParam);
-<span class="kw">void</span> <span class="fn">Register</span>(TConfigParam&lt;<span class="kw">float</span>&gt;&amp; engineParam);
-<span class="kw">void</span> <span class="fn">Register</span>(TAtomicConfigParam&lt;<span class="kw">float</span>&gt;&amp; engineParam);</code></pre>
-
-<h2 id="description">Function description</h2>
 
 <p>
   Each overload takes the interned identity of the parameter's name, checks that map for it, then stores a
@@ -193,9 +173,8 @@
   build goes through an atomic overload — see
   <a href="../ConfigParam/constructors.html">ConfigParam constructors</a> for the call sites.
 </p>
-
 <footer class="prevnext">
-  <span><a href="index.html">← ConfigSystem</a></span>
+  <span><a href="index.html">&larr; ConfigSystem</a></span>
   <span><a href="index.html#methods">All ConfigSystem methods</a></span>
 </footer>
 

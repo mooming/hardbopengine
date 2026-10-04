@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>ConfigFile::~ConfigFile — Config — HardBop Engine API reference</title>
+<title>ConfigFile::~ConfigFile — Config module — HardBop Engine API reference</title>
 <link rel="stylesheet" href="../../assets/hbe-docs.css">
 </head>
 <body>
@@ -13,7 +13,7 @@
 
   <h3>Modules</h3>
   <ul>
-    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a class="current" href="../../Config/index.html">Config</a></li>
     <li><a href="../../Container/index.html">Container</a></li>
     <li><a href="../../Core/index.html">Core</a></li>
     <li><a href="../../Engine/index.html">Engine</a></li>
@@ -36,16 +36,6 @@
     <li><a href="#return">Return value</a></li>
     <li><a href="#example">Examples</a></li>
   </ul>
-
-  <h3><a href="index.html">ConfigFile</a> methods</h3>
-  <ul class="methods">
-    <li><a href="constructors.html">constructors</a></li>
-    <li><a class="current" href="destructor.html">destructor</a></li>
-    <li><a href="get-value.html">GetValue</a></li>
-    <li><a href="is-valid.html">IsValid</a></li>
-    <li><a href="for-each.html">ForEach</a></li>
-    <li><a href="parse.html">Parse</a></li>
-  </ul>
 </nav>
 
 <main class="main">
@@ -53,7 +43,7 @@
 <p class="breadcrumb">
   <a href="../../index.html">Module Index</a> /
   <a href="../index.html">Config</a> /
-  <a href="index.html">ConfigFile</a> / destructor
+  <a href="index.html">ConfigFile</a> / ~ConfigFile
 </p>
 
 <h1><span class="fn">~ConfigFile</span></h1>
@@ -66,7 +56,7 @@
 
 <h2 id="signature">Signature</h2>
 
-<pre><code><span class="ty">ConfigFile</span>::~<span class="ty">ConfigFile</span>() = <span class="kw">default</span>;</code></pre>
+<pre><code>~ConfigFile() = default;</code></pre>
 
 <h2 id="description">Function description</h2>
 
@@ -130,9 +120,8 @@
   <code>TString</code> returned by <a href="get-value.html"><code>GetValue</code></a> is a copy you own and may keep after the file object is
   gone — unlike <code>const char*</code> data borrowed from a buffer, there is nothing here to dangle.
 </p>
-
 <footer class="prevnext">
-  <span><a href="index.html">← ConfigFile</a></span>
+  <span><a href="index.html">&larr; ConfigFile</a></span>
   <span><a href="index.html#methods">All ConfigFile methods</a></span>
 </footer>
 
