@@ -70,7 +70,7 @@
 <div class="note">
   <strong>No thread belongs to the IO stream.</strong> The IO stream has no thread of its own:
   <a href="build-streams.html">BuildStreams</a> ends by handing it to the logger with
-  <code>Logger::Get().SetIODriver(&amp;GetIOTaskStream())</code>, and the logger's own thread drives it from there. So
+  <code>Logger::Get().SetLoggerStream(&amp;GetIOTaskStream())</code>, and the logger's own thread drives it from there. So
   this is true exactly while that thread is inside a driven pass on stream 1, and false the moment the pass returns —
   on that same thread, without anything else having happened. The thread's own name stays
   <code>"LogDriver"</code> throughout; see <a href="get-current-stream-name.html">GetCurrentStreamName</a>.

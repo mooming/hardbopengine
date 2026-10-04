@@ -391,16 +391,16 @@
     <td><code>driverLock</code></td>
     <td><code>std::mutex driverLock;</code></td>
     <td>
-      <span class="badge">private</span> Guards <code>ioStream</code>, and is <em>held across the pass that uses
+      <span class="badge">private</span> Guards <code>loggerStream</code>, and is <em>held across the pass that uses
       it</em>. Withdrawal is therefore a lock acquisition: asking for the stream back blocks until whatever the driver
       thread was doing inside the stream has returned, which is the only way the task system can free its streams
       without this thread reading a freed one on a pass it had already started. See
-      <a href="set-io-driver.html"><code>SetIODriver</code></a>
+      <a href="set-logger-stream.html"><code>SetLoggerStream</code></a>
     </td>
   </tr>
   <tr>
-    <td><code>ioStream</code></td>
-    <td><code>TaskStream* ioStream = nullptr;</code></td>
+    <td><code>loggerStream</code></td>
+    <td><code>TaskStream* loggerStream = nullptr;</code></td>
     <td>
       <span class="badge">private</span> <span class="badge">not owned</span> The service stream this thread drives,
       when one has been installed. <code>nullptr</code> means no stream has been handed over yet, and the driver
@@ -532,8 +532,8 @@
     <td>Destination two: the engine console, through <code>Engine::ConsoleOutLn</code> — which is why draining needs an <code>Engine</code> to be alive</td>
   </tr>
   <tr>
-    <td><a href="set-io-driver.html">SetIODriver</a></td>
-    <td class="sig">void SetIODriver(TaskStream* stream) noexcept</td>
+    <td><a href="set-logger-stream.html">SetLoggerStream</a></td>
+    <td class="sig">void SetLoggerStream(TaskStream* stream) noexcept</td>
     <td>Install or withdraw the IO stream this logger's thread drives. The lock it takes is what makes withdrawal
       mean something: <code>nullptr</code> cannot land while a pass is in flight
     </td>

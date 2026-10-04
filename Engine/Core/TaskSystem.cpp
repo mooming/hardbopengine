@@ -232,7 +232,7 @@ void TaskSystem::JoinAndClear() noexcept
 
 		Logger::Get().Flush();
 
-		Logger::Get().SetIODriver(nullptr);
+		Logger::Get().SetLoggerStream(nullptr);
 		GetIOTaskStream().CloseDrivenStream();
 		baseStream.CloseDrivenStream();
 
@@ -792,7 +792,8 @@ void TaskSystem::BuildStreams()
 		stream.Start(*this);
 	}
 
-	Logger::Get().SetIODriver(&GetIOTaskStream());
+	auto& logger = Logger::Get();
+	logger.SetLoggerStream(&GetIOTaskStream());
 }
 } // namespace hbe
 

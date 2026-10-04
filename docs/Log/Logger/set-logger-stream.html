@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Logger::SetIODriver — Log — HardBop Engine API reference</title>
+<title>Logger::SetLoggerStream — Log — HardBop Engine API reference</title>
 <link rel="stylesheet" href="../../assets/hbe-docs.css">
 </head>
 <body>
@@ -55,7 +55,7 @@
     <li><a href="flush-buffer.html">FlushBuffer</a></li>
     <li><a href="write-log.html">WriteLog</a></li>
     <li><a href="print-std-io.html">PrintStdIO</a></li>
-    <li><a href="set-io-driver.html">SetIODriver</a></li>
+    <li><a href="set-logger-stream.html">SetLoggerStream</a></li>
     <li><a href="stop-driver-thread.html">StopDriverThread</a></li>
     <li><a href="driver-loop.html">DriverLoop</a></li>
   </ul>
@@ -65,10 +65,10 @@
 <p class="breadcrumb">
   <a href="../../index.html">Module Index</a> /
   <a href="../index.html">Log</a> /
-  <a href="index.html">Logger</a> / SetIODriver
+  <a href="index.html">Logger</a> / SetLoggerStream
 </p>
 
-<h1><span class="fn">SetIODriver</span></h1>
+<h1><span class="fn">SetLoggerStream</span></h1>
 <p class="subtitle">
   <span class="tag">member of hbe::Logger</span>
   <span class="tag">Engine/Log/Logger.h</span>
@@ -79,7 +79,7 @@
 
 <h2 id="signature">Signature</h2>
 
-<pre><code><span class="kw">void</span> <span class="fn">SetIODriver</span>(<span class="ty">TaskStream</span>* stream) noexcept;</code></pre>
+<pre><code><span class="kw">void</span> <span class="fn">SetLoggerStream</span>(<span class="ty">TaskStream</span>* stream) noexcept;</code></pre>
 
 <h2 id="description">Function description</h2>
 
@@ -87,7 +87,7 @@
 lock acquisition and an assignment, and the lock is the entire design:</p>
 
 <pre><code><span class="ty">std</span>::<span class="fn">lock_guard</span> lock(driverLock);
-ioStream = stream;</code></pre>
+loggerStream = stream;</code></pre>
 
 <p><a href="index.html"><code>Logger</code></a>'s IO stream is a <em>service</em> stream — the logger is one of
 its customers, as asynchronous file access will be — and it is a ride-on-thread stream, so its driver must be

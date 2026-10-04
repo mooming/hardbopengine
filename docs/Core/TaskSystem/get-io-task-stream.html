@@ -71,7 +71,7 @@
 <p>
   The IO stream exists so that log work has somewhere to live that the engine loop does not have to service. It has no
   thread: <a href="build-streams.html">BuildStreams</a> hands it to the logger at its last statement,
-  <code>Logger::Get().SetIODriver(&amp;GetIOTaskStream())</code> (<code>Engine/Core/TaskSystem.cpp</code>), and the
+  <code>Logger::Get().SetLoggerStream(&amp;GetIOTaskStream())</code> (<code>Engine/Core/TaskSystem.cpp</code>), and the
   logger's own thread drives it from then on.
 </p>
 
@@ -106,7 +106,7 @@
 
 <p class="meta">From Engine/Log/Logger.cpp</p>
 
-<pre><code>taskSys.<span class="fn">EnqueueTask</span>(ioStreamIndex, *drainTask);
+<pre><code>taskSys.<span class="fn">EnqueueTask</span>(loggerStreamIndex, *drainTask);
 
 <span class="kw">auto</span>&amp; ioTaskStream = taskSys.<span class="fn">GetIOTaskStream</span>();
 threadID = ioTaskStream.<span class="fn">GetThreadID</span>();</code></pre>

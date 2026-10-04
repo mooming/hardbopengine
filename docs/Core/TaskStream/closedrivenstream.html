@@ -101,7 +101,7 @@ Logger::Get(name).Out([name = name, passes = drivenPassCount](auto&amp; ls)
   (<code>Engine/Core/TaskSystem.cpp</code>).
 </div>
 
-<pre><code>Logger::Get().SetIODriver(nullptr);
+<pre><code>Logger::Get().SetLoggerStream(nullptr);
 GetIOTaskStream().CloseDrivenStream();
 baseStream.CloseDrivenStream();</code></pre>
 

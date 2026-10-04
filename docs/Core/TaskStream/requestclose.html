@@ -75,7 +75,7 @@
 
 <pre><code>for (auto&amp; stream : streams)
 {
-    if (&amp;stream != &amp;baseStream &amp;&amp; &amp;stream != &amp;ioStream)
+    if (&amp;stream != &amp;baseStream &amp;&amp; &amp;stream != &amp;loggerStream)
     {
         stream.RequestClose();
     }

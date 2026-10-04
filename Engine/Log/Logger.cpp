@@ -203,18 +203,19 @@ void Logger::DriverLoop() noexcept
 	threadID = std::this_thread::get_id();
 	TaskSystem::SetThreadName("LogDriver");
 
-	Logger::Get(GetName()).Out("Log driver thread is running.");
+	auto log = Get(GetName());
+	log.Out("Log driver thread is running.");
 
 	while (driverRunning.load(std::memory_order_acquire))
 	{
 		TaskStream* stream = nullptr;
 		{
 			std::lock_guard lock(driverLock);
-			stream = ioStream;
+			stream = loggerStream;
 
 			if (stream != nullptr)
 			{
-				stream->Update();
+				(void) stream->Update();
 			}
 		}
 
@@ -222,31 +223,29 @@ void Logger::DriverLoop() noexcept
 		{
 			stream->WaitForWork(std::chrono::milliseconds(20));
 		}
-
-		if (stream == nullptr)
+		else
 		{
 			ProcessBuffer();
-
 			std::this_thread::sleep_for(std::chrono::milliseconds(1));
 		}
 	}
-
-	std::lock_guard lock(driverLock);
-
-	if (ioStream != nullptr)
 	{
-		while (ioStream->Update())
+		std::lock_guard lock(driverLock);
+		if (loggerStream != nullptr)
 		{
+			while (loggerStream->Update())
+			{
+			}
 		}
 	}
 
 	ProcessBuffer();
 }
 
-void Logger::SetIODriver(TaskStream* stream) noexcept
+void Logger::SetLoggerStream(TaskStream* stream) noexcept
 {
 	std::lock_guard lock(driverLock);
-	ioStream = stream;
+	loggerStream = stream;
 
 	if (stream == nullptr)
 	{

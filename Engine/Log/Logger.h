@@ -116,7 +116,7 @@ private:
 	std::thread driverThread;
 	std::atomic<bool> driverRunning{false};
 	std::mutex driverLock;
-	TaskStream* ioStream = nullptr;
+	TaskStream* loggerStream = nullptr;
 
 	std::mutex filterLock;
 	std::mutex inputLock;
@@ -133,7 +133,7 @@ public:
 	Logger(Engine& engine, const char* path, const char* filename) noexcept;
 	~Logger() noexcept;
 
-	void SetIODriver(TaskStream* stream) noexcept;
+	void SetLoggerStream(TaskStream* stream) noexcept;
 	void StopDriverThread() noexcept;
 	void StartTask(TaskSystem& taskSys);
 	void StopTask(TaskSystem& taskSys);
