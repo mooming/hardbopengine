@@ -6,17 +6,18 @@
 #include <atomic>
 #include <cstdio>
 
-#include "../Engine/Engine.h"
 #include "Config/BuildConfig.h"
 #include "Config/ConfigParam.h"
 #include "Config/EngineConfig.h"
 #include "Core/Debug.h"
 #include "Core/TaskSystem.h"
+#include "Engine/Engine.h"
 #include "LogUtil.h"
 #include "Memory/AllocatorScope.h"
 #include "Memory/InlinePoolAllocator.h"
 #include "OSAL/Intrinsic.h"
 #include "String/StringUtil.h"
+
 
 namespace hbe
 {
@@ -83,7 +84,6 @@ public:
 		return acquired;
 	}
 };
-
 } // namespace
 
 Logger* Logger::instance = nullptr;
@@ -128,6 +128,7 @@ Logger& Logger::Get() noexcept
 Logger::SimpleLogger Logger::Get(StaticString category, ELogLevel level) noexcept
 {
 	SimpleLogger log(category, level);
+
 	return log;
 }
 
@@ -145,7 +146,6 @@ Logger::Logger(Engine& engine, const char* path, const char* filename) noexcept
 	LogUtil::GetStartTime();
 
 	AllocatorScope scope(allocator);
-
 	{
 		AllocatorScope inputAllocScope(inputAlloc);
 		inputBuffer.reserve(16);
@@ -156,7 +156,6 @@ Logger::Logger(Engine& engine, const char* path, const char* filename) noexcept
 	filters.reserve(16);
 
 	auto endChar = logPath[logPath.size() - 1];
-
 	{
 		auto predicate = [](auto item) { return item == '\\'; };
 		std::ranges::replace_if(logPath, predicate, '/');
@@ -209,7 +208,6 @@ void Logger::DriverLoop() noexcept
 	while (driverRunning.load(std::memory_order_acquire))
 	{
 		TaskStream* stream = nullptr;
-
 		{
 			std::lock_guard lock(driverLock);
 			stream = ioStream;
@@ -270,6 +268,7 @@ Logger::~Logger() noexcept
 StaticString Logger::GetName() noexcept
 {
 	static auto className = StringUtil::ToCompactClassName(__PRETTY_FUNCTION__);
+
 	return className;
 }
 
@@ -285,6 +284,7 @@ void Logger::StartTask(TaskSystem& taskSys)
 		if (self == nullptr)
 		{
 			Assert(false, "Invalid userdata %p", userData);
+
 			return 1;
 		}
 
@@ -311,6 +311,7 @@ void Logger::StartTask(TaskSystem& taskSys)
 			logStream << "The task registry could not track the logger's drain task, so log lines are flushed"
 					  << " inline by whoever produces them.";
 		});
+
 		return;
 	}
 
@@ -395,7 +396,6 @@ void Logger::AddLog(StaticString category, ELogLevel level, const TLogFunction& 
 	{
 		return;
 	}
-
 	{
 		std::lock_guard lock(filterLock);
 		auto found = filters.find(category);
@@ -419,6 +419,7 @@ void Logger::AddLog(StaticString category, ELogLevel level, const TLogFunction& 
 	{
 		ImmediateLog(level, category, ls.c_str());
 		debugBreak();
+
 		return;
 	}
 #endif // LOG_BREAK_IF_WARNING
@@ -428,12 +429,14 @@ void Logger::AddLog(StaticString category, ELogLevel level, const TLogFunction& 
 	{
 		ImmediateLog(level, category, ls.c_str());
 		debugBreak();
+
 		return;
 	}
 #endif // LOG_BREAK_IF_ERROR
 
 #if LOG_FORCE_PRINT_IMMEDIATELY
 	ImmediateLog(level, category, ls.c_str());
+
 	return;
 #endif
 
@@ -468,7 +471,6 @@ void Logger::AddLog(StaticString category, ELogLevel level, const TLogFunction& 
 	}
 
 	size_t bufferSize = 0;
-
 	{
 		std::lock_guard lock(inputLock);
 		AllocatorScope inputAllocScope(inputAlloc);
@@ -582,7 +584,6 @@ void Logger::ProcessBuffer() noexcept
 	}
 
 	AllocatorScope scope(allocator);
-
 	{
 		std::lock_guard lockInput(inputLock);
 		std::swap(inputBuffer, swapBuffer);
@@ -663,5 +664,4 @@ void Logger::PrintStdIO(const TTextBuffer& buffer) noexcept
 		engine.ConsoleOutLn(logText.c_str());
 	}
 }
-
 } // namespace hbe

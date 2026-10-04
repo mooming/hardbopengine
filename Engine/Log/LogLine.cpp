@@ -4,15 +4,15 @@
 
 #include <chrono>
 
-#include "../Engine/Engine.h"
 #include "Config/BuildConfig.h"
 #include "Core/Debug.h"
+#include "Engine/Engine.h"
 #include "OSAL/Intrinsic.h"
 #include "String/StringUtil.h"
 
+
 namespace hbe
 {
-
 LogLine::LogLine() noexcept
 	: level(ELogLevel::Info)
 	, isLong(false)
@@ -56,6 +56,7 @@ LogLine::LogLine(ELogLevel level, StaticString threadName, StaticString category
 	if (unlikely(inText == nullptr))
 	{
 		text[0] = '\0';
+
 		return;
 	}
 
@@ -110,5 +111,4 @@ const char* LogLine::GetText() const noexcept
 
 	return text;
 }
-
 } // namespace hbe

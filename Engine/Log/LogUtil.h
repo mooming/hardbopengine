@@ -3,16 +3,16 @@
 #pragma once
 
 #include <chrono>
+
 #include "LogLevel.h"
 #include "String/InlineStringBuilder.h"
 #include "String/StaticString.h"
 
+
 namespace hbe
 {
-
 namespace LogUtil
 {
-
 using TTimePoint = std::chrono::time_point<std::chrono::steady_clock>;
 
 const TTimePoint& GetStartTime() noexcept;
@@ -21,7 +21,5 @@ void ResetStartTime() noexcept;
 void GetTimeStampString(InlineStringBuilder<64>& outStr,
 						const TTimePoint& currentTime = std::chrono::steady_clock::now()) noexcept;
 [[nodiscard]] StaticString GetLogLevelString(ELogLevel level) noexcept;
-
 } // namespace LogUtil
-
 } // namespace hbe

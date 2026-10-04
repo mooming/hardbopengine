@@ -3,13 +3,14 @@
 #pragma once
 
 #include <chrono>
+
 #include "Config/EngineConfig.h"
 #include "LogLevel.h"
 #include "String/StaticString.h"
 
+
 namespace hbe
 {
-
 class LogLine final
 {
 public:
@@ -39,5 +40,4 @@ public:
 
 	[[nodiscard]] const char* GetText() const noexcept;
 };
-
 } // namespace hbe

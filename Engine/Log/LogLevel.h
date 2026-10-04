@@ -2,9 +2,9 @@
 
 #pragma once
 
+
 namespace hbe
 {
-
 enum class ELogLevel : unsigned char
 {
 	Verbose,
@@ -15,5 +15,4 @@ enum class ELogLevel : unsigned char
 	FatalError,
 	MAX
 };
-
 }

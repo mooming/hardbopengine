@@ -4,9 +4,9 @@
 
 #include <iostream>
 
+
 namespace
 {
-
 template <typename T>
 static void PrintArgs(const T& arg) noexcept
 {
@@ -19,5 +19,4 @@ static void PrintArgs(const T& arg, TTypes&&... args) noexcept
 	std::cout << arg;
 	PrintArgs(std::forward<TTypes>(args)...);
 }
-
 } // namespace

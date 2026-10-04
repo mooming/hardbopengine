@@ -4,16 +4,17 @@
 
 #include "String/StringBuilder.h"
 
+
 namespace hbe
 {
 namespace LogUtil
 {
-
 namespace
 {
 TTimePoint& MutableStartTime() noexcept
 {
 	static TTimePoint startTime = std::chrono::steady_clock::now();
+
 	return startTime;
 }
 } // namespace
@@ -87,6 +88,5 @@ StaticString GetLogLevelString(ELogLevel level) noexcept
 			return StaticString();
 	}
 }
-
 } // namespace LogUtil
 } // namespace hbe

@@ -18,9 +18,9 @@
 #include "String/InlineStringBuilder.h"
 #include "String/StaticString.h"
 
+
 namespace hbe
 {
-
 class TaskStream;
 
 class Engine;
@@ -167,7 +167,6 @@ private:
 
 using TLog = Logger::SimpleLogger;
 using LogStream = Logger::TLogStream;
-
 } // namespace hbe
 
 class TaskStream;
