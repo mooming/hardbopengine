@@ -101,6 +101,77 @@ void DequeTest::Prepare()
 		ls << "Pass";
 	});
 
+	AddTest("Iterate Across the Wrap", [this](auto& ls)
+	{
+		Deque<int> d;
+		d.PushBack(1);
+		d.PushBack(2);
+		d.PushBack(3);
+		d.PopFront();
+		d.PopFront();
+		d.PushBack(4);
+		d.PushBack(5);
+
+		int expected = 3;
+		int seen = 0;
+		for (auto value : d)
+		{
+			if (value != expected)
+			{
+				ls << "Iteration expected " << expected << ", got " << value << " at position " << seen << '.' << lferr;
+
+				return;
+			}
+
+			++expected;
+			++seen;
+		}
+
+		if (seen != d.Size())
+		{
+			ls << "Iteration visited " << seen << " of " << d.Size() << " elements." << lferr;
+
+			return;
+		}
+
+		const Deque<int>& view = d;
+		expected = 3;
+		for (auto value : view)
+		{
+			if (value != expected)
+			{
+				ls << "Const iteration expected " << expected << ", got " << value << '.' << lferr;
+
+				return;
+			}
+
+			++expected;
+		}
+
+		ls << "Pass";
+	});
+
+	AddTest("Iterate an Empty Deque", [this](auto& ls)
+	{
+		Deque<int> d;
+
+		int seen = 0;
+		for (auto value : d)
+		{
+			++seen;
+			(void) value;
+		}
+
+		if (seen != 0)
+		{
+			ls << "An empty Deque iterated " << seen << " times." << lferr;
+
+			return;
+		}
+
+		ls << "Pass";
+	});
+
 	AddTest("Growth", [this](auto& ls)
 	{
 		Deque<int> d;

@@ -129,6 +129,43 @@ void BoundedPriorityQueueTest::Prepare()
 		ls << "Pass";
 	});
 
+	AddTest("Every declared priority level is reachable", [this](TLogOut& ls)
+	{
+		BoundedPriorityQueue<TestItem, 8> queue;
+
+		for (uint8_t priority = 0; priority < 8; ++priority)
+		{
+			queue.Push(TestItem(priority, false, priority));
+		}
+
+		if (queue.Size() != 8)
+		{
+			ls << "Expected 8 queued items, got " << queue.Size() << lferr;
+
+			return;
+		}
+
+		for (uint8_t expected = 8; expected-- > 0;)
+		{
+			auto item = queue.Pop();
+			if (!item.has_value() || item->priority != expected)
+			{
+				ls << "Level " << static_cast<int>(expected) << " was not served" << lferr;
+
+				return;
+			}
+		}
+
+		if (!queue.IsEmpty())
+		{
+			ls << "Queue still reports items after draining every level" << lferr;
+
+			return;
+		}
+
+		ls << "Pass";
+	});
+
 	AddTest("Equal priorities drain oldest first", [this](TLogOut& ls)
 	{
 		BoundedPriorityQueue<TestItem> queue;
