@@ -3,11 +3,13 @@
 #pragma once
 
 #include <iostream>
+
 #include "CoordinateOrientation.h"
 #include "Matrix3x3.h"
 #include "Matrix4x4.h"
 #include "Vector3.h"
 #include "Vector4.h"
+
 
 namespace hbe
 {
@@ -586,7 +588,6 @@ std::ostream& operator<<(std::ostream& os, const Quaternion<T>& q) noexcept
 
 namespace hbe
 {
-
 class QuaternionTest final : public TestCollection
 {
 public:

@@ -4,12 +4,13 @@
 
 #include <cmath>
 #include <cstdint>
+
 #include "Core/Constants.h"
 #include "Core/Debug.h"
 
+
 namespace hbe
 {
-
 template <typename T>
 [[nodiscard]] T Abs(T value, std::false_type) noexcept
 {
@@ -153,7 +154,6 @@ template <typename T>
 
 namespace Physics
 {
-
 [[nodiscard]] inline float Min(float a, float b) noexcept
 {
 	return ((a + b) - Abs(a - b)) * 0.5f;
@@ -185,9 +185,7 @@ namespace Physics
 {
 	return Abs(a - b) >= Epsilon;
 }
-
 } // namespace Physics
-
 } // namespace hbe
 
 #ifdef __UNIT_TEST__
@@ -196,7 +194,6 @@ namespace Physics
 
 namespace hbe
 {
-
 class MathUtilTest final : public TestCollection
 {
 public:
@@ -208,7 +205,6 @@ public:
 protected:
 	void Prepare() noexcept override;
 };
-
 } // namespace hbe
 
 #endif //__UNIT_TEST__

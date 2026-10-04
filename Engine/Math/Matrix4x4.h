@@ -4,11 +4,13 @@
 
 #include <array>
 #include <iostream>
+
 #include "CoordinateOrientation.h"
 #include "Matrix2x2.h"
 #include "Matrix3x3.h"
 #include "Vector3.h"
 #include "Vector4.h"
+
 
 namespace hbe
 {
@@ -361,6 +363,7 @@ template <typename T>
 const Matrix4x4<T> Matrix4x4<T>::Zero({
 		0,
 });
+
 template <typename T>
 const Matrix4x4<T> Matrix4x4<T>::Identity;
 

@@ -2,6 +2,7 @@
 
 #include "Vector3.h"
 
+
 namespace hbe
 {
 template class Vector3<float>;
@@ -87,11 +88,9 @@ void hbe::Vector3Test::Prepare() noexcept
 		}
 
 		TFloat3 tmp;
-
 		{
 			time::TDuration heTime;
 			float dotResult = 0.0f;
-
 			{
 				time::ScopedTime measure(heTime);
 

@@ -11,6 +11,7 @@
 #include "Core/CommonMacros.h"
 #include "HSTL/HVector.h"
 
+
 namespace hbe
 {
 /// @brief Importance resampling class for Monte Carlo integration.

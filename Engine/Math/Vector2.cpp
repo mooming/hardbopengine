@@ -2,6 +2,7 @@
 
 #include "Vector2.h"
 
+
 namespace hbe
 {
 template class Vector2<float>;

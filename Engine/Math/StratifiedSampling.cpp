@@ -5,7 +5,6 @@
 
 #include "StratifiedSampling.h"
 
-
 #ifdef __UNIT_TEST__
 
 #include <random>
@@ -27,6 +26,7 @@ void hbe::StratifiedSamplingTest::Prepare() noexcept
 		auto func = [](const Vec2& x) -> double
 		{
 			double r = x.x * x.x + x.y * x.y;
+
 			return r <= 1.0 ? 1.0 : 0.0f;
 		};
 
@@ -34,6 +34,7 @@ void hbe::StratifiedSamplingTest::Prepare() noexcept
 		auto pdf = [](const Vec2& x) -> double
 		{
 			constexpr double p = 1.0 / 4.0f;
+
 			return p;
 		};
 
@@ -51,6 +52,7 @@ void hbe::StratifiedSamplingTest::Prepare() noexcept
 				std::uniform_real_distribution dist(rangeStart, rangeEnd);
 
 				double value = dist(gen);
+
 				return value;
 			};
 
@@ -78,6 +80,7 @@ void hbe::StratifiedSamplingTest::Prepare() noexcept
 				static std::uniform_real_distribution dist(-1.0, 1.0);
 
 				Vec2 value(dist(gen), dist(gen));
+
 				return value;
 			};
 
@@ -90,6 +93,7 @@ void hbe::StratifiedSamplingTest::Prepare() noexcept
 				if (!bOk)
 				{
 					ls << "failed to perform MC integration" << lferr;
+
 					return;
 				}
 
@@ -109,9 +113,7 @@ void hbe::StratifiedSamplingTest::Prepare() noexcept
 
 			ls << "Uniform Random: Average = " << average << ", Std. Deviation = " << sqrt(variance) << lf;
 		}
-
 		{
-
 			double average = 0;
 			double results[numRepeat];
 
@@ -121,6 +123,7 @@ void hbe::StratifiedSamplingTest::Prepare() noexcept
 				if (!bOk)
 				{
 					ls << "failed to perform MC integration" << lferr;
+
 					return;
 				}
 

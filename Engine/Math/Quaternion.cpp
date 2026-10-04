@@ -2,13 +2,11 @@
 
 #include "Quaternion.h"
 
-
 #ifdef __UNIT_TEST__
 #include "Vector3.h"
 
 namespace hbe
 {
-
 void QuaternionTest::Prepare() noexcept
 {
 	static const TQuat x(90.0f, 0.0f, 0.0f);
@@ -153,7 +151,6 @@ void QuaternionTest::Prepare() noexcept
 		}
 	});
 }
-
 } // namespace hbe
 
 #endif //__UNIT_TEST__

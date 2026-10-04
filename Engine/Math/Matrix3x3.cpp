@@ -2,6 +2,7 @@
 
 #include "Matrix3x3.h"
 
+
 namespace hbe
 {
 template class Matrix3x3<float>;

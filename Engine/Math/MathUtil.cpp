@@ -2,7 +2,6 @@
 
 #include "MathUtil.h"
 
-
 #ifdef __UNIT_TEST__
 
 void hbe::MathUtilTest::Prepare() noexcept

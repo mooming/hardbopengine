@@ -6,6 +6,7 @@
 #include "Quaternion.h"
 #include "Vector3.h"
 
+
 namespace hbe
 {
 /// @brief An Oriented Bounding Box class for collision detection.
@@ -93,7 +94,6 @@ public:
 		return false;
 	}
 
-
 private:
 	[[nodiscard]] TVec3 ToOBBSpace(const TVec3& objSpacePoint) const noexcept
 	{
@@ -118,7 +118,6 @@ private:
 
 namespace hbe
 {
-
 class OBBTest final : public TestCollection
 {
 public:

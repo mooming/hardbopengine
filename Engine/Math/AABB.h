@@ -4,10 +4,12 @@
 
 #include <limits>
 #include <ostream>
+
 #include "MathUtil.h"
 #include "String/StringBuilder.h"
 #include "Vector2.h"
 #include "Vector3.h"
+
 
 namespace hbe
 {
@@ -210,7 +212,6 @@ TStringBuilder& operator<<(TStringBuilder& os, const AABB<T>& bbox) noexcept
 
 	return os;
 }
-
 } // namespace hbe
 
 #ifdef __UNIT_TEST__
@@ -218,7 +219,6 @@ TStringBuilder& operator<<(TStringBuilder& os, const AABB<T>& bbox) noexcept
 
 namespace hbe
 {
-
 class AABBTest final : public TestCollection
 {
 public:
@@ -230,7 +230,6 @@ public:
 protected:
 	void Prepare() noexcept override;
 };
-
 } // namespace hbe
 
 #endif //__UNIT_TEST__

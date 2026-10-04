@@ -5,9 +5,9 @@
 
 #include "MonteCarloIntegrator.h"
 
-
 #ifdef __UNIT_TEST__
 #include <random>
+
 #include "Core/Constants.h"
 
 void hbe::MonteCarloIntegrationTest::Prepare() noexcept
@@ -23,6 +23,7 @@ void hbe::MonteCarloIntegrationTest::Prepare() noexcept
 		auto func = [](const Vec2& x) -> double
 		{
 			double r = x.x * x.x + x.y * x.y;
+
 			return r <= 1.0 ? 1.0 : 0.0f;
 		};
 
@@ -30,6 +31,7 @@ void hbe::MonteCarloIntegrationTest::Prepare() noexcept
 		auto pdf = [](const Vec2& x) -> double
 		{
 			constexpr double p = 1.0 / 4.0f;
+
 			return p;
 		};
 
@@ -42,6 +44,7 @@ void hbe::MonteCarloIntegrationTest::Prepare() noexcept
 			Vec2 x;
 			x.x = dist(gen);
 			x.y = dist(gen);
+
 			return x;
 		};
 
@@ -61,6 +64,7 @@ void hbe::MonteCarloIntegrationTest::Prepare() noexcept
 			if (!bOk)
 			{
 				ls << "failed to perform MC integration" << lferr;
+
 				return;
 			}
 
@@ -125,6 +129,7 @@ void hbe::MonteCarloIntegrationTest::Prepare() noexcept
 			if (!bOk)
 			{
 				ls << "failed to perform MC integration" << lferr;
+
 				return;
 			}
 

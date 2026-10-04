@@ -10,6 +10,7 @@
 
 #include "Core/CommonMacros.h"
 
+
 namespace hbe
 {
 /// @brief A Monte Carlo integrator for numerical integration using importance sampling.
@@ -52,7 +53,6 @@ public:
 		return true;
 	}
 };
-
 } // namespace hbe
 
 #ifdef __UNIT_TEST__
@@ -60,7 +60,6 @@ public:
 
 namespace hbe
 {
-
 class MonteCarloIntegrationTest final : public TestCollection
 {
 public:

@@ -4,6 +4,7 @@
 
 #include "MathUtil.h"
 
+
 namespace hbe
 {
 /// @brief A 2D vector template class.
@@ -87,7 +88,6 @@ TOutStream& operator<<(TOutStream& os, const TFloat2& vec) noexcept
 
 namespace hbe
 {
-
 class Vector2Test final : public TestCollection
 {
 public:

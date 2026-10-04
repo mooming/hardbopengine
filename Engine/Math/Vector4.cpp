@@ -2,6 +2,7 @@
 
 #include "Vector4.h"
 
+
 namespace hbe
 {
 template class Vector4<float>;
@@ -48,7 +49,6 @@ void hbe::Vector4Test::Prepare() noexcept
 
 		time::TDuration heTime;
 		float dotResult = 0.0f;
-
 		{
 			time::ScopedTime measure(heTime);
 

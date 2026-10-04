@@ -5,9 +5,9 @@
 #include <algorithm>
 #include <cmath>
 
+
 namespace hbe
 {
-
 PerlinNoise::PerlinNoise(TUInt inSeed) noexcept
 	: seed(inSeed)
 	, randomState(inSeed)
@@ -144,7 +144,6 @@ TReal PerlinNoise::Grad(TUInt hash, TReal x, TReal y, TReal z) noexcept
 			return 0.0f;
 	}
 }
-
 } // namespace hbe
 
 #ifdef __UNIT_TEST__
@@ -177,10 +176,12 @@ void hbe::PerlinNoiseTest::Prepare() noexcept
 				{
 					++sameSeed;
 				}
+
 				if (a.Noise(x, y, z) != c.Noise(x, y, z))
 				{
 					++otherSeed;
 				}
+
 				++samples;
 			}
 		}
@@ -264,6 +265,7 @@ void hbe::PerlinNoiseTest::Prepare() noexcept
 					{
 						++nonFinite;
 					}
+
 					largest = std::max(largest, std::abs(value));
 				}
 			}

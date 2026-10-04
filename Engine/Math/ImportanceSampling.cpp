@@ -6,9 +6,9 @@
 #include "ImportanceResampling.h"
 #include "StratifiedSampling.h"
 
-
 #ifdef __UNIT_TEST__
 #include <random>
+
 #include "Core/Constants.h"
 
 void hbe::ImportanceResamplingTest::Prepare() noexcept
@@ -42,6 +42,7 @@ void hbe::ImportanceResamplingTest::Prepare() noexcept
 		auto randomGen = [&]() -> double
 		{
 			static std::uniform_real_distribution uniformDist(0.0, 1.0);
+
 			return uniformDist(gen);
 		};
 
@@ -53,6 +54,7 @@ void hbe::ImportanceResamplingTest::Prepare() noexcept
 		if (!integrator.Resample(func, pdf, randomGen, norm, numSrcSamples))
 		{
 			ls << "failed to perform MC integration importance resampling" << lferr;
+
 			return;
 		}
 
@@ -62,6 +64,7 @@ void hbe::ImportanceResamplingTest::Prepare() noexcept
 		if (weights.size() != samples.size())
 		{
 			ls << "number of weights and number of samples are not matched" << lferr;
+
 			return;
 		}
 
@@ -110,6 +113,7 @@ void hbe::ImportanceResamplingTest::Prepare() noexcept
 		auto randomGenInRange = [&](double rangeStart, double rangeEnd) -> double
 		{
 			std::uniform_real_distribution rangeDist(rangeStart, rangeEnd);
+
 			return rangeDist(gen);
 		};
 
@@ -119,6 +123,7 @@ void hbe::ImportanceResamplingTest::Prepare() noexcept
 		{
 			auto x = stratifiedSampler.Sample(randomGenInRange);
 			stratifiedSampler.ChangeSubGroup();
+
 			return x;
 		};
 
@@ -129,6 +134,7 @@ void hbe::ImportanceResamplingTest::Prepare() noexcept
 		if (!integrator.Resample(func, pdf, randomGen, norm, numSrcSamples))
 		{
 			ls << "failed to perform MC integration importance resampling" << lferr;
+
 			return;
 		}
 
@@ -138,6 +144,7 @@ void hbe::ImportanceResamplingTest::Prepare() noexcept
 		if (weights.size() != samples.size())
 		{
 			ls << "number of weights and number of samples are not matched" << lferr;
+
 			return;
 		}
 
@@ -186,6 +193,7 @@ void hbe::ImportanceResamplingTest::Prepare() noexcept
 		auto randomGenInRange = [&](double rangeStart, double rangeEnd) -> double
 		{
 			std::uniform_real_distribution rangeDist(rangeStart, rangeEnd);
+
 			return rangeDist(gen);
 		};
 
@@ -195,6 +203,7 @@ void hbe::ImportanceResamplingTest::Prepare() noexcept
 		{
 			auto x = stratifiedSampler.Sample(randomGenInRange);
 			stratifiedSampler.ChangeSubGroup();
+
 			return x;
 		};
 
@@ -206,6 +215,7 @@ void hbe::ImportanceResamplingTest::Prepare() noexcept
 		if (!integrator.Resample(func, pdf, randomGen, norm, numSrcSamples))
 		{
 			ls << "failed to perform MC integration importance resampling" << lferr;
+
 			return;
 		}
 
@@ -216,12 +226,14 @@ void hbe::ImportanceResamplingTest::Prepare() noexcept
 		if (weights.size() != samples.size())
 		{
 			ls << "number of weights and number of samples are not matched" << lferr;
+
 			return;
 		}
 
 		if (weights.empty())
 		{
 			ls << "empty resampling" << lferr;
+
 			return;
 		}
 
@@ -255,6 +267,7 @@ void hbe::ImportanceResamplingTest::Prepare() noexcept
 			if (!integrator.Resample(func, pdf, randomGen, norm, numSrcSamples))
 			{
 				ls << "failed to perform MC integration importance resampling" << lferr;
+
 				return;
 			}
 
@@ -282,6 +295,7 @@ void hbe::ImportanceResamplingTest::Prepare() noexcept
 		auto randomGenInRange = [&](double rangeStart, double rangeEnd) -> double
 		{
 			std::uniform_real_distribution rangeDist(rangeStart, rangeEnd);
+
 			return rangeDist(gen);
 		};
 
@@ -291,6 +305,7 @@ void hbe::ImportanceResamplingTest::Prepare() noexcept
 		{
 			auto x = stratifiedSampler.Sample(randomGenInRange);
 			stratifiedSampler.ChangeSubGroup();
+
 			return x;
 		};
 
@@ -302,6 +317,7 @@ void hbe::ImportanceResamplingTest::Prepare() noexcept
 		if (!integrator.Resample(func, pdf, randomGen, norm, numSrcSamples))
 		{
 			ls << "failed to perform MC integration importance resampling" << lferr;
+
 			return;
 		}
 
@@ -312,12 +328,14 @@ void hbe::ImportanceResamplingTest::Prepare() noexcept
 		if (weights.size() != samples.size())
 		{
 			ls << "number of weights and number of samples are not matched" << lferr;
+
 			return;
 		}
 
 		if (weights.empty())
 		{
 			ls << "empty resampling" << lferr;
+
 			return;
 		}
 
@@ -353,6 +371,7 @@ void hbe::ImportanceResamplingTest::Prepare() noexcept
 			if (!integrator.Resample(func, pdf, randomGen, norm, numSrcSamples * (i + 1)))
 			{
 				ls << "failed to perform MC integration importance resampling" << lferr;
+
 				return;
 			}
 

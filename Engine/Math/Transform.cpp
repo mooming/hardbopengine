@@ -2,6 +2,7 @@
 
 #include "Transform.h"
 
+
 namespace hbe
 {
 template class Transform<float>;
@@ -14,7 +15,6 @@ template class Transform<double>;
 
 namespace hbe
 {
-
 void TransformTest::Prepare() noexcept
 {
 	AddTest("Default Constructor", [this](auto& ls)
@@ -114,7 +114,6 @@ void TransformTest::Prepare() noexcept
 		}
 	});
 }
-
 } // namespace hbe
 
 #endif //__UNIT_TEST__

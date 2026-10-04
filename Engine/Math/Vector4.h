@@ -7,6 +7,7 @@
 #include "Vector2.h"
 #include "Vector3.h"
 
+
 namespace hbe
 {
 /// @brief A 4D vector template class.
@@ -171,7 +172,6 @@ TOutStream& operator<<(TOutStream& os, const TFloat4& v) noexcept
 
 namespace hbe
 {
-
 class Vector4Test final : public TestCollection
 {
 public:

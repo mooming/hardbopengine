@@ -3,10 +3,12 @@
 #pragma once
 
 #include <iostream>
+
 #include "Matrix3x3.h"
 #include "Matrix4x4.h"
 #include "Quaternion.h"
 #include "Vector3.h"
+
 
 namespace hbe
 {
@@ -150,7 +152,6 @@ RigidTransform<T, N>::RigidTransform(const TMat4x4& mat) noexcept
 {
 	Assert(mat.IsOrthogonal(), "RigidTransform::RigidTransform(Mat4x4) - matrix not orthogonal");
 }
-
 } // namespace hbe
 
 #ifdef __UNIT_TEST__

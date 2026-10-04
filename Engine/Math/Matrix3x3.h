@@ -4,9 +4,11 @@
 
 #include <array>
 #include <iostream>
+
 #include "CoordinateOrientation.h"
 #include "Matrix2x2.h"
 #include "Vector3.h"
+
 
 namespace hbe
 {
@@ -302,7 +304,6 @@ std::ostream& operator<<(std::ostream& os, const Matrix3x3<T>& mat) noexcept
 
 namespace hbe
 {
-
 class Matrix3x3Test final : public TestCollection
 {
 public:

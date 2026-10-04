@@ -3,11 +3,13 @@
 #pragma once
 
 #include <ostream>
+
 #include "HSTL/HVector.h"
 #include "Log/Logger.h"
 #include "MathUtil.h"
 #include "Memory/Optional.h"
 #include "UniformTransform.h"
+
 
 namespace hbe
 {
@@ -289,7 +291,6 @@ LogStream& operator<<(LogStream& os, const Transform<T>& t) noexcept
 
 	return os;
 }
-
 } // namespace hbe
 
 #ifdef __UNIT_TEST__
