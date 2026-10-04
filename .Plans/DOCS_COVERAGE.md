@@ -84,7 +84,7 @@ Source comments are banned, so a missing page means the contract is nowhere.
 | Core | TaskStreamAffinityBase | class | `Engine/Core/TaskStreamAffinity.h` | `docs/Core/TaskStreamAffinityBase/index.html` | 6 | yes | documented |
 | Core | TaskStreamAffinityTest | test-only | `Engine/Core/TaskStreamAffinity.h` | `docs/Core/TaskStreamAffinityTest/index.html` | 0 | — | test-only — owns a Coverage row |
 | Core | TaskStreamIndex | utility header | `Engine/Core/TaskStreamIndex.h` | `docs/Core/TaskStreamIndex/index.html` | 0 | yes | documented |
-| Core | TaskSystem | class | `Engine/Core/TaskSystem.h` | `docs/Core/TaskSystem/index.html` | 43 | yes | documented |
+| Core | TaskSystem | class | `Engine/Core/TaskSystem.h` | `docs/Core/TaskSystem/index.html` | 44 | yes | documented |
 | Core | TaskSystemTest | test-only | `Engine/Core/TaskSystem.h` | `docs/Core/TaskSystemTest/index.html` | 0 | — | test-only — owns a Coverage row |
 | Core | Time | utility header | `Engine/Core/Time.h` | `docs/Core/Time/index.html` | 0 | yes | documented |
 | Core | TimeTest | test-only | `Engine/Core/Time.h` | `docs/Core/TimeTest/index.html` | 0 | — | test-only — owns a Coverage row |

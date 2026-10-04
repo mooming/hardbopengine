@@ -71,6 +71,7 @@ public:
 	void RequestShutDown() noexcept;
 	void RequestOtherStreamsClose() noexcept;
 	[[nodiscard]] bool AreUserStreamsClosed() noexcept;
+	[[nodiscard]] bool IsEngineLoopThread() const noexcept;
 	void JoinAndClear() noexcept;
 
 	void Update() noexcept;

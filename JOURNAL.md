@@ -64,6 +64,42 @@ was removing violations. And the `Deque` iterators add **2 rows to that file's e
 the same violation class the layout commit already has to fix, disclosed here rather than left to be
 discovered. `LinkedList.h` and `BoundedPriorityQueue.h` gained no findings.
 
+## 2026-10-04 20:15 — the setup policy gets a name, and `SetLoggerStream` checks it itself
+
+**Cause.** The owner's direction was a simple policy: setup and configuration belong to the base thread. The
+change already in PR #13 could only check *not inside a task pass*, because the identity the policy is really
+stated against — `TaskSystem::engineLoopThreadID` — was a private member that `docs/Core/TaskSystem/index.html`
+described in its own property table as "no accessor exposes it".
+
+**Measured before choosing.** `Assert(TaskSystem::IsBaseThread())` was tried as instructed and aborts the engine
+at startup, the assert firing in `BuildStreams` two lines before the install it guards. That predicate returns
+`StreamIndex == BaseStreamIndex` against a `thread_local` that is `NonStreamIndex` outside every pass and
+restored to it when a pass ends, so it means *"draining the base stream right now"* — false precisely where the
+policy wants it true. `Logger::threadID` is no better: it names the thread the logger writes from, which is the
+IO stream's.
+
+**What landed.** `TaskSystem::IsEngineLoopThread() const` answers against the member captured in the constructor's
+initializer list, and the two comparisons that previously re-derived it inside `TaskSystem` — `TaskSystem.cpp:190`
+and the bare `Assert` at the top of `BuildStreams` — now call it, so there is one expression of the policy.
+`Logger::SetLoggerStream` asserts it via `Engine::Get().GetTaskSystem()` and keeps the pass-context check as
+well, because base-thread membership alone does not exclude the engine loop thread configuring *while* it drains
+a base-stream task that is waiting on the IO stream — the lock the driver thread holds across `Update()` is the
+one that pass would need. Both checks sit ahead of the `lock_guard`; behind it, the thread is already blocked in
+the acquisition the checks exist to prevent. Per the review's Joker finding, the messages now lead with the rule
+and carry a number: the thread name, and the current stream index.
+
+**Recorded, because the reader will reach for it.** `docs/Core/TaskSystem/is-engine-loop-thread.html` is the 44th
+method page and states the distinction from `IsBaseThread` outright; `docs/Log/Logger/set-logger-stream.html`
+carries both checks, why each is needed, and the two predicates that do not work. The property-table row that
+said no accessor exposes `engineLoopThreadID` is corrected in the same commit.
+
+**Gate.** Debug, Dev and Release build; Debug and Dev run 375 testlets with the asserts firing 0 times and only
+the already-logged `WindowTest` failure; Release still prints that it contains no tests. `comments.py`,
+`blank_lines.py`, `includes.py`, `layout.py` clean on the three sources; `clang-format` reports only the findings
+each file already had; `docs_pass.py signatures docs/Core/TaskSystem` reports 44 pages verbatim against the
+header, 0 problems; `docs_methods.py Core` and `docs_coverage.py check Core` are clean; `htmlcheck.py` clean on
+the three touched pages.
+
 ## 2026-10-04 19:40 — Container judgement review: 55 findings, and four of them are defects not style
 
 **Context.** The owner chose the judgement review before the fix cycle, so this pass edited nothing: 20
@@ -131,6 +167,7 @@ exists. A stale review of a module is worse than no review, because it is read a
 page and nothing linked it, so it goes rather than moving under `docs/`, where a dead verdict would be
 filed as documentation. Two `.cpp` files with prose that **is** current get the opposite treatment — new
 design documents, then the strip.
+
 ## 2026-10-04 18:45 — the uncommitted pile is reviewed and filed, and a fatal log line is reverted on measurement
 
 **Cause.** The owner asked for a review of everything `git status` still held and for commits. The tree
@@ -257,7 +294,6 @@ have no `.module.config`.
 | clang-format through the gate's `--collapse-seam` tolerance | each touched file's only raw deviation is the rule-A3 preamble seam, at HEAD too |
 | `htmlcheck.py` over the 67 changed and new HTML pages | 0 pages with problems |
 | `makebuild --test-run` | 3/4; `03_external_library` fails identically with this change stashed — pre-existing |
-
 
 ## 2026-10-04 16:12 — `__TEST__` and `__UNIT_TEST__` become build inputs, not command-line ones
 
@@ -516,7 +552,6 @@ duplicating an index I had not finished reading; reading the receiving document 
 
 **Surfaced, not fixed.** The newly honest kinds demand 11 pages tree-wide; 6 belong to Math, Memory, OSAL and
 Renderer and are backlog for their modules. `Engine/Container/AtomicStackView.h:17 ACCESS-EMPTY` is still open.
-
 
 ## 2026-10-04 01:05 — a strip re-opens the paragraph layer: two checkers taught, one skill step added
 
@@ -2227,6 +2262,7 @@ The owner drove this in three moves, and each one removed a thing I had left in:
 * My equivalence witness was botched twice: a `sed` with an illegal byte sequence produced a baseline file that parsed to 42 records, and a normaliser that replaced digits with `N` before grepping for `TC0` produced 0 comparable lines. So the refactor's equivalence claim rests on the harness's in-band checks — registered versus executed, no testlet running twice, 372 testlets and 59 collections green in all three configurations — and **not** on the byte-for-byte log comparison I originally planned. Stating that is the difference between a weak witness and an unverifiable one.
 
 Docs: `Testlet` has its page, and the pages my own commits had turned into falsehoods — `TTestFunc`, the name-and-pair vector, `TestCollection::Start`, the old `AddTest` signature, `TestEnv::Start`, and the `RunTests` module story — were corrected rather than left to mislead, with two pages about removed functions carrying a Removed banner instead of a silent deletion or a silent lie. Authoring the replacement method pages for those two is owed work and is recorded as such.
+
 ## 2026-09-28 03:10 - a testlet is a task: the Engine::Run guardrail closed, and closed by the shape of the suite rather than by a witness
 
 Owner's direction was that a task should be a testlet - one test lambda - dispatched on the base stream, with the window log print scoped
@@ -2255,6 +2291,7 @@ condition in my own patch script could not fire, silently dropping `FinalizeColl
 
 Registration count is now known before the run and the executed count after it, and any gap is a failure. That is the whole guardrail: three
 numbers the harness owns, and no witness I wrote to observe the loop from outside.
+
 ## 2026-09-28 01:40 - the shutdown-rescue detector landed, killed one mutant and lost another, and says so in its own header
 
 The owner's arrangement was already the implemented one: `RunTests()` posts the suite onto the base stream and `Engine::Run` pumps it.
@@ -2285,6 +2322,7 @@ than letting a reader assume the guard is wider than it is.
   code instead of trusting my intent. It is now a dedicated flag that `GetFailureCount()` folds in.
 
 Gate: 59 collections green in Debug, Dev and Release, 0 mechanical violations, tree clean, nothing pushed.
+
 ## 2026-09-28 00:55 - the owner settled the `Engine::Run` guardrail by changing the harness, not by adding a witness
 
 Owner's arrangement: the suite runs on the base stream while the other streams work independently. That retires the item I had parked
@@ -2309,6 +2347,7 @@ actual regression I shipped in `a8946ea`, and it has to be caught by the harness
 
 Not implemented in this turn, deliberately: a half-migrated harness invalidates every gate, since all three configurations are gated on
 this executable, so the change has to land green as whole increments rather than begin here and stop mid-way.
+
 ## 2026-09-27 22:45 - the last of the four guardrails got its test, and running a mutant found a hole in the test I had just written
 
 Both numbered todos are now done. `e74e05c` adds the D4 RAII-on-drop witness: work driven to each of the three drop sites - released
@@ -2334,6 +2373,7 @@ next person nothing about why both lanes are covered.
 Gate: 59 collections green in Debug/Dev/Release, 0 mechanical violations, tree clean, nothing pushed. What is left is listed in
 `.Plans/TODO_task_system.md`'s status line and is not in the numbered list: the Memory owner's `AtomicStackView` ABA fix, the
 `Engine::Run` guardrail (needs a headless-safe target - a decision), and the two absent API pages under `docs/`.
+
 ## 2026-09-27 22:15 - my journal timestamps for this session were invented, and the six headers above are now read from the clock
 
 Answering a question about when two todos would be done made me run `date` and `git log`, and both disagreed with everything I had
@@ -2396,6 +2436,7 @@ legitimately use. And one test failed because it demanded a notice the fixture n
 same defect class as asserting an unimplementable ratio: my expectation, not the engine, was wrong.
 
 Gate: 59 collections green in Debug, Dev and Release; 0 mechanical violations; build gate 12/12.
+
 ## 2026-09-27 20:35 - B3d steps 1-2: the age clock went on the task, because the plan's design could not be written
 
 `feb1c73`. The plan said: stamp `WorkItem::offerTime` in its constructor and let a sub-slice inherit with one line,
@@ -2434,6 +2475,7 @@ weaken it - the fix was to pin both sides properly, with a non-zero stamp so the
 
 Sizes: `decidedTaskBytes` 192 -> **200**, `decidedWorkItemBytes` 72 -> **80**, record width held at **256** by
 `reservedToCacheLine[24]`. Gate: 59 collections green in Debug/Dev/Release, 0 violations, build gate 12/12, nothing pushed.
+
 ## 2026-09-27 20:02 - `check.sh` no longer reports success about nothing: an empty rev-scope falls back to the code underneath
 
 The blind spot found at 14:30 is fixed in the tool rather than memorised. An empty **rev-scope** now resolves the newest ancestor of
@@ -2460,6 +2502,7 @@ My own botched first attempt at this patch is worth one line too: I built the ba
 literal `$body` plus a detached loop into the script. `bash -n` caught it as "syntax ok" only *after* I had restored from the backup I
 took before starting - which is the same rule as committing before mutating, applied one layer over: **take the copy before the edit,
 not after the failure.**
+
 ## 2026-09-27 17:07 - the gate's own blind spot: `check.sh` scopes to the **last** commit, so a docs commit hides the code one
 
 Twice today I shipped something while `check.sh` reported a violation, and the second time I disclosed it instead of chasing it.
@@ -2478,6 +2521,7 @@ more dangerous than one that fails, because it retires the question. The count w
 I assumed, which is how a metric stays green while a defect ships.
 
 Container change itself is unchanged in behaviour: 59 collections green in Debug, Dev and Release, build gate 12/12.
+
 ## 2026-09-27 16:57 - `Pop` now reports the level it served from, and the two mutants say precisely what that is worth
 
 Step 1 of `PLAN_dynamic_priority.md` is landed and needed no decision from the owner, unlike steps 2-4. `Pop` overwrites the item's
@@ -2506,6 +2550,7 @@ version.
 
 Standing decision 6 (derived vs maintained keys, and the aging step) still gates steps 2-4. Gate: 59 collections green in
 Debug/Dev/Release, `check.sh` 0 violations, build gate 12/12, tree clean at `9a3bf64`, nothing pushed.
+
 ## 2026-09-27 16:21 - the lane is now the caller's choice, the priority contract is written down, and the dynamic-priority design is specified but not started
 
 **The abandonment notice is complete.** Opt-in `FAbandonedNotice` (function pointer + `void*`, `nullptr` by default) carried on the
@@ -2584,6 +2629,7 @@ behaviour change, owner's call), S2 delete the lane and its rate machinery (larg
 call), S3 fill the lane directly in the drain test - `EnqueuePriority` is public - and say out loud why it is filled by hand, S4
 collapse `AbandonHeldWork`'s two loops into one so a per-loop mutant stops being expressible. Recommend S3+S4 now, S1-versus-S2 as one
 owner decision, because code and documents cannot both stay as they are.
+
 ## 2026-09-25 10:10 — the abandonment notice is documented, and two of my own doc claims were wrong before I committed them
 
 `docs/TaskSystemGuide.md` §14 covers the API, why the notice rides on the queue item rather than the task, the three rules the
@@ -2603,6 +2649,7 @@ and the #16 test `Shutdown abandoned work on the base stream` asserts on pending
 zero and the test must move to a fired-notice counter in the same commit. That is a teardown-semantics change in the area where
 this project's deadlocks lived, and the session that understands those semantics had no budget left; the design and the trap are
 in `.Plans/PLAN_abandonment_notice.md` instead of a half-done edit in `CloseDrivenStream`.
+
 ## 2026-09-25 09:55 — Design B landed: the base stream's drop path is finally under test, and the wiring mutant died to it
 
 `Work dropped because its task was released notifies the requestor through the stream` creates a task, asks for the notice,
@@ -3417,6 +3464,7 @@ race-free shape is to observe from inside the drain: `Produce` runs on the drain
 ask ever happened while its own observation says the gate was closed", which needs no knowledge of window timing at all, and it
 fails by name under the mutant that removes the gate - the same mutant that survived when I tested the drain without this check.
 Recorded in task #10 as the design; implementation is the next step.
+
 ## The resume test does have an assertion of its own, and one unreproducible runner flake
 
 The open question from the `WorkItem` commit was whether

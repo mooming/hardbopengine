@@ -244,12 +244,16 @@ void Logger::DriverLoop() noexcept
 
 void Logger::SetLoggerStream(TaskStream* stream) noexcept
 {
+	Assert(Engine::Get().GetTaskSystem().IsEngineLoopThread(),
+		   "Setup and configuration belong to the engine loop thread, and this call is not on it. Thread name = ",
+		   TaskSystem::GetCurrentThreadName().c_str(),
+		   ". docs/Log/Logger/set-logger-stream.html carries the contract and why it is one thread's job.");
+
 	Assert(TaskSystem::GetCurrentStreamIndex() == TaskSystem::NonStreamIndex,
-		   "SetLoggerStream is setup and configuration, and it was called from inside a task pass. DriverLoop "
-		   "holds driverLock across TaskStream::Update, so a call made there is one thread waiting for a pass "
-		   "itself is running - the mutex is not recursive and the wait cannot end. The two callers in TaskSystem "
-		   "run on the engine loop thread, which BuildStreams asserts and JoinAndClear gates on; this check is "
-		   "what keeps any third caller from deadlocking instead of merely waiting.");
+		   "Configuration may not run inside a task pass. Current stream index = ", TaskSystem::GetCurrentStreamIndex(),
+		   ". DriverLoop holds driverLock across TaskStream::Update and tasks run in that region, so this call from "
+		   "the IO stream would be one thread waiting for a pass itself is running - the mutex is not recursive and "
+		   "the wait cannot end.");
 
 	std::lock_guard lock(driverLock);
 
