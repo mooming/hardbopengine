@@ -4,6 +4,21 @@ To maintain high code quality and consistency, please adhere to the following gu
 
 ### Naming Conventions
 - **Classes, Functions, and Types**: Use `PascalCase` (e.g., `MemoryManager`, `ConfigParam`). Prefer using `class` instead of `struct` unless it is a Plain Old Data (POD) type.
+- **Thread-Restricted Functions**: The one exception to `PascalCase` above. A function callable only from one specific
+  thread may carry that thread as a suffix after an underscore — `void SetLoggerTaskStream_MainThread(TaskStream* stream);`
+  — because a restriction on the calling thread is the part of a contract a caller is most likely to violate, and a
+  suffix inside the name cannot be skimmed the way a comment or a `/// API reference:` pointer can. Three conditions
+  make this a rule rather than a licence:
+    - The segment after the underscore names a thread the task system already names — `MainThread`, the same thread
+      `MainThreadTaskQueue` and `DispatchToMainThread` mean — so no call site may invent a thread to put in a name.
+    - The function's first statement is an `Assert` on that identity, before any lock is taken, so the suffix is
+      enforced and cannot decay into decoration. A check placed behind the acquisition it exists to prevent reports
+      nothing.
+    - The API reference page owns the contract, including what the check does not cover.
+
+  The underscore does not survive into a derived reference page stem — `docs_methods.py` concatenates, so
+  `SetLoggerTaskStream_MainThread` is documented at `setloggertaskstreammainthread.html`. That is the cost the
+  exception accepts in exchange for the restriction being visible at the call site.
 
 - **Variables**: Use `camelCase` (e.g., `defaultValue`, `isDone`). Do not use an `m_` prefix for member variables, and do not use Hungarian notation.
 - **Return-by-Reference Parameters**: Prefix out-parameters (write-only references) with `out` (e.g., `bool TryParse(const char* text, int& outResult);`). Prefix in-out parameters (read-write references) with `inOut` (e.g., `void Normalize(Vector3& inOutVector);`).

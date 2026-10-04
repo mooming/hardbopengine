@@ -1,5 +1,39 @@
 # Journal
 
+## 2026-10-04 22:10 — the `_MainThread` suffix is a rule now, and the naming conflict is closed
+
+**Cause.** The 21:05 entry left the underscore undecided — "open, and deliberately not mine to close". The owner
+closed it in one clause: *prefer `_MainThread` since it's more distinct.* The name stays
+`SetLoggerTaskStream_MainThread`, so this entry changes no code — it moves a decision from a conversation into the two
+places a reader meets it.
+
+**Why the distinctness argument is better than it sounds.** `PascalCase` hides the restriction:
+`SetLoggerTaskStreamOnMainThread` reads as a longer version of its own name and is skimmable into
+`SetLoggerStream`. The underscore is a visual seam, and a seam is exactly what a restriction on the calling thread
+needs, because that is the constraint a caller violates by not looking. The alternative I offered optimised the
+spelling; the owner optimised the reading, and the reading is what the function is protected by.
+
+**Recorded as an exception, not a hole.** `docs/CodingStandards.md` naming block now carries a
+**Thread-Restricted Functions** bullet directly under the `PascalCase` rule it excepts, with three conditions that
+keep it from becoming a licence: the segment after the underscore must name a thread the task system already names
+(`MainThread`, the same thread `MainThreadTaskQueue` and `DispatchToMainThread` mean), so nobody invents a thread for
+a name; the first statement must be an `Assert` on that identity, before any lock, so the suffix cannot decay into
+decoration; and the reference page owns the contract, including what the check does not cover. The bullet states the
+cost too — `docs_methods.py` derives page stems by concatenation, so the underscore disappears from
+`setloggertaskstreammainthread.html`. Without this bullet the next agent reads `docs/CodingStandards.md:6`, sees
+`PascalCase`, and flags the name exactly as I did at 21:05, which is a loop worth paying one bullet to break.
+
+**Scope of the idiom today.** One instance in the tree:
+
+```
+$ grep -rhoE "\b[A-Z][A-Za-z]+_[A-Z][A-Za-z]+\(" Engine/ Applications/ --include=*.h | sort | uniq -c
+   1 SetLoggerTaskStream_MainThread(
+```
+
+**Also closed.** PR #13 reached `master` carrying a paragraph that described this decision as open; the body now
+records the decision instead. The reference pages never mentioned the naming question, so nothing in `docs/` had to
+change beyond the standards bullet.
+
 ## 2026-10-04 21:05 — the owner renamed `SetLoggerStream`; the review fixed one inverted guard, and a naming conflict is open
 
 **Cause.** The owner edited `Logger` directly: `SetLoggerStream` became `SetLoggerTaskStream_MainThread`, the
