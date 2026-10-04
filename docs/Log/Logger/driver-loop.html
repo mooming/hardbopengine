@@ -79,7 +79,7 @@
 
 <h2 id="signature">Signature</h2>
 
-<pre><code><span class="kw">void</span> <span class="fn">DriverLoop</span>() noexcept;   // private</code></pre>
+<pre><code>void DriverLoop() noexcept</code></pre>
 
 <h2 id="description">Function description</h2>
 
@@ -184,7 +184,11 @@ joins it.</p>
   <li><strong>Lock discipline.</strong> <code>driverLock</code> is held <em>across</em>
       <code>Update()</code>, never around the pointer read alone. That is what makes
       <a href="set-logger-stream.html"><code>SetLoggerStream</code></a> with <code>nullptr</code> a synchronisation point
-      rather than a flag write.</li>
+      rather than a flag write. The cost of holding it that wide is that <code>Update</code> runs <em>tasks</em>, so a
+      task pass executes inside this mutex, and anything a task reaches that takes <code>driverLock</code> would be
+      waiting on a pass that is itself — <code>std::mutex</code> is not recursive. That is the reason
+      <a href="set-logger-stream.html"><code>SetLoggerStream</code></a> asserts instead of waiting, and the reason no
+      logging path takes this lock at all.</li>
   <li><strong>Starts with the logger, not with the first subsystem that wants to write a line</strong>, so a
       line emitted during early construction has somewhere to go. Logging never depends on the subsystem it is
       reporting on.</li>
