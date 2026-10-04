@@ -6,6 +6,7 @@
 #include <cstdint>
 #include <functional>
 
+
 namespace hbe
 {
 namespace BufferTypes
@@ -18,7 +19,5 @@ using TBufferData = uint8_t*;
 using TGenerateBuffer = std::function<void(TSize&, TBufferData&)>;
 using TReleaseBuffer = std::function<void(TSize, TBufferData)>;
 using TResizeBuffer = std::function<TSize(TSize)>;
-
 } // namespace BufferTypes
-
 } // namespace hbe

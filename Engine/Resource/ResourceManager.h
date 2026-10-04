@@ -7,9 +7,9 @@
 #include "Resource.h"
 #include "String/StaticString.h"
 
+
 namespace hbe
 {
-
 class Engine;
 class TaskSystem;
 
@@ -61,5 +61,4 @@ public:
 private:
 	void RequestTasks(TaskSystem& taskSys) noexcept;
 };
-
 } // namespace hbe

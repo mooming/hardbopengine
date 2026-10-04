@@ -11,14 +11,13 @@
 #include "Core/Debug.h"
 #include "HSTL/HString.h"
 
+
 namespace hbe
 {
-
 class BufferOutputStream final
 {
 public:
 	using This = BufferOutputStream;
-
 
 private:
 	Buffer& buffer;
@@ -79,6 +78,7 @@ public:
 	This& operator<<(T (&array)[N]) noexcept
 	{
 		Put<T>(array, N);
+
 		return *this;
 	}
 
@@ -135,9 +135,9 @@ private:
 		if (newIndex > size)
 		{
 			++errorCount;
+
 			return;
 		}
-
 		while (cursor < startIndex)
 		{
 			bufferBase[cursor++] = 0;
@@ -181,9 +181,9 @@ private:
 		if (newIndex > size)
 		{
 			++errorCount;
+
 			return;
 		}
-
 		while (cursor < startIndex)
 		{
 			bufferBase[cursor++] = 0;
@@ -198,7 +198,6 @@ private:
 		cursor = newIndex;
 	}
 };
-
 } // namespace hbe
 
 #ifdef __UNIT_TEST__

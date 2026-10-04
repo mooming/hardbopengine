@@ -12,6 +12,7 @@
 #include "OSAL/OSProtectionMode.h"
 #include "String/StaticString.h"
 
+
 namespace OS
 {
 class FileHandle;
@@ -52,6 +53,5 @@ template <typename T>
 
 	return Buffer(generator, releaser);
 }
-
 } // namespace BufferUtil
 } // namespace hbe

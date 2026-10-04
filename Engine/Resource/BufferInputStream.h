@@ -12,16 +12,15 @@
 #include "HSTL/HVector.h"
 #include "OSAL/Intrinsic.h"
 
+
 namespace hbe
 {
-
 class BufferInputStream final
 {
 public:
 	using This = BufferInputStream;
 	template <typename T>
 	using TVector = hbe::HVector<T>;
-
 
 private:
 	const Buffer& buffer;
@@ -75,6 +74,7 @@ public:
 	This& operator>>(T (&array)[N]) noexcept
 	{
 		Get<T>(array, N);
+
 		return *this;
 	}
 
@@ -82,6 +82,7 @@ public:
 	This& operator>>(TContainer& container) noexcept
 	{
 		Get<T>(container);
+
 		return *this;
 	}
 
@@ -102,6 +103,7 @@ private:
 		{
 			++errorCount;
 			value = defaultValue;
+
 			return;
 		}
 
@@ -123,6 +125,7 @@ private:
 		if (unlikely(length != size))
 		{
 			++errorCount;
+
 			return;
 		}
 
@@ -133,6 +136,7 @@ private:
 		if (unlikely(!IsValidIndex(newIndex)))
 		{
 			++errorCount;
+
 			return;
 		}
 
@@ -160,6 +164,7 @@ private:
 		if (length == 0)
 		{
 			array.clear();
+
 			return;
 		}
 
@@ -170,6 +175,7 @@ private:
 		if (unlikely(!IsValidIndex(newIndex)))
 		{
 			++errorCount;
+
 			return;
 		}
 
@@ -184,7 +190,6 @@ private:
 		cursor = newIndex;
 	}
 };
-
 } // namespace hbe
 
 #ifdef __UNIT_TEST__

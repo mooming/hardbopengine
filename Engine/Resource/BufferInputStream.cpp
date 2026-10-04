@@ -2,9 +2,9 @@
 
 #include "BufferInputStream.h"
 
+
 namespace hbe
 {
-
 using This = BufferInputStream;
 
 BufferInputStream::BufferInputStream(const Buffer& buffer) noexcept
@@ -116,6 +116,7 @@ This& BufferInputStream::operator>>(StaticString& str) noexcept
 	{
 		const static StaticString zeroStr("");
 		str = zeroStr;
+
 		return *this;
 	}
 
@@ -144,7 +145,6 @@ This& BufferInputStream::operator>>(const hbe::HString& str) noexcept
 {
 	return *this;
 }
-
 } // namespace hbe
 
 #ifdef __UNIT_TEST__
@@ -155,7 +155,6 @@ This& BufferInputStream::operator>>(const hbe::HString& str) noexcept
 
 namespace hbe
 {
-
 BufferInputStreamTest::BufferInputStreamTest()
 	: TestCollection(StringUtil::ToCompactClassName(__PRETTY_FUNCTION__))
 {
@@ -202,12 +201,14 @@ void BufferInputStreamTest::Prepare()
 			if (size != BufferSize)
 			{
 				ls << "Invalid size " << size << ", " << TestCount << " is expected." << lferr;
+
 				return;
 			}
 
 			if (data == nullptr)
 			{
 				ls << "Invalid data " << (void*) data << lferr;
+
 				return;
 			}
 
@@ -236,7 +237,6 @@ void BufferInputStreamTest::Prepare()
 		}
 
 		bis.ClearErrorCount();
-
 		{
 			int value = 0;
 			bis >> value;
@@ -329,7 +329,6 @@ void BufferInputStreamTest::Prepare()
 		values.push_back(111);
 		values.push_back(222);
 		values.push_back(333);
-
 		{
 			Buffer buffer = BufferUtil::GetMemoryBuffer<uint8_t>(4, 0);
 			BufferInputStream bis(buffer);
@@ -341,7 +340,6 @@ void BufferInputStreamTest::Prepare()
 				ls << "A size_t prefix cannot be read out of a 4 byte buffer." << lferr;
 			}
 		}
-
 		{
 			Buffer buffer = BufferUtil::GetMemoryBuffer<uint8_t>(BufferSize, 0);
 			BufferInputStream bis(buffer);
@@ -359,7 +357,6 @@ void BufferInputStreamTest::Prepare()
 			ls << "An empty array in the image must clear the container, it still holds " << values.size()
 			   << " element(s)." << lferr;
 		}
-
 		{
 			Buffer buffer = BufferUtil::GetMemoryBuffer<uint8_t>(BufferSize, 0);
 			BufferInputStream bis(buffer);
@@ -383,6 +380,5 @@ void BufferInputStreamTest::Prepare()
 		}
 	});
 }
-
 } // namespace hbe
 #endif //__UNIT_TEST__

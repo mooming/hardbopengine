@@ -8,9 +8,9 @@
 #include "OSAL/Intrinsic.h"
 #include "String/StringUtil.h"
 
+
 namespace hbe
 {
-
 Buffer::Buffer()
 	: size(0)
 	, data(nullptr)
@@ -72,6 +72,7 @@ StaticString Buffer::GetClassName() const noexcept
 {
 	using namespace StringUtil;
 	static auto className = ToCompactClassName(__PRETTY_FUNCTION__);
+
 	return className;
 }
 
@@ -80,7 +81,6 @@ void Buffer::SetReleaser(TReleaseBuffer&& releaseFunc)
 	releaser = std::move(releaseFunc);
 	releaseFunc = nullptr;
 }
-
 } // namespace hbe
 
 #ifdef __UNIT_TEST__
@@ -133,18 +133,19 @@ void BufferTest::Prepare()
 			if (size != BufferSize)
 			{
 				ls << "Invalid Size " << size << ", it should be " << BufferSize << '.' << lferr;
+
 				return;
 			}
 
 			if (data == nullptr)
 			{
 				ls << "Invalid data " << data << ", it should not be null." << lferr;
+
 				return;
 			}
 
 			mmgr.DeleteArray<int>((int*) (data), TestSize);
 		};
-
 		{
 			Buffer buffer(gen, rel);
 
@@ -172,6 +173,7 @@ void BufferTest::Prepare()
 		if (ptr == nullptr)
 		{
 			ls << "Failed to create a memory buffer" << lferr;
+
 			return;
 		}
 
@@ -191,7 +193,6 @@ void BufferTest::Prepare()
 		constexpr int TestSize = 26;
 		auto text = "abcdefghijklmnopqrstuvwxyz";
 		StaticString path("file_buffer_test.dat");
-
 		{
 			ls << "Prepare " << path << lf;
 
@@ -207,6 +208,7 @@ void BufferTest::Prepare()
 			if (!Open(fh, path, openMode))
 			{
 				ls << "File open faile. path = " << path << lferr;
+
 				return;
 			}
 
@@ -225,10 +227,10 @@ void BufferTest::Prepare()
 			if (!Close(std::move(fh)))
 			{
 				ls << "File open faile. path = " << path << lferr;
+
 				return;
 			}
 		}
-
 		{
 			ls << lf << "Map read/write test." << lf;
 
@@ -238,6 +240,7 @@ void BufferTest::Prepare()
 			if (ptr == nullptr)
 			{
 				ls << "Failed to create a memory buffer" << lferr;
+
 				return;
 			}
 
@@ -253,7 +256,6 @@ void BufferTest::Prepare()
 				ptr[i] = 'a';
 			}
 		}
-
 		{
 			ls << lf << "Read back test." << lf;
 			using namespace OS;
@@ -266,6 +268,7 @@ void BufferTest::Prepare()
 			if (!Open(fh, path, openMode))
 			{
 				ls << "File open faile. path = " << path << lferr;
+
 				return;
 			}
 
@@ -294,6 +297,7 @@ void BufferTest::Prepare()
 			if (!Close(std::move(fh)))
 			{
 				ls << "File open faile. path = " << path << lferr;
+
 				return;
 			}
 		}
@@ -308,6 +312,5 @@ void BufferTest::Prepare()
 		}
 	});
 }
-
 } // namespace hbe
 #endif //__UNIT_TEST__

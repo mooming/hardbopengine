@@ -2,12 +2,12 @@
 
 #include "ResourceManager.h"
 
-#include "../Engine/Engine.h"
 #include "Core/TaskSystem.h"
+#include "Engine/Engine.h"
+
 
 namespace hbe
 {
-
 ResourceManager::ResourceManager() noexcept = default;
 
 ResourceManager::~ResourceManager() noexcept = default;
@@ -19,5 +19,4 @@ void ResourceManager::PostUpdate(Engine& engine) noexcept
 void ResourceManager::RequestTasks(TaskSystem& taskSys) noexcept
 {
 }
-
 } // namespace hbe

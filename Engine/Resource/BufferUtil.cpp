@@ -8,12 +8,11 @@
 #include "OSAL/OSMapSyncMode.h"
 #include "String/StringUtil.h"
 
+
 namespace hbe
 {
-
 namespace BufferUtil
 {
-
 Buffer GenerateDummyBuffer(size_t size) noexcept
 {
 	auto generator = [size](TSize& outSize, TBufferData& outData)
@@ -160,7 +159,5 @@ Buffer GetWriteOnlyFileBuffer(StaticString path, size_t size)
 
 	return GenerateFileBuffer(path, openMode, protection, size);
 }
-
 } // namespace BufferUtil
-
 } // namespace hbe

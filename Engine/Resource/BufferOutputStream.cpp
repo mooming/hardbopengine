@@ -4,9 +4,9 @@
 
 #include "String/StringUtil.h"
 
+
 namespace hbe
 {
-
 static_assert(!std::is_copy_constructible<BufferOutputStream>::value);
 static_assert(!std::is_copy_assignable<BufferOutputStream>::value);
 static_assert(!std::is_move_constructible<BufferOutputStream>::value);
@@ -123,7 +123,6 @@ BufferOutputStream& BufferOutputStream::operator<<(const char* str) noexcept
 
 	return *this;
 }
-
 } // namespace hbe
 
 #ifdef __UNIT_TEST__
@@ -132,7 +131,6 @@ BufferOutputStream& BufferOutputStream::operator<<(const char* str) noexcept
 
 namespace hbe
 {
-
 BufferOutputStreamTest::BufferOutputStreamTest()
 	: TestCollection(StringUtil::ToCompactClassName(__PRETTY_FUNCTION__))
 {
@@ -214,7 +212,6 @@ void BufferOutputStreamTest::Prepare()
 
 		auto buffer = GetMemoryBuffer<int>(TestCount, -1);
 		BufferOutputStream bos(buffer);
-
 		{
 			int intArray[10] = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9};
 			bos << intArray;
@@ -259,7 +256,6 @@ void BufferOutputStreamTest::Prepare()
 
 		auto buffer = GetMemoryBuffer<int>(TestCount, -1);
 		BufferOutputStream bos(buffer);
-
 		{
 			int intArray[10] = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9};
 			bos << intArray;
@@ -295,6 +291,5 @@ void BufferOutputStreamTest::Prepare()
 		}
 	});
 }
-
 } // namespace hbe
 #endif //__UNIT_TEST__

@@ -6,9 +6,9 @@
 #include "Core/Debug.h"
 #include "String/StaticString.h"
 
+
 namespace hbe
 {
-
 class Buffer final
 {
 public:
@@ -16,7 +16,6 @@ public:
 	using TBufferData = BufferTypes::TBufferData;
 	using TGenerateBuffer = BufferTypes::TGenerateBuffer;
 	using TReleaseBuffer = BufferTypes::TReleaseBuffer;
-
 
 private:
 	TSize size;
@@ -66,7 +65,6 @@ public:
 		return size;
 	}
 };
-
 } // namespace hbe
 
 #ifdef __UNIT_TEST__
