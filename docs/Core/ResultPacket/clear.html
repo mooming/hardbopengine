@@ -73,7 +73,7 @@ header[DestinationByteIndex] = NoDestinationStream;</code></pre>
   Two memsets and one byte put back. The memset leaves both header bytes at 0, which is the wanted value for
   <code>KindNoResult</code> and the wrong one for the destination — a 0 destination byte is <em>stream 0</em>, the base
   stream — so the third line restores it to <code>NoDestinationStream</code>. Omitting that line would turn every cleared
-  packet into an address for the engine loop's own stream.
+  packet into an address for the main thread's own stream.
 </p>
 
 <p>

@@ -70,7 +70,7 @@ are entered and left around each pass rather than assumed for the lifetime of th
 association would hold an index for a thread that is doing something else between passes.
 </p>
 <p>
-Posted callables are served before the queues: they are the engine loop's own work, and the frame budget is spent on
+Posted callables are served before the queues: they are the main thread's own work, and the frame budget is spent on
 them before the stream's queues are asked for anything. They run with the queue's lock released, which is what lets a
 posted callable post again — a requirement of any work that schedules more of itself.
 </p>

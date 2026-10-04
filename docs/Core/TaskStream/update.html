@@ -71,7 +71,7 @@
   <tr><th>Step</th><th>What the pass does</th><th>What it decides</th></tr>
   <tr><td>1</td><td>Records <code>threadID</code> if unset, asserts the pump is not already running, sets <code>isPumping</code>, increments
     <code>drivenPassCount</code></td><td>Binds an undriven stream to its first driver, and makes a nested pump a checked error</td></tr>
-  <tr><td>2</td><td><code>postedTasks.ProcessTasks()</code></td><td>The engine loop's own work is served before this stream's queues are consulted</td></tr>
+  <tr><td>2</td><td><code>postedTasks.ProcessTasks()</code></td><td>The main thread's own work is served before this stream's queues are consulted</td></tr>
   <tr><td>3</td><td>Returns <code>false</code> if <code>closeRequested</code></td><td>A stream asked to close takes nothing more; the close path owns what it holds</td></tr>
   <tr><td>4</td><td>Enters this stream's index and <code>AllocatorScope</code>, registers a <code>restore</code> for the index</td><td>A shared driver does not belong to this stream for the whole of its life</td></tr>
   <tr><td>5</td><td>Reopens the window if asked (<code>budget.Reset()</code>, <code>drainPolicy.EndRound()</code>); applies a pending allowance request; runs <code>RunBudgetWindowPass()</code> on the base stream</td><td>Both budget writes happen on this thread, by the thread whose CPU they charge</td></tr>
@@ -87,7 +87,7 @@
 
 <div class="note">
   <strong>Posted callables run before the close check, so a stream asked to close still runs what was posted to it.</strong>
-  "Posted callables first: they are the engine loop's own work, and the frame budget is spent on them before the stream's queues are asked for
+  "Posted callables first: they are the main thread's own work, and the frame budget is spent on them before the stream's queues are asked for
   anything. They run with the queue's lock released, so a posted callable may post again."
   (<code>Engine/Core/TaskStream.cpp</code>) The consequence is that closing a stream never loses posted work, and that a posted callable can
   always re-post itself — which is exactly why the IO stream's shutdown drain has no deadline

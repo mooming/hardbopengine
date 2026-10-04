@@ -125,7 +125,7 @@
       <code>Task.RegistryGrowByRecords</code> and <code>Task.RegistryMaxRecords</code>, initialises the task registry from the
       first and second and caps it with the third, then <code>BuildStreams()</code> — which asserts it is running on the thread
       that constructed the task system, aborts if the machine has fewer than the minimum hardware threads, names this thread
-      the engine loop thread, and creates the stream array with a fixed <code>Base</code> stream, a fixed <code>IO</code>
+      the main thread thread, and creates the stream array with a fixed <code>Base</code> stream, a fixed <code>IO</code>
       stream and one worker stream per remaining hardware thread
     </td>
     <td><code>isTaskSystemReady = true</code>, worker threads running, registry live</td>

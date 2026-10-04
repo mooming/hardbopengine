@@ -99,7 +99,7 @@
 
 <p>
   A field read defined inline; <code>auto&amp;</code> deduces to <code>TaskSystem&amp;</code>. Unlike the memory manager, this member
-  is constructed empty: its constructor records the current thread as the engine loop thread and reads the hardware thread count,
+  is constructed empty: its constructor records the current thread as the main thread thread and reads the hardware thread count,
   but the task registry and the worker streams arrive only when <a href="initialize.html"><code>Initialize</code></a> runs the
   TaskSystem level and calls <code>TaskSystem::Initialize()</code>. So the reference this returns is always a real, addressable task
   system, and it is only a working one after that step.
@@ -172,7 +172,7 @@
 <p>
   The second one is worth dwelling on: enqueue then wait, from inside the task system. It is the shape that deadlocks if the level
   ran but the waiting thread is the one that was supposed to run the task — a
-  <a href="../../Core/index.html#tasksystem">Core</a> concern, and the reason the engine loop thread is named and recorded rather than
+  <a href="../../Core/index.html#tasksystem">Core</a> concern, and the reason the main thread thread is named and recorded rather than
   assumed.
 </p>
 

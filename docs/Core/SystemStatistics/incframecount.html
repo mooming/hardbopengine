@@ -67,7 +67,7 @@
 
 <div class="gap">
   <strong>Zero call sites, so "Frame Count = 0" in every report the engine has ever written.</strong>
-  No line in <code>Engine/</code> or <code>Applications/</code> calls <code>IncFrameCount()</code>; the engine loop counts frames for its own purposes and never
+  No line in <code>Engine/</code> or <code>Applications/</code> calls <code>IncFrameCount()</code>; the main thread counts frames for its own purposes and never
   tells this class (<code>Engine/Core/SystemStatistics.h</code>, <code>Engine/Engine/Engine.cpp</code>). The counter is not broken — it is unreachable, and the
   difference matters only if someone reads the report as a measurement.
 </div>

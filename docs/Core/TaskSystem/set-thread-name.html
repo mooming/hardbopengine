@@ -76,8 +76,8 @@
 </div>
 
 <p>
-  Three places set it. <a href="build-streams.html">BuildStreams</a> labels the engine-loop thread with
-  <code>EngineLoopThreadName</code> (<code>"EngineLoop"</code>), <code>TaskStream::RunLoop</code> labels each stream
+  Three places set it. <a href="build-streams.html">BuildStreams</a> labels the main thread with
+  <code>MainThreadName</code> (<code>"Main"</code>), <code>TaskStream::RunLoop</code> labels each stream
   thread with its own stream's name at <code>Engine/Core/TaskStream.cpp</code>, and the logger's driver thread
   labels itself <code>"LogDriver"</code> at <code>Engine/Log/Logger.cpp</code>. That last one is the interesting
   case: the IO stream has no thread of its own — the logger's thread drives it — so that thread carries a name that is

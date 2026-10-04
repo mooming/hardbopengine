@@ -82,7 +82,7 @@ next one breaks without it.</p>
     <td><code>baseStream.SetDrivenByShutdownPump()</code>, then pump the base stream for up to 2000 ms while any of
       three conditions hold</td>
     <td>Recorded before the first pass rather than after: the whole point is that work run by this pump cannot claim
-      the engine loop ran. The three conditions are the other streams not closed, posted tasks on the base stream, and
+      the main thread ran. The three conditions are the other streams not closed, posted tasks on the base stream, and
       queued items on it</td>
   </tr>
   <tr>
@@ -127,7 +127,7 @@ next one breaks without it.</p>
 
 <div class="gap">
   <strong>Only the constructing thread pumps; every other thread merely waits.</strong> Step 3 is conditioned on
-  <code>std::this_thread::get_id() == engineLoopThreadID</code>. A call from any other thread asks the streams to close,
+  <code>std::this_thread::get_id() == mainThreadID</code>. A call from any other thread asks the streams to close,
   joins them, and never drains the base stream — so work still posted there is abandoned with no log line about it,
   because the pump that would have reported it never ran. This is not a thread-safe "wait for shutdown" from an
   application thread; it is the shutdown, and it belongs on the thread that owns the run.

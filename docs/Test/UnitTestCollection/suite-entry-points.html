@@ -95,7 +95,7 @@ the suite to its end, and it returns with the tallies already settled — which 
 loop rather than before it.
 </p>
 <p><strong>Preconditions.</strong> <code>RegisterSuite()</code> has run.</p>
-<p><strong>Postconditions.</strong> One task is queued, and completing the suite is now the engine loop's job.</p>
+<p><strong>Postconditions.</strong> One task is queued, and completing the suite is now the main thread's job.</p>
 
 <h2 id="why">Why the split, and why before <code>Run</code></h2>
 <p>

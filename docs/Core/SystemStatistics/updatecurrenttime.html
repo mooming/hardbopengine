@@ -107,8 +107,8 @@ timeSinceStart = time::ToDouble(fromStart);</code></pre>
 <h2 id="example">Examples</h2>
 
 <p>
-  No call site exists, so there is no verbatim example to give. The shape the function invites is one call per frame from the engine loop, before anything
-  asks for a delta — and the honest statement of its current status is that the engine loop does not do that, which is why
+  No call site exists, so there is no verbatim example to give. The shape the function invites is one call per frame from the main thread, before anything
+  asks for a delta — and the honest statement of its current status is that the main thread does not do that, which is why
   <a href="getdeltatime.html">GetDeltaTime</a> and <a href="gettimesincestart.html">GetTimeSinceStart</a> have no callers either
   (<code>Engine/Core/SystemStatistics.h</code>).
 </p>

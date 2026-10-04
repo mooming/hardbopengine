@@ -68,7 +68,7 @@
 </p>
 
 <div class="note">
-  <strong>"Main thread" is the engine-loop thread, and there is exactly one queue for it.</strong> There used to be a
+  <strong>"Main thread" is the thread that built this <code>TaskSystem</code>, and there is exactly one queue for it.</strong> There used to be a
   <code>MainThreadTaskQueue</code> facility beside the task system alongside a base-stream queue, and a call named
   <code>ProcessMainThreadTasks</code> to drain one of them; two queues for one thread was the reason a wait on "the main
   thread" could be satisfied by a queue the pump never read. The facility was absorbed — the base stream owns

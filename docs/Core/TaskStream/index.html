@@ -226,7 +226,7 @@
   </tr>
   <tr>
     <td>Whether a driven stream's driver ever changes</td>
-    <td>The base stream records the engine-loop thread and the IO stream the logger's driver, and both bind on first contact
+    <td>The base stream records the main thread and the IO stream the logger's driver, and both bind on first contact
       (<a href="start.html">Start</a>, <a href="update.html">Update</a>). Whether those threads are guaranteed stable for the life of a run is a contract of
       <code>TaskSystem</code> and <code>Logger</code>, and the pages here state only what this class does: record once, never revise, police the mismatch with a
       Debug-only assert</td>

@@ -116,7 +116,7 @@ value = value | bit;</code></pre>
 affinity.Unset(TaskSystem::GetIOTaskStreamIndex());</code></pre>
 
 <p>
-  Every work item is barred from streams 0 and 1 — the base stream that rides the engine loop and the IO stream driven by
+  Every work item is barred from streams 0 and 1 — the base stream that rides the main thread and the IO stream driven by
   the logger — while staying permitted on the worker streams. Read with the inverted encoding in mind, these two lines mean
   what they look like they mean; read as ordinary bit surgery they would mean the opposite.
 </p>

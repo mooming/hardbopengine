@@ -108,7 +108,7 @@
 <div class="note">
   <strong>Intended for the main thread, and in practice run by whichever stream owns the queue.</strong> Each
   <code>TaskStream</code> holds one and drains it at the top of its pass, before its lanes are asked for anything: "Posted callables
-  first: they are the engine loop's own work, and the frame budget is spent on them before the stream's queues are asked for anything"
+  first: they are the main thread's own work, and the frame budget is spent on them before the stream's queues are asked for anything"
   (<code>Engine/Core/TaskStream.cpp</code>). Priority order is honoured within one pass; a callable posted by a callable in this pass
   runs in the same pass if the loop is still going.
 </div>
@@ -135,7 +135,7 @@
 
 <p class="meta">From Engine/Core/TaskStream.cpp, TaskStream::Update()</p>
 
-<pre><code>// Posted callables first: they are the engine loop's own work, and the frame budget is spent on them before the
+<pre><code>// Posted callables first: they are the main thread's own work, and the frame budget is spent on them before the
 // stream's queues are asked for anything. They run with the queue's lock released, so a posted callable may post
 // again.
 postedTasks.ProcessTasks();</code></pre>

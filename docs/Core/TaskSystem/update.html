@@ -96,7 +96,7 @@
 </div>
 
 <div class="gap">
-  <strong>One driver at a time, and the driver is the engine-loop thread.</strong> Every pass on a driven stream enters
+  <strong>One driver at a time, and the driver is the main thread.</strong> Every pass on a driven stream enters
   and restores the thread-local stream index and the allocator scope, precisely because a shared driver does not belong to
   that stream for its whole life
   (<code>Engine/Core/TaskStream.h</code>). Two threads calling <code>Update</code> on the same task system put two

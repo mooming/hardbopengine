@@ -127,7 +127,7 @@
 <table>
   <tr><th>Caller</th><th>What the loop does</th><th>On giving up</th></tr>
   <tr>
-    <td>The engine-loop thread — the one the base stream recorded at <code>Engine/Core/TaskStream.cpp:305-307</code></td>
+    <td>The main thread — the one the base stream recorded at <code>Engine/Core/TaskStream.cpp:305-307</code></td>
     <td><a href="../../Core/TaskSystem/update.html">Update</a> plus a 1 ms sleep per iteration, nested pumping allowed for
       the duration and withdrawn by the guard on every exit path</td>
     <td><a href="report-drive-timeout.html">ReportDriveTimeout</a> logs an error naming what was waited for and how long
@@ -144,7 +144,7 @@
 
 <div class="note">
   <strong>The inner loop calls <code>taskSystem.Update()</code>, not <code>baseStream.Update()</code>.</strong> A callback
-  posted to the engine loop lives on the stream the loop drives, and a stream's pump is what runs it. Going straight to
+  posted to the main thread lives on the stream the loop drives, and a stream's pump is what runs it. Going straight to
   the stream would run its lanes but skip what the task system wraps around that — including the budget-window pass that
   lets a throttled stream take anything at all. This is the reason the helper takes the system rather than the stream.
 </div>

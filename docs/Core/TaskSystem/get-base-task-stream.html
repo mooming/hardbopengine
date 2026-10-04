@@ -95,8 +95,8 @@ const TaskStream&amp; GetBaseTaskStream() const noexcept</code></pre>
   <tr><th>Type</th><th>What you get</th></tr>
   <tr>
     <td><code>TaskStream&amp;</code> / <code>const TaskStream&amp;</code></td>
-    <td>Stream 0 — the one that rides the engine loop, drains posted callables at the top of every pass, and is the last
-      executor to close. It is not the caller's thread unless the caller <em>is</em> the engine loop: see
+    <td>Stream 0 — the one that rides the main thread, drains posted callables at the top of every pass, and is the last
+      executor to close. It is not the caller's thread unless the caller <em>is</em> the main thread: see
       <a href="is-base-thread.html">IsBaseThread</a></td>
   </tr>
 </table>

@@ -67,7 +67,7 @@
   <tr><th>#</th><th>Step</th><th>Consequence</th></tr>
   <tr>
     <td>1</td>
-    <td><code>Assert(std::this_thread::get_id() == engineLoopThreadID)</code></td>
+    <td><code>Assert(std::this_thread::get_id() == mainThreadID)</code></td>
     <td>The thread check is Debug-only — see the hazard below</td>
   </tr>
   <tr>
@@ -78,8 +78,8 @@
   </tr>
   <tr>
     <td>3</td>
-    <td><code>SetThreadName(EngineLoopThreadName)</code></td>
-    <td>This thread's engine-internal name becomes <code>"EngineLoop"</code>, distinct from the base stream, which is stream 0
+    <td><code>SetThreadName(MainThreadName)</code></td>
+    <td>This thread's engine-internal name becomes <code>"Main"</code>, distinct from the base stream, which is stream 0
       on a thread of its own in no engine — it rides this one</td>
   </tr>
   <tr>
@@ -156,7 +156,7 @@ been sized by <a href="initialize.html">Initialize</a> before this runs.</p>
 <p class="note">Illustrative — private and called from one place: the tail of
 <a href="initialize.html">Initialize</a>. What the result looks like, on an eight-core machine:</p>
 
-<pre><code>index 0  "Base"     driven by the engine-loop thread   (threadID recorded here, at step 6)
+<pre><code>index 0  "Base"     driven by the main thread   (threadID recorded here, at step 6)
 index 1  "IO"       driven by the logger's thread      (threadID recorded at its first pass)
 index 2  "Worker1"  owns a thread, runs RunLoop
 index 3  "Worker2"  owns a thread, runs RunLoop

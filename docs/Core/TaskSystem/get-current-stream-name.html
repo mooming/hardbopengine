@@ -72,8 +72,8 @@
   <strong>One name, two questions.</strong> A stream thread's name <em>is</em> its stream name, because
   <code>TaskStream::RunLoop</code> labels the thread with the stream's name and nothing else ever renames it — so on a
   worker thread "which stream" and "which thread" have the same answer. They come apart on the two driven streams: the
-  logger's driver thread is <code>"LogDriver"</code> while serving the IO stream, and the engine-loop thread is
-  <code>"EngineLoop"</code> while serving stream 0. Ask the index, not the name, when the question is really about
+  logger's driver thread is <code>"LogDriver"</code> while serving the IO stream, and the main thread is
+  <code>"Main"</code> while serving stream 0. Ask the index, not the name, when the question is really about
   streams: <a href="get-current-stream-index.html">GetCurrentStreamIndex</a> is the one that can be compared against
   <code>BaseStreamIndex</code>.
 </div>

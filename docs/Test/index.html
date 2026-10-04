@@ -92,7 +92,7 @@
   sequence, runs one test at a time, and counts what actually executed against what was registered.
   <a href="UnitTestCollection/suite-entry-points.html"><code>hbe::Test::RegisterSuite</code></a> and
   <code>hbe::Test::ScheduleSuiteOnBaseStream</code> are the entry points <code>Applications/EngineTest</code> calls: the
-  first registers before the engine loop is entered, the second posts the first testlet to the base stream, and after
+  first registers before the main thread is entered, the second posts the first testlet to the base stream, and after
   that each testlet posts the next. Almost every engine header carries its own <code>*Test</code> class inside an
   <code>#ifdef __UNIT_TEST__</code> region at the bottom of the file, which is the convention
   <a href="../CodingStandards.md">docs/CodingStandards.md</a> fixes.

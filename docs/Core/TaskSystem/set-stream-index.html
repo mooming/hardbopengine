@@ -140,7 +140,7 @@ TaskSystem::SetStreamIndex(streamIndex);</code></pre>
 <span class="kw">auto</span> restore = [&amp;]() { <span class="ty">TaskSystem</span>::<span class="fn">SetStreamIndex</span>(previousStreamIndex); };</code></pre>
 
 <p>
-  The base stream and the IO stream are driven by other threads — the engine loop and the logger's thread — so their
+  The base stream and the IO stream are driven by other threads — the main thread and the logger's thread — so their
   identity has to be borrowed for the length of a pass and handed back. <code>restore</code> is called on every exit
   path of that function, which is the part a reader should copy: the scope is the pass, not the thread.
 </p>

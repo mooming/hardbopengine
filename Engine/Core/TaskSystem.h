@@ -31,7 +31,7 @@ public:
 	static constexpr TIndex IOStreamIndex = 1;
 	static constexpr TIndex MaxStreamsPerSplit = 64;
 
-	static constexpr const char* EngineLoopThreadName = "EngineLoop";
+	static constexpr const char* MainThreadName = "Main";
 
 private:
 	std::atomic<bool> isRunning;
@@ -39,7 +39,7 @@ private:
 	const StaticString name;
 	const TIndex numHardwareThreads;
 
-	const TThreadID engineLoopThreadID;
+	const TThreadID mainThreadID;
 	TThreadID ioTaskThreadID;
 
 	TStreamArray streams;
@@ -71,7 +71,7 @@ public:
 	void RequestShutDown() noexcept;
 	void RequestOtherStreamsClose() noexcept;
 	[[nodiscard]] bool AreUserStreamsClosed() noexcept;
-	[[nodiscard]] bool IsEngineLoopThread() const noexcept;
+	[[nodiscard]] bool IsMainThread() const noexcept;
 	void JoinAndClear() noexcept;
 
 	void Update() noexcept;

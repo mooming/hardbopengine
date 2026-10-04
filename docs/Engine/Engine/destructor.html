@@ -121,7 +121,7 @@
   <tr>
     <td>3rd</td>
     <td><code>taskSystem</code></td>
-    <td><code>JoinAndClear()</code>: on the engine loop thread it waits for the running flag to clear and the main-thread queue to
+    <td><code>JoinAndClear()</code>: on the main thread thread it waits for the running flag to clear and the main-thread queue to
         empty, then joins every worker stream and clears the array. See the hazard below</td>
   </tr>
   <tr>
@@ -153,7 +153,7 @@
 
 <div class="gap">
   <strong>If <a href="shutdown.html"><code>ShutDown</code></a> was never called, this destructor does not reach its seventh
-  member.</strong> <code>~TaskSystem()</code> calls <code>JoinAndClear()</code>, which on the engine loop thread — the thread
+  member.</strong> <code>~TaskSystem()</code> calls <code>JoinAndClear()</code>, which on the main thread thread — the thread
   <a href="constructors.html">that constructed the engine</a>, which is the thread a local <code>Engine</code> is destroyed on —
   loops <code>while (isRunning || mainThreadTaskQueue.HasPendingTasks())</code>. Nothing clears <code>isRunning</code> except
   <code>TaskSystem::RequestShutDown()</code>, and in the engine that is called from exactly one place:

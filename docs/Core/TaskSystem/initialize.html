@@ -98,7 +98,7 @@
 
 <div class="gap">
   <strong>Exactly once per instance, on the constructing thread.</strong> <a href="build-streams.html">BuildStreams</a>
-  asserts <code>std::this_thread::get_id() == engineLoopThreadID</code> before it creates anything, so calling this from
+  asserts <code>std::this_thread::get_id() == mainThreadID</code> before it creates anything, so calling this from
   a thread other than the one that constructed the task system stops there. A second call is worse than redundant:
   <code>streams.Swap(Array&lt;TaskStream&gt;(numHardwareThreads))</code> hands the old buffer to the temporary, and the
   temporary's destruction destroys every live <code>TaskStream</code> — whose <code>std::thread</code> member is still

@@ -244,8 +244,8 @@ void Logger::DriverLoop() noexcept
 
 void Logger::SetLoggerStream(TaskStream* stream) noexcept
 {
-	Assert(Engine::Get().GetTaskSystem().IsEngineLoopThread(),
-		   "Setup and configuration belong to the engine loop thread, and this call is not on it. Thread name = ",
+	Assert(Engine::Get().GetTaskSystem().IsMainThread(),
+		   "Setup and configuration belong to the main thread, and this call is not on it. Thread name = ",
 		   TaskSystem::GetCurrentThreadName().c_str(),
 		   ". docs/Log/Logger/set-logger-stream.html carries the contract and why it is one thread's job.");
 

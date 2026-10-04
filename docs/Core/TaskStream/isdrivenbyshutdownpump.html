@@ -50,7 +50,7 @@
 <p class="subtitle">
   <span class="tag">member of hbe::TaskStream</span>
   <span class="tag">Engine/Core/TaskStream.h</span>
-  Whether the shutdown pump has ever driven this stream rather than the engine loop.
+  Whether the shutdown pump has ever driven this stream rather than the main thread.
 </p>
 
 <h2 id="signature">Signature</h2>
@@ -61,7 +61,7 @@
 
 <p>
   Declared in the header <code>Engine/Core/TaskStream.h</code>, defined in
-  <code>Engine/Core/TaskStream.cpp</code>. Whether the engine's shutdown path has ever taken over this stream's pumping, rather than the engine loop driving it.
+  <code>Engine/Core/TaskStream.cpp</code>. Whether the engine's shutdown path has ever taken over this stream's pumping, rather than the main thread driving it.
 </p>
 
 <div class="note">
@@ -77,7 +77,7 @@
   "Provenance alone cannot detect a loop that pumps once and stops: before the suite was split, one <code>Update()</code> was enough to run all 59 collections
   inside a single work item, so the flag was legitimately false in the defective build and the run looked clean."
   (<code>Engine/Core/TaskStream.h</code>) What closes that hole is the shape of the suite — one task per testlet, each posting its successor, with the harness
-  refusing a gap. Reading this flag as proof that the engine loop worked is the mistake the comment was written to prevent.
+  refusing a gap. Reading this flag as proof that the main thread worked is the mistake the comment was written to prevent.
 </div>
 
 <div class="note">
