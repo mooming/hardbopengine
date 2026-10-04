@@ -35,6 +35,7 @@ include_directories ( ${CMAKE_SOURCE_DIR}
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/lib)
 add_library (Container STATIC 
  Array.cpp
+ AtomicQueueViewMultiProviderSingleConsumer.cpp
  AtomicStackView.cpp
  BoundedPriorityQueue.cpp
  Deque.cpp
@@ -45,6 +46,7 @@ add_library (Container STATIC
  RingQueue.cpp
  Vector.cpp
  Array.h
+ AtomicQueueViewMultiProviderSingleConsumer.h
  AtomicStackView.h
  BoundedPriorityQueue.h
  Deque.h

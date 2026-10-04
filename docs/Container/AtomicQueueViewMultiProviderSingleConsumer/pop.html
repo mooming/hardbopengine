@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AtomicQueueViewMultiProviderSingleConsumer::Pop — Container module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a class="current" href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Container</a> /
+  <a href="index.html">AtomicQueueViewMultiProviderSingleConsumer</a> / Pop
+</p>
+
+<h1><span class="fn">Pop</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::AtomicQueueViewMultiProviderSingleConsumer</span>
+  <span class="tag">Engine/Container/AtomicQueueViewMultiProviderSingleConsumer.h</span>
+  take the oldest node a refill can reach from the one consumer thread, and own it completely afterwards
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>T* Pop() noexcept</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  Three steps, and only the middle one is interesting. If the consumer's private list is empty the call first calls
+  <a href="reversenewest.html"><code>ReverseNewest</code></a>, which claims everything the producers had accumulated and
+  returns it in hand-out order; if that yields nothing the call returns <code>nullptr</code>. Otherwise it detaches the head
+  of <code>oldest</code>, advances <code>oldest</code> to the node behind it, clears the detached node's
+  <code>next</code>, and returns the node. No compare-and-swap appears anywhere on this path — the consumer never races,
+  because there is only one of it.
+</p>
+
+<p>
+  The branch that refills is marked <code>unlikely</code>, which is the shape of a drain loop rather than a guess about a
+  particular workload: refilling happens once per burst, and every subsequent pop in that burst reads the private list
+  plain. The cost of the marked branch is proportional to the burst it reclaimed, so a single call can take longer than the
+  hundred that follow it — see <a href="index.html#description">the class description</a> for the amortisation argument.
+</p>
+
+<p>
+  Clearing <code>next</code> before returning is not tidiness. A node that comes back out of this queue arrives with no
+  link into a chain the caller cannot see, so the caller can hold it, overwrite it, or
+  <a href="push.html">push it back in</a> without inheriting a stale pointer. The testlets assert this on every pop, not
+  just once.
+</p>
+
+<div class="gap">
+  <strong>One consumer thread, and the compiler will not tell you if you forget.</strong> <code>oldest</code> is a plain
+  <code>T*</code>, and the reason it is not atomic is the single-consumer rule itself. Two threads calling
+  <code>Pop</code> race on that pointer and will hand the same node to both of them while corrupting the list behind
+  them — there is no assert and no diagnostic, because an assert costs an atomic and the whole point of the class is that
+  this half of the algorithm needs none. The rule is what makes
+  <a href="reversenewest.html"><code>ReverseNewest</code></a> legal to write with ordinary assignments, so it is load-bearing
+  rather than advisory.
+</div>
+
+<div class="note">
+  <strong>What a null return means, and what it does not.</strong> It means the queue held nothing reclaimable at that
+  instant: the private list was empty and the producer stack was empty when it was claimed. It does not mean no node is
+  coming — a push that had not yet won its compare-and-swap simply had not enqueued anything yet. Nothing can be stranded by
+  an early null, because a node becomes visible to a refill in the same instruction that enqueues it, so the next refill
+  sees it; the stress testlets terminate on a counted total rather than on the first null, which is the correct drain shape
+  for any queue whose producers are still running. A drain loop that stops at the first null is stopping on an
+  <em>instant</em>, not on an empty queue.
+</div>
+
+<div class="note">
+  <strong>The node is yours, entirely, the moment it comes back.</strong> No thread inside the queue will touch it again —
+  see <a href="push.html"><code>Push</code></a> for why that is true here and would not be true of a queue that links by
+  writing the previous node's field. Destroy it, reuse it, or hand it to another structure; the only obligation left is the
+  ordinary one that the object's own lifetime rules impose.
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<p>None.</p>
+
+<h2 id="return">Return value</h2>
+
+<table>
+  <tr><th>Type</th><th>Meaning</th></tr>
+  <tr>
+    <td><code>T*</code></td>
+    <td>The node that has been in the queue longest among the ones a refill could reach, its <code>next</code> cleared, now
+      owned by the caller. <code>nullptr</code> means nothing was reclaimable at that instant — not an error, and not a
+      promise that the queue is still empty a moment later</td>
+  </tr>
+</table>
+
+<h2 id="example">Examples</h2>
+
+<p class="note">Real code — <code>Engine/Container/AtomicQueueViewMultiProviderSingleConsumer.cpp</code>, the consumer half
+of the sole-ownership testlet, which holds each returned node, writes into it, and only then lets go.</p>
+
+<pre><code><span class="kw">const</span> <span class="kw">bool</span> allReturned = WaitUntil([&amp;]()
+{
+        <span class="kw">for</span> (<span class="kw">int</span> spin = <span class="nu">0</span>; spin &lt; <span class="nu">512</span> &amp;&amp; returned &lt; nodeCount; ++spin)
+        {
+                <span class="kw">auto</span>* node = queue.<span class="fn">Pop</span>();
+
+                <span class="kw">if</span> (node == <span class="kw">nullptr</span>)
+                {
+                        std::this_thread::yield();
+
+                        <span class="kw">continue</span>;
+                }
+
+                node-&gt;next = <span class="kw">nullptr</span>;
+                node-&gt;token = round;
+
+                std::this_thread::yield();
+
+                <span class="kw">if</span> (node-&gt;token != round)
+                {
+                        ++clobbered;
+                }
+
+                node-&gt;token = -<span class="nu">1</span>;
+                ++returned;
+                ++handedBack;
+        }
+
+        <span class="kw">return</span> returned &gt;= nodeCount;
+}, <span class="nu">200</span>);</code></pre>
+
+<p class="meta">From Engine/Container/AtomicQueueViewMultiProviderSingleConsumer.cpp, the "A Popped Node Belongs to Its
+Owner and to No One Else" testlet</p>
+
+<p>
+  Two habits in that loop are the ones a caller of this class should copy. The drain is bounded by a deadline through
+  <code>WaitUntil</code>, so a lost node becomes a reported failure instead of a hung test, and the node is written to
+  <em>after</em> it has been popped and then checked — a producer that could still reach a handed-back node would show up as
+  a corrupted token rather than as a theory.
+</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; AtomicQueueViewMultiProviderSingleConsumer</a></span>
+  <span><a href="index.html#methods">All AtomicQueueViewMultiProviderSingleConsumer methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

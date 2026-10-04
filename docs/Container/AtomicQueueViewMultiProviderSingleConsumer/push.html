@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AtomicQueueViewMultiProviderSingleConsumer::Push — Container module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a class="current" href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Container</a> /
+  <a href="index.html">AtomicQueueViewMultiProviderSingleConsumer</a> / Push
+</p>
+
+<h1><span class="fn">Push</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::AtomicQueueViewMultiProviderSingleConsumer</span>
+  <span class="tag">Engine/Container/AtomicQueueViewMultiProviderSingleConsumer.h</span>
+  install a node you already own on top of the producer stack, from any thread, with no lock and no allocation
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>void Push(T&amp; newItem) noexcept</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  Two statements, and the same two statements
+  <a href="../AtomicStackView/push.html"><code>AtomicStackView::Push</code></a> runs: the node's own <code>next</code> is
+  loaded with whatever the producer stack's head currently is (<code>newest.load</code>, relaxed), then a
+  <code>compare_exchange_weak</code> loop tries to install <code>&amp;newItem</code> as the new head with release ordering.
+  A failed compare-and-swap writes the head it actually saw back into <code>newItem.next</code>, which is why the loop needs
+  no re-load and why the weak form is the right choice despite its spurious failures — a retry just re-reads the head into
+  the field it is about to link from.
+</p>
+
+<p>
+  The published result is a stack, not a queue: <code>newest</code> runs newest-first, and first-in first-out order is
+  restored later by <a href="reversenewest.html"><code>ReverseNewest</code></a>, which is legitimate only because exactly
+  one thread performs that reversal. Nothing else about the push knows or cares who else is pushing.
+</p>
+
+<p>
+  One node, one link field, written once, before the compare-and-swap that publishes it. That is the whole reason a node may
+  be recycled after it comes back out of <a href="pop.html"><code>Pop</code></a>: a producer never touches a node that is
+  already in the chain, so no push can reach into an object the consumer has handed away.
+</p>
+
+<div class="gap">
+  <strong><code>Push</code> overwrites <code>newItem.next</code>, so a node may be linked in one structure at a
+  time.</strong> After the call that field is the queue's bookkeeping rather than yours. Pushing a node that is already in
+  this queue makes it link to itself or closes a cycle, and the consumer then walks a loop forever; keeping the same field
+  used by a second intrusive container means the two overwrite each other. Nothing detects either. The discipline is the
+  caller's: a node is either in the queue or in a hand, never both — which is the same single-owner state machine that
+  keeps <a href="../../Memory/index.html#allocators"><code>MemoryManager</code></a>'s proxy pool consistent.
+</div>
+
+<div class="note">
+  <strong>Pushing cannot fail, cannot block, and cannot be refused.</strong> There is no capacity to fill and nothing to
+  allocate, so the loop terminates as soon as one attempt wins the compare-and-swap. It is lock-free rather than wait-free:
+  a thread may retry while others succeed. The node must already be alive and must stay alive until it has been popped —
+  destroying a node while a concurrent push is still retrying against it destroys the object the compare-and-swap is
+  writing.
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<table>
+  <tr><th>Parameter</th><th>Type</th><th>Requirement</th></tr>
+  <tr>
+    <td><code>newItem</code></td>
+    <td><code>T&amp;</code></td>
+    <td>
+      A modifiable lvalue whose type satisfies <a href="index.html#non-member"><code>CNext</code></a>, with
+      <code>next</code> assignable from <code>T*</code>. A temporary or a const object cannot bind, which is deliberate: the
+      call writes into the argument. The object must outlive its own pop, and under contention must not be destroyed while
+      any thread may still be retrying a push on it
+    </td>
+  </tr>
+</table>
+
+<h2 id="return">Return value</h2>
+
+<p>
+  <code>void</code>. There is no result to report: the call returns only once the node is installed, and by then a
+  concurrent <a href="pop.html"><code>Pop</code></a> may already have taken it away again. <code>newItem.next</code> is not
+  a usable value after the call.
+</p>
+
+<h2 id="example">Examples</h2>
+
+<p class="note">Real code — <code>Engine/Container/AtomicQueueViewMultiProviderSingleConsumer.cpp</code>, the producer half
+of the multi-producer stress testlet: four threads, a thousand nodes each, one consumer.</p>
+
+<pre><code><span class="kw">auto</span> producer = [&amp;](<span class="kw">int</span> slot)
+{
+        <span class="kw">while</span> (!startRunning.load(std::memory_order_acquire))
+        {
+                std::this_thread::yield();
+        }
+
+        <span class="kw">for</span> (<span class="kw">int</span> index = slot * perProducer; index &lt; (slot + <span class="nu">1</span>) * perProducer; ++index)
+        {
+                queue.<span class="fn">Push</span>(nodes[index]);
+        }
+};</code></pre>
+
+<p class="meta">From Engine/Container/AtomicQueueViewMultiProviderSingleConsumer.cpp, the "Four Producers and One Consumer
+Lose Nothing" testlet</p>
+
+<p>
+  Each producer owns a disjoint slice of a fixed array, so no node is ever pushed twice and nothing is allocated while the
+  threads run — the arrangement the class needs from its caller. The result the testlet asserts is 4,000 nodes delivered,
+  none duplicated, and each producer's own thousand arriving in the order it pushed them.
+</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; AtomicQueueViewMultiProviderSingleConsumer</a></span>
+  <span><a href="index.html#methods">All AtomicQueueViewMultiProviderSingleConsumer methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

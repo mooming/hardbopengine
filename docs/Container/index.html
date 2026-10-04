@@ -51,11 +51,13 @@
     <li><a href="#ringqueue">RingQueue</a></li>
     <li><a href="#boundedpriorityqueue">BoundedPriorityQueue</a></li>
     <li><a href="#atomicstackview">AtomicStackView</a></li>
+    <li><a href="#atomicqueueviewmultiprovidersingleconsumer">AtomicQueueViewMultiProviderSingleConsumer</a></li>
   </ul>
 
   <h3>Design documents</h3>
   <ul>
     <li><a href="../AllocatorGuide.md">Allocator guide</a></li>
+    <li><a href="../design/MultiProviderSingleConsumerQueue_Design.html">Multi-provider single-consumer queue design</a></li>
   </ul>
 </nav>
 
@@ -74,8 +76,8 @@
 
 <p>
   The engine's data structures, written once and instantiated everywhere: contiguous storage where a resize is an
-  explicit call, rings where both ends are hot, open addressing where keys are hashed, and one atomic chain where threads
-  need a pool. Seven of the ten take an allocator as a template parameter and default to
+  explicit call, rings where both ends are hot, open addressing where keys are hashed, and atomic chains where threads need
+  a pool or a hand-off. Seven of the eleven take an allocator as a template parameter and default to
   <a href="../Memory/index.html#allocators"><code>DefaultAllocator</code></a>, so memory accounting follows the container
   rather than the call site and a container placed in a frame-scoped arena frees with the arena. For the standard
   containers rebound the same way, see <a href="../HSTL/index.html">HSTL</a>; the rule of thumb is that engine internals
@@ -90,7 +92,9 @@
   instance, allocating and freeing through two separate default-constructed objects;
   <a href="Queue/index.html"><code>Queue</code></a> takes the container it adapts rather than an allocator; and
   <a href="AtomicStackView/index.html"><code>AtomicStackView</code></a> has none at all, because it stores nothing but a
-  pointer.
+  pointer — and neither does
+  <a href="AtomicQueueViewMultiProviderSingleConsumer/index.html"><code>AtomicQueueViewMultiProviderSingleConsumer</code></a>,
+  for the same reason: a node it links is an object somebody else owns.
 </p>
 
 <h2 id="usage">Who uses what</h2>
@@ -147,6 +151,7 @@
   <tr id="ringqueue"><td><a href="RingQueue/index.html">RingQueue</a></td><td>Class template</td><td>RingQueue.h</td><td>Fixed-capacity ring, refuses rather than overwrites when full</td><td>1</td></tr>
   <tr id="boundedpriorityqueue"><td><a href="BoundedPriorityQueue/index.html">BoundedPriorityQueue</a></td><td>Class template</td><td>BoundedPriorityQueue.h</td><td>One deque per priority, highest number drained first</td><td>3</td></tr>
   <tr id="atomicstackview"><td><a href="AtomicStackView/index.html">AtomicStackView</a></td><td>Concept-constrained class template</td><td>AtomicStackView.h</td><td>Lock-free intrusive stack on compare-and-swap</td><td>2</td></tr>
+  <tr id="atomicqueueviewmultiprovidersingleconsumer"><td><a href="AtomicQueueViewMultiProviderSingleConsumer/index.html">AtomicQueueViewMultiProviderSingleConsumer</a></td><td>Concept-constrained class template</td><td>AtomicQueueViewMultiProviderSingleConsumer.h</td><td>Lock-free intrusive queue: many threads push, one thread pops, nodes owned by the caller</td><td>6</td></tr>
 </table>
 
 <h2 id="conventions">Shared conventions</h2>
@@ -421,6 +426,34 @@
 
 <p>Method pages: <a href="AtomicStackView/push.html">Push</a>, <a href="AtomicStackView/pop.html">Pop</a>.</p>
 
+<h2 id="atomicqueueviewmultiprovidersingleconsumer">AtomicQueueViewMultiProviderSingleConsumer (<code>Engine/Container/AtomicQueueViewMultiProviderSingleConsumer.h</code>)</h2>
+
+<p>
+  Lock-free FIFO for the shape the engine is allowed to want: many threads enqueue, exactly one dequeues. Producers push onto
+  one <code>std::atomic&lt;T*&gt;</code> with the same compare-and-swap loop
+  <a href="AtomicStackView/push.html"><code>AtomicStackView::Push</code></a> uses; that single consumer, finding its private
+  list empty, claims the whole producer stack with one exchange and reverses it with ordinary pointer writes. Like the stack it
+  is a <em>view</em> — <a href="AtomicQueueViewMultiProviderSingleConsumer/push.html"><code>Push</code></a> writes into a node
+  you own and <a href="AtomicQueueViewMultiProviderSingleConsumer/pop.html"><code>Pop</code></a> hands it back with no further
+  interest from the container, which is why there is no allocator, no reclamation scheme and no capacity to overflow. Two
+  things it is strict about: <a href="AtomicQueueViewMultiProviderSingleConsumer/pop.html"><code>Pop</code></a> and
+  <a href="AtomicQueueViewMultiProviderSingleConsumer/isempty.html"><code>IsEmpty</code></a> are one-thread operations, and
+  <a href="AtomicQueueViewMultiProviderSingleConsumer/destructor.html">the destructor</a> releases nothing even when the queue
+  dies holding nodes. Algorithm, invariants, memory ordering and cost: <a
+  href="../design/MultiProviderSingleConsumerQueue_Design.html">multi-provider single-consumer queue design</a>. Class page: <a
+  href="AtomicQueueViewMultiProviderSingleConsumer/index.html"><code>AtomicQueueViewMultiProviderSingleConsumer</code></a>,
+  reachable under the shorter alias <code>AtomicQueueViewMPSC</code>.
+</p>
+
+<p>
+  Method pages: <a href="AtomicQueueViewMultiProviderSingleConsumer/constructors.html">Constructors</a>,
+  <a href="AtomicQueueViewMultiProviderSingleConsumer/destructor.html">Destructor</a>,
+  <a href="AtomicQueueViewMultiProviderSingleConsumer/push.html">Push</a>,
+  <a href="AtomicQueueViewMultiProviderSingleConsumer/pop.html">Pop</a>,
+  <a href="AtomicQueueViewMultiProviderSingleConsumer/isempty.html">IsEmpty</a>,
+  <a href="AtomicQueueViewMultiProviderSingleConsumer/reversenewest.html">ReverseNewest</a>.
+</p>
+
 <h2 id="coverage">Coverage</h2>
 
 <table>
@@ -434,8 +467,9 @@
       <a href="BoundedPriorityQueue/push.html"><code>Push</code></a></td>
   </tr>
   <tr>
-    <td>Six of ten containers have no production call site</td>
-    <td>Vector, HashMap, Map, LinkedList, Queue and RingQueue are instantiated only by unit-test fixtures. Their examples are
+    <td>Seven of eleven containers have no production call site</td>
+    <td>Vector, HashMap, Map, LinkedList, Queue, RingQueue and AtomicQueueViewMultiProviderSingleConsumer are instantiated
+      only by unit-test fixtures. Their examples are
       labelled illustrative; nothing on this site claims otherwise</td>
   </tr>
   <tr>

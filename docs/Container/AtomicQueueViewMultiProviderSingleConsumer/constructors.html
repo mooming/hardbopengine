@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AtomicQueueViewMultiProviderSingleConsumer::Constructors — Container module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a class="current" href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Container</a> /
+  <a href="index.html">AtomicQueueViewMultiProviderSingleConsumer</a> / Constructors
+</p>
+
+<h1><span class="fn">Constructors</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::AtomicQueueViewMultiProviderSingleConsumer</span>
+  <span class="tag">Engine/Container/AtomicQueueViewMultiProviderSingleConsumer.h</span>
+  an empty queue is two null pointers: no capacity to size, no allocation, no argument
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>AtomicQueueViewMultiProviderSingleConsumer(const AtomicQueueViewMultiProviderSingleConsumer&amp;) = delete
+
+AtomicQueueViewMultiProviderSingleConsumer() noexcept
+		: newest(nullptr)
+		, oldest(nullptr)</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  One constructor, and it takes nothing: both fields start <code>nullptr</code>, which is a complete and usable empty
+  queue. There is no capacity to size, no buffer to reserve and no allocator to talk to — an instance is two machine words
+  (measured: <code>sizeof</code> 16, <code>alignof</code> 8), so a queue can be a member of another object, a static, or a
+  file-scope global without any allocation happening anywhere. That is the same zero-footprint property that makes this
+  class usable on the paths where a lock would cost more than the queue saves.
+</p>
+
+<p>
+  A second, deleted constructor refuses copies, and its reasoning is the same as the deleted assignment below: an object
+  that names someone else's producer stack is not a second queue but a second name for one, with no rule about which name
+  may pop from it.
+</p>
+
+<div class="gap">
+  <strong>Moving is impossible, and the header never says so.</strong> No move constructor or move assignment is declared,
+  and the implicit ones are removed by the compiler because <code>std::atomic</code> is neither copyable nor movable —
+  verified on this toolchain, not inferred: <code>is_copy_constructible</code>, <code>is_copy_assignable</code>,
+  <code>is_move_constructible</code> and <code>is_move_assignable</code> all report false for
+  <code>AtomicQueueViewMPSC&lt;Node&gt;</code>. The effect is correct (a queue mid-flight cannot be relocated while
+  producers hold pointers into it) but it is an inference a caller has to discover at the call site, because only the copy
+  half is spelled out. <a href="../AtomicStackView/index.html"><code>AtomicStackView</code></a> is in exactly the same
+  position, so the two lock-free classes of this module share the flaw rather than one of them being out of line.
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<p>
+  None. The deleted copy constructor takes a const reference to another queue and is not a usable route to an object — see
+  the Signature above for both declarations as the header writes them.
+</p>
+
+<h2 id="return">Return value</h2>
+
+<p>
+  Construction has no return value; it cannot fail and cannot throw, and the object it leaves behind is an empty queue on
+  which every operation of the class is immediately legal.
+</p>
+
+<h2 id="example">Examples</h2>
+
+<p class="note">Real code — <code>Engine/Container/AtomicQueueViewMultiProviderSingleConsumer.cpp</code>, the sole-ownership
+testlet, which builds a fresh queue 150 times in a row to catch a defect that only shows up under contention.</p>
+
+<pre><code><span class="kw">for</span> (<span class="kw">int</span> round = <span class="nu">0</span>; round &lt; roundCount; ++round)
+{
+        <span class="ty">AtomicQueueViewMPSC</span>&lt;<span class="ty">QueueNode</span>&gt; queue;</code></pre>
+
+<p class="meta">From Engine/Container/AtomicQueueViewMultiProviderSingleConsumer.cpp — the opening lines of the round loop in
+the "A Popped Node Belongs to Its Owner and to No One Else" testlet; the producer lambda and the two threads follow</p>
+
+<p>
+  Construction inside the loop is the point: the queue is cheap enough that a test can afford a brand-new one per round, and
+  a fresh instance is what proves no state leaks from one drain into the next.
+</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; AtomicQueueViewMultiProviderSingleConsumer</a></span>
+  <span><a href="index.html#methods">All AtomicQueueViewMultiProviderSingleConsumer methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

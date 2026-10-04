@@ -1,0 +1,357 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Multi-provider single-consumer queue design — Container module — HardBop Engine design document</title>
+<link rel="stylesheet" href="../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../Config/index.html">Config</a></li>
+    <li><a class="current" href="../Container/index.html">Container</a></li>
+    <li><a href="../Core/index.html">Core</a></li>
+    <li><a href="../Engine/index.html">Engine</a></li>
+    <li><a href="../HSTL/index.html">HSTL</a></li>
+    <li><a href="../Log/index.html">Log</a></li>
+    <li><a href="../Math/index.html">Math</a></li>
+    <li><a href="../Memory/index.html">Memory</a></li>
+    <li><a href="../OSAL/index.html">OSAL</a></li>
+    <li><a href="../Renderer/index.html">Renderer</a></li>
+    <li><a href="../Resource/index.html">Resource</a></li>
+    <li><a href="../String/index.html">String</a></li>
+    <li><a href="../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This document</h3>
+  <ul>
+    <li><a href="#scope">Scope</a></li>
+    <li><a href="#state">The two fields, and who may touch them</a></li>
+    <li><a href="#invariants">Four invariants</a></li>
+    <li><a href="#affinity">Where the missing lock went</a></li>
+    <li><a href="#ordering">Memory order, one row per operation</a></li>
+    <li><a href="#cost">Cost model</a></li>
+    <li><a href="#alternatives">The shape that was rejected, and why</a></li>
+    <li><a href="#evidence">What is proved, and how</a></li>
+    <li><a href="#open">Open items</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+  <div class="breadcrumb"><a href="../index.html">Docs</a> / <a href="../Container/index.html">Container</a> / Multi-provider single-consumer queue design</div>
+
+<h1>Multi-provider single-consumer queue design</h1>
+<div class="subtitle">How <em>Engine/Container/AtomicQueueViewMultiProviderSingleConsumer.h</em> keeps a queue lock-free on the push side and lock-free-by-affinity on the pop side</div>
+
+<div class="note">
+  <strong>Scope.</strong> This document owns the algorithm, its invariants, its memory ordering and its cost. What a caller
+  may depend on — the meaning of a null return, who may call what, what happens on destruction — lives on the reference
+  pages: <a href="../Container/AtomicQueueViewMultiProviderSingleConsumer/index.html">the class page</a> and its
+  <a href="../Container/AtomicQueueViewMultiProviderSingleConsumer/push.html">Push</a>,
+  <a href="../Container/AtomicQueueViewMultiProviderSingleConsumer/pop.html">Pop</a> and
+  <a href="../Container/AtomicQueueViewMultiProviderSingleConsumer/isempty.html">IsEmpty</a>.
+</div>
+
+<h2 id="scope">Scope</h2>
+<p>
+The requirement this class serves is the one written into
+<code>docs/TaskSystemRedesign.md</code> §9: an enqueue that is lock-free where a single consumer is provable by
+construction, and no multi-consumer lock-free enqueue at all until profiling asks for one behind a seam. Many threads want
+to hand work to one thread that owns draining it. That topology — many providers, one consumer — is the whole design space
+this document covers; a second consumer is a different algorithm with a memory-reclamation scheme attached to it, and the
+guardrail says that scheme is not free enough to buy speculatively.
+</p>
+<p>
+The second requirement is the one that decided the representation: the engine's <code>MultiPoolAllocator</code> is not
+thread-safe, and <code>ThreadSafeMultiPoolAllocator</code> reaches for a mutex. A queue that allocated a node per enqueue
+would therefore put a lock in the exact path built to avoid one. Nodes belong to the caller, which is what the
+<em>View</em> in the name advertises and what <a href="../Container/AtomicStackView/index.html">AtomicStackView</a> already
+does for the same reason.
+</p>
+
+<h2 id="state">The two fields, and who may touch them</h2>
+
+<table>
+  <tr><th>Field</th><th>Written by</th><th>Read by</th><th>Guarded by</th></tr>
+  <tr>
+    <td><code>std::atomic&lt;T*&gt; newest</code></td>
+    <td>Any producer (compare-exchange-weak), the consumer (exchange to null)</td>
+    <td>Producers, the consumer</td>
+    <td>The atomic itself; this is the only shared mutable word in the class</td>
+  </tr>
+  <tr>
+    <td><code>T* oldest</code></td>
+    <td>The consumer alone</td>
+    <td>The consumer alone</td>
+    <td>Nothing, deliberately — it is thread-private state, and the single-consumer rule is its guard</td>
+  </tr>
+  <tr>
+    <td><code>T::next</code> of a node in the producer stack</td>
+    <td>That node's own producer, once, before publishing</td>
+    <td>The consumer, after its acquire exchange</td>
+    <td>The release/acquire pair on the publish</td>
+  </tr>
+  <tr>
+    <td><code>T::next</code> of a node in the private list</td>
+    <td>The consumer alone, during the reversal and again when it detaches a node to hand out</td>
+    <td>The consumer alone</td>
+    <td>Thread affinity</td>
+  </tr>
+</table>
+
+<p>
+Every row assigns one writer to one field. That is the design: the queue is lock-free because the shared surface is a
+single pointer and everything else is private to whichever thread holds it.
+</p>
+
+<h2 id="invariants">Four invariants</h2>
+
+<table>
+  <tr><th>#</th><th>Invariant</th><th>What it buys</th></tr>
+  <tr>
+    <td>1</td>
+    <td>A producer writes only the link field inside the node it is pushing, and writes it before the compare-and-swap that
+      publishes that node</td>
+    <td>No push ever reaches into a node another thread has already published, so a node the consumer has handed away can
+      not be written by a stranger — the property that makes caller-owned storage sound</td>
+  </tr>
+  <tr>
+    <td>2</td>
+    <td>A node's link field is written at most once while the node sits in the producer stack</td>
+    <td>The reversal can read a link and rely on it not changing underneath it, even though producers are still running</td>
+  </tr>
+  <tr>
+    <td>3</td>
+    <td><code>oldest</code> and the chain it heads are reachable only from the one consumer thread</td>
+    <td>The reversal and the detach are ordinary pointer code — no atomics, no compare-and-swap, no ABA window on the pop
+      side at all</td>
+  </tr>
+  <tr>
+    <td>4</td>
+    <td>A node leaves the producer stack exactly once, and after that the container never reads it again</td>
+    <td>Nothing to reclaim, nothing to defer, no hazard pointers, and no requirement that a node outlive its own pop beyond
+      the pop itself</td>
+  </tr>
+</table>
+
+<p>
+Invariant 1 is the one the class would lose if anyone "optimised" the publish into two steps. Exchange the head first and
+then link by writing <em>the previous head's</em> field, and a producer is writing into a node the consumer may already have
+returned to its owner. That is not a theoretical worry: injecting exactly that late write into this class makes
+ThreadSanitizer report a race on the node's link field, and drops one testlet's delivery count from 32 nodes to 1.
+</p>
+
+<h2 id="affinity">Where the missing lock went</h2>
+<p>
+The classical two-stack queue (Michael and Scott's AMQ queue) protects each of its two stacks with a lock. Here the
+producer half is a Treiber stack, so it needs no lock and is lock-free; the consumer half needs mutual exclusion only
+against other consumers, and there is exactly one consumer, so thread affinity supplies what a lock otherwise would. The
+reversal therefore runs as seven lines of plain pointer assignment.
+</p>
+<p>
+The cost of that substitution is a contract instead of a mechanism. <code>oldest</code> is not atomic precisely because the
+rule is believed, and a second consumer calling <a href="../Container/AtomicQueueViewMultiProviderSingleConsumer/pop.html">Pop</a>
+would race on it and hand the same node to both threads. Adding the second consumer means adding an atomic to the pop side,
+which in turn means a compare-and-swap loop, which in turn means the pop side can no longer hand a node away without
+attaching a reclamation scheme — the whole class of cost the design exists to avoid. That is why the guardrail in
+<code>docs/TaskSystemRedesign.md</code> treats a single consumer as something to be <em>provable by construction</em>: the
+type does not enforce it, and no test can catch every interleaving of a rule that is stated rather than implemented.
+</p>
+
+<h2 id="ordering">Memory order, one row per operation</h2>
+
+<table>
+  <tr><th>Site</th><th>Operation</th><th>Order</th><th>Why that one</th></tr>
+  <tr>
+    <td><a href="../Container/AtomicQueueViewMultiProviderSingleConsumer/push.html">Push</a></td>
+    <td><code>newest.load</code></td>
+    <td><code>relaxed</code></td>
+    <td>The value is used only as the expected operand of the compare-and-swap that follows; the synchronisation is carried
+      by that store, not by this read</td>
+  </tr>
+  <tr>
+    <td><a href="../Container/AtomicQueueViewMultiProviderSingleConsumer/push.html">Push</a></td>
+    <td><code>compare_exchange_weak</code> success</td>
+    <td><code>release</code></td>
+    <td>Publishes the link field this thread just wrote, plus everything the caller wrote into the node before pushing it</td>
+  </tr>
+  <tr>
+    <td><a href="../Container/AtomicQueueViewMultiProviderSingleConsumer/push.html">Push</a></td>
+    <td><code>compare_exchange_weak</code> failure</td>
+    <td><code>relaxed</code></td>
+    <td>A failed attempt publishes nothing; its only effect is refreshing the expected value for the retry</td>
+  </tr>
+  <tr>
+    <td><a href="../Container/AtomicQueueViewMultiProviderSingleConsumer/reversenewest.html">ReverseNewest</a></td>
+    <td><code>newest.exchange</code></td>
+    <td><code>acquire</code></td>
+    <td>Synchronises with each release publish whose link it is about to walk; without it the nodes are visible while their
+      contents are not</td>
+  </tr>
+  <tr>
+    <td><a href="../Container/AtomicQueueViewMultiProviderSingleConsumer/isempty.html">IsEmpty</a></td>
+    <td><code>newest.load</code></td>
+    <td><code>relaxed</code></td>
+    <td>An emptiness answer is about a moment, and no data becomes visible by reading the pointer harder</td>
+  </tr>
+</table>
+
+<p>
+The pairing that matters is release-publish against acquire-claim. It is the same pairing
+<a href="../Container/AtomicStackView/push.html">AtomicStackView</a> uses, and it is the only reason a node's payload is
+readable after it comes out of this queue.
+</p>
+
+<h2 id="cost">Cost model</h2>
+
+<table>
+  <tr><th>Operation</th><th>Shared-memory work</th><th>Freedom</th><th>Notes</th></tr>
+  <tr>
+    <td>Push</td>
+    <td>One relaxed load plus one or more compare-and-swap attempts on one word</td>
+    <td>Lock-free, not wait-free</td>
+    <td>Retries are contention against other producers only. The retry loop is the same one
+      <a href="../Container/AtomicStackView/push.html">AtomicStackView</a> runs</td>
+  </tr>
+  <tr>
+    <td>Pop, private list non-empty</td>
+    <td>None — no atomic is touched</td>
+    <td>Wait-free</td>
+    <td>Two pointer reads, one pointer write</td>
+  </tr>
+  <tr>
+    <td>Pop, refill needed</td>
+    <td>One exchange, then one pass over the reclaimed batch</td>
+    <td>Wait-free for the claim; the pass is proportional to the batch</td>
+    <td>Amortised one pass per node per lifetime, concentrated on the call that claims the batch</td>
+  </tr>
+  <tr>
+    <td>IsEmpty</td>
+    <td>One relaxed load and one plain read</td>
+    <td>Wait-free</td>
+    <td>Must read both halves; reading one is the classic wrong answer, recorded on its page</td>
+  </tr>
+</table>
+
+<p>
+The shape of the trade against a bounded slot-array queue is worth stating plainly: a linked queue dirties a caller node's
+cache line per enqueue and chases a pointer per pop, which a fixed array of sequence-numbered slots does not. What the
+array costs in exchange is a capacity ceiling, a full condition the caller must handle, and — for the multi-consumer
+variants — a compare-and-swap on the pop side. For a stream that drains itself every frame, the ceiling and the full path
+are the more expensive of the two. No measurement of either exists in this tree yet; see
+<a href="#open">Open items</a>.
+</p>
+
+<h2 id="alternatives">The shape that was rejected, and why</h2>
+<p>
+The intrusive multi-producer single-consumer queue that publishes in two steps — exchange to take the head, then write the
+previous head's link — was the first candidate and is the shape most engine readers will already know. Deriving it against
+the ownership rule turned up two consequences it cannot shed:
+</p>
+
+<table>
+  <tr><th>Consequence</th><th>Why it follows from the two-step publish</th></tr>
+  <tr>
+    <td>The queue must own a sentinel node</td>
+    <td>The consumer's frontier has to be read through <code>tail-&gt;next</code> before the queue can tell whether an item
+      exists, so the frontier must be memory the queue itself owns — and a view that allocates nothing cannot conjure one, so
+      the caller would have to hand a seed node to the constructor</td>
+  </tr>
+  <tr>
+    <td>The newest node is unreachable until a later node arrives</td>
+    <td>A node may be handed back only once its single link write is known to have landed, and the only evidence of that is a
+      non-null link; the node at the head has no such evidence yet, so a drain stops one item short until someone else
+      pushes</td>
+  </tr>
+</table>
+
+<p>
+Both are properties of that algorithm rather than of this implementation, and both were found by deriving the steps before
+writing them — which is the reason the record is here rather than in a commit message. The chosen shape pays for its
+simplicity somewhere else, and that somewhere else is named on
+<a href="../Container/AtomicQueueViewMultiProviderSingleConsumer/index.html#coverage">the class page's Coverage</a>: no
+benchmark, and no measured call site.
+</p>
+
+<h2 id="evidence">What is proved, and how</h2>
+<p>
+The testlet set in <code>Engine/Container/AtomicQueueViewMultiProviderSingleConsumer.cpp</code> is five tests, and each
+concurrency claim was checked by re-injecting the defect it is supposed to catch and reading the failure. A test that has
+never failed is not evidence.
+</p>
+
+<table>
+  <tr><th>Claim</th><th>Testlet</th><th>Negative control and what it did</th></tr>
+  <tr>
+    <td>First-in first-out per producer, one total order across producers, nothing lost or duplicated</td>
+    <td>Four Producers and One Consumer Lose Nothing (4 × 1,000 nodes)</td>
+    <td>Late write to a published node: reported 1 delivered of 4,000 before the deadline</td>
+  </tr>
+  <tr>
+    <td>A returned node is never touched by the container again</td>
+    <td>A Popped Node Belongs to Its Owner and to No One Else (150 rounds × 32 nodes, producers hammering throughout)</td>
+    <td>Same injection: ThreadSanitizer reported a race on the node's link field and the round stranded after one node</td>
+  </tr>
+  <tr>
+    <td><code>IsEmpty</code> sees both halves</td>
+    <td>IsEmpty Covers the Stolen Batch as Well as the Producer Stack</td>
+    <td>Single-field emptiness test restored: testlet failed with its own explanation as the report</td>
+  </tr>
+  <tr>
+    <td>Destroying a non-empty queue releases nothing and damages nothing</td>
+    <td>Destroying a Queue That Still Holds Nodes Releases Nothing</td>
+    <td>None available: the test asserts the absence of an action, and an implementation that did free caller nodes would
+      fail it as a crash rather than as a report</td>
+  </tr>
+  <tr>
+    <td>No data race in the algorithm as written</td>
+    <td>Both stress shapes, built <code>-fsanitize=thread</code> against the real header</td>
+    <td>Zero reports at 4,000 delivered nodes and 4,800 handoffs</td>
+  </tr>
+</table>
+
+<p>
+One control earned a change to the tests rather than to the code. The first draft of the sole-ownership drain loop ran
+<code>while (returned &lt; nodeCount)</code> with no deadline, and the injected defect made it spin forever: a lost node
+produced a hung test instead of a failed one, which is the failure mode
+<a href="../Test/TestCollection/index.html"><code>WaitUntil</code></a> exists to prevent. The loop is now bounded by a
+deadline and reports the round it stranded on.
+</p>
+
+<h2 id="open">Open items</h2>
+
+<table>
+  <tr><th>Item</th><th>State</th></tr>
+  <tr>
+    <td>False sharing between <code>newest</code> and <code>oldest</code></td>
+    <td>Unmeasured. Both words sit in one 16-byte object; producers hammer the first on every push while the consumer reads
+      the second on every pop, which is the textbook shape. Padding them apart is plausible and was not done, because the
+      engine has no padding convention to follow beyond one ad-hoc <code>reservedToCacheLine</code> field in
+      <code>Engine/Core/TaskRegistry.h</code>, and adding one without a number would be decoration. The measurement that
+      decides it is a push-rate comparison with and without the gap</td>
+  </tr>
+  <tr>
+    <td>Throughput against <a href="../Container/AtomicStackView/index.html">AtomicStackView</a> and against a mutex-guarded
+      queue</td>
+    <td>Not run. <code>PerformanceAnalysis.md</code> is where such a figure would go, and no claim in this document is
+      stated as a measurement that was not taken</td>
+  </tr>
+  <tr>
+    <td>Adoption on a task stream</td>
+    <td>Deliberately out of scope. Placing this queue in the enqueue path is a change to the task system with its own
+      profiling question attached, per the guardrail it would satisfy</td>
+  </tr>
+</table>
+
+  <footer class="prevnext">
+    <span><a href="../Container/index.html">← Container module</a></span>
+    <span><a href="../index.html">Module index →</a></span>
+  </footer>
+</main>
+</body>
+</html>

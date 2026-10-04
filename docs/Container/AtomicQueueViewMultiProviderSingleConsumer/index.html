@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AtomicQueueViewMultiProviderSingleConsumer — Container module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a class="current" href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This class</h3>
+  <ul>
+    <li><a href="#description">Class description</a></li>
+    <li><a href="#template">Template parameters</a></li>
+    <li><a href="#properties">Class properties</a></li>
+    <li><a href="#methods">Class methods</a></li>
+    <li><a href="#non-member">Non-member helper functions</a></li>
+    <li><a href="#coverage">Coverage</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Container</a> /
+  AtomicQueueViewMultiProviderSingleConsumer
+</p>
+
+<h1>AtomicQueueViewMultiProviderSingleConsumer</h1>
+<p class="subtitle">
+  <span class="tag">Engine/Container/AtomicQueueViewMultiProviderSingleConsumer.h</span>
+  <span class="tag">namespace hbe</span>
+  <span class="tag">template &lt;CNext T&gt;</span>
+  <span class="tag">final</span>
+  Many producers pushing, one consumer popping: a Treiber stack outside, a consumer-private reversal that turns last-in first-out back into first-in first-out
+</p>
+
+<h2 id="description">Class description</h2>
+
+<p>
+  Two pointers, no allocator, and one thread that is allowed to take things out. <code>newest</code> is an atomic
+  Treiber stack that any number of producer threads push onto; <code>oldest</code> is a plain <code>T*</code> naming the
+  list the consumer has already taken and not yet handed out. When <a href="pop.html"><code>Pop</code></a> finds that
+  private list exhausted it claims the entire producer stack with a single exchange and reverses the chain locally — the
+  last-in first-out order of a stack read backwards is first-in first-out. The shape is the two-stack queue of Michael and
+  Scott, restricted to a single consumer so that the consumer's half of the algorithm is protected by thread affinity
+  instead of by a lock, which is what lets the reversal run on ordinary pointer writes with no atomics in it at all.
+</p>
+
+<p>
+  "View" carries the same ownership rule it carries in
+  <a href="../AtomicStackView/index.html"><code>AtomicStackView</code></a>: the nodes belong to the caller. The container
+  allocates nothing, constructs nothing, destroys nothing and counts nothing — it stores a pointer into an object
+  somebody else created, and <a href="pop.html"><code>Pop</code></a> hands that pointer back. That is also why this class
+  can be lock-free at all on this engine: the alternative, a queue that allocates its own nodes, would reach for
+  <code>ThreadSafeMultiPoolAllocator</code>, whose free list is a mutex, and the lock would sit in the exact path the
+  class exists to keep lock-free.
+</p>
+
+<div class="note">
+  <strong>One property makes handing a node back to its owner sound, and the container has it.</strong> A producer writes
+  exactly one link field — the one inside the node it is pushing — and it writes it <em>before</em> its
+  compare-and-swap publishes that node. It never writes into a node that is already in the chain. So by the time
+  <a href="pop.html"><code>Pop</code></a> returns a pointer, no thread inside the container will read or write that object
+  again: the caller may destroy it, recycle it, or push it back in. This is the property a two-phase publish (reserve a
+  slot with an exchange, then link by writing the <em>previous</em> head's link field) does not have, and it is the reason
+  that shape was not taken. Evidence, not assertion: <code>AtomicQueueViewMultiProviderSingleConsumer</code>'s
+  <em>A Popped Node Belongs to Its Owner and to No One Else</em> testlet holds 4,800 handed-back nodes against two
+  hammering producers, and the same shape under ThreadSanitizer reports no race.
+</div>
+
+<div class="gap">
+  <strong><a href="pop.html"><code>Pop</code></a> and <a href="isempty.html"><code>IsEmpty</code></a> belong to one
+  thread.</strong> <code>oldest</code> is a plain <code>T*</code>, not an atomic: it needs no atomic because exactly one
+  consumer is permitted, and that permission is a contract rather than something the type enforces. Calling either from a
+  second thread is a data race on an unguarded pointer, not a benign read — the guardrail in
+  <code>docs/TaskSystemRedesign.md</code> §9 that makes a single producer or consumer provable rather than inferred is
+  what a caller of this class owes. <a href="push.html"><code>Push</code></a> has no such restriction: any number of
+  threads may push, and pushing is the only operation that touches an atomic.
+</div>
+
+<div class="note">
+  <strong>What the reversal costs, and when.</strong> A <a href="pop.html"><code>Pop</code></a> that finds its private
+  list empty reclaims the whole producer stack, so one call can walk every node another thread had pushed since the last
+  refill. The work is one read and two writes per node and each node is reversed exactly once in its lifetime, so the cost
+  is amortised to one pass per node — but it lands on a single call, which makes that call's latency proportional to the
+  burst it drained. A consumer that pops a steady one-at-a-time trickle refills one node at a time and never sees the
+  spike. <a href="../../design/MultiProviderSingleConsumerQueue_Design.html">The design document</a> records the
+  invariants the argument rests on.
+</div>
+
+<div class="note">
+  <strong>What this class deliberately does not have.</strong> No second consumer (that is a different algorithm, with a
+  reclamation scheme attached), no element count, no front or back peek — peeking the producer stack would require
+  claiming it, and a peek that consumes is not a peek. No blocking wait either: <code>Pop</code> returns null rather than
+  parking, although <code>std::atomic::wait</code> is available on this toolchain, because a queue that can park its
+  consumer cannot be drained from a shutdown path that outlives its producers. No cache-line padding either; see
+  <a href="#coverage">Coverage</a> for why that is an open measurement rather than a decision.
+</div>
+
+<h2 id="template">Template parameters</h2>
+
+<table>
+  <tr><th>Parameter</th><th>Kind</th><th>What it must satisfy</th></tr>
+  <tr>
+    <td><code>T</code></td>
+    <td>constrained by <a href="#non-member"><code>CNext</code></a></td>
+    <td>
+      A type carrying a member named <code>next</code>. The concept checks the name only; the real requirement is enforced
+      where <a href="push.html"><code>Push</code></a> and <a href="reversenewest.html"><code>ReverseNewest</code></a>
+      assign a <code>T*</code> to it, so <code>next</code> must be assignable from <code>T*</code>. A type whose
+      <code>next</code> is some unrelated member satisfies the constraint and then fails inside those bodies. The class also
+      refuses to compile where <code>std::atomic&lt;T*&gt;::is_always_lock_free</code> is false — a class-scope
+      <code>static_assert</code> above the first member, the same platform gate
+      <a href="../AtomicStackView/index.html"><code>AtomicStackView</code></a> carries
+    </td>
+  </tr>
+</table>
+
+<h2 id="properties">Class properties</h2>
+
+<table>
+  <tr><th>Type + Name</th><th>Default Value</th><th>Description</th></tr>
+  <tr>
+    <td><code>std::atomic&lt;T*&gt; newest;</code> <span class="badge">private</span></td>
+    <td><code>none in the header</code></td>
+    <td>The producer stack: the most recently pushed node, whose <code>next</code> chain runs back through earlier pushes. Initialised to <code>nullptr</code> by the constructor; the only field with a memory order in it</td>
+  </tr>
+  <tr>
+    <td><code>T* oldest;</code> <span class="badge">private</span></td>
+    <td><code>none in the header</code></td>
+    <td>The consumer's own list, already reclaimed and reversed, in the order it will be handed out. Read and written by the one consumer thread and by nobody else, which is why it is not atomic</td>
+  </tr>
+</table>
+
+<p class="meta">
+  Both fields are one machine word, so an instance is 16 bytes on this platform (measured: <code>sizeof</code> 16,
+  <code>alignof</code> 8) and a queue can live inside another object without a heap allocation of its own.
+</p>
+
+<h2 id="methods">Class methods</h2>
+
+<table class="methods">
+  <tr><th>Name</th><th>Signature</th><th>What a caller depends on</th></tr>
+  <tr>
+    <td><a href="constructors.html"><code>AtomicQueueViewMultiProviderSingleConsumer</code></a></td>
+    <td class="sig">AtomicQueueViewMultiProviderSingleConsumer() noexcept<br>AtomicQueueViewMultiProviderSingleConsumer(const AtomicQueueViewMultiProviderSingleConsumer&amp;) = delete</td>
+    <td>An empty queue needs no argument and no memory request; copying one is refused, and moving one is impossible because <code>std::atomic</code> is not movable.</td>
+  </tr>
+  <tr>
+    <td><a href="destructor.html"><code>~AtomicQueueViewMultiProviderSingleConsumer</code></a></td>
+    <td class="sig">~AtomicQueueViewMultiProviderSingleConsumer() = default</td>
+    <td>Releases nothing, even with nodes still queued — the caller keeps owning them.</td>
+  </tr>
+  <tr>
+    <td><code>operator=</code></td>
+    <td class="sig">AtomicQueueViewMultiProviderSingleConsumer&amp; operator=(const AtomicQueueViewMultiProviderSingleConsumer&amp;) = delete</td>
+    <td>Deleted — no page; a second owner of one producer stack would be an alias, not a copy.</td>
+  </tr>
+  <tr>
+    <td><a href="push.html"><code>Push</code></a></td>
+    <td class="sig">void Push(T&amp; newItem) noexcept</td>
+    <td>Any thread, any number of them; it cannot fail, cannot block, and writes into your node.</td>
+  </tr>
+  <tr>
+    <td><a href="pop.html"><code>Pop</code></a></td>
+    <td class="sig">T* Pop() noexcept</td>
+    <td>The one consumer thread; null means nothing was reclaimable at that instant, and the node it returns is yours absolutely.</td>
+  </tr>
+  <tr>
+    <td><a href="isempty.html"><code>IsEmpty</code></a></td>
+    <td class="sig">[[nodiscard]] bool IsEmpty() const noexcept</td>
+    <td>The one consumer thread; true only when both the producer stack and the private list are empty.</td>
+  </tr>
+  <tr>
+    <td><a href="reversenewest.html"><code>ReverseNewest</code></a> <span class="badge">private</span></td>
+    <td class="sig">T* ReverseNewest() noexcept</td>
+    <td>The whole claim-and-reverse step <code>Pop</code> performs on an empty private list; no other caller exists.</td>
+  </tr>
+</table>
+
+<h2 id="non-member">Non-member helper functions</h2>
+
+<p>
+  One alias at namespace scope, and one constraint it depends on that this header borrows rather than owns:
+</p>
+
+<pre><code><span class="kw">template</span>&lt;<span class="kw">typename</span> T&gt;
+<span class="kw">concept</span> <span class="ty">CNext</span> = <span class="kw">requires</span>(T t) { t.next; };   <span class="cm">// declared in Container/AtomicStackView.h</span>
+
+<span class="kw">template</span> &lt;<span class="kw">CNext</span> T&gt;
+<span class="kw">using</span> <span class="ty">AtomicQueueViewMPSC</span> = <span class="kw">class</span> <span class="ty">AtomicQueueViewMultiProviderSingleConsumer</span>&lt;T&gt;;</code></pre>
+
+<p>
+  <code>AtomicQueueViewMPSC</code> is the readable spelling of the same type: the full name states the topology —
+  multi-provider, single-consumer — that the class cannot enforce in its own signature, and the alias exists so a call site
+  can be shorter without being vaguer. Both names name one type, not two, and either may be used anywhere the other is.
+  <code>CNext</code> is defined in
+  <a href="../AtomicStackView/index.html#non-member"><code>Container/AtomicStackView.h</code></a> and reused here rather than
+  restated, so the constraint has one home; it is documented there, and the same treatment is recorded for
+  <a href="../LinkedList/index.html#non-member"><code>LinkedListNode</code></a> on the module page's Coverage.
+</p>
+
+<p class="meta">
+  One naming fact a reader inherits with the alias: in this engine <em>provider</em> is already the task-supplying actor of
+  the task system (<code>Engine/Core/TaskProvider.h</code>), while the concurrency literature calls a thread that enqueues a
+  <em>producer</em> — which is what <code>MPSC</code> abbreviates. The full name uses <em>provider</em>; the algorithm means
+  a thread that pushes.
+</p>
+
+<h2 id="coverage">Coverage</h2>
+
+<table>
+  <tr><th>Gap</th><th>Detail</th></tr>
+  <tr>
+    <td>No throughput figure, and padding is an open question rather than a decision</td>
+    <td>Nothing here is benchmarked. The producer stack and the consumer's list sit in the same 16 bytes, and all producers
+      hammer <code>newest</code> while the consumer reads <code>oldest</code> on every pop, which is the classic shape for
+      false sharing. Padding them apart is plausible and unmeasured, so it was not done — a <code>TaskRegistry</code>-style
+      <code>reservedToCacheLine</code> gap added without a number would be decoration. The measurement that would decide it
+      is a push-rate comparison with and without the gap</td>
+  </tr>
+  <tr>
+    <td>No engine call site yet</td>
+    <td>The class ships with tests and no user. Every claim about what it is for comes from the guardrail in
+      <code>docs/TaskSystemRedesign.md</code> §9, which prefers a lock-free single-consumer enqueue over a mutex and forbids
+      a multi-consumer lock-free one without profiling; adopting it for a task stream is a separate change with its own
+      review</td>
+  </tr>
+  <tr>
+    <td>The rejected alternative is recorded, not measured</td>
+    <td>Why a two-phase publish (exchange to reserve, then write the previous head's link) was passed over — it needs a
+      sentinel node the queue owns, and it leaves the newest node unreachable until a later node arrives behind it — is
+      argued in <code>.Plans/PLAN_lock_free_queue.md</code> §3 from the algorithm's own steps. No implementation of that
+      shape exists in this tree to benchmark against</td>
+  </tr>
+  <tr>
+    <td><code>AtomicQueueViewMultiProviderSingleConsumerTest</code></td>
+    <td>Declared under <code>__UNIT_TEST__</code>, registered by <code>Engine/Test/UnitTestCollection.cpp</code>; five
+      testlets, a fixture and not API — <a href="../../Test/index.html">the Test module</a></td>
+  </tr>
+</table>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; AtomicQueueViewMultiProviderSingleConsumer</a></span>
+  <span><a href="index.html#methods">All AtomicQueueViewMultiProviderSingleConsumer methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

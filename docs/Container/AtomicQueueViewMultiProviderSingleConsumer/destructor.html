@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AtomicQueueViewMultiProviderSingleConsumer::Destructor — Container module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a class="current" href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Container</a> /
+  <a href="index.html">AtomicQueueViewMultiProviderSingleConsumer</a> / Destructor
+</p>
+
+<h1><span class="fn">Destructor</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::AtomicQueueViewMultiProviderSingleConsumer</span>
+  <span class="tag">Engine/Container/AtomicQueueViewMultiProviderSingleConsumer.h</span>
+  defaulted, releases nothing, and cannot tell you the queue died still holding nodes
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>~AtomicQueueViewMultiProviderSingleConsumer() = default</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  Defaulted, and it does exactly what defaulted means here: the two words of state go away and nothing else happens. The
+  destructor has no way to free what the queue holds even if it wanted to, because the nodes were never the queue's to
+  free — <a href="push.html"><code>Push</code></a> took references to objects the caller created, and there is no allocator,
+  no destructor call, no count, and no traversal.
+</p>
+
+<p>
+  That leaves a queue that can die holding nodes, which is a state worth naming rather than pretending is impossible: at
+  the moment of destruction the consumer's private list may still be linked, and the producer stack may still hold
+  everything a producer pushed that the consumer never came back for. Nothing is freed and nothing is lost — the caller
+  still owns every one of those objects, and can pick them up by reading the fields it already has. The testlet
+  <em>Destroying a Queue That Still Holds Nodes Releases Nothing</em> pushes three nodes, pops one, destroys the queue with
+  two still inside, and then re-pushes all three into a fresh queue and reads their values back.
+</p>
+
+<div class="gap">
+  <strong>Nothing tells you the queue was non-empty.</strong> There is no count, no
+  <a href="isempty.html"><code>IsEmpty</code></a> assertion in the destructor, and no log line, so a queue destroyed
+  with work still queued fails silently — the nodes simply stop being reachable through any handle, and if the only owner of
+  those objects was "whatever is in the queue", they leak. Every other container in this module destroys its elements and
+  releases its storage, so the habit of assuming a destructor cleans up is exactly the habit this class punishes. The same
+  property is recorded for <a href="../AtomicStackView/index.html"><code>AtomicStackView</code></a>, and the reason is the
+  same in both: a view that owns nothing can release nothing.
+</div>
+
+<div class="gap">
+  <strong>The queue must outlive every push that may still be in flight.</strong> <a href="push.html"><code>Push</code></a>
+  writes into <code>newest</code>, so destroying the queue while a producer thread is between its load and its successful
+  compare-and-swap is a use-after-free of the queue object itself — the plainest kind of bug, and no cheaper to fix than to
+  avoid. The order a caller owes: stop or join the producers, drain on the consumer, then destroy. Destruction is a
+  consumer-thread act, since it reads and invalidates the private list that only that thread may touch.
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<p>None.</p>
+
+<h2 id="return">Return value</h2>
+
+<p>None; a destructor cannot report, and this one has nothing it could report about.</p>
+
+<h2 id="example">Examples</h2>
+
+<p class="note">Real code — <code>Engine/Container/AtomicQueueViewMultiProviderSingleConsumer.cpp</code>. A file-scope helper
+exists precisely so that "destroy it while it still holds two nodes" is a named act in the test rather than a bare brace
+pair.</p>
+
+<pre><code><span class="kw">void</span> <span class="fn">PushThreeThenDestroyWithoutDraining</span>(std::array&lt;<span class="ty">QueueNode</span>, <span class="nu">3</span>&gt;&amp; nodes)
+{
+        <span class="ty">AtomicQueueViewMPSC</span>&lt;<span class="ty">QueueNode</span>&gt; queue;
+
+        <span class="kw">for</span> (<span class="kw">auto</span>&amp; node : nodes)
+        {
+                queue.<span class="fn">Push</span>(node);
+        }
+
+        queue.<span class="fn">Pop</span>();
+}</code></pre>
+
+<p class="meta">From Engine/Container/AtomicQueueViewMultiProviderSingleConsumer.cpp, PushThreeThenDestroyWithoutDraining()</p>
+
+<p>
+  The queue goes out of scope with two nodes still in it — one in the private list, one still in the producer stack — which
+  is the state the testlet needs. What the caller keeps is the array, and the testlet's assertion is that all three nodes
+  come back out of a second queue with their values intact.
+</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; AtomicQueueViewMultiProviderSingleConsumer</a></span>
+  <span><a href="index.html#methods">All AtomicQueueViewMultiProviderSingleConsumer methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

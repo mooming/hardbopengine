@@ -153,6 +153,7 @@ Core data structures with custom allocator support.
 - `Array<T>` - Static array with allocator template
 - `LinkedList<T>` - Linked list implementation
 - `AtomicStackView<T>` - Lock-free stack
+- `AtomicQueueViewMPSC<T>` - Lock-free queue, many producers pushing and one consumer popping (`AtomicQueueViewMultiProviderSingleConsumer<T>`)
 
 ### Core
 Essential engine systems.

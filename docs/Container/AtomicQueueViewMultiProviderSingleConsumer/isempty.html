@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AtomicQueueViewMultiProviderSingleConsumer::IsEmpty — Container module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a class="current" href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Container</a> /
+  <a href="index.html">AtomicQueueViewMultiProviderSingleConsumer</a> / IsEmpty
+</p>
+
+<h1><span class="fn">IsEmpty</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::AtomicQueueViewMultiProviderSingleConsumer</span>
+  <span class="tag">Engine/Container/AtomicQueueViewMultiProviderSingleConsumer.h</span>
+  true only when both the producer stack and the consumer's private list hold nothing
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>[[nodiscard]] bool IsEmpty() const noexcept</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  One expression over both halves of the state: <code>oldest == nullptr &amp;&amp; newest.load(relaxed) == nullptr</code>.
+  The second half is a relaxed load of an atomic; the first is a plain read of the consumer's own list. It is the only
+  operation besides <a href="pop.html"><code>Pop</code></a> that can see a node sitting in the private list, and that is
+  the whole reason it has to read two fields.
+</p>
+
+<p>
+  Reading only the producer stack is the tempting wrong version, and it is wrong in the direction that loses work: a
+  <a href="pop.html"><code>Pop</code></a> that refills has already removed the entire producer stack from
+  <code>newest</code>, so a queue still holding two unreleased nodes answers "empty" to a test that looks at one field.
+  The testlet <em>IsEmpty Covers the Stolen Batch as Well as the Producer Stack</em> exists to keep that from being
+  reintroduced quietly, and it was checked against exactly that defect: with the single-field test restored, the testlet
+  fails with that sentence as its report.
+</p>
+
+<div class="gap">
+  <strong>The consumer thread only, for the same reason <a href="pop.html"><code>Pop</code></a> is.</strong> The
+  <code>oldest</code> half of this read is unguarded. Any thread other than the consumer calling this is a data race, and a
+  producer calling it would in any case be asking a question that has no stable answer — by the time the call returns, the
+  consumer may have taken everything the call just saw.
+</div>
+
+<div class="note">
+  <strong>True is stronger than false.</strong> A <code>true</code> means both halves were empty at the instant the two
+  reads were performed, and since only a producer can add, a subsequent <a href="push.html"><code>Push</code></a> can still
+  arrive — so it is a statement about a moment, not a licence to destroy the queue on the assumption that nothing is in
+  flight. <code>false</code> only says at least one half held something, which under contention may be one node that is
+  already on its way out. Neither answer is a count: the class deliberately offers none, because counting a live
+  lock-free chain means a walk that can change underneath it.
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<p>None.</p>
+
+<h2 id="return">Return value</h2>
+
+<table>
+  <tr><th>Type</th><th>Meaning</th></tr>
+  <tr>
+    <td><code>bool</code></td>
+    <td><code>true</code> when neither the producer stack nor the consumer's private list held a node when both were read;
+      <code>false</code> when either did</td>
+  </tr>
+</table>
+
+<h2 id="example">Examples</h2>
+
+<p class="note">Real code — <code>Engine/Container/AtomicQueueViewMultiProviderSingleConsumer.cpp</code>, the assertions that
+pin the two-field requirement.</p>
+
+<pre><code><span class="kw">auto</span>* first = queue.<span class="fn">Pop</span>();
+
+<span class="kw">if</span> (queue.<span class="fn">IsEmpty</span>())
+{
+        ls &lt;&lt; "Two nodes are still owed, but that pop moved them out of the producer stack into the consumer's "
+              "private list, so an emptiness test that reads only the producer stack calls the queue empty while "
+              "it still holds work."
+           &lt;&lt; lferr;
+
+        <span class="kw">return</span>;
+}</code></pre>
+
+<p class="meta">From Engine/Container/AtomicQueueViewMultiProviderSingleConsumer.cpp, the "IsEmpty Covers the Stolen Batch
+as Well as the Producer Stack" testlet</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; AtomicQueueViewMultiProviderSingleConsumer</a></span>
+  <span><a href="index.html#methods">All AtomicQueueViewMultiProviderSingleConsumer methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>
