@@ -4,6 +4,7 @@
 
 #include <cstdint>
 
+
 namespace hbe
 {
 enum class EInitLevel : uint8_t
@@ -12,7 +13,6 @@ enum class EInitLevel : uint8_t
 	TaskSystem = 1 << 0,
 	Logger = 1 << 1,
 	Application = 1 << 2,
-
 	All = TaskSystem | Logger | Application
 };
 

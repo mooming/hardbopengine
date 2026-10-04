@@ -16,6 +16,7 @@
 #include "OSAL/OSDebug.h"
 #include "String/StaticStringTable.h"
 
+
 namespace
 {
 void SignalHandler(int sigNum)
@@ -31,6 +32,7 @@ void SignalHandler(int sigNum)
 	{
 		engine.GetLogger().Flush();
 	}
+
 	engine.LogError([sigNum](auto& ls)
 	{ ls << "ERROR: signal(" << sigNum << ") received. The application shall be terminated."; });
 	engine.LogError([](auto& ls)
@@ -44,7 +46,6 @@ void SignalHandler(int sigNum)
 
 	exit(128 + sigNum);
 }
-
 } // namespace
 
 namespace hbe
@@ -54,6 +55,7 @@ static Engine* engineInstance = nullptr;
 Engine& Engine::Get()
 {
 	Assert(engineInstance != nullptr);
+
 	return *engineInstance;
 }
 
@@ -179,6 +181,7 @@ void Engine::ShutDown()
 StaticString Engine::GetClassName()
 {
 	static StaticString name("Engine");
+
 	return name;
 }
 
@@ -211,7 +214,6 @@ void Engine::Log(ELogLevel level, const TLogFunc& func)
 	auto intMSecs = milliSeconds.count() % 1000;
 
 	statistics.IncEngineLogCount();
-
 	{
 		std::lock_guard lock(logLock);
 
@@ -292,5 +294,4 @@ void Engine::PreShutdown()
 
 	log.Out("Engine PreShutdown [Done]");
 }
-
 } // namespace hbe

@@ -13,9 +13,9 @@
 #include "OSAL/Application.h"
 #include "Resource/ResourceManager.h"
 
+
 namespace hbe
 {
-
 template <size_t, class>
 class InlineStringBuilder;
 

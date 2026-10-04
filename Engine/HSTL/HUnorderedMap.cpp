@@ -44,6 +44,5 @@ void HUnorderedMapTest::Prepare()
 		}
 	});
 }
-
 } // namespace hbe
 #endif //__UNIT_TEST__

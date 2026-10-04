@@ -6,12 +6,11 @@
 
 #include "Memory/DefaultAllocator.h"
 
+
 namespace hbe
 {
-
 template <class TKey, class T, class THash = std::hash<TKey>, class TPred = std::equal_to<TKey>>
 using HUnorderedMap = std::unordered_map<TKey, T, THash, TPred, hbe::DefaultAllocator<std::pair<const TKey, T>>>;
-
 } // namespace hbe
 
 #ifdef __UNIT_TEST__

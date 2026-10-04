@@ -7,6 +7,7 @@
 #include "Memory/DefaultAllocator.h"
 #include "Memory/InlinePoolAllocator.h"
 
+
 namespace hbe
 {
 using HString = std::basic_string<char, std::char_traits<char>, hbe::DefaultAllocator<char>>;
