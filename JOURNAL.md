@@ -1,5 +1,60 @@
 # Journal
 
+## 2026-10-04 23:04 — `AtomicQueueViewMultiProviderSingleConsumer` lands with six reference pages, and a negative control rewrites one of its own tests
+
+**Context.** The owner asked for a lock-free queue in `Engine/Container`, chose the topology by naming the type, and asked
+for the algorithm comparison first. `docs/TaskSystemRedesign.md` §9 guardrail 3 was the binding constraint: lock-free
+enqueue is wanted where a single consumer is *provable by construction*, and a multi-consumer lock-free queue is forbidden
+until profiling asks for one. `MultiPoolAllocator` is not thread-safe and `ThreadSafeMultiPoolAllocator` is mutex-based, so a
+queue that allocated its own nodes would put a lock in the path built to avoid one — the nodes stay caller-owned, which is
+what the `View` in the name advertises.
+
+**The algorithm is not the one the plan named.** The plan first proposed the two-step publish (exchange to take the head, then
+write the *previous* head's link). Deriving it against the ownership rule before writing it turned up two consequences it
+cannot shed: the consumer's frontier is read through `tail->next` before the queue knows whether an item exists, so the queue
+must own a sentinel node it cannot allocate; and a node may be handed back only once its single link write is provably
+landed, which the newest node never is — a drain stops one item short until someone else pushes. Both are recorded in
+`.Plans/PLAN_lock_free_queue.md` §3 and on the design document. What shipped instead is the two-stack queue (Michael and
+Scott's AMQ shape) restricted to one consumer: producers push onto an atomic Treiber stack with the same
+`compare_exchange_weak` loop `AtomicStackView::Push` already runs, and the consumer claims the whole stack with
+`newest.exchange(nullptr, acquire)` and reverses it with plain pointer writes. A producer writes one field — the link inside
+the node it is pushing — and writes it **before** publishing, so nothing in the container ever touches a node that has been
+handed back. That single inversion is what makes the view ownership contract sound without hazard pointers, an epoch scheme,
+or a compare-and-swap on the pop side.
+
+**Five testlets, each checked against the defect it is meant to catch.** A test that has never failed is not evidence, so both
+defects were re-injected and the real `EngineTest` testlets were rebuilt and run against them.
+
+| Negative control | Observed |
+|---|---|
+| `IsEmpty` reading only `newest` | `TC1` fails: "an emptiness test that reads only the producer stack calls the queue empty while it still holds work" — a pop that refills has already moved the batch into `oldest` |
+| A late write to a published node (the two-step publish's hazard) | `TC0`, `TC1`, `TC2` and `TC3` all fail; ThreadSanitizer reports a race on the node's link field in `ReverseNewest`; `TC2` delivers 1 of 4,000 and `TC3` strands after one node |
+
+**The controls caught a defect in the tests themselves.** The first draft of the sole-ownership drain ran
+`while (returned < nodeCount)` with no deadline; the injected defect made it spin forever, so a lost node would have produced
+a *hung* test instead of a failed one — the exact failure mode `WaitUntil` exists to prevent, documented in
+`Engine/Test/TestCollection.h`. The loop is now bounded at 200 ms and names the round it stranded on. Two other defects the
+draft carried and the pass removed: an `atomic_flag` start gate that opened itself for the first thread that arrived, and a
+thread-creation loop that assigned to joinable threads, which is `std::terminate`.
+
+**Gate.** `EngineTest` built in Dev, Debug and Release with `-test`, 0 `error:`, and **59 of 60 collections pass in all three
+— the single failure is `WindowTest::TC0.Create Window` retaining 82,126 bytes over the 65,536-byte testlet ceiling**, which
+this journal carries as an owner-declared separate issue and which this change does not touch: the diff reaches four Container
+and Test files plus docs, and OSAL references no Container header. The new pair is clean on every layer that owns it —
+clang-format, include layout, `comments.py` 0 violations, `layout.py` member layout clean, `blank_lines.py` 0 findings,
+`docs_coverage.py check-file` reports "1 entry documented, addressed from the header, method pages complete",
+`docs_methods.py` reports nothing against it, and `htmlcheck.py` reports **92 pages, 0 with problems**. Six method pages are
+byte-verbatim against the header (`docs_pass.py signatures`: 6 pages, 0 problems).
+
+**Two things left as findings rather than fixed, and one flag raised.** `Engine/Test/UnitTestCollection.cpp` carries 8 comment
+findings and 2 blank-line findings, all of them present at `HEAD` (`git show HEAD:… | blank_lines.py` reproduces them, shifted
+by the two lines this change adds); sweeping the Test module's comments is a separate task and was not silently widened. The
+reference pages also record two honest gaps: nothing is benchmarked, so `newest` and `oldest` are left unpacked rather than
+padded on a hunch, and the class has no production call site yet. The owner chose *provider* in the type name, where the
+concurrency term is *producer* — `MPSC` abbreviates producer, and this engine already uses *provider* for the task-supplying
+`TaskProvider` — so `AtomicQueueViewMPSC` is the alias the reference page documents and a rename to `MultiProducer` remains a
+mechanical change to one file pair and one docs folder.
+
 ## 2026-10-04 20:57 — every local branch except `master` is deleted; the four unique commits survive only as loose objects
 
 **Context.** The owner asked for a single-branch tree, was shown that 4 of the 10 non-`master` branches each
