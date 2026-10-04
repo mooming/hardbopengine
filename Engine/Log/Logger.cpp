@@ -242,27 +242,19 @@ void Logger::DriverLoop() noexcept
 	ProcessBuffer();
 }
 
-void Logger::SetLoggerStream(TaskStream* stream) noexcept
+void Logger::SetLoggerTaskStream_MainThread(TaskStream* stream) noexcept
 {
 	Assert(Engine::Get().GetTaskSystem().IsMainThread(),
 		   "Setup and configuration belong to the main thread, and this call is not on it. Thread name = ",
 		   TaskSystem::GetCurrentThreadName().c_str(),
-		   ". docs/Log/Logger/set-logger-stream.html carries the contract and why it is one thread's job.");
-
-	Assert(TaskSystem::GetCurrentStreamIndex() == TaskSystem::NonStreamIndex,
-		   "Configuration may not run inside a task pass. Current stream index = ", TaskSystem::GetCurrentStreamIndex(),
-		   ". DriverLoop holds driverLock across TaskStream::Update and tasks run in that region, so this call from "
-		   "the IO stream would be one thread waiting for a pass itself is running - the mutex is not recursive and "
-		   "the wait cannot end.");
+		   ". docs/Log/Logger/setloggertaskstreammainthread.html carries the contract and why it is one thread's job.");
 
 	std::lock_guard lock(driverLock);
-
 	loggerStream = stream;
 
-	if (stream == nullptr)
-	{
-		isRunning.store(false, std::memory_order_release);
-	}
+	returnIf(stream != nullptr);
+
+	isRunning.store(false, std::memory_order_release);
 }
 
 Logger::~Logger() noexcept

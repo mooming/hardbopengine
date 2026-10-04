@@ -133,7 +133,7 @@ public:
 	Logger(Engine& engine, const char* path, const char* filename) noexcept;
 	~Logger() noexcept;
 
-	void SetLoggerStream(TaskStream* stream) noexcept;
+	void SetLoggerTaskStream_MainThread(TaskStream* stream) noexcept;
 	void StopDriverThread() noexcept;
 	void StartTask(TaskSystem& taskSys);
 	void StopTask(TaskSystem& taskSys);

@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Logger::SetLoggerStream — Log — HardBop Engine API reference</title>
+<title>Logger::SetLoggerTaskStream_MainThread — Log — HardBop Engine API reference</title>
 <link rel="stylesheet" href="../../assets/hbe-docs.css">
 </head>
 <body>
@@ -55,7 +55,7 @@
     <li><a href="flush-buffer.html">FlushBuffer</a></li>
     <li><a href="write-log.html">WriteLog</a></li>
     <li><a href="print-std-io.html">PrintStdIO</a></li>
-    <li><a href="set-logger-stream.html">SetLoggerStream</a></li>
+    <li><a href="setloggertaskstreammainthread.html">SetLoggerTaskStream_MainThread</a></li>
     <li><a href="stop-driver-thread.html">StopDriverThread</a></li>
     <li><a href="driver-loop.html">DriverLoop</a></li>
   </ul>
@@ -65,10 +65,10 @@
 <p class="breadcrumb">
   <a href="../../index.html">Module Index</a> /
   <a href="../index.html">Log</a> /
-  <a href="index.html">Logger</a> / SetLoggerStream
+  <a href="index.html">Logger</a> / SetLoggerTaskStream_MainThread
 </p>
 
-<h1><span class="fn">SetLoggerStream</span></h1>
+<h1><span class="fn">SetLoggerTaskStream_MainThread</span></h1>
 <p class="subtitle">
   <span class="tag">member of hbe::Logger</span>
   <span class="tag">Engine/Log/Logger.h</span>
@@ -79,20 +79,17 @@
 
 <h2 id="signature">Signature</h2>
 
-<pre><code>void SetLoggerStream(TaskStream* stream) noexcept</code></pre>
+<pre><code>void SetLoggerTaskStream_MainThread(TaskStream* stream) noexcept</code></pre>
 
 <h2 id="description">Function description</h2>
 
-<p>Installs the IO stream this logger's driver thread should drive, or withdraws it. The body is two policy
-checks, a lock acquisition and an assignment. The lock is the entire design, and the checks exist so that the
-acquisition is never attempted by a caller that cannot be satisfied — both messages are elided here, see the
-Notes below for what they report:</p>
+<p>Installs the IO stream this logger's driver thread should drive, or withdraws it. The body is one policy
+check, a lock acquisition and an assignment. The lock is the entire design, and the check exists so that the
+acquisition is never attempted by a caller that cannot be satisfied — its message is elided here, see the Notes
+below for what it reports:</p>
 
 <pre><code>Assert(Engine::Get().GetTaskSystem().IsMainThread(),
 	   "Setup and configuration belong to the main thread, and this call is not on it …");
-
-Assert(TaskSystem::GetCurrentStreamIndex() == TaskSystem::NonStreamIndex,
-	   "Configuration may not run inside a task pass …");
 
 <span class="ty">std</span>::<span class="fn">lock_guard</span> lock(driverLock);
 
@@ -113,10 +110,9 @@ another thread is running them.</p>
 
 <p>Withdrawing also withdraws the drain task that lived on the stream, and the flag goes with it:</p>
 
-<pre><code><span class="kw">if</span> (stream == <span class="kw">nullptr</span>)
-{
-    isRunning.<span class="fn">store</span>(<span class="kw">false</span>, <span class="ty">std</span>::memory_order_release);
-}</code></pre>
+<pre><code><span class="fn">returnIf</span>(stream != <span class="kw">nullptr</span>);
+
+    isRunning.<span class="fn">store</span>(<span class="kw">false</span>, <span class="ty">std</span>::memory_order_release);</code></pre>
 
 <p>Nothing can run that task any more, so leaving <code>isRunning</code> set would have every later
 <a href="flush.html"><code>Flush</code></a> wait its full 1000&nbsp;ms on an executor that no longer exists, then
@@ -142,8 +138,8 @@ fewer hop.</p>
 <h2 id="notes">Notes</h2>
 
 <ul>
-  <li><strong>Who calls it.</strong> The task system, from the main thread — never the driver thread,
-      and never from inside a task pass. <code>TaskSystem</code> installs <code>&amp;GetIOTaskStream()</code> once
+  <li><strong>Who calls it.</strong> The task system, from the main thread. Both call sites sit outside any task
+      pass. <code>TaskSystem</code> installs <code>&amp;GetIOTaskStream()</code> once
       its streams exist, and passes <code>nullptr</code> while shutting streams down. See
       <a href="../../Core/index.html">TaskSystem</a>.</li>
   <li><strong>Policy: setup and configuration belong to the main thread, and this function checks
@@ -159,17 +155,20 @@ fewer hop.</p>
       <code>if (isMainThread &amp;&amp; hasStreams)</code> — that function is prepared to be called by a thread
       which does not own the run, and leaves the stream installed rather than dismantling another thread's
       structures. This method has no such foreign-thread path, so it is free to assert instead of negotiating.</li>
-  <li><strong>What the second check adds.</strong> That the call is not happening <em>inside a task pass</em> —
-      which being on the right thread does not exclude. The main thread is entitled to configure, but not
-      while it is draining the base stream on a task's behalf:
-      <a href="driver-loop.html"><code>DriverLoop</code></a> holds <code>driverLock</code> across
-      <code>Update()</code>, a pass on the IO stream runs the work that stream's tasks hand onward, and a task
-      waiting on the base thread would have that thread parked here. So the second <code>Assert</code> requires
-      <code>TaskSystem::GetCurrentStreamIndex() == NonStreamIndex</code>. Both checks sit <em>before</em> the
-      <code>lock_guard</code>: placed after it, the thread is already blocked in the acquisition the checks exist
-      to prevent and nothing would ever be reported. They are <code>Assert</code>s, so Debug and Dev report a
-      violation while Release keeps the hang.</li>
-  <li><strong>Why neither check is <code>TaskSystem::IsBaseThread()</code>.</strong> Measured, that predicate
+  <li><strong>What the check does not cover.</strong> One condition a stricter version of this function used to
+      diagnose is no longer diagnosed: a call from the main thread <em>while that thread is draining the base
+      stream</em>. <a href="driver-loop.html"><code>DriverLoop</code></a> holds <code>driverLock</code> across
+      <code>Update()</code>, so such a call waits behind an IO pass, and a task in that pass waiting on the base
+      thread would be waiting on a thread parked here. That is tolerable because every cross-wait the logger can
+      make is <em>bounded</em> — <code>WaitForFlush</code> gives up after 1000 ms and <code>StopTask</code> after
+      1000 ms — so the worst case is a stalled timeout and a report on the console, never the unbounded hang the
+      driver-thread case would have been. The driver thread is the thread that can actually deadlock here, and the
+      one check that remains rejects it.</li>
+  <li><strong>The check is the first statement.</strong> It sits <em>before</em> the <code>lock_guard</code>:
+      placed after it, the thread is already blocked in the acquisition the check exists to prevent, and nothing
+      would ever be reported. It is an <code>Assert</code>, so Debug and Dev report a violation while Release
+      keeps the hang.</li>
+  <li><strong>Why the check is not <code>TaskSystem::IsBaseThread()</code>.</strong> Measured, that predicate
       aborts the engine at startup. It tests the thread-local <code>StreamIndex</code>, which is
       <code>NonStreamIndex</code> on every thread outside a pass and is restored to it when a pass ends, so it
       means <em>this thread is draining the base stream right now</em> — and both legal callers run outside any

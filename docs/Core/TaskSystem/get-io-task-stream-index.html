@@ -76,7 +76,7 @@
 
 <div class="note">
   <strong>The stream exists; its thread does not.</strong> The IO stream has no thread of its own —
-  <a href="build-streams.html">BuildStreams</a> hands it to the logger with <code>SetLoggerStream</code> and the logger's own
+  <a href="build-streams.html">BuildStreams</a> hands it to the logger with <code>SetLoggerTaskStream_MainThread</code> and the logger's own
   thread drives it. So this index names a queue and a drain policy, not a thread you can join, and a task queued here
   runs only while the logger is driving.
 </div>

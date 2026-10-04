@@ -55,7 +55,7 @@
     <li><a href="flush-buffer.html">FlushBuffer</a></li>
     <li><a href="write-log.html">WriteLog</a></li>
     <li><a href="print-std-io.html">PrintStdIO</a></li>
-    <li><a href="set-logger-stream.html">SetLoggerStream</a></li>
+    <li><a href="setloggertaskstreammainthread.html">SetLoggerTaskStream_MainThread</a></li>
     <li><a href="stop-driver-thread.html">StopDriverThread</a></li>
     <li><a href="driver-loop.html">DriverLoop</a></li>
   </ul>
@@ -78,16 +78,11 @@
   the same name asks for two different things, and the argument list decides which
 </p>
 
-<h2 id="signature">Signatures</h2>
+<h2 id="signature">Signature</h2>
 
-<p>One page for the name, because both forms answer "give me the logger" and differ in what they hand back:</p>
+<pre><code>static Logger&amp; Get() noexcept
 
-<pre><code><span class="cm">/// the sink itself</span>
-[[nodiscard]] <span class="kw">static</span> <span class="ty">Logger</span>&amp; <span class="fn">Get</span>() <span class="kw">noexcept</span>;
-
-<span class="cm">/// a category and level bound into one value</span>
-[[nodiscard]] <span class="kw">static</span> <span class="ty">SimpleLogger</span> <span class="fn">Get</span>(<span class="ty">StaticString</span> category,
-                                       <span class="ty">ELogLevel</span> level = <span class="ty">ELogLevel</span>::Info) <span class="kw">noexcept</span>;</code></pre>
+static SimpleLogger Get(StaticString category, ELogLevel level = ELogLevel::Info) noexcept</code></pre>
 
 <h2 id="description">Function description</h2>
 
