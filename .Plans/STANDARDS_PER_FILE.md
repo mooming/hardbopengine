@@ -1,7 +1,7 @@
 # hb-standards per-file verdict
 
 **Generated — do not edit.** Every row measures a tracked source **as it stands on disk**, produced by
-`python3 .pi/skills/hb-standards/scripts/file_ledger.py --write`. Measured against b5345d6 (tree dated 2026-10-04) with
+`python3 .pi/skills/hb-standards/scripts/file_ledger.py --write`. Measured against ce9ba49 (tree dated 2026-10-04) with
 `Homebrew clang-format version 22.1.8`.
 
 The previous edition of this file was hand-written and its labels had rotted: 246 of its 256
@@ -32,9 +32,6 @@ Two counts a reader should not act on alone, both named here because the rows ca
   is rejected by clang when compiled as its own translation unit because it names `std::forward` on
   line 28 and includes no `<utility>` — it builds today only because its consumers reach that header
   first, which is the same latent shape `Engine/Core/TaskSystem.cpp` carried before `50efdaa`.
-
-1 path(s) carried uncommitted edits while this ran, so those rows describe work in progress rather
-than b5345d6.
 
 3 file(s) carry a column this run could not measure: unmeasured 3.
 
@@ -119,14 +116,14 @@ than b5345d6.
 | Engine/Core/Types.h | clean apart from A3 | 0 | 0 | 0 | n/a (no class or struct defined here) |
 | Engine/Core/WorkItem.cpp | clean apart from A3 | 0 | 0 | 0 | n/a (no class or struct defined here) |
 | Engine/Core/WorkItem.h | clean apart from A3 | 0 | 0 | 0 | 0 |
-| Engine/Engine/Engine.cpp | clean | 7 | 0 | 0 | n/a (no class or struct defined here) |
-| Engine/Engine/Engine.h | clean | 2 | 0 | 0 | 0 |
-| Engine/Engine/EngineInitLevel.h | clean | 2 | 0 | 0 | n/a (no class or struct defined here) |
+| Engine/Engine/Engine.cpp | clean apart from A3 | 0 | 0 | 0 | n/a (no class or struct defined here) |
+| Engine/Engine/Engine.h | clean apart from A3 | 0 | 0 | 0 | 0 |
+| Engine/Engine/EngineInitLevel.h | clean apart from A3 | 0 | 0 | 0 | n/a (no class or struct defined here) |
 | Engine/HSTL/HString.cpp | clean | 0 | 0 | 0 | n/a (no class or struct defined here) |
-| Engine/HSTL/HString.h | clean | 1 | 0 | 0 | 0 |
-| Engine/HSTL/HUnorderedMap.cpp | clean | 1 | 0 | 0 | n/a (no class or struct defined here) |
-| Engine/HSTL/HUnorderedMap.h | clean | 3 | 0 | 0 | 0 (partial) |
-| Engine/HSTL/HVector.h | clean | 3 | 0 | 0 | n/a (no class or struct defined here) |
+| Engine/HSTL/HString.h | clean apart from A3 | 0 | 0 | 0 | 0 |
+| Engine/HSTL/HUnorderedMap.cpp | clean | 0 | 0 | 0 | n/a (no class or struct defined here) |
+| Engine/HSTL/HUnorderedMap.h | clean apart from A3 | 0 | 0 | 0 | 0 (partial) |
+| Engine/HSTL/HVector.h | clean apart from A3 | 0 | 0 | 0 | n/a (no class or struct defined here) |
 | Engine/Log/LogLevel.h | clean | 3 | 0 | 0 | n/a (no class or struct defined here) |
 | Engine/Log/LogLine.cpp | clean | 4 | 1 | 0 | n/a (no class or struct defined here) |
 | Engine/Log/LogLine.h | clean | 4 | 0 | 0 | 0 |

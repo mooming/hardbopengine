@@ -1,5 +1,27 @@
 # Journal
 
+## 2026-10-04 03:25 — the engine-wide blank-line sweep resumes on its two cheap modules
+
+**Cause.** `Engine/Core` closed, so the sweep plan's cheap re-proof targets were the next unblocked work:
+`Engine/HSTL` (8 findings by the old ledger) and `Engine/Engine` (11).
+
+**Result.** 19 findings across 7 files, all of them a size prescribed at a named line, so the pass applied
+what each finding said. Formatter identical before and after with no `--apply` in between;
+`prove_regroup.py --whitespace-only` proves all seven files changed no non-blank line; rule set B, comments,
+layout and init order were clean and stayed clean; three configurations link, `EngineTest` 374 of 375 in
+each with only the pre-existing `WindowTest` ceiling. Tree-wide rule-set-A findings 1145 → **1126**, exactly
+the 19 closed, and `HSTL` and `Engine` no longer appear in the queue.
+
+| Queue remaining | Findings | | Queue remaining | Findings |
+|---|---|---|---|---|
+| `Engine/Container` | 271 | | `Engine/Renderer` | 101 |
+| `Engine/Memory` | 228 | | `Engine/String` | 95 |
+| `Engine/OSAL` | 166 | | `Engine/Resource` | 84 |
+| `Engine/Math` | 115 | | `Engine/Log` | 43 |
+
+A first draft of the applier read the wrong capture group and would have inserted blanks from a `None`; it
+died before touching a file, which is the only reason it is a footnote rather than a repair.
+
 ## 2026-10-04 03:05 — the gate that authorises deleting comments gets the fixtures it never had
 
 **Cause.** Three defects were found in `docs_coverage.py` today by hand, in one afternoon: `MACRO_SET` with no
