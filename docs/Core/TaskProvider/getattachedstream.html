@@ -78,7 +78,7 @@ return attached[static_cast&lt;size_t&gt;(index)];</code></pre>
 <p>
   Assert and then refuse, rather than either alone: the assert is the loud signal in a Debug build that a caller's arithmetic is wrong, and the
   return keeps the same mistake from reading past the array in a build where the assert is compiled away
-  (<code>CMakeLists.txt</code> defines <code>__DEBUG__</code> for Debug only). The header states the contract as one line: "Out-of-range
+  (<code>CMakeLists.txt</code> defines <code>!RELEASE_BUILD</code> for Debug only). The header states the contract as one line: "Out-of-range
   asserts and returns 0" (<code>Engine/Core/TaskProvider.h</code>).
 </p>
 

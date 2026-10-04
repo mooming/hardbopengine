@@ -167,7 +167,7 @@
     <td><code>float timeOutSec;</code></td>
     <td>
       <span class="badge">private</span> <span class="badge">PROFILE_ENABLED only</span> Hold threshold in
-      seconds, defaulted to <code>0.01f</code> and doubled under <code>__DEBUG__</code> by
+      seconds, defaulted to <code>0.01f</code> and doubled under <code>!RELEASE_BUILD</code> by
       <code>Config::DebugTimeOutMultiplier</code>; a value <code>&lt;= 0</code> disables the warning
     </td>
   </tr>

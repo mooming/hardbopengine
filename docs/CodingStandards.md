@@ -323,14 +323,14 @@ To maintain high code quality and consistency, please adhere to the following gu
       the name of the construct its own line closes may remain:
         ```cpp
         #endif // MEMORY_VERIFICATION_ENABLED
-        #else  // !__DEBUG__
+        #else  // RELEASE_BUILD
         }      // namespace hbe
         }}     // namespace hbe::StringUtil
         ```
       A bare `#endif` is not self-documenting: it cannot state which `#if` it closes, so the
       label advances the rule instead of evading it. Naming the guard in negated form
-      (`!__DEBUG__`) and qualifying a namespace (`hbe::StringUtil`) still count as naming the
-      construct. The permission is deliberately narrow:
+      (`#else // RELEASE_BUILD` closing `#if !RELEASE_BUILD`) and qualifying a namespace
+      (`hbe::StringUtil`) still count as naming the construct. The permission is deliberately narrow:
         - the comment must name **only** the closed construct — no sentence, no TODO, no
           reasoning. `} // namespace hbe  // TODO: rename` is prose in a label's clothes.
         - it must sit on the closing line itself. A label on the line *above* is a comment.

@@ -99,9 +99,9 @@ return {*this, start, end, priority};</code></pre>
 
 <div class="note">
   <strong>Even the check that does exist is Debug-only.</strong> <code>Assert</code> is an ordinary function with two
-  definitions (<code>Engine/Core/Debug.h</code>): under <code>__DEBUG__</code> it flushes logs, prints and
+  definitions (<code>Engine/Core/Debug.h</code>): under <code>!RELEASE_BUILD</code> it flushes logs, prints and
   <code>std::abort()</code>s; otherwise its body is empty. <code>CMakeLists.txt</code> defines
-  <code>__DEBUG__</code> for the Debug configuration and inherits it into Dev, so Release performs no check here at all —
+  <code>!RELEASE_BUILD</code> for the Debug configuration and inherits it into Dev, so Release performs no check here at all —
   an over-produced item in Release is queued as though nothing happened.
 </div>
 

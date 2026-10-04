@@ -81,7 +81,7 @@
 <p>
   The join sweep that precedes it skips a stream whose thread is not joinable
   (<a href="getthread.html">GetThread</a>), so the contract in force is: <a href="requestclose.html">RequestClose</a>, then join or close, then destroy — and the
-  assert that would catch a breach is compiled away unless <code>__DEBUG__</code> is defined, which the build sets for Debug alone
+  assert that would catch a breach is compiled away unless <code>!RELEASE_BUILD</code> is defined, which the build sets for Debug alone
   (<code>Core/Debug.h</code>, <code>CMakeLists.txt</code>).
 </p>
 

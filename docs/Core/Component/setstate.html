@@ -80,7 +80,7 @@
   <code>BORN</code>, neither of which the transition switch handles. A component that sets one of those during its update is routed to the switch by the
   <a href="isenabled.html">IsEnabled</a> check — since neither is <code>ALIVE</code> — and lands in the default case, whose one statement is
   <code>Assert(false, "Unexpected component state %d on processing transition.\n", compo.GetState())</code>. That assert compiles away unless
-  <code>__DEBUG__</code> is defined, which only the Debug configuration is (<code>Engine/Core/ComponentSystem.h</code>,
+  <code>!RELEASE_BUILD</code> is defined, which only the Debug configuration is (<code>Engine/Core/ComponentSystem.h</code>,
   <code>Engine/Core/Debug.h</code>); in Dev and Release the fall-through is silent and the component is destroyed by the following
   <code>transitionList.clear()</code> with neither <a href="ondisable.html">OnDisable</a> nor <a href="release.html">Release</a>.
 </div>

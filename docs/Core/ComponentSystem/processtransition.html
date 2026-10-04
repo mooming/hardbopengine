@@ -122,7 +122,7 @@
 <p class="meta">From Engine/Core/ComponentSystem.h, ComponentSystem::ProcessTransition()</p>
 
 <p>
-  <code>Assert</code> compiles to nothing unless <code>__DEBUG__</code> is defined, and only the Debug configuration defines it
+  <code>Assert</code> compiles to nothing unless <code>!RELEASE_BUILD</code> is defined, and only the Debug configuration defines it
   (<code>Engine/Core/Debug.h</code>). In Dev and Release the fall-through is silent: the component is neither enabled, disabled nor released, and the
   <code>transitionList.clear()</code> that ends the function destroys it without any callback
   (<a href="../Component/release.html">Release</a>). The repository's component is written so this cannot pass unnoticed — its destructor fails the test if it

@@ -101,7 +101,7 @@
 </ol>
 
 <p>
-  After either of the last two paths, a <code>__DEBUG__</code> build additionally stores <code>0</code> into
+  After either of the last two paths, a <code>!RELEASE_BUILD</code> build additionally stores <code>0</code> into
   <code>size</code> and <code>nullptr</code> into <code>data</code>. Reading a destroyed buffer's accessors
   therefore looks clean in Debug and returns the old, dead values in every other configuration — a difference that
   only ever matters when something was already reading a destroyed object.

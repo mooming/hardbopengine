@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Build macros — Config module — HardBop Engine design document</title>
+<link rel="stylesheet" href="../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a class="current" href="../Config/index.html">Config</a></li>
+    <li><a href="../Container/index.html">Container</a></li>
+    <li><a href="../Core/index.html">Core</a></li>
+    <li><a href="../Engine/index.html">Engine</a></li>
+    <li><a href="../HSTL/index.html">HSTL</a></li>
+    <li><a href="../Log/index.html">Log</a></li>
+    <li><a href="../Math/index.html">Math</a></li>
+    <li><a href="../Memory/index.html">Memory</a></li>
+    <li><a href="../OSAL/index.html">OSAL</a></li>
+    <li><a href="../Renderer/index.html">Renderer</a></li>
+    <li><a href="../Resource/index.html">Resource</a></li>
+    <li><a href="../String/index.html">String</a></li>
+    <li><a href="../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This document</h3>
+  <ul>
+    <li><a href="#trio">One macro per configuration, set to 1</a></li>
+    <li><a href="#independence">Why each flag line reads only its own variable</a></li>
+    <li><a href="#convention">What the source writes</a></li>
+    <li><a href="#definitions">Definitions a project adds per configuration</a></li>
+    <li><a href="#proof">How a define is proved rather than read</a></li>
+    <li><a href="#history">The macro this replaced</a></li>
+    <li><a href="#coverage">What this document does not own</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+  <div class="breadcrumb"><a href="../index.html">Docs</a> / <a href="../Config/index.html">Config</a> / Build macros</div>
+
+<h1>Build macros</h1>
+<div class="subtitle">Every configuration names itself with one macro set to <code>1</code>, written on its own compiler-flag line, so a definition cannot arrive by inheritance</div>
+
+<div class="note">
+  <strong>Scope.</strong> This document owns where <code>DEBUG_BUILD</code>, <code>DEV_BUILD</code> and
+  <code>RELEASE_BUILD</code> come from and what a source file may conclude from seeing one of them. What
+  <code>Assert</code> and <code>FatalAssert</code> do is on the
+  <a href="../Core/index.html#debug">Debug section of the Core page</a> and in
+  <a href="AssertMacros_Design.html">Assertion design</a>; what the generator does with a
+  <a href="../Config/BuildConfig/index.html"><code>BuildConfig</code></a> header is that class's own reference.
+</div>
+
+<h2 id="trio">One macro per configuration, set to 1</h2>
+<p>
+MakeBuild's template writes exactly one of the three onto each configuration's compiler-flag line, in every
+generated <code>CMakeLists.txt</code>. A configuration therefore carries its own name, and the three are mutually
+exclusive and exhaustive: exactly one is defined in any translation unit.
+</p>
+<table>
+  <tr><th>Configuration</th><th>Macro</th><th>Flag line it is written onto</th><th>Flags on that line</th></tr>
+  <tr><td>Debug</td><td><code>DEBUG_BUILD=1</code></td><td><code>CMAKE_CXX_FLAGS_DEBUG</code></td><td><code>-g -O0</code></td></tr>
+  <tr><td>Dev</td><td><code>DEV_BUILD=1</code></td><td><code>CMAKE_CXX_FLAGS_DEV</code></td><td><code>-g -O1</code></td></tr>
+  <tr><td>Release</td><td><code>RELEASE_BUILD=1</code></td><td><code>CMAKE_CXX_FLAGS_RELEASE</code></td><td><code>-O3</code></td></tr>
+</table>
+
+<h2 id="independence">Why each flag line reads only its own variable</h2>
+<p>
+The Dev line used to read <code>${CMAKE_CXX_FLAGS_DEBUG}</code> and append <code>-O1</code>. That is CMake's variable
+semantics — a variable is whatever the enclosing scope last set — and not a rule about configurations. Its cost was
+that every definition written for Debug silently became a Dev definition too, and there was no input file that could
+say otherwise: a project could not define a macro for Debug alone.
+</p>
+<p>
+Each of the three lines now reads only the variable it assigns, so the flag sets are independent. Dev still gets
+<code>-g -O1</code> and Debug still gets <code>-g -O0</code>: reading the Debug line produced <code>-g -O0</code>
+followed by <code>-O1</code>, and the later <code>-O</code> wins, so spelling the result out changes no effective
+flag. Only the definitions stopped travelling between configurations.
+</p>
+
+<h2 id="convention">What the source writes</h2>
+<p>
+A file that wants a configuration asks for it: <code>#if DEV_BUILD</code>. A file that wants "not the shipping
+build" writes <code>#if !RELEASE_BUILD</code>, which is the pair Debug and Dev — the engine's assertion guard,
+thread-identity tracking, and every diagnostic that a shipping build must not pay for. Both forms are correct and
+they are not the same question; the second is written wherever a Dev build must behave like a Debug build, and the
+first wherever it must not.
+</p>
+<p>
+An undefined macro evaluates to <code>0</code> in a <code>#if</code>, so <code>#if !RELEASE_BUILD</code> holds in
+Debug and Dev without either defining <code>RELEASE_BUILD</code> as false. That is also why the trio is defined to
+<code>1</code> rather than merely present: a reader of <code>#if DEV_BUILD</code> sees a value test, not a name
+membership test, and cannot accidentally write the inverted question with <code>#ifdef</code>.
+</p>
+
+<h2 id="definitions">Definitions a project adds per configuration</h2>
+<p>
+A definition that is not about the configuration itself — the engine's <code>__TEST__</code> and
+<code>__UNIT_TEST__</code>, which gate the test bodies each module carries — comes from
+<code>precompileDefinitionsDebug</code>, <code>precompileDefinitionsDev</code> or
+<code>precompileDefinitionsRelease</code> in <code>.project.config</code>. The generator appends them as
+<code>-D</code> tokens to the matching flag line, so they reach every module while belonging to one configuration.
+The two lists are independent by the rule above, so a definition wanted in Debug and Dev is written twice, which is
+the point: the pair is stated rather than assumed.
+</p>
+<p>
+Writing such a definition into one module's <code>customCMake.txt</code> does not work. Those lines are appended
+after <code>add_subdirectory</code>, so a directory-level definition there reaches no child, and a
+<code>target_compile_definitions</code> there reaches only that module's own sources — which for
+<code>__UNIT_TEST__</code> means the test executable compiles its half of the suite and then fails to link against
+libraries that compiled the other half out. The same trap is why <code>build.sh -test</code> passes the defines on
+the configure command line rather than through a target, and why it remains the only route that puts them into
+Release.
+</p>
+
+<h2 id="proof">How a define is proved rather than read</h2>
+<p>
+A preprocessor definition is per-translation-unit state, so the proof is counted in the generated ninja files rather
+than read off a <code>CMakeLists.txt</code>, which says what was intended rather than what was applied:
+</p>
+<pre><code>grep -c 'DRELEASE_BUILD' build/CMakeFiles/impl-Release.ninja   # every translation unit
+grep -c 'DDEV_BUILD'     build/CMakeFiles/impl-Dev.ninja
+grep -c 'D__TEST__'      build/CMakeFiles/impl-Release.ninja   # 0: Release is not a test build</code></pre>
+<p class="meta">From docs/BuildSystem.md, which repeats the commands as the build-system gate</p>
+
+<h2 id="history">The macro this replaced</h2>
+<p>
+A single macro, <code>__DEBUG__</code>, used to be written onto the Debug flag line only, and Dev received it
+because its flags were read from Debug's. Three things follow from that history and are worth keeping, because each
+is a claim a page elsewhere still makes in the old vocabulary:
+</p>
+<ul>
+  <li>Every site that says <code>#if !RELEASE_BUILD</code> is the same set of configurations the old macro covered,
+      so the rename carried no behaviour change — the proof was a build and test run of all three configurations.</li>
+  <li>It was written by hand into a generated <code>CMakeLists.txt</code> before the generator emitted it, and a
+      hand-edit is erased by the next generation pass, silently. That is why both the build macros and the
+      per-configuration definitions are generator inputs and nothing else.</li>
+  <li>The name invited the wrong reading. "Debug" described a configuration that also happened to be the one Dev
+      inherited, so a reader could not tell a Debug-only effect from a not-Release one. <code>ComponentSystem</code>'s
+      test body is the case that mattered: it used the guard to pick a smaller workload, which is a configuration
+      question wearing a diagnostic name.</li>
+</ul>
+
+<h2 id="coverage">What this document does not own</h2>
+<div class="gap">
+  <p>
+  <strong>The generator's own documentation is in the tool.</strong> <em>Tools/MakeBuild/README.md</em> lists the
+  <code>.project.config</code> keys and the flags each configuration line carries. Nothing here restates that table,
+  and a change to the template belongs there first.
+  </p>
+  <p>
+  <strong>No page yet owns <code>MemoryManager</code>, <code>StringUtil</code> or <code>LinkedList</code> as
+  classes.</strong> <em>docs/Memory/</em> and <em>docs/String/</em> hold a module index only, and
+  <em>docs/Container/LinkedList/</em> is incomplete, which <code>docs_coverage.py</code> reports as a blocker for
+  those headers. That debt predates this document and is not paid by it.
+  </p>
+</div>
+
+<h2 id="seealso">Where else to look</h2>
+<table>
+  <tr><th>Question</th><th>Where it lives</th></tr>
+  <tr><td>Which flag line a define landed on, per configuration</td><td><a href="../BuildSystem.md">docs/BuildSystem.md</a></td></tr>
+  <tr><td>The keys MakeBuild reads from <code>.project.config</code></td><td><em>Tools/MakeBuild/README.md</em>, and <a href="../Config/BuildConfig/index.html">BuildConfig</a> for the header that mirrors them</td></tr>
+  <tr><td>Why both branches of the assertion guard must declare the same overloads</td><td><a href="AssertMacros_Design.html">Assertion design</a></td></tr>
+  <tr><td>Why the suite is compiled per module rather than per executable</td><td><a href="UnitTestSelection_Design.html">Unit-test selection design</a></td></tr>
+</table>
+
+</main>
+</body>
+</html>

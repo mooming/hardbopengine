@@ -106,7 +106,7 @@
 
 <p>
   The existence check is <code>Assert(engineInstance != nullptr)</code>, which is the Debug and Dev form: it flushes the
-  logs and aborts. In a build without <code>__DEBUG__</code> the corresponding <code>Assert</code> overload is an empty
+  logs and aborts. In a build without <code>!RELEASE_BUILD</code> the corresponding <code>Assert</code> overload is an empty
   inline function, so the test is compiled away entirely and a null pointer is dereferenced and the call returns a
   reference to address zero. Compare the guards a few lines away in the same source file —
   <a href="initialize.html"><code>Initialize</code></a>'s "no OS application created" and

@@ -85,7 +85,7 @@
 
 <p>
   With <code>nestedPumpAllowed</code> permanently <code>false</code>, any nested pass fires that assert in a Debug build
-  (<code>Engine/Core/TaskStream.cpp</code>). Outside Debug the assert is compiled away — <code>__DEBUG__</code> is defined for the Debug
+  (<code>Engine/Core/TaskStream.cpp</code>). Outside Debug the assert is compiled away — <code>!RELEASE_BUILD</code> is defined for the Debug
   configuration only (<code>Core/Debug.h</code>, <code>CMakeLists.txt</code>) — so a nested pump is silently allowed, and what it breaks is not the
   assert but the assumptions around it: <code>isPumping</code> is cleared by the inner pass's guard on the way out
   (<code>Update</code>'s <code>PumpGuard</code>), so the outer pass continues with the flag cleared and no pass can detect a second nesting.

@@ -218,7 +218,7 @@ renderer.<span class="fn">SetMesh</span>(quad);</code></pre>
 
 <pre><code><span class="cm">// Initialize rejects a null window on purpose - the surface is built from the window,</span>
 <span class="cm">// and queue family support is queried against that surface. The assertion said the</span>
-<span class="cm">// opposite; it survived only because Assert() is compiled out outside __DEBUG__ builds.</span>
+<span class="cm">// opposite; it survived only because Assert() is compiled out in the Release build.</span>
 <span class="kw">Assert</span>(!renderer.<span class="fn">Initialize</span>(window), <span class="st">"Initialize must reject a null window"</span>);</code></pre>
 
 <footer class="prevnext">

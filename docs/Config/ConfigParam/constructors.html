@@ -73,7 +73,7 @@
 <p>
   Both halves of that are conditional at compile time. Under <code>ENGINE_PARAM_DESC_ENABLED</code> 0 the initialiser list
   contains only <code>value</code>, because the <code>name</code> and <code>desc</code> members are not declared at all. Under a
-  build without <code>__DEBUG__</code> the <code>id</code> argument is accepted and discarded, since the member it would
+  build without <code>!RELEASE_BUILD</code> the <code>id</code> argument is accepted and discarded, since the member it would
   initialise does not exist — a caller may pass a thread id in Release and it changes nothing.
 </p>
 
@@ -133,7 +133,7 @@
     <td><code>std::thread::id</code>, defaults to the constructing thread</td>
     <td>
       The thread later allowed to call <a href="get.html"><code>Get</code></a> and <a href="set.html"><code>Set</code></a>, and only
-      meaningful for a non-atomic parameter under <code>__DEBUG__</code>. Passing another thread's id is how you bless a parameter
+      meaningful for a non-atomic parameter under <code>!RELEASE_BUILD</code>. Passing another thread's id is how you bless a parameter
       that a specific other thread owns; ignored in a build where the member is compiled out
     </td>
   </tr>

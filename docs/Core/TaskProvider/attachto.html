@@ -116,7 +116,7 @@
   dropped, logs the same in an error line naming the lane bit, and returns
   (<code>Engine/Core/TaskProvider.cpp</code>). The limit is 64 for a reason the header prices: feeding every worker stream is an ordinary
   thing providers do, and R35's two lanes per worker double the attachments. Note the assert is Debug-only
-  (<code>__DEBUG__</code> in <code>CMakeLists.txt</code>), so a shipping overflow is the log line and nothing else.
+  (<code>!RELEASE_BUILD</code> in <code>CMakeLists.txt</code>), so a shipping overflow is the log line and nothing else.
 </div>
 
 <div class="gap">

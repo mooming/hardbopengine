@@ -95,7 +95,7 @@ public:
 <p>
   It asserts that the memory manager exists and then announces that statistics are ready, so the engine's own construction sequence has to build the memory
   manager first and this last (<code>Engine/Engine/Engine.h</code> holds it as a plain member). Both statements are load-bearing in opposite ways: the
-  <code>Assert</code> is compiled out unless <code>__DEBUG__</code> is defined, so a wrong order is silent in Dev and Release;
+  <code>Assert</code> is compiled out unless <code>!RELEASE_BUILD</code> is defined, so a wrong order is silent in Dev and Release;
   <code>SetSystemStatisticsReady</code> is not, and is what other engine subsystems wait on. The class also refuses to compile at all on a platform where
   <code>std::atomic&lt;uint64_t&gt;</code> is not always lock-free — a class-scope <code>static_assert</code> in the header, before the first member
   (<code>Engine/Core/SystemStatistics.h</code>).

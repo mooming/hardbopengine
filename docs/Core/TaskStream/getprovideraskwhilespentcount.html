@@ -91,7 +91,7 @@ if (!budget.CanTakeWork())
 <p class="meta">From Engine/Core/TaskStream.cpp, TaskStream::Update()</p>
 
 <p>
-  <code>Assert</code> is compiled away unless <code>__DEBUG__</code> is defined — the Debug configuration only (<code>Core/Debug.h</code>,
+  <code>Assert</code> is compiled away unless <code>!RELEASE_BUILD</code> is defined — the Debug configuration only (<code>Core/Debug.h</code>,
   <code>CMakeLists.txt</code>) — so in Dev and Release this counter is the only witness. Reading it as zero in a Debug run proves nothing about a Release
   build; the counter is the portable check, which is why it exists at all.
 </p>

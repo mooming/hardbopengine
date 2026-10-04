@@ -50,6 +50,7 @@
   <h3>Design documents</h3>
   <ul>
     <li><a href="../BuildSystem.md">Build system</a></li>
+    <li><a href="../design/BuildMacros_Design.html">Build macros</a></li>
     <li><a href="../HelperScript.md">Helper script</a></li>
   </ul>
 </nav>
@@ -90,7 +91,7 @@
 <p>
   Where a value in this module meets a value from another module, the other module owns the meaning: log level numbers are
   <a href="../Log/index.html#eloglevel">ELogLevel</a>, allocation alignment is consumed by
-  <a href="../Memory/index.html">Memory</a>, the assert family that <code>__DEBUG__</code> gates lives in
+  <a href="../Memory/index.html">Memory</a>, the assert family that <code>!RELEASE_BUILD</code> gates lives in
   <a href="../Core/index.html#functions">Core</a>, and the interning that makes a parameter key cheap is
   <a href="../String/index.html">String</a>.
 </p>
@@ -162,7 +163,7 @@
   <tr><td><code>LogNumMemoryBlocks</code></td><td><code>int</code></td><td>1024 * 12</td><td>Declared among the logging constants in <code>EngineConfig.h</code>; <strong>no consumer in the tree</strong></td></tr>
   <tr><td><code>LogForceFlushThreshold</code></td><td><code>int</code></td><td>1024 * 8</td><td>Pending bytes that force the logger to flush</td></tr>
   <tr><td><code>MaxConcurrentTasks</code></td><td><code>int</code></td><td>32</td><td>Declared among the TaskSystem constants; <strong>no consumer in the tree</strong>, so nothing enforces 32</td></tr>
-  <tr><td><code>DebugTimeOutMultiplier</code></td><td><code>float</code></td><td>2.0f</td><td>Scales <code>ScopedLock</code>'s lock-wait timeout — and only inside <code>PROFILE_ENABLED</code> and <code>__DEBUG__</code>, so inert by default</td></tr>
+  <tr><td><code>DebugTimeOutMultiplier</code></td><td><code>float</code></td><td>2.0f</td><td>Scales <code>ScopedLock</code>'s lock-wait timeout — and only inside <code>PROFILE_ENABLED</code> and <code>!RELEASE_BUILD</code>, so inert by default</td></tr>
 </table>
 
 <h2 id="functions">Module functions</h2>
@@ -205,13 +206,13 @@
 </p>
 
 <p>
-  The one build flag that changes this module's own behaviour is <code>__DEBUG__</code>. The top-level
-  <code>CMakeLists.txt</code> puts <code>-D__DEBUG__</code> on the Debug flag line and defines Dev as Debug plus
-  <code>-O1</code>, so Debug and Dev have it and Release does not. That is what turns
+  The one build flag that changes this module's own behaviour is <code>!RELEASE_BUILD</code>. MakeBuild's template
+  writes <code>RELEASE_BUILD=1</code> onto the Release flag line alone, so Debug and Dev are the configurations in
+  which that test is true — see <a href="../design/BuildMacros_Design.html">Build macros</a>. That is what turns
   <a href="../Core/index.html#functions"><code>Assert</code></a> into a real check and what enables the thread-affinity assertion
   inside <a href="ConfigParam/get.html"><code>ConfigParam::Get</code></a>. <code>FatalAssert</code> is outside that gate and is live in
   all three configurations — see <a href="BuildConfig/index.html">BuildConfig</a>, whose header comment on this point is stale and
-  contradicts <code>CMakeLists.txt</code>.
+  contradicts the generated <code>CMakeLists.txt</code>.
 </p>
 
 <h2 id="coverage">Coverage</h2>

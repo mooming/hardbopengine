@@ -100,25 +100,21 @@
 
 <h2 id="example">Examples</h2>
 
-<p>The engine's own call site, at shutdown, together with the two lines that would have made it readable:</p>
+<p>The engine's own call site, at shutdown:</p>
 
 <pre><code><span class="kw">auto</span>&amp; configSys = hbe::ConfigSystem::<span class="fn">Get</span>();
-
-#ifdef __DEBUG__
-        <span class="cm">//        const auto logLevel = static_cast&lt;uint8_t&gt;(ELogLevel::Verbose);</span>
-        <span class="cm">//        configSys.SetByte("Log.Engine", logLevel);</span>
-        <span class="cm">//        configSys.SetByte("Log.Level", logLevel);</span>
-#endif // __DEBUG__
 
 <span class="cm">// … other shutdown reporting …</span>
 configSys.<span class="fn">PrintAllParameters</span>();</code></pre>
 
-<p class="meta">From Engine/Engine/Engine.cpp, <code>hbe::Engine::ShutDown</code> — the <code>SetByte</code> pair is present in the source but commented out</p>
+<p class="meta">From Engine/Engine/Engine.cpp, <code>hbe::Engine::ShutDown</code></p>
 
 <p>
-  That comment block is the reason this page says what it says: the mechanism to make the dump visible exists in the tree
-  and is disabled, so a shutdown log with no parameter list is the expected outcome rather than a bug in the registry. To
-  enable it in a <code>ConfigParam</code>-owning subsystem instead of editing the engine, set the level earlier in the run:
+  Nothing at that call site raises the log level, and the dump is written at <code>ELogLevel::Verbose</code>, so a
+  shutdown log with no parameter list is the expected outcome rather than a bug in the registry. The call site used to
+  carry a commented-out pair of <code>SetByte</code> calls that would have made the dump visible; those lines left the
+  source first, and what remained behind them — a <code>#if !RELEASE_BUILD</code> block holding no statement at all —
+  was deleted with the quotation above having been taken. To make the dump appear, raise the level earlier in the run:
 </p>
 
 <p class="note">Illustrative — this pair has no live call site in the repository.</p>

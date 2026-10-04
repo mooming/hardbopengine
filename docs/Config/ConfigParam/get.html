@@ -73,9 +73,9 @@
   The whole body is two statements, and the first is conditional:
 </p>
 
-<pre><code>#<span class="kw">ifdef</span> __DEBUG__
+<pre><code>#<span class="kw">if</span> !RELEASE_BUILD
         Assert(IsAtomic || std::this_thread::get_id() == threadID);
-#endif // __DEBUG__
+#endif // !RELEASE_BUILD
 <span class="kw">return</span> value;</code></pre>
 
 <p>
@@ -104,7 +104,7 @@
 
 <div class="gap">
   <strong>A non-atomic parameter read from another thread is an assertion in Debug and Dev, and a silent data race in
-  Release.</strong> <code>Assert</code> aborts the process when it fires, and it is compiled in only under <code>__DEBUG__</code> — which
+  Release.</strong> <code>Assert</code> aborts the process when it fires, and it is compiled in only under <code>!RELEASE_BUILD</code> — which
   Debug and Dev builds define through <code>CMakeLists.txt</code>, and Release does not (<a href="../BuildConfig/index.html">BuildConfig</a>).
   So the same code either stops where it happened or reads a field another thread is writing, with no diagnostic in either
   build to distinguish "checked and safe" from "not checked at all". If the value is read from more than one thread, declare the

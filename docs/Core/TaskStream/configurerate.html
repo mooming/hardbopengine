@@ -87,7 +87,7 @@ drainPolicy.ConfigureRate(fifoWeight, priorityWeight);</code></pre>
   The weights are plain fields of <a href="../StreamDrainPolicy/index.html">StreamDrainPolicy</a>, and the field they gate is read by
   <code>ChooseLane</code> inside <a href="update.html">Update</a> — a lane choice that happens on every pass
   (<a href="../StreamDrainPolicy/chooselane.html">ChooseLane</a>). Writing them from another thread while a stream runs is a data race, and the
-  detection is an <code>Assert</code>, which is compiled away unless <code>__DEBUG__</code> is defined — the Debug configuration only
+  detection is an <code>Assert</code>, which is compiled away unless <code>!RELEASE_BUILD</code> is defined — the Debug configuration only
   (<code>Core/Debug.h</code>, <code>CMakeLists.txt</code>). In Dev and Release the call is unsynchronised and silent.
 </div>
 

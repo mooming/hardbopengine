@@ -67,7 +67,7 @@
 </p>
 
 <p>
-  Before the store, the same debug assertion as <a href="get.html"><code>Get</code></a>: under <code>__DEBUG__</code>, a non-atomic
+  Before the store, the same debug assertion as <a href="get.html"><code>Get</code></a>: under <code>!RELEASE_BUILD</code>, a non-atomic
   parameter asserts that the calling thread is the one recorded at construction. This is the path a name-based write goes through —
   <a href="../ConfigSystem/set-byte.html"><code>ConfigSystem::SetByte</code></a> and its siblings call exactly this function via the
   setter closure <a href="../ConfigSystem/register.html"><code>Register</code></a> installed — so writing a parameter from a console

@@ -121,7 +121,7 @@
     <td>
       Selects the storage: <a href="#properties"><code>TValue</code></a> becomes <code>std::atomic&lt;T&gt;</code> or plain
       <code>T</code>. <code>true</code> is what makes a write from any thread legitimate; <code>false</code> binds the
-      parameter to the thread that constructed it, enforced by an assertion only under <code>__DEBUG__</code> (Debug and Dev,
+      parameter to the thread that constructed it, enforced by an assertion only under <code>!RELEASE_BUILD</code> (Debug and Dev,
       per <a href="../BuildConfig/index.html">BuildConfig</a>). It also picks the <code>Register</code> overload, though not
       the map — both forms of one type land in the same map, so a name-based reader cannot tell them apart
     </td>
@@ -196,7 +196,7 @@
     <td><code>threadID</code></td>
     <td><code>std::thread::id threadID;</code></td>
     <td>
-      <span class="badge">private</span> <span class="badge">only under __DEBUG__</span> The constructing thread, used by the
+      <span class="badge">private</span> <span class="badge">only when !RELEASE_BUILD</span> The constructing thread, used by the
       assertion in <a href="get.html"><code>Get</code></a> and <a href="set.html"><code>Set</code></a>. Absent in Release, so the
       thread-affinity rule for non-atomic parameters is not checked there — the assertion and the member vanish together
     </td>
@@ -228,7 +228,7 @@
     <td><a href="get.html">Get</a></td>
     <td class="sig">T Get() const noexcept</td>
     <td>The hot-path read: a copy of the value, atomic-loaded when <code>IsAtomic</code>. Asserts thread identity for a
-        non-atomic parameter under <code>__DEBUG__</code></td>
+        non-atomic parameter under <code>!RELEASE_BUILD</code></td>
   </tr>
   <tr>
     <td><a href="set.html">Set</a></td>
@@ -281,7 +281,7 @@
         (<em>the Signature section is the declaration, never the body</em>), but it means no page's block is a byte-for-byte
         substring of the header. <code>docs_pass.py signatures</code> is therefore not usable here: its declaration parser does
         not stop at a <code>{</code> across the constructor's <code>#if ENGINE_PARAM_DESC_ENABLED</code> and
-        <code>#ifdef __DEBUG__</code> guards, and running it replaces the constructor's signature with
+        <code>#if !RELEASE_BUILD</code> guards, and running it replaces the constructor's signature with
         <code>#endif</code>, <code>public:</code> and the initialiser list while still reporting zero problems. The blocks here
         are hand-checked instead: each equals the header's declaration text with the body removed</td>
   </tr>

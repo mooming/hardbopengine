@@ -244,7 +244,7 @@
     <td>
       <span class="badge">constexpr</span> Multiplies <code>ScopedLock::timeOutSec</code> — the wait a lock holds
       before it reports a slow contention. The multiplication sits inside
-      <code>#if PROFILE_ENABLED</code> <em>and</em> <code>#ifdef __DEBUG__</code>, so with the default
+      <code>#if PROFILE_ENABLED</code> <em>and</em> <code>#if !RELEASE_BUILD</code>, so with the default
       <code>PROFILE_ENABLED 0</code> it changes nothing at all
     </td>
   </tr>

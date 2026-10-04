@@ -94,7 +94,7 @@
   same thread. <code>TaskStream::ConfigureRate()</code> is the guard the type does not have itself: it
   <code>Assert</code>s that the caller is the stream's own thread, because the weights are unsynchronised fields the stream
   reads while choosing a lane (<code>Engine/Core/TaskStream.cpp</code>) — and that assert only exists in configurations that
-  define <code>__DEBUG__</code>.
+  define <code>!RELEASE_BUILD</code>.
 </div>
 
 <div class="note">

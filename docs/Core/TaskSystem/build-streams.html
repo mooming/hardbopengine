@@ -111,7 +111,7 @@
 
 <div class="gap">
   <strong>The thread check does not exist outside Debug builds.</strong> Step 1 calls <code>Assert</code>, and
-  <code>Assert</code> is defined twice — the definition selected when <code>__DEBUG__</code> is undefined has an empty body
+  <code>Assert</code> is defined twice — the definition selected when <code>!RELEASE_BUILD</code> is undefined has an empty body
   (<code>Engine/Core/Debug.h</code>). Only <code>FatalAssert</code> aborts in every configuration, and step 2 is a
   <code>FatalAssert</code> about core counts, not about threads. So in Dev and Release a task system can be built on a thread
   that will never drive it, and the failure appears later as a run loop that never drains the base stream and a shutdown that
@@ -125,7 +125,7 @@
   is <code>= default</code> and does not join. Nothing tests whether streams already exist.
 </div>
 
-<pre><code>#else // __DEBUG__
+<pre><code>#else // RELEASE_BUILD
 
 namespace hbe
 {
@@ -138,7 +138,7 @@ void Assert(bool, Types&amp;&amp;...) noexcept
 {
 }
 } // namespace hbe
-#endif // __DEBUG__</code></pre>
+#endif // !RELEASE_BUILD</code></pre>
 
 <p class="meta">From Engine/Core/Debug.h — the branch a shipped build compiles</p>
 

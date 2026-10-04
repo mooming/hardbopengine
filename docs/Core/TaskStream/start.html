@@ -114,7 +114,7 @@ OS::SetThreadPriority(thread, 0);</code></pre>
   <code>if (threadID != TThreadID{})</code>. For the IO stream that field is default until its first pass runs, and for any stream it is default
   before <code>Start</code> — so a mid-run misconfiguration of a stream that has not been bound yet is not detected at all
   (<code>Engine/Core/TaskStream.cpp</code>). The check is also Debug-only: an <code>Assert</code> is compiled away unless
-  <code>__DEBUG__</code> is defined, which the build sets for Debug alone (<code>Core/Debug.h</code>, <code>CMakeLists.txt</code>).
+  <code>!RELEASE_BUILD</code> is defined, which the build sets for Debug alone (<code>Core/Debug.h</code>, <code>CMakeLists.txt</code>).
 </div>
 
 <div class="note">

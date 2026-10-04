@@ -987,12 +987,14 @@ ICommandBuffer (abstract)
     <h2 id="verification">10. Verification Plan</h2>
 
     <div class="callout callout-red">
-      <div class="callout-title">Blocking caveat (2026-09-01)</div>
-      <p><code>Assert()</code> in <code>Engine/Core/Debug.h</code> is live only under
-      <code>__DEBUG__</code>, and <code>__DEBUG__</code> is defined nowhere in the project, so
-      <code>Assert()</code> compiles to a no-op in every configuration. Any test written against
-      this plan reports PASS while asserting nothing. Fix that before treating a green suite as
-      evidence.</p>
+      <div class="callout-title">Caveat closed (raised as blocking, 2026-09-01)</div>
+      <p><code>Assert()</code> in <code>Engine/Core/Debug.h</code> was live only under a macro the
+      project never defined, so <code>Assert()</code> compiled to a no-op in every configuration and
+      any test written against this plan reported PASS while asserting nothing. The guard is now
+      <code>#if !RELEASE_BUILD</code>, which the Debug and Dev configurations satisfy, so a Debug or
+      Dev run of <code>EngineTest</code> is evidence; a Release run is not, because there the
+      arguments are dropped with the call. See
+      <a href="UnitTestSelection_Design.html">Unit-test selection</a>.</p>
     </div>
 
     <h3>10.1 Unit Tests</h3>
@@ -1030,8 +1032,9 @@ ICommandBuffer (abstract)
       <li><code>./build/Applications/VulkanExample/Dev/VulkanExample</code> logs
           <code>first frame presented (800x568, swapchain images=3, index count=6)</code> and exits
           when the window close button is pressed</li>
-      <li>Unit tests in <code>Engine/Test/UnitTestCollection.cpp</code> assert nothing until
-          <code>__DEBUG__</code> is defined for debug builds &mdash; see the caveat above</li>
+      <li>Unit tests in <code>Engine/Test/UnitTestCollection.cpp</code> assert something in the
+          configuration they are run in — <code>#if !RELEASE_BUILD</code> holds for Debug and Dev
+          &mdash; see the caveat above</li>
     </ul>
     <p style="color: var(--text-muted); font-size: 13px;">There is no <code>Renderer/Vulkan</code>
     or <code>Renderer/Metal</code> build target, and <code>Applications/TriangleExample</code> was

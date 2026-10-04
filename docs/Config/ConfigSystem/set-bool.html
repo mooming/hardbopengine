@@ -111,7 +111,7 @@
   stored calls <a href="../ConfigParam/set.html"><code>ConfigParam::Set</code></a>, and that function asserts the
   calling thread equals the thread the parameter was constructed on unless the parameter is atomic. So a name-based
   write from a console or debug overlay to a <code>ConfigParam&lt;T, false&gt;</code> owned by another subsystem stops
-  the process — under <code>__DEBUG__</code>, which Debug and Dev have and Release does not
+  the process — under <code>!RELEASE_BUILD</code>, which Debug and Dev have and Release does not
   (<a href="../BuildConfig/index.html">BuildConfig</a>). Every parameter the engine registers today is the atomic form,
   so this trap only bites parameters you add.
 </div>

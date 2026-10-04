@@ -83,7 +83,7 @@
 
 <div class="gap">
   <strong>In a Dev or Release build the assert is not there.</strong> <code>Assert</code> compiles to nothing unless
-  <code>__DEBUG__</code> is defined, and the build defines it only for the Debug configuration
+  <code>!RELEASE_BUILD</code> is defined, and the build defines it only for the Debug configuration
   (<code>CMakeLists.txt</code>, <code>Engine/CMakeLists.txt</code>). Outside Debug this destructor is empty, and the failure it describes —
   a lane list naming a destroyed provider — surfaces later as a call through that pointer from
   <code>TaskStream::DrainProvidersLocked</code>, on whichever worker drains next, with nothing left to name the provider that was lost.

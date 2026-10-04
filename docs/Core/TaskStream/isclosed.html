@@ -99,7 +99,7 @@
   <strong>The teardown asserts on it, in Debug only.</strong>
   <code>TaskSystem::JoinAndClear</code> finishes with a per-stream check: "Stream <em>name</em> is being destroyed without having been closed. Every
   stream must be closed - drained if it owns a thread, marked closed by its driver if it rides one - before the task system tears itself down."
-  (<code>Engine/Core/TaskSystem.cpp</code>) That check is an <code>Assert</code>, compiled away unless <code>__DEBUG__</code> is defined — Debug only
+  (<code>Engine/Core/TaskSystem.cpp</code>) That check is an <code>Assert</code>, compiled away unless <code>!RELEASE_BUILD</code> is defined — Debug only
   (<code>Core/Debug.h</code>, <code>CMakeLists.txt</code>).
 </div>
 

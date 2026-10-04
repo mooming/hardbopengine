@@ -113,7 +113,7 @@
 
 <div class="note">
   <strong>The two asserts that read it are Debug and Dev only.</strong> <code>Assert</code> is the configuration-limited form
-  (<a href="../../Core/index.html#functions">Core: Debug</a>): it aborts under <code>__DEBUG__</code> and compiles away otherwise, arguments and all. In a
+  (<a href="../../Core/index.html#functions">Core: Debug</a>): it aborts under <code>!RELEASE_BUILD</code> and compiles away otherwise, arguments and all. In a
   Release build nothing reads this flag at all, so an engine whose memory manager was somehow not first would proceed silently into its remaining
   constructors. For the ordering that holds in every configuration, compare <a href="is-task-system-ready.html"><code>IsTaskSystemReady</code></a>'s
   consumer, which uses <code>FatalAssert</code>.

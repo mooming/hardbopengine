@@ -107,7 +107,7 @@
   <strong>Whether a write is safe from your thread depends on the parameter, not on this function.</strong> The stored
   setter calls <code>Set</code> on the owning <code>ConfigParam</code>, and only the atomic form is safe off its home
   thread (<code>Engine/Core/TaskStream.cpp</code> registers its threshold as <code>ConfigParam&lt;float, true&gt;</code>, so
-  that one is). A non-atomic parameter asserts on thread identity under <code>__DEBUG__</code> — Debug and Dev — see
+  that one is). A non-atomic parameter asserts on thread identity under <code>!RELEASE_BUILD</code> — Debug and Dev — see
   <a href="../ConfigParam/set.html"><code>ConfigParam::Set</code></a>.
 </div>
 

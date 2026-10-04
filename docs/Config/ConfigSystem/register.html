@@ -164,7 +164,7 @@ void Register(TAtomicConfigParam&lt;float&gt;&amp; engineParam);</code></pre>
         settings.<span class="fn">Register</span>(*<span class="kw">this</span>);
 }</code></pre>
 
-<p class="meta">From Engine/Config/ConfigParam.h, condensed — the real initialiser list is conditional on <code>ENGINE_PARAM_DESC_ENABLED</code> and <code>__DEBUG__</code></p>
+<p class="meta">From Engine/Config/ConfigParam.h, condensed — the real initialiser list is conditional on <code>ENGINE_PARAM_DESC_ENABLED</code> and <code>!RELEASE_BUILD</code></p>
 
 <p>
   Which overload that line selects is decided by the parameter's own two template arguments. The engine's live

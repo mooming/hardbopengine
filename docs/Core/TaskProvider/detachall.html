@@ -82,7 +82,7 @@
   <strong>This is the call that makes destruction legal.</strong> The destructor asserts that the provider is registered on no live stream
   (R37), and the probes satisfy it by calling this from their own destructors: "a provider that is destroyed while registered is exactly the
   dangling pointer the assert exists to catch" (<code>Engine/Core/TaskProvider.cpp</code>). Because the assert is compiled away outside the
-  Debug configuration (<code>CMakeLists.txt</code> defines <code>__DEBUG__</code> for Debug only), a shipping owner has this call and the
+  Debug configuration (<code>CMakeLists.txt</code> defines <code>!RELEASE_BUILD</code> for Debug only), a shipping owner has this call and the
   discipline, not the check.
 </div>
 

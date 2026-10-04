@@ -542,10 +542,12 @@ Engine/Renderer/
 
 ## 10. Verification Plan
 
-> **Blocking caveat (2026-09-01).** `Assert()` in `Engine/Core/Debug.h` is live only under
-> `__DEBUG__`, and `__DEBUG__` is defined nowhere in the project, so `Assert()` compiles to a
-> no-op in every configuration. Any test written against this plan reports PASS while
-> asserting nothing. Fix that before treating a green suite as evidence.
+> **Caveat closed (raised as blocking, 2026-09-01).** `Assert()` in `Engine/Core/Debug.h` was live
+> only under a macro the project never defined, so it compiled to a no-op in every configuration and
+> any test written against this plan reported PASS while asserting nothing. The guard is now
+> `#if !RELEASE_BUILD`, which the Debug and Dev configurations satisfy, so a Debug or Dev run of
+> `EngineTest` is evidence; a Release run still is not, because there the arguments are dropped with
+> the call. See `docs/design/UnitTestSelection_Design.html`.
 
 ### 10.1 Unit Tests
 
@@ -574,8 +576,8 @@ Engine/Renderer/
 - [x] `./build/Applications/VulkanExample/Dev/VulkanExample` logs
       `first frame presented (800x568, swapchain images=3, index count=6)` and exits when the
       window close button is pressed
-- [ ] Unit tests in `Engine/Test/UnitTestCollection.cpp` **assert nothing** until `__DEBUG__`
-      is defined for debug builds — see the caveat above
+- [x] Unit tests in `Engine/Test/UnitTestCollection.cpp` assert something in the configuration they
+      are run in — `#if !RELEASE_BUILD` holds for Debug and Dev; see the caveat above
 
 There is no `Renderer/Vulkan` or `Renderer/Metal` build target, and `Applications/TriangleExample`
 was deleted in `bae3128`; the renderer is built as part of the `Engine/Renderer` module.

@@ -89,7 +89,7 @@
 
 <div class="gap">
   <strong>It reads <code>argv[i]</code> up to <code>argc</code> without checking either, and its only guard is a Debug-only assert.</strong>
-  <code>Assert</code> compiles to nothing unless <code>__DEBUG__</code> is defined, which only the Debug configuration is
+  <code>Assert</code> compiles to nothing unless <code>!RELEASE_BUILD</code> is defined, which only the Debug configuration is
   (<code>Engine/Core/Debug.h</code>). In Dev and Release, an <code>argc</code> of zero skips the loop harmlessly, but an
   <code>argc</code> that overstates the array prints past it — and <code>argv[argc]</code> is guaranteed null by the platform, so printing one element too many
   means passing a null <code>const char*</code> to a stream, which the standard library is allowed to reject. The assert is the only check on the pair, and it

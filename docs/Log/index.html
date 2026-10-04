@@ -207,7 +207,7 @@
     <td>
       Print the line immediately, <a href="../OSAL/index.html#intrinsic"><code>debugBreak()</code></a>, and return — so at
       <code>1</code> the log file stops containing warnings (respectively errors), because those lines never enter the queue. Note the guard: it is the macro
-      alone, not <code>__DEBUG__</code>. <code>BuildConfig.h</code> annotates both "(debug only)", but setting either to 1 makes a Release build trap; nothing
+      alone, not <code>!RELEASE_BUILD</code>. <code>BuildConfig.h</code> annotates both "(debug only)", but setting either to 1 makes a Release build trap; nothing
       restricts it to a debug configuration
     </td>
   </tr>

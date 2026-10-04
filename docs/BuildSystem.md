@@ -6,20 +6,51 @@
 - **Regeneration is authoritative**: `./generate_cmake_files.sh` rewrites every generated
   `CMakeLists.txt` from scratch — it does not patch them. Anything typed into a generated file is
   deleted on the next run, quietly. Two such hand-edits existed and cost real behaviour: the
-  `-D__DEBUG__` define in the root `CMakeLists.txt` (which gates `Assert`/`FatalAssert`) and the
-  `CodingStandards` target in `Engine/CMakeLists.txt`. Both now come from supported inputs: the
-  define from MakeBuild's own template, the target from `Engine/customCMake.txt`.
+  `-D__DEBUG__` define in the root `CMakeLists.txt` (a macro since replaced by the
+  `DEBUG_BUILD`/`DEV_BUILD`/`RELEASE_BUILD` trio) and the `CodingStandards` target in
+  `Engine/CMakeLists.txt`. Both now come from supported inputs: the macros from MakeBuild's own
+  template, the target from `Engine/customCMake.txt`.
   Verify any change here by regenerating **twice** and diffing — the second pass must change nothing.
 - **`customCMake.txt` caveats**: its lines are appended to the end of the generated file, after
-  `add_subdirectory`, so it can define targets and set target properties but **cannot** influence
-  directory variables (e.g. `CMAKE_CXX_FLAGS_*`) that children already inherited. `ParseList()`
-  de-duplicates identical lines and drops empty ones, so two identical separator lines collapse
-  into one — see the header note in `Engine/customCMake.txt`.
-- **`__DEBUG__`**: emitted by MakeBuild's template onto the Debug flag line; `Dev` is derived from
-  those Debug flags so it inherits the define, `Release` is a separate variable and does not get it.
-  This is per-translation-unit state, so it is checked by counting the flag in the generated ninja
-  files rather than by reading a CMakeLists: `grep -c 'D__DEBUG__' build/CMakeFiles/impl-Dev.ninja`
-  reads 146 in Debug and Dev, 0 in Release.
+  `add_subdirectory`, so it can define targets and set target properties but **cannot** reach a
+  subdirectory: measured on CMake 4.3, a postlude `add_compile_definitions` lands on the directory's
+  own targets and on no child, and a postlude `set (CMAKE_CXX_FLAGS_DEBUG …)` lands on that file's
+  Debug flags only — a child takes its variable snapshot at `add_subdirectory`, and a file's Dev
+  flags are taken at its own top. The block cannot move earlier either: `Engine/Renderer` needs the
+  `Renderer` target to exist first, `Engine` reads `${PLATFORM_SOURCES}` which the template sets
+  above. `ParseList()` de-duplicates identical lines and drops empty ones, so two identical
+  separator lines collapse into one — see the header note in `Engine/customCMake.txt`.
+- **Per-configuration definitions**: `precompileDefinitionsDebug`, `precompileDefinitionsDev` and
+  `precompileDefinitionsRelease` in `.project.config` are emitted by MakeBuild's template as `-D`
+  tokens onto `CMAKE_CXX_FLAGS_DEBUG`, `CMAKE_CXX_FLAGS_DEV` and `CMAKE_CXX_FLAGS_RELEASE` of
+  **every** generated file, which is what makes them reach every module. Plain
+  `precompileDefinitions` is an `add_compile_definitions` and so belongs to all three
+  configurations. Dev reads its own variable, not Debug's: the two lists are independent.
+- **Build macros**: MakeBuild's template writes one macro per configuration onto that configuration's
+  own flag line — `DEBUG_BUILD=1` on `CMAKE_CXX_FLAGS_DEBUG` (`-g -O0`), `DEV_BUILD=1` on
+  `CMAKE_CXX_FLAGS_DEV` (`-g -O1`), `RELEASE_BUILD=1` on `CMAKE_CXX_FLAGS_RELEASE` (`-O3`). Each line
+  reads only its own variable, so nothing is inherited between configurations. Source asks for
+  "not the shipping build" with `#if !RELEASE_BUILD`, which is Debug **and** Dev — that is the guard
+  `Assert` lives under, and `FatalAssert` sits outside it. Why each line is independent and what the
+  old `__DEBUG__` macro cost is `docs/design/BuildMacros_Design.html`. These are
+  per-translation-unit state, so they are checked by counting the flag in the generated ninja files
+  rather than by reading a CMakeLists: `grep -c 'DDEV_BUILD'
+  build/CMakeFiles/impl-Dev.ninja` reads 151 lines, and `grep -c 'DRELEASE_BUILD'
+  build/CMakeFiles/impl-Debug.ninja` reads 0.
+- **`__TEST__` and `__UNIT_TEST__`**: given to Debug and Dev by `precompileDefinitionsDebug` and
+  `precompileDefinitionsDev`; `precompileDefinitionsRelease` is deliberately left empty. They gate
+  each module's own test bodies, so a definition reaching only `Applications/EngineTest` compiles
+  `TestMain.cpp`'s test half and then fails to link — that is why this is a tree-wide
+  `.project.config` input and not a `customCMake.txt`. The visible consequence is that
+  `./build.sh Applications/EngineTest -dev -debug` runs the suite with no `-test`, while Release
+  still builds a binary that reports it contains none; `build.sh -test` stays the only route that
+  puts both into Release. `docs/design/UnitTestSelection_Design.html` owns why the bodies are
+  compiled per module. Counted the same way:
+  `grep -c 'D__TEST__' build/CMakeFiles/impl-Release.ninja` reads 0, and Debug and Dev read 151.
+  `Engine/Test`'s own `.module.config` carries a plain `precompileDefinitions = __UNIT_TEST__`, so
+  in Release `libTest.a` is compiled with the macro while the engine modules are not — which links
+  only because `TestMain.cpp`'s `#else` branch never names `Test::RegisterSuite`, so the linker
+  never pulls that object in. Do not make Release's `EngineTest` reference the suite by hand.
 - **Common Configurations**: Debug, Dev (default), Release.
   ```bash
   cmake --fresh -B build -G "Ninja Multi-Config" -S .

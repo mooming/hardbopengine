@@ -86,7 +86,7 @@
   When <code>PROFILE_ENABLED</code> is 1 the constructor is <code>explicit</code> — a lockable reference never
   becomes a guard by implicit conversion — and its member-initialization list records
   <code>time::TStopWatch::now()</code> into <code>startTime</code> <em>before</em> <code>lock()</code> runs,
-  together with the timeout threshold and the call site. Under <code>__DEBUG__</code> the body then multiplies
+  together with the timeout threshold and the call site. Under <code>!RELEASE_BUILD</code> the body then multiplies
   the stored threshold by <code>Config::DebugTimeOutMultiplier</code> (<code>2.0f</code>,
   <code>Engine/Config/EngineConfig.h</code>), so a debug build tolerates twice the wall time before the
   destructor complains.
@@ -148,7 +148,7 @@
     <td>
       Hold threshold in seconds. The <a href="destructor.html">destructor</a> warns when the measured span
       exceeds it; <code>&lt;= 0</code> disables the warning without disabling profiling state. Under
-      <code>__DEBUG__</code> the stored value is doubled by <code>Config::DebugTimeOutMultiplier</code>.
+      <code>!RELEASE_BUILD</code> the stored value is doubled by <code>Config::DebugTimeOutMultiplier</code>.
     </td>
   </tr>
   <tr>

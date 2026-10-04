@@ -152,7 +152,7 @@
 <div class="gap">
   <strong>An unopenable log file is an assert in Debug and silence in Release.</strong> The write is preceded by
   <code>Assert(logFile.is_open())</code>, and <code>Assert</code> is the configuration-limited form
-  (<a href="../../Core/index.html#functions">Core: Debug</a>): it aborts under <code>__DEBUG__</code> and compiles away otherwise. In a
+  (<a href="../../Core/index.html#functions">Core: Debug</a>): it aborts under <code>!RELEASE_BUILD</code> and compiles away otherwise. In a
   Release build a stream whose open failed — a read-only working directory is enough — accepts the writes into its fail state and every
   engine line disappears without a message. There is no retry and no fallback sink.
 </div>

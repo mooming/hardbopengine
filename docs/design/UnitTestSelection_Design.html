@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Unit-test selection — Test module — HardBop Engine design document</title>
+<link rel="stylesheet" href="../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../Config/index.html">Config</a></li>
+    <li><a href="../Container/index.html">Container</a></li>
+    <li><a href="../Core/index.html">Core</a></li>
+    <li><a href="../Engine/index.html">Engine</a></li>
+    <li><a href="../HSTL/index.html">HSTL</a></li>
+    <li><a href="../Log/index.html">Log</a></li>
+    <li><a href="../Math/index.html">Math</a></li>
+    <li><a href="../Memory/index.html">Memory</a></li>
+    <li><a href="../OSAL/index.html">OSAL</a></li>
+    <li><a href="../Renderer/index.html">Renderer</a></li>
+    <li><a href="../Resource/index.html">Resource</a></li>
+    <li><a href="../String/index.html">String</a></li>
+    <li><a class="current" href="../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This document</h3>
+  <ul>
+    <li><a href="#where">The suite is compiled per module, not per executable</a></li>
+    <li><a href="#size">What a test varies with the configuration, and what it must not</a></li>
+    <li><a href="#assertions">An assertion in a test body is live in two configurations, not three</a></li>
+    <li><a href="#compare">Field-by-field comparison where memcmp would compare padding</a></li>
+    <li><a href="#unknown">Unknown must be reported as unknown</a></li>
+    <li><a href="#coverage">What this document does not own</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+  <div class="breadcrumb"><a href="../index.html">Docs</a> / <a href="../Test/index.html">Test</a> / Unit-test selection</div>
+
+<h1>Unit-test selection</h1>
+  <div class="subtitle">How <code>__UNIT_TEST__</code> reaches the tree, what a test body may vary per configuration, and the three places a test was once wrong without failing</div>
+
+<div class="note">
+  <strong>Scope.</strong> This document owns the invariants behind the test bodies inside <em>Engine/</em> and the way
+  their defining macro reaches them. The harness itself — <em>TestCollection</em>, <em>Testlet</em>,
+  <em>TestEnv</em> — is on the <a href="../Test/index.html">Test module page</a>, and what
+  <code>Assert</code> does when it is live is on the <a href="../Core/index.html#debug">Core page</a>.
+</div>
+
+<h2 id="where">The suite is compiled per module, not per executable</h2>
+<p>
+Each module's own sources carry its test bodies behind <code>#ifdef __UNIT_TEST__</code> —
+<em>Engine/Core/TaskSystem.cpp</em>, <em>Engine/Memory/DefaultAllocator.cpp</em>,
+<em>Engine/Container/LinkedList.cpp</em> and the rest — while <em>Engine/Test/UnitTestCollection.cpp</em> registers
+the resulting classes. The definition therefore has to be tree-wide. The proof is the link: a build in which only
+<em>Applications/EngineTest/TestMain.cpp</em> saw the macro produced <code>libTest.a</code> with undefined
+<code>hbe::BufferTest</code>, <code>hbe::StringTest</code> and <code>hbe::VectorTest</code> constructors and vtables
+while <code>libCore.a</code> contained no <code>TaskSystemTest</code> at all.
+</p>
+<p>
+So the macro arrives as a per-configuration definition of the whole tree, named in
+<code>precompileDefinitionsDebug</code> and <code>precompileDefinitionsDev</code> in <code>.project.config</code>, and
+<code>EngineTest</code> in Debug or Dev runs the suite whether or not the build was configured with
+<code>build.sh -test</code>. <em>Applications/EngineTest/TestMain.cpp</em> keeps its
+<code>#else</code> branch — a Release build prints that it verified nothing and exits non-zero, because an exit
+status that means "passed" while nothing ran is worse than a failure. See
+<a href="BuildMacros_Design.html">Build macros</a> for why a target-scoped definition cannot do this job.
+</p>
+
+<h2 id="size">What a test varies with the configuration, and what it must not</h2>
+<p>
+<code>LinkedListTest::Prepare()</code> uses one element count in every configuration. It used to double that count
+when the build was not a Release build, which meant the suite a developer ran covered an eighth of the elements the
+Release CI run covered — the same test name, a different test. That was the only place in the suite where the build
+configuration changed <em>what</em> was exercised rather than how loudly a failure reported, and it is the reason
+<code>ComponentSystemTest</code>'s workload split is the exception worth keeping: a smaller iteration count in a
+build where every step is checked is a runtime decision, while a different data set is a different test.
+</p>
+<div class="note">
+  <strong>The rule.</strong> A test body may run <em>less</em> of the same test in a checked build. It may not run a
+  <em>different</em> test. When a size must vary, the variation belongs in the suite's own configuration, not in a
+  build-configuration macro.
+</div>
+
+<h2 id="assertions">An assertion in a test body is live in two configurations, not three</h2>
+<p>
+<code>Engine/Renderer/RendererTest.cpp</code> asserts that <code>VulkanRenderer::Initialize</code> rejects a null
+window — the surface is built from the window and queue family support is queried against that surface, so a null
+window cannot produce a renderer. The assertion once said the opposite and survived, because the configuration in
+which it was wrong was the one in which <code>Assert</code> compiles to nothing: a Release build reported the testlet
+as passed no matter what the code did.
+</p>
+<p>
+The consequence for anyone editing a test body is that a passing Release run is not evidence about an assertion at
+all. <code>Assert</code> is compiled in under <code>#if !RELEASE_BUILD</code>, so the proof of an assertion inside a
+test is a Debug or Dev run of <code>EngineTest</code>; what a Release run proves is only that the code compiles and
+does not crash. See <a href="AssertMacros_Design.html">Assertion design</a> for the parity rule that keeps both
+branches declaring the same overloads.
+</p>
+
+<h2 id="compare">Field-by-field comparison where memcmp would compare padding</h2>
+<p>
+Where a test compares a descriptor that is a bit-field struct holding a fixed array, it compares field by field
+rather than with <code>memcmp</code>. A bit-field struct carries padding the compiler chooses, so an object-wise
+comparison can report a difference between two values the API considers equal — a false failure whose cause is not in
+the code under test.
+</p>
+
+<h2 id="unknown">Unknown must be reported as unknown</h2>
+<p>
+A renderer that has no device yet reports its capabilities as unknown. An uninitialised renderer used to answer
+4096/16/16 — plausible numbers that looked as though the hardware had been asked — and a caller could not distinguish
+"the device said so" from "nobody asked". The test asserts the unknown answer, and an implementation that returns a
+comfortable default instead is wrong even when every other field is right.
+</p>
+
+<h2 id="coverage">What this document does not own</h2>
+<div class="gap">
+  <p>
+  <strong>The registration order of the suite is not recorded here.</strong>
+  <em>Engine/Test/UnitTestCollection.cpp</em> lists the collections, and <code>TestEnv::PrepareTestlets</code> fixes
+  the order they run in; this page documents why the bodies are compiled where they are, not which ones exist.
+  </p>
+  <p>
+  <strong>No page yet owns <code>LinkedList</code> or <code>VulkanRenderer</code> in full.</strong>
+  <em>docs/Container/LinkedList/</em> is missing method pages that <code>docs_coverage.py</code> reports, and the
+  Vulkan wiring lives in <a href="../Renderer/index.html">Renderer</a>. Neither gap is paid by this document.
+  </p>
+</div>
+
+<h2 id="seealso">Where else to look</h2>
+<table>
+  <tr><th>Question</th><th>Where it lives</th></tr>
+  <tr><td>Which configurations define <code>__UNIT_TEST__</code>, and how to count it</td><td><a href="../BuildSystem.md">docs/BuildSystem.md</a></td></tr>
+  <tr><td>Why a definition cannot be given to one target only</td><td><a href="BuildMacros_Design.html">Build macros</a></td></tr>
+  <tr><td>What <code>Assert</code> prints, and that it aborts</td><td><a href="../Core/index.html#debug">Core: Debug</a>, <a href="AssertMacros_Design.html">Assertion design</a></td></tr>
+  <tr><td>How to build and run the suite</td><td><a href="../../AGENTS.md">AGENTS.md</a> and <em>build.sh</em></td></tr>
+</table>
+
+</main>
+</body>
+</html>

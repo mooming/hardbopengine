@@ -79,7 +79,7 @@ totalUsage -= usage;</code></pre>
 
 <div class="gap">
   <strong>The guard against underflow is an <code>Assert</code>, so in Dev and Release an unbalanced free wraps the total to a huge number.</strong>
-  <code>Assert</code> compiles to nothing unless <code>__DEBUG__</code> is defined, and only the Debug configuration defines it
+  <code>Assert</code> compiles to nothing unless <code>!RELEASE_BUILD</code> is defined, and only the Debug configuration defines it
   (<code>Engine/Core/Debug.h</code>). The subtraction is unsigned, so a report of a byte count that was never added — or one added twice — leaves
   <code>totalUsage</code> near <code>size_t</code>'s maximum, and <a href="print.html">Print</a> would then print that as the current system memory usage
   without a single word about the cause. The same one-way-trust pattern is recorded for the CPU budget

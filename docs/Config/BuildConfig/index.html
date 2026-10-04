@@ -85,7 +85,7 @@
 <h2 id="properties">Class properties</h2>
 
 <p>
-  One row per define the header declares, plus <code>__DEBUG__</code>, which it documents without defining. The
+  One row per define the header declares, plus <code>!RELEASE_BUILD</code>, which it documents without defining. The
   "Declaration" column is the line as the header spells it; defaults below are the literals in that file, which
   is where you edit them.
 </p>
@@ -277,16 +277,20 @@
     </td>
   </tr>
   <tr>
-    <td><code>__DEBUG__</code></td>
-    <td><code>-D__DEBUG__</code> on the Debug flag line in <code>CMakeLists.txt</code></td>
+    <td><code>DEBUG_BUILD</code> · <code>DEV_BUILD</code> · <code>RELEASE_BUILD</code></td>
+    <td>MakeBuild's template, one per configuration flag line</td>
     <td>
-      <span class="badge">build flag, not defined here</span> Gates <code>Assert</code> and nothing else —
-      <code>FatalAssert</code> sits outside the guard and is live in every configuration. The top-level
-      <code>CMakeLists.txt</code> puts <code>-D__DEBUG__</code> on <code>CMAKE_CXX_FLAGS_DEBUG</code>, and
-      <code>CMAKE_CXX_FLAGS_DEV</code> is defined as <code>${CMAKE_CXX_FLAGS_DEBUG} -O1</code>, so Dev inherits it
-      and Release does not have it. Confirmed against the built binaries rather than the flag lines: the
-      message the live <code>Assert</code> prints appears in the Dev and Debug <code>EngineTest</code> binaries
-      and not in the Release one. See <a href="../../Core/index.html#functions">Core: Debug</a>
+      <span class="badge">build flag, not defined here</span> Each configuration defines exactly one of the three to
+      <code>1</code>: <code>DEBUG_BUILD</code> on <code>CMAKE_CXX_FLAGS_DEBUG</code>, <code>DEV_BUILD</code> on
+      <code>CMAKE_CXX_FLAGS_DEV</code>, <code>RELEASE_BUILD</code> on <code>CMAKE_CXX_FLAGS_RELEASE</code>. Each of
+      the three lines reads only its own variable, so no definition arrives from another configuration. Source asks
+      for "not the shipping build" with <code>#if !RELEASE_BUILD</code>, which is the pair Debug and Dev: that guard
+      gates <code>Assert</code>, <code>ConfigParam</code>'s thread-identity member, <code>ScopedLock</code>'s timeout
+      multiplier and the diagnostics that stop a checked build, while <code>FatalAssert</code> sits outside it and is
+      live in every configuration. Confirmed against the built binaries rather than the flag lines: the message the
+      live <code>Assert</code> prints appears in the Dev and Debug <code>EngineTest</code> binaries and not in the
+      Release one. See <a href="../../design/BuildMacros_Design.html">Build macros</a> and
+      <a href="../../Core/index.html#functions">Core: Debug</a>
     </td>
   </tr>
 </table>
@@ -305,7 +309,7 @@
   Naming follows <a href="../../CodingStandards.md">docs/CodingStandards.md</a>: macros are
   <code>SCREAMING_SNAKE_CASE</code> with no leading underscore, because a leading double underscore or an
   underscore followed by a capital letter is reserved to the C++ implementation — which is exactly why
-  <code>__DEBUG__</code> is legal while a new engine define must not be spelled that way. The
+  <code>!RELEASE_BUILD</code> is legal while a new engine define must not be spelled that way. The
   <code>__MEMORY_VERIFICATION__</code> and <code>__FORCE_USE_SYSTEM_MALLOC__</code> spellings are the retired old
   names of <code>MEMORY_VERIFICATION_ENABLED</code> and <code>FORCE_USE_SYSTEM_MALLOC</code>; only the names in
   the table above exist in this header.
@@ -330,8 +334,8 @@
         <code>CMakeLists.txt</code> files are never edited by hand</td>
   </tr>
   <tr>
-    <td>What the deleted <code>__DEBUG__</code> comment warned about no longer happens</td>
-    <td>The header used to say the suite does not survive assertions: that with <code>__DEBUG__</code> defined,
+    <td>What the deleted <code>!RELEASE_BUILD</code> comment warned about no longer happens</td>
+    <td>The header used to say the suite does not survive assertions: that with <code>!RELEASE_BUILD</code> defined,
         <code>EngineTest</code> aborts in <code>PoolAllocatorTest</code> on a contradiction between
         <code>Memory/PoolAllocator.cpp</code> asserting on the raw <code>blockSize</code> parameter and its own
         initialiser clamping that same parameter. Measured after the comment was removed: a Dev build — which has
@@ -342,11 +346,13 @@
         <code>./build/Applications/EngineTest/Dev/EngineTest</code></td>
   </tr>
   <tr>
-    <td>Turning assertions on for one build</td>
-    <td>Pass the define to the compiler for that build alone —
-        <code>CXXFLAGS="-D__DEBUG__" ./build.sh Applications/EngineTest -dev -test</code> — rather than defining it
-        in this header, which would make every configuration carry it. Assertions are already live in Dev and
-        Debug, so this is only needed for a RelWithDebInfo or Release investigation</td>
+    <td>Turning assertions on for a Release investigation</td>
+    <td>The guard is <code>#if !RELEASE_BUILD</code>, so the define to remove is <code>RELEASE_BUILD</code> — which
+        the generated flag line supplies and this header does not. Run the case in Dev instead of fighting the flag
+        line, since assertions are already live there:
+        <code>./build.sh Applications/EngineTest -dev</code> then
+        <code>./build/Applications/EngineTest/Dev/EngineTest</code>. Defining a build macro in this header is not an
+        option — every configuration would carry it, which is the opposite of what is wanted</td>
   </tr>
   <tr>
     <td><code>MAX_NUM_TASK_STREAMS</code> has no reader</td>

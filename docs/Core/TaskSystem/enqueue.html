@@ -122,7 +122,7 @@
 <div class="gap">
   <strong>An out-of-range index discards the item, and in Dev and Release it does so in silence.</strong> The guard
   calls <code>Assert(false, …)</code> and then <code>return</code>s. <code>Assert</code> is defined twice, and the
-  definition outside <code>__DEBUG__</code> is empty (<code>Engine/Core/Debug.h</code>) — only
+  definition outside <code>!RELEASE_BUILD</code> is empty (<code>Engine/Core/Debug.h</code>) — only
   <code>FatalAssert</code> survives in every configuration (<code>Engine/Core/Debug.h</code>). So the abort is a
   Debug-build behaviour, while the <code>return</code> is unconditional: outside Debug the work item is gone, with no log
   line and no error, and the task whose item it was never runs. <code>ELane::None</code> behaves the same way for the

@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Memory manager internals — Memory module — HardBop Engine design document</title>
+<link rel="stylesheet" href="../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../Config/index.html">Config</a></li>
+    <li><a href="../Container/index.html">Container</a></li>
+    <li><a href="../Core/index.html">Core</a></li>
+    <li><a href="../Engine/index.html">Engine</a></li>
+    <li><a href="../HSTL/index.html">HSTL</a></li>
+    <li><a href="../Log/index.html">Log</a></li>
+    <li><a href="../Math/index.html">Math</a></li>
+    <li><a class="current" href="../Memory/index.html">Memory</a></li>
+    <li><a href="../OSAL/index.html">OSAL</a></li>
+    <li><a href="../Renderer/index.html">Renderer</a></li>
+    <li><a href="../Resource/index.html">Resource</a></li>
+    <li><a href="../String/index.html">String</a></li>
+    <li><a href="../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This document</h3>
+  <ul>
+    <li><a href="#names">What an allocator name is worth</a></li>
+    <li><a href="#register">What registration records</a></li>
+    <li><a href="#dummy">An invalid id answers with a dummy proxy</a></li>
+    <li><a href="#break">Where a checked build stops instead of continuing</a></li>
+    <li><a href="#coverage">What this document does not own</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+  <div class="breadcrumb"><a href="../index.html">Docs</a> / <a href="../Memory/index.html">Memory</a> / Memory manager internals</div>
+
+<h1>Memory manager internals</h1>
+  <div class="subtitle">The three error paths of <em>MemoryManager</em> that answer instead of failing, and what <code>PROFILE_ENABLED</code> decides about the answer</div>
+
+<div class="note">
+  <strong>Scope.</strong> This document owns the invariants behind <em>Engine/Memory/MemoryManager.cpp</em>'s error
+  and diagnostic paths. Allocation and deallocation contracts, ownership, and the proxy interface belong to the
+  <a href="../Memory/index.html">Memory module page</a> and to <a href="../Memory/index.html">AllocatorProxy</a>;
+  <code>PROFILE_ENABLED</code> itself is a Core build flag, documented where the profiling counters live.
+</div>
+
+<h2 id="names">What an allocator name is worth</h2>
+<p>
+<code>MemoryManager::GetAllocatorName</code> answers in three different ways, and only one of them is a name:
+</p>
+<table>
+  <tr><th>Condition</th><th>Answer</th><th>Meaning</th></tr>
+  <tr><td><code>id</code> fails <code>IsValid</code></td><td><code>"Null"</code></td><td>The id was never registered, or is the invalid id</td></tr>
+  <tr><td><code>PROFILE_ENABLED</code> on</td><td><code>allocators[id].stats.name</code></td><td>The name registration was given</td></tr>
+  <tr><td><code>PROFILE_ENABLED</code> off</td><td><code>"Unknown"</code></td><td>Names are not stored at all in this configuration</td></tr>
+</table>
+<p>
+A caller printing allocator identity therefore learns nothing about the allocator in a build without profiling, and
+<code>"Unknown"</code> is not a name that some allocator happens to have. <code>"Null"</code> and
+<code>"Unknown"</code> are two different facts and must not be collapsed into one "no name" case by a caller.
+</p>
+
+<h2 id="register">What registration records</h2>
+<p>
+<code>RegisterAllocator</code> takes the allocator pointer, a name, whether it is inline, its capacity, and the
+allocate and deallocate function pointers. A null name becomes <code>"None"</code> rather than an error, so the
+registration never fails on the name alone. Under <code>PROFILE_ENABLED</code> the name, the inline flag and the
+capacity are stored in the allocator's statistics and the registration takes <code>statsLock</code>; without it the
+recording lambda does not capture them at all, so the same call records only the three things needed to route
+allocations. The return value is the assigned id, and a registration whose id came back invalid is caught by the
+<code>Assert</code> on the way out — which is live in Debug and Dev only, so a Release build records the failure in
+the <code>Info</code> log line and returns the id it was given.
+</p>
+
+<h2 id="dummy">An invalid id answers with a dummy proxy</h2>
+<p>
+<code>GetAllocatorProxy</code> is the path every allocation crosses, and it does not fail: an id that fails
+<code>IsValid</code> logs an <code>Error</code> and returns a default-constructed <code>AllocatorProxy</code> held as
+a function-local <code>static</code>, re-constructed on each call. The intent is that a bad id cannot index
+<code>allocators</code> out of bounds; the consequence a caller must know is that the returned proxy is real and
+usable-looking, so the allocation that follows it does not fail where the mistake was made. A bad id therefore
+surfaces as a log line plus work that goes somewhere other than the allocator named, not as a crash at the call.
+</p>
+<div class="gap">
+  <strong>Two properties of that dummy are not decided anywhere.</strong> The <code>static</code> object is shared by
+  every thread that asks with a bad id, and it is placement-reconstructed while another thread may be inside a call
+  that received it, so the dummy is not a thread-safe object. And because a default-constructed proxy routes
+  nowhere, an allocation through it neither returns an error nor reaches the system allocator — it is dropped.
+  Recorded here rather than answered, because the fix is a policy choice: fail loudly, or route the dummy to the
+  system allocator so the work at least happens.
+</div>
+
+<h2 id="break">Where a checked build stops instead of continuing</h2>
+<p>
+Three diagnostics stop the process in a non-Release build and only log in a Release build: an allocator used from a
+thread other than the one that owns it, an allocator destroyed while its statistics still report
+<code>usage &gt; 0</code>, and a null-length or otherwise invalid request. Both halves are compiled together — the
+<code>Log</code> call runs in every configuration and the <code>debugBreak()</code> that follows it is guarded by
+<code>#if !RELEASE_BUILD</code> — so the report is never the thing that was switched off. The same guard covers the
+verbose dump of the multi-pool configuration table and the ordering check over each block-size run in
+<em>Engine/Memory/MultiPoolConfigCache.cpp</em>, which is a fatal error in a checked build and silence in a Release
+one.
+</p>
+<p>
+Allocation can also be forced to the system allocator independently of the configuration, by
+<code>FORCE_USE_SYSTEM_MALLOC</code>: when it is true, both allocate and deallocate paths replace the requested id
+with <code>SystemAllocatorID</code> before validating it, so a profiled build can be run against the system
+allocator without changing a single call site.
+</p>
+
+<h2 id="coverage">What this document does not own</h2>
+<div class="gap">
+  <p>
+  <strong>The class has no reference page.</strong> <code>docs_coverage.py</code> reports that
+  <em>Engine/Memory/MemoryManager.h</em> has no <em>docs/Memory/MemoryManager/index.html</em>, so no per-method
+  contract page exists. The three behaviours above are contracts of <code>GetAllocatorName</code>,
+  <code>RegisterAllocator</code> and <code>GetAllocatorProxy</code> and are shelved here until that page is authored;
+  when it is, they move to the method pages and this document keeps only the invariants.
+  </p>
+  <p>
+  <strong>Allocator selection policy, alignment rules and the pool geometry are not described here.</strong> Only the
+  error and diagnostic paths of the manager are.
+  </p>
+</div>
+
+<h2 id="seealso">Where else to look</h2>
+<table>
+  <tr><th>Question</th><th>Where it lives</th></tr>
+  <tr><td>What each allocator type does and when to use it</td><td><a href="../Memory/index.html">Memory module page</a></td></tr>
+  <tr><td>Whether a diagnostic is compiled in, and what <code>Assert</code> does</td><td><a href="../Core/index.html#debug">Core: Debug</a>, <a href="AssertMacros_Design.html">Assertion design</a></td></tr>
+  <tr><td>Which configurations define what</td><td><a href="BuildMacros_Design.html">Build macros</a>, <a href="../BuildSystem.md">docs/BuildSystem.md</a></td></tr>
+</table>
+
+</main>
+</body>
+</html>

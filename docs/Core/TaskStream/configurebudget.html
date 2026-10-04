@@ -107,7 +107,7 @@ drainPolicy.ConfigureAllowance(allowance);</code></pre>
   <code>budget.Configure</code> and <code>drainPolicy.ConfigureAllowance</code> are plain writes read by the stream on its own thread every pass,
   which is why the check exists and why the header offers <a href="requestbudget.html">RequestBudget</a> as the cross-thread form: "from elsewhere it
   is a data race, not a late write" (<code>Engine/Core/TaskStream.h</code>). The check is an <code>Assert</code>, compiled away unless
-  <code>__DEBUG__</code> is defined — Debug only (<code>Core/Debug.h</code>, <code>CMakeLists.txt</code>) — and it is skipped while
+  <code>!RELEASE_BUILD</code> is defined — Debug only (<code>Core/Debug.h</code>, <code>CMakeLists.txt</code>) — and it is skipped while
   <code>threadID</code> is still default, which is the IO stream until its first pass
   (<a href="start.html">Start</a>).
 </div>

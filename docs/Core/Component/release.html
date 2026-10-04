@@ -95,7 +95,7 @@
   <code>Release</code> is reached from exactly one place, the <code>DEAD</code> case of the transition switch
   (<code>Engine/Core/ComponentSystem.h</code>). A component left sleeping when the system is destroyed is destroyed with no callback at all, and a component
   whose state is none of <code>ALIVE</code>, <code>SLEEP</code> or <code>DEAD</code> at transition time falls to the switch's default case — where the only
-  statement is an <code>Assert</code>, which is compiled out unless <code>__DEBUG__</code> is defined. Outside Debug the object is destroyed silently by the
+  statement is an <code>Assert</code>, which is compiled out unless <code>!RELEASE_BUILD</code> is defined. Outside Debug the object is destroyed silently by the
   following <code>transitionList.clear()</code>. The repository's subclass is written to fail loudly in both cases:
 </div>
 

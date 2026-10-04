@@ -69,7 +69,7 @@
   <strong>Only the owning stream thread may call this, and the wrapper is where that is checked.</strong>
   <code>TaskStream::ConfigureBudget()</code> <code>Assert</code>s that the caller is the stream's own thread once the stream has
   a thread identity, and its message names the alternative: "Use RequestBudget, which the stream applies to itself"
-  (<code>Engine/Core/TaskStream.cpp</code>). The assert exists only in configurations that define <code>__DEBUG__</code>, so
+  (<code>Engine/Core/TaskStream.cpp</code>). The assert exists only in configurations that define <code>!RELEASE_BUILD</code>, so
   outside a debug build a cross-thread call is simply a data race on a <code>double</code> duration.
 </div>
 

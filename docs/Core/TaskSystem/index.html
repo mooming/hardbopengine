@@ -129,7 +129,7 @@
   <a href="get-stream.html">GetStream</a> hands back the base stream instead of failing
   (<code>Engine/Core/TaskSystem.cpp</code>); and the thread check in
   <a href="build-streams.html">BuildStreams</a> is an <code>Assert</code>, which has an empty definition outside
-  <code>__DEBUG__</code> (<code>Engine/Core/Debug.h</code>). Only <code>FatalAssert</code> and the logging paths survive.
+  <code>!RELEASE_BUILD</code> (<code>Engine/Core/Debug.h</code>). Only <code>FatalAssert</code> and the logging paths survive.
   So the checks that exist are for Debug builds, and the behaviour that ships is the fallback — which makes
   <a href="has-stream.html">HasStream</a> the caller's job rather than the engine's.
 </div>

@@ -127,7 +127,7 @@
         <span class="ty">hbe</span>::<span class="ty">ScopedLock</span> guard(counterLock, <span class="nu">0.05f</span>);   <span class="cm">// locks here</span>
         committedCount += count;
 }                                        <span class="cm">// unlocks here, and in a profiled build warns</span>
-                                         <span class="cm">// if the scope outstayed 0.05 s (0.1 s under __DEBUG__)</span></code></pre>
+                                         <span class="cm">// if the scope outstayed 0.05 s (0.1 s if !RELEASE_BUILD)</span></code></pre>
 
 <p>
   The warning the closing brace can produce names the construction point — the <code>srcLoc</code> the
