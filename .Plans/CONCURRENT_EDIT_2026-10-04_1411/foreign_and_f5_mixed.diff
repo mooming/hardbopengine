@@ -1,0 +1,297 @@
+diff --git a/Engine/Core/TaskStream.cpp b/Engine/Core/TaskStream.cpp
+index c3ee4c2..e72a2d2 100644
+--- a/Engine/Core/TaskStream.cpp
++++ b/Engine/Core/TaskStream.cpp
+@@ -6,7 +6,6 @@
+ 
+ #include "Config/ConfigParam.h"
+ #include "Core/Debug.h"
+-#include "Engine/Engine.h"
+ #include "Log/Logger.h"
+ #include "OSAL/Intrinsic.h"
+ #include "OSAL/OSThread.h"
+@@ -17,18 +16,6 @@
+ 
+ namespace hbe
+ {
+-TaskStream::TaskQueueItem::TaskQueueItem(uint8_t priority, const WorkItem& task)
+-	: priority(priority)
+-	, task(task)
+-	, duration(0)
+-{
+-}
+-
+-bool TaskStream::TaskQueueItem::operator<(const TaskQueueItem& other) const
+-{
+-	return priority < other.priority;
+-}
+-
+ TaskStream::TaskStream()
+ 	: streamIndex(0)
+ 	, loopCount(0)
+@@ -184,7 +171,7 @@ std::optional<WorkItem> TaskStream::DrainProvidersLocked(StreamDrainPolicy::ELan
+ 	return std::nullopt;
+ }
+ 
+-void TaskStream::FireAbandonedNotice(const WorkItem& item) const noexcept
++void TaskStream::FireAbandonedNotice(const WorkItem& item) noexcept
+ {
+ 	if (item.abandonedNotice != nullptr)
+ 	{
+@@ -595,11 +582,6 @@ void TaskStream::DispatchPostedTasks(MainThreadTaskQueue::TTaskFunc taskFunc, vo
+ 	postedTasks.Enqueue(taskFunc, userData, priority);
+ }
+ 
+-size_t TaskStream::ProcessPostedTasks() noexcept
+-{
+-	return postedTasks.ProcessTasks();
+-}
+-
+ bool TaskStream::HasPostedTasks() const noexcept
+ {
+ 	return postedTasks.HasPendingTasks();
+diff --git a/Engine/Core/TaskStream.h b/Engine/Core/TaskStream.h
+index a6789ad..ef928a8 100644
+--- a/Engine/Core/TaskStream.h
++++ b/Engine/Core/TaskStream.h
+@@ -9,7 +9,6 @@
+ #include <queue>
+ #include <thread>
+ 
+-#include "Container/Array.h"
+ #include "Container/BoundedPriorityQueue.h"
+ #include "Container/Deque.h"
+ #include "Core/CPUBudget.h"
+@@ -42,18 +41,6 @@ private:
+ 	using TWorkItems = TVector<WorkItem>;
+ 
+ private:
+-	struct TaskQueueItem final
+-	{
+-		uint8_t priority;
+-		mutable WorkItem task;
+-		float duration;
+-
+-		TaskQueueItem(uint8_t priority, const WorkItem& task);
+-
+-		TaskQueueItem& operator=(const TaskQueueItem& other) = default;
+-		bool operator<(const TaskQueueItem& other) const;
+-	};
+-
+ 	static constexpr TIndex MaxProvidersPerLane = 8;
+ 
+ 	struct LaneProviders final // hb-standards:ignore
+@@ -89,7 +76,6 @@ private:
+ 	StreamDrainPolicy drainPolicy;
+ 
+ 	std::atomic<bool> windowAdvanceRequested{false};
+-
+ 	std::atomic<bool> closeRequested{false};
+ 	std::atomic<bool> isClosed{false};
+ 
+@@ -122,167 +108,61 @@ public:
+ 	void EnqueuePriority(const WorkItem& task) noexcept;
+ 
+ 	void ConfigureRate(uint32_t fifoWeight, uint32_t priorityWeight) noexcept;
+-
+-	void SetMaxAge(std::chrono::nanoseconds maxAge) noexcept
+-	{
+-		drainPolicy.SetMaxAge(maxAge);
+-	}
+-
+-	[[nodiscard]] std::chrono::nanoseconds GetMaxAge() const noexcept
+-	{
+-		return drainPolicy.GetMaxAge();
+-	}
+-
+-	[[nodiscard]] uint32_t GetFifoWeight() const noexcept
+-	{
+-		return drainPolicy.GetFifoWeight();
+-	}
+-
+-	[[nodiscard]] uint32_t GetPriorityWeight() const noexcept
+-	{
+-		return drainPolicy.GetPriorityWeight();
+-	}
+-
++	void SetMaxAge(std::chrono::nanoseconds maxAge) noexcept;
+ 	void WakeUp() noexcept;
+ 
+ 	void ConfigureBudget(std::chrono::duration<double> allowance) noexcept;
+ 	void RequestBudget(std::chrono::duration<double> allowance) noexcept;
++	void RequestWindowAdvance() noexcept;
+ 
+-	[[nodiscard]] bool MayTakeNewWork() const noexcept;
+-	[[nodiscard]] std::chrono::nanoseconds GetAccumulatedCPUTime() const noexcept;
+-
+-	void RequestWindowAdvance() noexcept
+-	{
+-		windowAdvanceRequested.store(true, std::memory_order_relaxed);
+-	}
+-
+-	[[nodiscard]] unsigned GetLaneWorkRefusalCount() const noexcept
+-	{
+-		return laneWorkRefusals.load(std::memory_order_relaxed);
+-	}
+-
+-	[[nodiscard]] unsigned GetProviderAskWhileSpentCount() const noexcept
+-	{
+-		return providerAsksWhileSpent.load(std::memory_order_relaxed);
+-	}
+-
+-	[[nodiscard]] unsigned GetGeneralQueueRefusalCount() const noexcept
+-	{
+-		return generalQueueRefusals.load(std::memory_order_relaxed);
+-	}
+-
+-	void Join() noexcept
+-	{
+-		thread.join();
+-	}
+-
+-	[[nodiscard]] auto GetName() const noexcept
+-	{
+-		return name;
+-	}
+-
+-	[[nodiscard]] auto GetThreadID() const noexcept
+-	{
+-		return threadID;
+-	}
+-
+-	[[nodiscard]] auto& GetThread() noexcept
+-	{
+-		return thread;
+-	}
+-
+-	[[nodiscard]] auto& GetThread() const noexcept
+-	{
+-		return thread;
+-	}
+-
+-	[[nodiscard]] auto GetStreamIndex() const noexcept
+-	{
+-		return streamIndex;
+-	}
+-
+-	[[nodiscard]] auto GetLoopCount() const noexcept
+-	{
+-		return loopCount;
+-	}
+-
+-	bool AttachProvider(TaskProvider& provider, StreamDrainPolicy::ELane lane) noexcept;
+-	bool DetachProvider(TaskProvider& provider, StreamDrainPolicy::ELane lane) noexcept;
+-	[[nodiscard]] bool IsProviderAttached(const TaskProvider& provider, StreamDrainPolicy::ELane lane) noexcept;
+-
++	void Join() noexcept;
+ 	void Start(TaskSystem& taskSys) noexcept;
+-	bool Update() noexcept;
+-
+-	void RequestClose() noexcept
+-	{
+-		closeRequested.store(true, std::memory_order_release);
+-		cv.notify_all();
+-	}
+-
++	void RequestClose() noexcept;
+ 	void SetNestedPumpAllowed(bool allowed) noexcept;
+-
+ 	void DispatchPostedTasks(MainThreadTaskQueue::TTaskFunc taskFunc, void* userData, uint8_t priority = 128) noexcept;
+-	size_t ProcessPostedTasks() noexcept;
+-
+-	[[nodiscard]] bool HasPostedTasks() const noexcept;
+-
+-	[[nodiscard]] bool IsCloseRequested() const noexcept
+-	{
+-		return closeRequested.load(std::memory_order_acquire);
+-	}
+-
+ 	void CloseDrivenStream() noexcept;
+-	std::size_t AbandonHeldWork() noexcept;
+-
+-	[[nodiscard]] std::uint64_t GetDrivenPassCount() const noexcept
+-	{
+-		return drivenPassCount;
+-	}
+-
+-	[[nodiscard]] bool IsClosed() const noexcept
+-	{
+-		return isClosed.load(std::memory_order_acquire);
+-	}
+-
+-	std::uint64_t DrainForShutdown() noexcept;
+-
+-	[[nodiscard]] std::size_t CountPendingItems() const noexcept;
+-
+-	[[nodiscard]] bool IsDrivenByShutdownPump() const noexcept
+-	{
+-		return drivenByShutdownPump;
+-	}
+-
+-	void SetDrivenByShutdownPump() noexcept
+-	{
+-		drivenByShutdownPump = true;
+-	}
+-
+-	[[nodiscard]] std::size_t GetAgedOutWorkCount() const noexcept
+-	{
+-		return agedOutWorkCount.load(std::memory_order_relaxed);
+-	}
+-
+-	[[nodiscard]] std::size_t GetAbandonedWorkNoticeCount() const noexcept
+-	{
+-		return abandonedWorkNoticeCount.load(std::memory_order_relaxed);
+-	}
+-
++	void SetDrivenByShutdownPump() noexcept;
+ 	void WaitForWork(std::chrono::milliseconds patience) noexcept;
+ 	void RunLoop() noexcept;
+ 
++	[[nodiscard]] StaticString GetName() const noexcept;
++	[[nodiscard]] TThreadID GetThreadID() const noexcept;
++	[[nodiscard]] std::thread& GetThread() noexcept;
++	[[nodiscard]] const std::thread& GetThread() const noexcept;
++	[[nodiscard]] TStreamIndex GetStreamIndex() const noexcept;
++	[[nodiscard]] std::uint64_t GetLoopCount() const noexcept;
++	[[nodiscard]] bool AttachProvider(TaskProvider& provider, StreamDrainPolicy::ELane lane) noexcept;
++	[[nodiscard]] bool DetachProvider(TaskProvider& provider, StreamDrainPolicy::ELane lane) noexcept;
++	[[nodiscard]] bool IsProviderAttached(const TaskProvider& provider, StreamDrainPolicy::ELane lane) noexcept;
++	[[nodiscard]] bool Update() noexcept;
++	[[nodiscard]] bool IsCloseRequested() const noexcept;
++	[[nodiscard]] bool IsClosed() const noexcept;
++	[[nodiscard]] std::uint64_t DrainForShutdown() noexcept;
++	[[nodiscard]] std::size_t AbandonHeldWork() noexcept;
++	[[nodiscard]] bool HasPostedTasks() const noexcept;
++	[[nodiscard]] std::chrono::nanoseconds GetMaxAge() const noexcept;
++	[[nodiscard]] uint32_t GetFifoWeight() const noexcept;
++	[[nodiscard]] uint32_t GetPriorityWeight() const noexcept;
++	[[nodiscard]] bool MayTakeNewWork() const noexcept;
++	[[nodiscard]] std::chrono::nanoseconds GetAccumulatedCPUTime() const noexcept;
++	[[nodiscard]] std::size_t CountPendingItems() const noexcept;
++	[[nodiscard]] std::uint64_t GetDrivenPassCount() const noexcept;
++	[[nodiscard]] bool IsDrivenByShutdownPump() const noexcept;
++	[[nodiscard]] std::size_t GetAgedOutWorkCount() const noexcept;
++	[[nodiscard]] std::size_t GetAbandonedWorkNoticeCount() const noexcept;
++	[[nodiscard]] unsigned GetLaneWorkRefusalCount() const noexcept;
++	[[nodiscard]] unsigned GetProviderAskWhileSpentCount() const noexcept;
++	[[nodiscard]] unsigned GetGeneralQueueRefusalCount() const noexcept;
++
+ private:
+-	void Dequeue(std::optional<WorkItem>& outTask);
++	static void FireAbandonedNotice(const WorkItem& item) noexcept;
+ 
+-	std::optional<WorkItem> DrainProvidersLocked(StreamDrainPolicy::ELane lane) noexcept;
++	[[nodiscard]] std::optional<WorkItem> DrainProvidersLocked(StreamDrainPolicy::ELane lane) noexcept;
+ 
++	void Dequeue(std::optional<WorkItem>& outTask);
+ 	void ReportReleasedTask(const WorkItem& task) const noexcept;
+ 	void ReportAgedOutWorkItem(const WorkItem& item, std::chrono::nanoseconds age) const noexcept;
+-
+-	void FireAbandonedNotice(const WorkItem& item) const noexcept;
++	void ReportGeneralQueueRefusal() noexcept;
+ 
+ 	friend class TaskSystemTest;
+-
+-	void ReportGeneralQueueRefusal() noexcept;
+-};
+ } // namespace hbe
