@@ -1,5 +1,65 @@
 # Journal
 
+## 2026-10-04 13:25 — Engine/Config gets the address that makes its reference load-bearing
+
+**Cause.** The module turned out to be further along than the ask assumed: `comments.py` reports 0 violations
+(it was stripped already), 34 pages exist and are valid, `docs_methods.py` owes nothing. The one gated gap was
+exactly the second half of the request — no header carried a `/// API reference:` pointer, so
+`docs_coverage.py check Config` was exit **1**, 5 pages with no address from the code they document.
+
+**Result.** Five pointer lines added, each header proved **token-identical** to its pre-edit snapshot, and the
+module now reads `0 missing page(s), 0 site-link problem(s), 0 page(s) without a pointer`. `check.sh --staged`
+exits 0 with 0 grep failures; Dev, Debug and Release each compile 120 actions and link; `EngineTest` 374 of 375
+in each, the single failure being the `WindowTest::TC0` ceiling this journal already carries.
+
+| Layer | Before | After |
+|---|---|---|
+| `docs_coverage.py check Config` | exit 1 — 5 pages without a pointer | exit 0 — 0, 0, 0 |
+| `docs_coverage.py check-file` per header | 1 blocker each | "addressed from the header, method pages complete" |
+| `comments.py` | 0 | 0 — a pointer is an address, not prose |
+| blank lines, includes, layout, init order, `docs_methods`, `htmlcheck` | 0 | 0 (34 pages) |
+
+**A pointer certifies a page, so four pages had to be repaired first.** Their Signature sections were not the
+header's text: the heading read `Signatures` where the contract and 457 of 472 method pages read `Signature`,
+which is why the authoring tool reported `NO SIGNATURE BLOCK` rather than a mismatch; and the blocks quoted
+six `///` lines (`/// the only constructible form`, `/// absence as data: …`) that a comment-free header does
+not contain — a fabricated quotation, the exact thing the citation rule forbids. Four were hand-repaired: heading
+to singular, invented comment lines deleted, lead-in prose moved into the Function description first so the
+tool could not swallow it. A full audit of all 29 method pages then found three more quotation defects: two
+blocks that invented a `ConfigFile::~ConfigFile()` qualifier the header never writes, and `Parse`'s line carrying
+a trailing `// declared private in the header` annotation. Hand-fixing rather than running
+`docs_pass.py signatures` was forced by measurement, not taste — see the tool finding below.
+
+**Two ordering decisions that the checker cannot see.** `docs_pass.py` groups a declaration by name, so a
+`constructors` page can only ever hold `ConfigSystem(…)` lines, never the two deleted `operator=` forms. Those
+four deletions were the reference's *only* mention of the assignments, so narrowing the page without first giving
+them a home would have deleted a fact from the documentation while every checker stayed silent — the class page
+now carries an `operator=` row, and its constructors row's `1 usable, 4 deleted` badge was corrected to match its
+own cell, which listed three lines.
+
+**Chrome: 28 method pages reskinned, no prose moved.** `docs_pass.py reskin` reported no `DRIFT` and no `FAILED`
+across `ConfigFile`, `ConfigParam`, `ConfigSystem`, `EngineConfig`, and a second run changed no bytes (hashes
+compared) — chrome accumulating is how one class came to list its source file four times. The deprecated
+`ul class="methods"` list also came off the five class index pages; every added line in that diff is an intended
+table row, so the removals added nothing. Two lists were deliberately **kept**: the module page's `<h3>Classes</h3>`,
+which is cross-entry navigation rather than a method list, and `ConfigFile.h:24`'s second `public:`, which is the
+twelve-block seam between the data layer and the function layer (`ACCESS-REDUNDANT` is advice for exactly this).
+
+**A tool finding, recorded on the page it damages.** `docs_pass.py signatures` is unsafe on `ConfigParam.h`: its
+declaration parser does not stop at a `{` across the constructor's `#if ENGINE_PARAM_DESC_ENABLED` and
+`#ifdef __DEBUG__` guards, so it replaced a *correct* hand-written signature with `#endif`, `public:` and the
+initialiser list — and still reported **0 problems**, because its verbatim check compares the block against the
+same garbage its own parser extracted. A self-consistent check is not a correct one. That run silently rewrote 33
+pages before the damage was caught; all of it was reverted and redone deliberately. The ConfigParam page now
+names the limitation in its Coverage section, because its five blocks print the declaration of a member the header
+*defines* in class — contract-correct, and permanently unverifiable by that tool.
+
+**An uncommitted edit that is not mine, left alone.** `git add -A` picked up a member regrouping in
+`Engine/Core/TaskSystem.h` (mtime 13:05, mid-session; nothing I ran writes into `Engine/Core`). Unstaged and left
+in the working tree untouched — reported, not repaired inside a Config task, and not committed under my message.
+It is token-identical to `HEAD` (829/829), as are all five Config headers, which is what makes the `WindowTest`
+failure attributable to neither delta: the working tree cannot differ from `HEAD` in behaviour.
+
 ## 2026-10-04 03:25 — the engine-wide blank-line sweep resumes on its two cheap modules
 
 **Cause.** `Engine/Core` closed, so the sweep plan's cheap re-proof targets were the next unblocked work:
