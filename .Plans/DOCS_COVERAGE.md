@@ -7,17 +7,17 @@ Source comments are banned, so a missing page means the contract is nowhere.
 | module | API entries | with a page | missing | test-only | pages addressed from the header | comment lines still in sources |
 |---|---|---|---|---|---|---|
 | Config | 5 | 5 | 0 | 0 | 5 | 0 |
-| Container | 12 | 10 | 2 | 10 | 0 | 60 |
+| Container | 12 | 10 | 2 | 10 | 1 | 55 |
 | Core | 31 | 31 | 0 | 9 | 31 | 0 |
 | Engine | 2 | 2 | 0 | 0 | 0 | 0 |
 | HSTL | 3 | 3 | 0 | 1 | 0 | 0 |
 | Log | 4 | 4 | 0 | 0 | 0 | 0 |
 | Math | 16 | 0 | 16 | 15 | 0 | 127 |
-| Memory | 22 | 0 | 22 | 11 | 0 | 127 |
+| Memory | 22 | 0 | 22 | 12 | 0 | 120 |
 | OSAL | 14 | 0 | 14 | 5 | 0 | 96 |
-| Renderer | 9 | 8 | 1 | 2 | 0 | 257 |
+| Renderer | 9 | 8 | 1 | 2 | 0 | 250 |
 | Resource | 7 | 7 | 0 | 3 | 0 | 0 |
-| String | 9 | 1 | 8 | 5 | 0 | 16 |
+| String | 9 | 1 | 8 | 5 | 0 | 14 |
 | Test | 5 | 4 | 1 | 0 | 0 | 125 |
 
 ## Entries
@@ -29,7 +29,7 @@ Source comments are banned, so a missing page means the contract is nowhere.
 | Config | ConfigParam | class | `Engine/Config/ConfigParam.h` | `docs/Config/ConfigParam/index.html` | 5 | yes | documented |
 | Config | ConfigSystem | class | `Engine/Config/ConfigSystem.h` | `docs/Config/ConfigSystem/index.html` | 16 | yes | documented |
 | Config | EngineConfig | utility header | `Engine/Config/EngineConfig.h` | `docs/Config/EngineConfig/index.html` | 1 | yes | documented |
-| Container | Array | class | `Engine/Container/Array.h` | `docs/Container/Array/index.html` | 14 | **no** | documented |
+| Container | Array | class | `Engine/Container/Array.h` | `docs/Container/Array/index.html` | 14 | yes | documented |
 | Container | ArrayTest | test-only | `Engine/Container/Array.h` | `docs/Container/ArrayTest/index.html` | 0 | — | test-only — owns a Coverage row |
 | Container | AtomicStackView | class | `Engine/Container/AtomicStackView.h` | `docs/Container/AtomicStackView/index.html` | 2 | **no** | documented |
 | Container | AtomicStackViewTest | test-only | `Engine/Container/AtomicStackView.h` | `docs/Container/AtomicStackViewTest/index.html` | 0 | — | test-only — owns a Coverage row |
@@ -139,6 +139,7 @@ Source comments are banned, so a missing page means the contract is nowhere.
 | Memory | AllocatorScopeTest | test-only | `Engine/Memory/AllocatorScope.h` | `docs/Memory/AllocatorScopeTest/index.html` | 0 | — | test-only — owns a Coverage row |
 | Memory | BaseAllocatorTest | test-only | `Engine/Memory/DefaultAllocator.h` | `docs/Memory/BaseAllocatorTest/index.html` | 0 | — | test-only — owns a Coverage row |
 | Memory | DefaultAllocator | class | `Engine/Memory/DefaultAllocator.h` | `docs/Memory/DefaultAllocator/index.html` | 0 | — | MISSING |
+| Memory | GlobalAllocationTest | test-only | `Engine/Memory/MemoryManager.h` | `docs/Memory/GlobalAllocationTest/index.html` | 0 | — | test-only — owns a Coverage row |
 | Memory | InlineMonotonicAllocator | class | `Engine/Memory/InlineMonotonicAllocator.h` | `docs/Memory/InlineMonotonicAllocator/index.html` | 0 | — | MISSING |
 | Memory | InlineMonotonicAllocatorTest | test-only | `Engine/Memory/InlineMonotonicAllocator.h` | `docs/Memory/InlineMonotonicAllocatorTest/index.html` | 0 | — | test-only — owns a Coverage row |
 | Memory | InlinePoolAllocator | class | `Engine/Memory/InlinePoolAllocator.h` | `docs/Memory/InlinePoolAllocator/index.html` | 0 | — | MISSING |

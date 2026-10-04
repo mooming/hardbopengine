@@ -1,5 +1,65 @@
 # Journal
 
+## 2026-10-05 00:18 — OS allocations get their own bucket, so the ceiling measures what the engine owns
+
+**Cause.** `WindowTest::TC0` had been failing the 65,536-byte retained-global-heap ceiling since long before this
+session - the JOURNAL had carried it as "an owner-declared separate issue" at six entries, always assumed to be
+either an un-freed window or a genuine ~100 KB cost of window creation. The allocation tracer that was armed for
+`Create Window` settled the question: the window *is* destroyed, and the retained memory is not the engine's at
+all. Creating the first window of a process boots Metal's shader binary archive, the AGX device registration, the
+CoreText font caches and the AppleEvents coercion tables; those load through the replaced `operator new` - a weak
+symbol, so the replacement coalesces process-wide - and live for the process lifetime by design. The owner ruled
+it system behavior and chose the remedy in one line: *count it, do not include it within the given budget.*
+
+**Design, and the probe that gated it.** `Engine/Memory/GlobalAllocation.cpp` now classifies each entry point's
+immediate caller by return address against `_dyld_get_shared_cache_range` - one contiguous range holding every
+Apple system image, so the classification is one compare. The global totals keep counting everything; four new
+`MemoryManager` getters report the OS bucket that increments *alongside* them; `engine = total - OS` by
+definition. The ceiling guard in `TestCollection.cpp` evaluates the clamped engine-derived retention instead of
+the raw one, prints the OS split on every per-testlet line, and the ceiling constant itself is untouched.
+Nothing about this was assumed: a standalone probe checked the range lookup, the engine-side classification and
+the libc++ side at -O0 and -O2 before the first line of engine code changed, and it caught the one symbol-trap -
+the SDK declares `_dyld_get_shared_cache_range` nowhere, though libSystem exports it, so the file declares it
+`extern "C"` itself.
+
+| Gate | Result |
+|---|---|
+| `WindowTest::TC0` at the untouched 65,536 ceiling | PASS - 0 engine-owned bytes retained; 47,164 of its 47,173 global requests are OS-image traffic |
+| EngineTest Dev, Debug | 60/60 collections, 382 testlets, exit 0 |
+| EngineTest Release (`-test`) | 60/60, exit 0 |
+| `blank_lines.py`, `includes.py`, `comments.py`, `layout.py` on touched files | my code adds 0 findings over the HEAD baselines; the formatter's two collapsed A3 seams were restored by hand |
+| `htmlcheck.py` on the three revised pages | 0 problems |
+
+**The bias is stated, not hidden.** Classification is by the *immediate* caller, so an engine-initiated allocation
+whose `operator new` call happens inside an out-of-line shared-cache frame - a `std::string` reallocated by
+`libc++`, which lives in the shared cache - counts as OS. That moves bytes only out of the engine bucket, which
+loosens the ceiling and never tightens it, and the sentence lives on both reference pages. Non-Apple platforms
+classify "engine", the OS counters stay zero, and the totals mean exactly what they meant before.
+
+**Three findings the work turned up on its own way.**
+1. The unit test I wrote first assumed the `std::string(size, char)` fill constructor allocates inside
+   `libc++.dylib`. In the probe it did; in this build the constructor instantiates into the engine object, and the
+   testlet failed *correctly*. `nm` settled it: `basic_string::push_back` and `append` are undefined references
+   bound to the dylib, so the test grows a string by pushing - a link-level guarantee, not a compiler-mood
+   guarantee. Determinism in a bucketing test comes from the linker, not the optimizer.
+2. `docs/Memory/index.html` claimed "allocations made inside system images still bypass this". The trace disproved
+   it - Metal's own C++ allocations were arriving at `AllocateAccounted` all along - and the cell now carries the
+   measured truth: C traffic bypasses, C++ traffic coalesces in, which is exactly why the bucket was both
+   possible and necessary. A page that teaches the mechanism had to be corrected before it could document the
+   change that depends on it.
+3. `TaskSystemTest::TC10` failed once, in the run that started while the linker was still finishing, with
+   `Slow DeltaTime = 0.289` logged beside it: a timing assertion flaking under load, not a memory change. Four
+   other runs in the session passed it. Logged as an observation, unfixed - a budget test that can lose to a
+   289 ms frame is a flake report for another day.
+
+**Also closed.** The `TEMP-ALLOC-TRACE` instrumentation - uncommitted, 405 lines, its own header reading
+"delete before commit" - was reverted at the owner's direction once its evidence had been captured here; it was
+sitting in the exact region the ceiling guard needed editing, and two claims cannot share one hunk. Known
+untouched defect noticed nearby: `operator delete(void*, align_val_t)` passes its *alignment* where `Deallocate`
+expects a *size*, so aligned unsized frees record the wrong released byte count - pre-existing, out of this
+scope, on the record now.
+
+
 ## 2026-10-04 22:10 — the `_MainThread` suffix is a rule now, and the naming conflict is closed
 
 **Cause.** The 21:05 entry left the underscore undecided — "open, and deliberately not mine to close". The owner
