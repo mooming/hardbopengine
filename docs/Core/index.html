@@ -198,7 +198,7 @@
 
 <div class="note">
   <strong>Both configurations declare the same two overloads with the same exception specification.</strong>
-  The <code>__DEBUG__</code> and release branches of <code>Debug.h</code> must agree on signature and on
+  The <code>!RELEASE_BUILD</code> and release branches of <code>Debug.h</code> must agree on signature and on
   <code>noexcept</code>: a <code>noexcept</code> mismatch alone is enough to flip
   <code>std::is_nothrow_*</code> traits between configurations, so code that compiles under one build can be
   rejected by the other. The history behind the rule is in

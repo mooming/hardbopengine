@@ -1,5 +1,226 @@
 # Journal
 
+## 2026-10-04 18:45 — the uncommitted pile is reviewed and filed, and a fatal log line is reverted on measurement
+
+**Cause.** The owner asked for a review of everything `git status` still held and for commits. The tree
+held four lines of work at once: this session's build-macro leftovers, the F5 dead-code pass, the
+`TaskStream` header-to-source migration another writer left mid-gate at 14:11, and a `Logger` rename -
+plus `TEMP-ALLOC-TRACE` instrumentation that its own marker says must not be committed.
+
+**What landed.** Five commits, in this order: *TaskStream defines its bodies in the source and the task
+queue loses code nothing read*, *Array's two prose comments become its API reference address*, *The
+task-system records are filed*, *Logger's stream is named for what it is*, and the journal entry with
+the two reference pages the build-macro commit could not carry. Four files
+(`Engine/Core/TaskSystem.cpp`, `docs/Core/index.html`, `docs/Core/TaskStream/update.html`, this file)
+held someone else's staged edit and this session's unstaged edit at the same time; each was committed in
+two steps, the staged version first, so no work moved between authors.
+
+**One claim in the pile turned out to be wrong, and the reason matters.** The `Logger` edit answered
+`TaskStream::Update`'s new `[[nodiscard]]` by treating a `false` return as a failure and logging
+`OutFatalError("Fail to update the logger stream")`. The documented contract says `false` also means
+"found nothing to take", which is the ordinary answer of an idle driven stream, and
+`TaskStream::RunLoop` answers the same `false` by waiting - as this loop already does one line later with
+`WaitForWork(20ms)`. A fatal line is `Flush()`, `debugBreak()` and `Assert(false)`, raised from the driver
+thread while it holds `driverLock`, so the idle answer would stop a quiet engine. The line had fired 0
+times in a 375-testlet run, and that is the trap rather than the reassurance: the run kept both streams
+saturated (the log closes them at 902745 driven passes on the base stream and 1214 on the IO stream) and a
+driven stream that is asked finds general work from the shared queue, so a pass that found nothing never
+occurred. Reverted to the discard the shutdown pump uses, `(void) stream->Update()`, in commit *Logger's
+stream is named for what it is*. If the intent was to catch the IO stream closing early, that is not
+expressible at this call site - the idle answer and the closing answer are the same value - and needs a
+predicate on the stream instead.
+
+**Two claims about the repository did not survive measurement.** The dead-code session reported its own
+commit as `933125e` on `master`: no such object exists here, `git log --all --grep=isDone` finds nothing and
+`git worktree list` shows this checkout only, so the staged pile in this tree was the only copy of that work
+and `2363525` is where it landed. And a gate recipe using `-D__HB_LIB_DIR` does not isolate archives: the
+name is not read anywhere in the build, and `Tools/MakeBuild/Source/Common/CMakeLists.txt:34` sets
+`CMAKE_ARCHIVE_OUTPUT_DIRECTORY` to `${CMAKE_SOURCE_DIR}/lib` unconditionally, so even a build directory
+outside the tree rewrites `lib/<Config>/*.a` inside it.
+
+**Left uncommitted on purpose.** `Engine/Memory/GlobalAllocation.cpp` (+405) and `Engine/Test/TestCollection.cpp`
+(+6) are the allocation-trace instrumentation, self-marked `TEMP-ALLOC-TRACE … delete before commit`, and the
+two files still carry `//` comments an engine source may not hold. Committing them would file a defect and
+its own marker against the standard at once.
+
+**Gate.** Fresh configure, Debug + Dev + Release build; Debug and Dev run 375 testlets with only the
+`WindowTest` failure already logged as a separate issue; Release still prints that it contains no tests.
+`comments.py`, `blank_lines.py`, `includes.py` clean on the touched sources; `clang-format` reports only the
+`Logger.cpp:19` include-line deviation the parent commit already had; `htmlcheck.py` clean on 32 pages;
+`docs_methods.py Log` back to 0 missing after the page rename; `docs_coverage.py check Log` unchanged at 4
+pages without an address, which is the Log module's older debt.
+
+**Postscript at 18:55, before the push.** `git fetch` found `origin/master` already carrying `0f48473`,
+the intermediate commit my own bad `git commit --amend --only` produced: it carries this entry's first
+subject and the content of the `Array` and ledger edits, and it was pushed from this working tree by
+whoever ran the push. `git rebase origin/master` then dropped *Array's two prose comments become its API
+reference address* as "patch contents already upstream", so the remote series is four commits, and the
+`Array` pointer and the ledger counts stand under a subject that does not describe them. The content is
+right; only the label is wrong, and correcting it means rewriting a pushed `master`, which is the owner's
+call and not taken here.
+
+**Found and not fixed, because they predate this work.** `Engine/Container/Array.h:51` and `:55` are
+`ACCESS-REDUNDANT` - two `public:` labels in a body already public. `Engine/Log/Logger.cpp:19` fails
+`clang-format` at the include block. The `Log` module's four pages carry no API reference address, so
+`docs_coverage.py check Log` exits non-zero on older debt, not on this change.
+
+## 2026-10-04 17:26 — the configurations now name themselves, and the 19 comments in the files that prove it are out
+
+**Cause.** The request was a `customCMake.txt` in `Applications/EngineTest` defining `__TEST__` and
+`__UNIT_TEST__` for Debug and Dev. Measured before writing anything (CMake 4.3 probe at
+`/tmp/cmscope`): a postlude `add_compile_definitions` reaches that directory's own targets and **no**
+child, and a postlude `set (CMAKE_CXX_FLAGS_DEBUG …)` reaches that file's Debug flags but not its Dev
+flags. `nm -u lib/Dev/libTest.a` listed undefined `hbe::BufferTest`, `hbe::StringTest`,
+`hbe::VectorTest` against `nm lib/Dev/libCore.a | grep -c TaskSystemTest` = `0` — each module
+compiles its own test bodies behind `#ifdef __UNIT_TEST__`, so a define reaching only the executable
+compiles `TestMain.cpp`'s test half and fails to link. The requirement was therefore a tree-wide
+per-configuration definition, which only the generator can give.
+
+**The decision chain, each step the owner's.** Option A — a `.project.config` key emitted onto the
+flag line beside the hardcoded `-D__DEBUG__` — then *"Dev shouldn't inherit Debug's definitions"*, so
+Dev's line stopped reading `${CMAKE_CXX_FLAGS_DEBUG}` and each configuration got its own key; then
+`precompileDefinitionsRelease` for symmetry; then the naming round — `__DEV__`-style rejected, `HB_`
+prefix rejected because it names HardBopEngine specifically while the tool is generic, leaving
+`DEBUG_BUILD=1` / `DEV_BUILD=1` / `RELEASE_BUILD=1`; then `#if !RELEASE_BUILD` over
+`#if DEBUG_BUILD || DEV_BUILD` for the 53 renamed sites. The last choice is available precisely
+because the trio is exhaustive and mutually exclusive.
+
+**What the tree says now.** One macro per configuration on its own flag line — Debug `-g -O0
+-DDEBUG_BUILD=1`, Dev `-g -O1 -DDEV_BUILD=1`, Release `-O3 -DRELEASE_BUILD=1` — so Dev's effective
+flags are what the inherited form produced and nothing else crosses between configurations. Counted
+in the generated ninja files: each macro appears on 151 translation units and only in its own
+configuration; `__TEST__` reads 151 / 151 / **0**. All three configurations build, Debug and Dev run
+375 testlets with the same single `WindowTest` failure the owner declared a separate issue, and
+Release still prints that it verified nothing.
+
+**The strip this forced, and where the prose went.** 19 comments across 11 files. Three new design
+documents own the content — `docs/design/BuildMacros_Design.html`,
+`docs/design/UnitTestSelection_Design.html`, `docs/design/MemoryManagerInternals_Design.html` — each
+linked from its module index, each with a Coverage section naming the page debt it does not pay
+(`docs/Memory/MemoryManager`, `docs/String/StringUtil`, `docs/Container/LinkedList` still have no
+reference pages, and `docs_coverage.py` still blocks those headers). Pure restatements were deleted
+without a destination: `/* hash * 33 + c */` twice and `// uniqueName > item.uniqueName`. The two
+`#endif // __USE_SYSTEM_MALLOC__` labels named the wrong guard and now read
+`FORCE_USE_SYSTEM_MALLOC`. `Engine/Engine/Engine.cpp`'s empty `#ifdef __DEBUG__` block is gone, and
+`docs/Config/ConfigSystem/print-all-parameters.html`, whose example quoted it, was re-quoted and its
+"present in the source but commented out" claim corrected. 80 `__DEBUG__` mentions across 50 pages
+moved to the new vocabulary; `LightweightRenderer_Design`'s blocking caveat that `Assert()` proved
+nothing is closed rather than reworded, because the guard is now satisfied.
+
+**The tool was rewritten, not amended.** The owner's instruction was that the tool be
+comment-free too, and that the `__DEBUG__` commit's "Dev inherits it" claim had to go. So
+`39ccfae` + `2781d62` became one commit `34dfc7d`, force-pushed to `per-config-precompile-definitions`;
+[mooming/makebuilder#11](https://github.com/mooming/makebuilder/pull/11) now carries 1 commit, 5 files,
++50/−3, no comment lines, and a body that describes the trio. Local submodule `master` still holds
+the two superseded commits, and the parent repo is deliberately uncommitted: it carries another
+session's staged work, and regeneration still drops `add_subdirectory (Examples)` because `Examples/`
+have no `.module.config`.
+
+| Gate | Verdict |
+|---|---|
+| `grep -c 'DDEBUG_BUILD'` / `'DDEV_BUILD'` / `'DRELEASE_BUILD'` in `build/CMakeFiles/impl-<Config>.ninja` | 151 in its own configuration, 0 in the other two, all three pairs |
+| `grep -c 'D__TEST__'` Debug / Dev / Release | 151 / 151 / 0 |
+| Debug, Dev, Release build of `EngineTest` | all three link; Debug and Dev run 375 testlets, only `WindowTest` fails; Release prints the no-tests message, exit 1 |
+| `comments.py` on the 11 touched sources | 0 violations, down from 19 |
+| `blank_lines.py`, `includes.py` on those files | 0 findings — the strip did not reopen the seam layer |
+| clang-format through the gate's `--collapse-seam` tolerance | each touched file's only raw deviation is the rule-A3 preamble seam, at HEAD too |
+| `htmlcheck.py` over the 67 changed and new HTML pages | 0 pages with problems |
+| `makebuild --test-run` | 3/4; `03_external_library` fails identically with this change stashed — pre-existing |
+
+
+## 2026-10-04 16:12 — `__TEST__` and `__UNIT_TEST__` become build inputs, not command-line ones
+
+**Cause.** The request was a `customCMake.txt` in `Applications/EngineTest` defining `__TEST__` and
+`__UNIT_TEST__` for Debug and Dev. Measured before writing anything (probe at `/tmp/cmscope`, CMake
+4.3 + Ninja Multi-Config): a postlude `add_compile_definitions` reaches that directory's own targets
+and no subdirectory (`__LATE_DIR__` in Self, absent in Child), and a postlude
+`set (CMAKE_CXX_FLAGS_DEBUG …)` reaches the same directory's Debug flags but not its Dev flags,
+because Dev's value is taken at the top of the file. `nm -u lib/Dev/libTest.a` lists undefined
+`hbe::BufferTest`, `hbe::StringTest`, `hbe::VectorTest`, and
+`nm lib/Dev/libCore.a | grep -c TaskSystemTest` is `0` — the test bodies sit behind
+`#ifdef __UNIT_TEST__` in each module's own sources, so a define that reaches only the executable
+compiles `TestMain.cpp`'s test half and then fails to link. Both `customCMake.txt` files already in
+the tree also need the late position (`target_sources`/`target_link_libraries` on `Renderer`,
+`${PLATFORM_SOURCES}` for `CodingStandards`), so moving it was not available either.
+
+**Decision: MakeBuild gains `precompileDefinitionsDebug`, `precompileDefinitionsDev` and
+`precompileDefinitionsRelease`** (submodule commit `2781d62`), emitted as `-D` tokens onto
+`CMAKE_CXX_FLAGS_DEBUG`, `_DEV`, `_RELEASE` in every generated `CMakeLists.txt` — the same channel
+the template already uses for the hardcoded `-D__DEBUG__`. At the owner's instruction Dev stopped
+reading `${CMAKE_CXX_FLAGS_DEBUG}` so that Debug-only means Debug-only; Dev's effective flags are
+unchanged because `-g -O0 -D__DEBUG__ … -O1` is now spelled out. `.project.config` sets Debug and
+Dev and leaves Release's key empty, so `__TEST__`/`__UNIT_TEST__` are Debug+Dev tree-wide and gone
+from Release. `EngineTest` now builds and runs its 375 testlets in Debug and Dev with no `-test`.
+
+**Left alone on purpose.** `build.sh -test` still forces both defines tree-wide including Release —
+removing it is a separate call. `makebuild --test-run` deletes the fixture `.txt` specifier files as
+it migrates them into `.module.config`; those edits were reverted out of this change. The one
+collection that fails in Debug and Dev is `WindowTest : TC0.Create Window`, which the owner declared
+a separate issue. `Examples/` has no `.module.config`, so regeneration drops
+`add_subdirectory (Examples)` from the root — pre-existing drift, and it needs the owner's call.
+
+| Gate | Verdict |
+|---|---|
+| `grep -o 'D__TEST__' build/CMakeFiles/impl-<Config>.ninja` | 451 Debug, 451 Dev, 0 Release |
+| `grep -o 'D__UNIT_TEST__' …` | 455 Debug, 455 Dev, 4 Release — `Engine/Test`'s own four sources, from its `.module.config`'s `precompileDefinitions` |
+| EngineTest Debug + Dev, configured **without** `-test` | linked and ran 375 testlets; only `WindowTest` failed |
+| EngineTest Release, without `-test` | still prints "built WITHOUT `__UNIT_TEST__`", exit 1 — behaviour preserved |
+| `./generate_cmake_files.sh` twice | second pass changed nothing (19 files, 45/44 both times) |
+| `clang-format --dry-run -Werror` on the four tool sources | clean |
+| `makebuild --test-run` with and without this change | 3/4 both ways; `03_external_library` fails on `test_sdk.h` not found, pre-existing |
+
+## 2026-10-04 14:10 — F5: the task system's six dead symbols are out, and an unrelated half-finished redesign is parked
+
+**Cause.** `.Plans/PLAN_f5_task_system_dead_code.md` was approved by the owner: delete six declarations with zero callers
+(`TaskStream::TaskQueueItem`, `TaskItem::isDone` + `HasFinished()`, `TaskItem::operator<`, `MainThreadTaskQueue::RequestStop`,
+`MainThreadTaskQueue::IsRunning` + `isRunning`, `TaskStream::ProcessPostedTasks`) and delete or amend the pages that own them.
+No behaviour change was authorised.
+
+**The plan did not describe the tree it was written against.** Four files (`TaskStream.{h,cpp}`, `TaskSystem.{h,cpp}`) carried
+uncommitted edits that are not F5 and are not logged anywhere: they delete `TaskStream::postedTasks`, `DispatchPostedTasks`,
+`HasPostedTasks`, `TaskSystem::DispatchToMainThread` and `#include "Constants.h"` — the base-stream redesign F5 names as an
+explicit exclusion, applied halfway. `TaskSystem.cpp:206` and `:212` still call `baseStream.HasPostedTasks()`, and
+`Constants.h` supplies `Pi`/`Epsilon` used at `TaskSystem.cpp:1466`, so the Debug object failed with 8 errors before any F5
+edit existed. Executing a deletion plan on a non-compiling base would have made the three-configuration gate meaningless.
+
+**Decision: park it, do not delete it.** The edit is preserved twice — `stash@{0}` and
+`.Plans/OUT_OF_SCOPE_taskstream_tasksystem_wip.patch` (its `git apply --check --reverse` passes, so it reproduces that state from
+`HEAD`) — and F5 ran against `HEAD`. Reverting was chosen over hand-restoring the broken half because a mixed tree is unhuntable
+by the owner later. This is a parking move, not a judgement on the redesign, which remains the owner's decision.
+
+**Result.** 480 lines out, 30 in, and the 30 are amended prose plus one Coverage row that keeps a fact the deleted row owned.
+
+| Gate | Verdict |
+|---|---|
+| `git grep` for the six symbols in `Engine/Core/MainThreadTaskQueue.*` and tree-wide for `TaskQueueItem`/`ProcessPostedTasks` | empty |
+| `docs_coverage.py check-file` both headers, `check Core` | 0 missing pages, 0 site-link problems, 0 pages without a pointer |
+| `docs_methods.py Core` | 0 methods without a page |
+| `htmlcheck.py` | 562 pages, 0 problems |
+| `comments.py` `blank_lines.py` `includes.py` `layout.py` on the four touched files | 0 violations, 2 waived, 1 pre-existing advice |
+| `runtest.sh Debug` / `Dev` / `Release`, sequential | 0 `error:` in each build log; 374 pass, 1 fail in each — `WindowTest::TC0`, the known ceiling this journal already carries |
+
+**The working tree is shared, and it moved under this task twice.** After the redesign was parked, a second writer
+rewrote `Engine/Core/TaskStream.h` at `14:11` and `Engine/Core/TaskStream.cpp` — ~30 inline member bodies converted to
+out-of-line declarations (288 lines to 168) with **none of the definitions written into the source**, 22 unresolved
+symbols — then touched `TaskSystem.cpp` at `14:28` and staged `Engine/Container/Array.h`. None of it is F5 and none of it
+is the parked redesign, which was still in `stash@{0}` when checked. The captured state is preserved verbatim in
+`.Plans/CONCURRENT_EDIT_2026-10-04_1411/` with its own README, both files were restored to `HEAD` plus F5's four hunks at
+`14:29`, and the three-configuration gate above was then re-run on the restored tree so the verdict belongs to what is
+actually handed back. `TaskSystem.cpp`'s `(void) baseStream.Update();` was left in place: it is the other writer's, it
+compiles either way, and reverting a line a live session just wrote is not this task's call.
+
+**Measured, not assumed.** `TaskItem` is 24 bytes before and after, exactly as the plan predicted, so the container's per-bucket
+allocation is untouched. The plan's wider claim that "no queue layout changes" was not quite right: removing
+`std::atomic<bool> isRunning` also shrank the enclosing object from 10,328 to 10,320 bytes (both figures compiled on this tree, and
+both the `sizeof` probe and the queue's own translation unit built with the Debug flags), so `constructors.html`'s measured footprint
+had to follow it down.
+
+**Two stale claims found and deliberately left.** `Engine/Container/BoundedPriorityQueue.h:23` still tells a reader that an
+element type must provide `HasFinished()`; the class calls it nowhere, and the two pages that quote it
+(`docs/Container/BoundedPriorityQueue/index.html:129`, `push.html:125`) already say so — Container is unswept, out of F5.
+`docs/TaskSystemRedesign.md:487` mentions `TaskQueueItem` in a present-tense census inside a historical decision row (R25);
+ledger rows are corrected by appended parentheticals, not rewrites, so it waits for the owner.
+
 ## 2026-10-04 13:25 — Engine/Config gets the address that makes its reference load-bearing
 
 **Cause.** The module turned out to be further along than the ask assumed: `comments.py` reports 0 violations

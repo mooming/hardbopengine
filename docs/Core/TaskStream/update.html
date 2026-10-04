@@ -180,7 +180,7 @@ if (chargingBudget)
   <code>IsBaseThread</code>, <code>IsIOThread</code>, the owner-thread budget asserts and the thread-local stream index all answer about the
   thread inside <code>Update</code>, not about the thread that constructed the stream (<code>Engine/Core/TaskStream.h</code>). There is no lock
   making concurrent passes safe: the <code>isPumping</code> check is an <code>Assert</code>, and an <code>Assert</code> compiles to nothing unless
-  <code>__DEBUG__</code> is defined, which the build sets for the Debug configuration only
+  <code>!RELEASE_BUILD</code> is defined, which the build sets for the Debug configuration only
   (<code>Core/Debug.h</code>, <code>CMakeLists.txt</code>). Two threads driving one stream concurrently is unsynchronised in a Dev or Release
   build, and the flag that would have caught it is not there.
 </div>
