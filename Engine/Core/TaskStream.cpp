@@ -17,38 +17,65 @@
 
 namespace hbe
 {
-TaskStream::TaskQueueItem::TaskQueueItem(uint8_t priority, const WorkItem& task)
-	: priority(priority)
-	, task(task)
-	, duration(0)
-{
-}
-
-bool TaskStream::TaskQueueItem::operator<(const TaskQueueItem& other) const
-{
-	return priority < other.priority;
-}
-
 TaskStream::TaskStream()
-	: streamIndex(0)
+	: laneProviders()
+	, streamIndex(0)
 	, loopCount(0)
 	, allocator("None")
+	, taskSystem(nullptr)
+	, windowAdvanceRequested(false)
+	, closeRequested(false)
+	, isClosed(false)
+	, drivenPassCount(0)
+	, isPumping(false)
+	, nestedPumpAllowed(false)
+	, isDrainingForShutdown(false)
+	, abandonedWorkNoticeCount(0)
+	, agedOutWorkCount(0)
+	, drivenByShutdownPump(false)
+	, shutdownDrainDeadline(std::chrono::milliseconds(2000))
+	, generalQueueRefusals(0)
+	, laneWorkRefusals(0)
+	, providerAsksWhileSpent(0)
 {
 	Assert(threadID == std::thread::id());
 }
 
 TaskStream::TaskStream(StaticString name, TStreamIndex streamIndex)
-	: name(name)
+	: laneProviders()
+	, name(name)
 	, streamIndex(streamIndex)
 	, loopCount(0)
 	, allocator(name)
+	, taskSystem(nullptr)
+	, windowAdvanceRequested(false)
+	, closeRequested(false)
+	, isClosed(false)
+	, drivenPassCount(0)
+	, isPumping(false)
+	, nestedPumpAllowed(false)
+	, isDrainingForShutdown(false)
+	, abandonedWorkNoticeCount(0)
+	, agedOutWorkCount(0)
+	, drivenByShutdownPump(false)
 	, shutdownDrainDeadline(streamIndex == TaskSystem::BaseStreamIndex || streamIndex == TaskSystem::IOStreamIndex
 									? std::chrono::milliseconds::zero()
 									: std::chrono::milliseconds(2000))
+	, generalQueueRefusals(0)
+	, laneWorkRefusals(0)
+	, providerAsksWhileSpent(0)
 {
 	auto log = Logger::Get(name);
 	log.Out([name = name](auto& ls) { ls << name.c_str() << " is created."; });
 }
+
+namespace
+{
+constexpr size_t ProviderSlot(StreamDrainPolicy::ELane lane) noexcept
+{
+	return lane == StreamDrainPolicy::ELane::Fifo ? 0U : (lane == StreamDrainPolicy::ELane::Priority ? 1U : 2U);
+}
+} // namespace
 
 void TaskStream::EnqueueFifo(const WorkItem& task) noexcept
 {
@@ -64,13 +91,188 @@ void TaskStream::EnqueuePriority(const WorkItem& task) noexcept
 	cv.notify_one();
 }
 
-namespace
+void TaskStream::ConfigureRate(uint32_t fifoWeight, uint32_t priorityWeight) noexcept
 {
-constexpr size_t ProviderSlot(StreamDrainPolicy::ELane lane) noexcept
-{
-	return lane == StreamDrainPolicy::ELane::Fifo ? 0U : (lane == StreamDrainPolicy::ELane::Priority ? 1U : 2U);
+	if (threadID != TThreadID{})
+	{
+		Assert(std::this_thread::get_id() == threadID, "Stream ", name,
+			   " had its lane rate configured from another thread while it is running. The drain policy's weights are "
+			   "unsynchronised fields this stream reads when it chooses a lane, so that is a data race.");
+	}
+
+	drainPolicy.ConfigureRate(fifoWeight, priorityWeight);
 }
-} // namespace
+
+void TaskStream::SetMaxAge(std::chrono::nanoseconds maxAge) noexcept
+{
+	drainPolicy.SetMaxAge(maxAge);
+}
+
+void TaskStream::WakeUp() noexcept
+{
+	cv.notify_one();
+}
+
+void TaskStream::ConfigureBudget(std::chrono::duration<double> allowance) noexcept
+{
+	if (threadID != TThreadID{})
+	{
+		Assert(std::this_thread::get_id() == threadID, "Stream ", name,
+			   " had its budget configured from another thread while it is running. The allowance is an "
+			   "unsynchronised field this stream reads every pass, so that is a data race. Use RequestBudget, "
+			   "which the stream applies to itself.");
+	}
+
+	budget.Configure(allowance);
+	drainPolicy.ConfigureAllowance(allowance);
+}
+
+void TaskStream::RequestBudget(std::chrono::duration<double> allowance) noexcept
+{
+	budget.RequestAllowance(allowance);
+}
+
+void TaskStream::RequestWindowAdvance() noexcept
+{
+	windowAdvanceRequested.store(true, std::memory_order_relaxed);
+}
+
+void TaskStream::Join() noexcept
+{
+	thread.join();
+}
+
+void TaskStream::Start(TaskSystem& taskSys) noexcept
+{
+	taskSystem = &taskSys;
+
+	if (streamIndex == TaskSystem::BaseStreamIndex)
+	{
+		threadID = std::this_thread::get_id();
+
+		return;
+	}
+
+	if (streamIndex == TaskSystem::IOStreamIndex)
+	{
+		return;
+	}
+
+	auto func = [this]() { RunLoop(); };
+
+	thread = std::thread(func);
+	OS::SetThreadPriority(thread, 0);
+}
+
+void TaskStream::RequestClose() noexcept
+{
+	closeRequested.store(true, std::memory_order_release);
+	cv.notify_all();
+}
+
+void TaskStream::SetNestedPumpAllowed(bool allowed) noexcept
+{
+	nestedPumpAllowed = allowed;
+}
+
+void TaskStream::DispatchPostedTasks(MainThreadTaskQueue::TTaskFunc taskFunc, void* userData,
+									 const uint8_t priority) noexcept
+{
+	postedTasks.Enqueue(taskFunc, userData, priority);
+}
+
+void TaskStream::CloseDrivenStream() noexcept
+{
+	RequestClose();
+
+	if (isClosed.exchange(true, std::memory_order_acq_rel))
+	{
+		return;
+	}
+
+	if (const auto abandoned = AbandonHeldWork(); abandoned > 0)
+	{
+		Logger::Get(name).OutWarning([name = name, abandoned](auto& ls)
+		{
+			ls << name.c_str() << " is closing with " << abandoned
+			   << " item(s) still held. They are abandoned, not requeued, and every requestor that asked to be told "
+				  "has been told, on this thread, as each one was dropped."
+			   << " The count is not the report: an item discarded without a word is a promise cancelled silently.";
+		});
+	}
+
+	Logger::Get(name).Out([name = name, passes = drivenPassCount](auto& ls)
+	{ ls << name.c_str() << " closed after " << passes << " driven pass(es)."; });
+}
+
+void TaskStream::SetDrivenByShutdownPump() noexcept
+{
+	drivenByShutdownPump = true;
+}
+
+void TaskStream::WaitForWork(std::chrono::milliseconds patience) noexcept
+{
+	std::unique_lock lock(queueLock);
+	cv.wait_for(lock, patience);
+}
+
+void TaskStream::RunLoop() noexcept
+{
+	AllocatorScope scope(allocator);
+
+	TaskSystem::SetThreadName(name);
+	TaskSystem::SetStreamIndex(streamIndex);
+
+	const auto log = Logger::Get(name);
+	log.Out([name = name](auto& ls) { ls << name.c_str() << " has begun."; });
+
+	threadID = std::this_thread::get_id();
+
+	while (likely(!closeRequested.load(std::memory_order_acquire)))
+	{
+		if (!Update())
+		{
+			WaitForWork(std::chrono::milliseconds(10));
+		}
+	}
+
+	const auto drainPasses = DrainForShutdown();
+
+	log.Out([name = name, drainPasses](auto& ls)
+	{ ls << name.c_str() << " closed after draining " << drainPasses << " pass(es)."; });
+
+	isClosed.store(true, std::memory_order_release);
+}
+
+StaticString TaskStream::GetName() const noexcept
+{
+	return name;
+}
+
+std::thread::id TaskStream::GetThreadID() const noexcept
+{
+	return threadID;
+}
+
+std::thread& TaskStream::GetThread() noexcept
+{
+	return thread;
+}
+
+const std::thread& TaskStream::GetThread() const noexcept
+{
+	return thread;
+}
+
+TStreamIndex TaskStream::GetStreamIndex() const noexcept
+{
+	return streamIndex;
+}
+
+std::uint64_t TaskStream::GetLoopCount() const noexcept
+{
+	return loopCount;
+}
 
 bool TaskStream::AttachProvider(TaskProvider& provider, StreamDrainPolicy::ELane lane) noexcept
 {
@@ -155,169 +357,6 @@ bool TaskStream::IsProviderAttached(const TaskProvider& provider, StreamDrainPol
 	}
 
 	return false;
-}
-
-std::optional<WorkItem> TaskStream::DrainProvidersLocked(StreamDrainPolicy::ELane lane) noexcept
-{
-	const size_t slot = ProviderSlot(lane);
-	if (slot >= laneProviders.size())
-	{
-		return std::nullopt;
-	}
-
-	const auto& list = laneProviders[slot];
-	if (list.count == 0)
-	{
-		return std::nullopt;
-	}
-
-	const TaskProduceContext context = TaskProduceContext::ForStream(streamIndex);
-
-	for (TIndex index = 0; index < list.count; ++index)
-	{
-		if (auto produced = list.items[static_cast<size_t>(index)]->Produce(context); produced.has_value())
-		{
-			return produced;
-		}
-	}
-
-	return std::nullopt;
-}
-
-void TaskStream::FireAbandonedNotice(const WorkItem& item) const noexcept
-{
-	if (item.abandonedNotice != nullptr)
-	{
-		item.abandonedNotice(item.taskID, item.abandonedUserData);
-	}
-}
-
-void TaskStream::ReportAgedOutWorkItem(const WorkItem& item, std::chrono::nanoseconds age) const noexcept
-{
-	auto log = Logger::Get(name);
-	log.OutWarning([name = name, index = item.taskID.index, generation = item.taskID.generation, age](auto& ls)
-	{
-		ls << name.c_str() << " dropped a work item, record " << index << " generation " << generation << ", aged "
-		   << age.count() << "ns, older than this stream's max age. Nothing was run.";
-	});
-}
-
-void TaskStream::ReportReleasedTask(const WorkItem& item) const noexcept
-{
-	auto log = Logger::Get(name);
-	log.OutWarning([name = name, index = item.taskID.index, generation = item.taskID.generation](auto& ls)
-	{
-		ls << name.c_str() << " dropped a work item, record " << index << " generation " << generation
-		   << ", because that task had already been released. Nothing was run.";
-	});
-}
-
-void TaskStream::ReportGeneralQueueRefusal() noexcept
-{
-	if (generalQueueRefusals.fetch_add(1, std::memory_order_relaxed) != 0)
-	{
-		return;
-	}
-
-	auto log = Logger::Get(name);
-	log.OutWarning([name = name, allowance = budget.GetAllowance()](auto& ls)
-	{
-		ls << name.c_str() << " has spent its allowance of "
-		   << std::chrono::duration_cast<std::chrono::microseconds>(allowance).count()
-		   << " us and is leaving tasks in the general queue until the budget window advances again.";
-	});
-}
-
-void TaskStream::ConfigureRate(uint32_t fifoWeight, uint32_t priorityWeight) noexcept
-{
-	if (threadID != TThreadID{})
-	{
-		Assert(std::this_thread::get_id() == threadID, "Stream ", name,
-			   " had its lane rate configured from another thread while it is running. The drain policy's weights are "
-			   "unsynchronised fields this stream reads when it chooses a lane, so that is a data race.");
-	}
-
-	drainPolicy.ConfigureRate(fifoWeight, priorityWeight);
-}
-
-void TaskStream::Dequeue(std::optional<WorkItem>& outTask)
-{
-	std::scoped_lock<std::mutex> lock(queueLock);
-
-	if (!priorityQueue.IsEmpty())
-	{
-		outTask = priorityQueue.Pop();
-		drainPolicy.CommitTake(StreamDrainPolicy::ELane::Priority);
-
-		return;
-	}
-
-	if (!fifoQueue.IsEmpty())
-	{
-		outTask = fifoQueue.Front();
-		fifoQueue.PopFront();
-		drainPolicy.CommitTake(StreamDrainPolicy::ELane::Fifo);
-
-		return;
-	}
-
-	outTask.reset();
-}
-
-void TaskStream::WakeUp() noexcept
-{
-	cv.notify_one();
-}
-
-void TaskStream::RequestBudget(std::chrono::duration<double> allowance) noexcept
-{
-	budget.RequestAllowance(allowance);
-}
-
-void TaskStream::ConfigureBudget(std::chrono::duration<double> allowance) noexcept
-{
-	if (threadID != TThreadID{})
-	{
-		Assert(std::this_thread::get_id() == threadID, "Stream ", name,
-			   " had its budget configured from another thread while it is running. The allowance is an "
-			   "unsynchronised field this stream reads every pass, so that is a data race. Use RequestBudget, "
-			   "which the stream applies to itself.");
-	}
-
-	budget.Configure(allowance);
-	drainPolicy.ConfigureAllowance(allowance);
-}
-
-bool TaskStream::MayTakeNewWork() const noexcept
-{
-	return budget.CanTakeWork();
-}
-
-std::chrono::nanoseconds TaskStream::GetAccumulatedCPUTime() const noexcept
-{
-	return budget.GetAccumulated();
-}
-
-void TaskStream::Start(TaskSystem& taskSys) noexcept
-{
-	taskSystem = &taskSys;
-
-	if (streamIndex == TaskSystem::BaseStreamIndex)
-	{
-		threadID = std::this_thread::get_id();
-
-		return;
-	}
-
-	if (streamIndex == TaskSystem::IOStreamIndex)
-	{
-		return;
-	}
-
-	auto func = [this]() { RunLoop(); };
-
-	thread = std::thread(func);
-	OS::SetThreadPriority(thread, 0);
 }
 
 bool TaskStream::Update() noexcept
@@ -560,79 +599,14 @@ bool TaskStream::Update() noexcept
 	return true;
 }
 
-void TaskStream::CloseDrivenStream() noexcept
+bool TaskStream::IsCloseRequested() const noexcept
 {
-	RequestClose();
-
-	if (isClosed.exchange(true, std::memory_order_acq_rel))
-	{
-		return;
-	}
-
-	if (const auto abandoned = AbandonHeldWork(); abandoned > 0)
-	{
-		Logger::Get(name).OutWarning([name = name, abandoned](auto& ls)
-		{
-			ls << name.c_str() << " is closing with " << abandoned
-			   << " item(s) still held. They are abandoned, not requeued, and every requestor that asked to be told "
-				  "has been told, on this thread, as each one was dropped."
-			   << " The count is not the report: an item discarded without a word is a promise cancelled silently.";
-		});
-	}
-
-	Logger::Get(name).Out([name = name, passes = drivenPassCount](auto& ls)
-	{ ls << name.c_str() << " closed after " << passes << " driven pass(es)."; });
+	return closeRequested.load(std::memory_order_acquire);
 }
 
-void TaskStream::SetNestedPumpAllowed(bool allowed) noexcept
+bool TaskStream::IsClosed() const noexcept
 {
-	nestedPumpAllowed = allowed;
-}
-
-void TaskStream::DispatchPostedTasks(MainThreadTaskQueue::TTaskFunc taskFunc, void* userData,
-									 const uint8_t priority) noexcept
-{
-	postedTasks.Enqueue(taskFunc, userData, priority);
-}
-
-size_t TaskStream::ProcessPostedTasks() noexcept
-{
-	return postedTasks.ProcessTasks();
-}
-
-bool TaskStream::HasPostedTasks() const noexcept
-{
-	return postedTasks.HasPendingTasks();
-}
-
-std::size_t TaskStream::CountPendingItems() const noexcept
-{
-	return fifoQueue.Size() + priorityQueue.Size();
-}
-
-std::size_t TaskStream::AbandonHeldWork() noexcept
-{
-	std::size_t abandoned = 0;
-
-	while (!priorityQueue.IsEmpty())
-	{
-		if (const auto item = priorityQueue.Pop(); item.has_value())
-		{
-			FireAbandonedNotice(*item);
-			++abandoned;
-		}
-	}
-	while (!fifoQueue.IsEmpty())
-	{
-		const WorkItem item = fifoQueue.Front();
-		fifoQueue.PopFront();
-		FireAbandonedNotice(item);
-		++abandoned;
-	}
-
-	abandonedWorkNoticeCount.fetch_add(abandoned, std::memory_order_relaxed);
-
-	return abandoned;
+	return isClosed.load(std::memory_order_acquire);
 }
 
 std::uint64_t TaskStream::DrainForShutdown() noexcept
@@ -665,37 +639,193 @@ std::uint64_t TaskStream::DrainForShutdown() noexcept
 	return passes;
 }
 
-void TaskStream::WaitForWork(std::chrono::milliseconds patience) noexcept
+std::size_t TaskStream::AbandonHeldWork() noexcept
 {
-	std::unique_lock lock(queueLock);
-	cv.wait_for(lock, patience);
+	std::size_t abandoned = 0;
+
+	while (!priorityQueue.IsEmpty())
+	{
+		if (const auto item = priorityQueue.Pop(); item.has_value())
+		{
+			FireAbandonedNotice(*item);
+			++abandoned;
+		}
+	}
+	while (!fifoQueue.IsEmpty())
+	{
+		const WorkItem item = fifoQueue.Front();
+		fifoQueue.PopFront();
+		FireAbandonedNotice(item);
+		++abandoned;
+	}
+
+	abandonedWorkNoticeCount.fetch_add(abandoned, std::memory_order_relaxed);
+
+	return abandoned;
 }
 
-void TaskStream::RunLoop() noexcept
+bool TaskStream::HasPostedTasks() const noexcept
 {
-	AllocatorScope scope(allocator);
+	return postedTasks.HasPendingTasks();
+}
 
-	TaskSystem::SetThreadName(name);
-	TaskSystem::SetStreamIndex(streamIndex);
+std::chrono::nanoseconds TaskStream::GetMaxAge() const noexcept
+{
+	return drainPolicy.GetMaxAge();
+}
 
-	const auto log = Logger::Get(name);
-	log.Out([name = name](auto& ls) { ls << name.c_str() << " has begun."; });
+uint32_t TaskStream::GetFifoWeight() const noexcept
+{
+	return drainPolicy.GetFifoWeight();
+}
 
-	threadID = std::this_thread::get_id();
+uint32_t TaskStream::GetPriorityWeight() const noexcept
+{
+	return drainPolicy.GetPriorityWeight();
+}
 
-	while (likely(!closeRequested.load(std::memory_order_acquire)))
+bool TaskStream::MayTakeNewWork() const noexcept
+{
+	return budget.CanTakeWork();
+}
+
+std::chrono::nanoseconds TaskStream::GetAccumulatedCPUTime() const noexcept
+{
+	return budget.GetAccumulated();
+}
+
+std::size_t TaskStream::CountPendingItems() const noexcept
+{
+	return fifoQueue.Size() + priorityQueue.Size();
+}
+
+std::uint64_t TaskStream::GetDrivenPassCount() const noexcept
+{
+	return drivenPassCount;
+}
+
+bool TaskStream::IsDrivenByShutdownPump() const noexcept
+{
+	return drivenByShutdownPump;
+}
+
+std::size_t TaskStream::GetAgedOutWorkCount() const noexcept
+{
+	return agedOutWorkCount.load(std::memory_order_relaxed);
+}
+
+std::size_t TaskStream::GetAbandonedWorkNoticeCount() const noexcept
+{
+	return abandonedWorkNoticeCount.load(std::memory_order_relaxed);
+}
+
+unsigned TaskStream::GetLaneWorkRefusalCount() const noexcept
+{
+	return laneWorkRefusals.load(std::memory_order_relaxed);
+}
+
+unsigned TaskStream::GetProviderAskWhileSpentCount() const noexcept
+{
+	return providerAsksWhileSpent.load(std::memory_order_relaxed);
+}
+
+unsigned TaskStream::GetGeneralQueueRefusalCount() const noexcept
+{
+	return generalQueueRefusals.load(std::memory_order_relaxed);
+}
+
+void TaskStream::FireAbandonedNotice(const WorkItem& item) const noexcept
+{
+	if (item.abandonedNotice != nullptr)
 	{
-		if (!Update())
+		item.abandonedNotice(item.taskID, item.abandonedUserData);
+	}
+}
+
+std::optional<WorkItem> TaskStream::DrainProvidersLocked(StreamDrainPolicy::ELane lane) noexcept
+{
+	const size_t slot = ProviderSlot(lane);
+	if (slot >= laneProviders.size())
+	{
+		return std::nullopt;
+	}
+
+	const auto& list = laneProviders[slot];
+	if (list.count == 0)
+	{
+		return std::nullopt;
+	}
+
+	const TaskProduceContext context = TaskProduceContext::ForStream(streamIndex);
+
+	for (TIndex index = 0; index < list.count; ++index)
+	{
+		if (auto produced = list.items[static_cast<size_t>(index)]->Produce(context); produced.has_value())
 		{
-			WaitForWork(std::chrono::milliseconds(10));
+			return produced;
 		}
 	}
 
-	const auto drainPasses = DrainForShutdown();
+	return std::nullopt;
+}
 
-	log.Out([name = name, drainPasses](auto& ls)
-	{ ls << name.c_str() << " closed after draining " << drainPasses << " pass(es)."; });
+void TaskStream::Dequeue(std::optional<WorkItem>& outTask)
+{
+	std::scoped_lock<std::mutex> lock(queueLock);
 
-	isClosed.store(true, std::memory_order_release);
+	if (!priorityQueue.IsEmpty())
+	{
+		outTask = priorityQueue.Pop();
+		drainPolicy.CommitTake(StreamDrainPolicy::ELane::Priority);
+
+		return;
+	}
+
+	if (!fifoQueue.IsEmpty())
+	{
+		outTask = fifoQueue.Front();
+		fifoQueue.PopFront();
+		drainPolicy.CommitTake(StreamDrainPolicy::ELane::Fifo);
+
+		return;
+	}
+
+	outTask.reset();
+}
+
+void TaskStream::ReportReleasedTask(const WorkItem& item) const noexcept
+{
+	auto log = Logger::Get(name);
+	log.OutWarning([name = name, index = item.taskID.index, generation = item.taskID.generation](auto& ls)
+	{
+		ls << name.c_str() << " dropped a work item, record " << index << " generation " << generation
+		   << ", because that task had already been released. Nothing was run.";
+	});
+}
+
+void TaskStream::ReportAgedOutWorkItem(const WorkItem& item, std::chrono::nanoseconds age) const noexcept
+{
+	auto log = Logger::Get(name);
+	log.OutWarning([name = name, index = item.taskID.index, generation = item.taskID.generation, age](auto& ls)
+	{
+		ls << name.c_str() << " dropped a work item, record " << index << " generation " << generation << ", aged "
+		   << age.count() << "ns, older than this stream's max age. Nothing was run.";
+	});
+}
+
+void TaskStream::ReportGeneralQueueRefusal() noexcept
+{
+	if (generalQueueRefusals.fetch_add(1, std::memory_order_relaxed) != 0)
+	{
+		return;
+	}
+
+	auto log = Logger::Get(name);
+	log.OutWarning([name = name, allowance = budget.GetAllowance()](auto& ls)
+	{
+		ls << name.c_str() << " has spent its allowance of "
+		   << std::chrono::duration_cast<std::chrono::microseconds>(allowance).count()
+		   << " us and is leaving tasks in the general queue until the budget window advances again.";
+	});
 }
 } // namespace hbe

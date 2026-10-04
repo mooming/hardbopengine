@@ -50,7 +50,7 @@
 <p class="subtitle">
   <span class="tag">member of hbe::MainThreadTaskQueue</span>
   <span class="tag">Engine/Core/MainThreadTaskQueue.cpp</span>
-  Builds an empty queue already marked running; the container allocates nothing.
+  Builds an empty queue; the container allocates nothing.
 </p>
 
 <h2 id="signature">Signature</h2>
@@ -64,22 +64,19 @@
 </p>
 
 <pre><code>MainThreadTaskQueue::MainThreadTaskQueue()
-    : isRunning(true)
 {
 }</code></pre>
 
 <p class="meta">From Engine/Core/MainThreadTaskQueue.cpp</p>
 
 <p>
-  One member is initialiser-listed. <code>isRunning</code> has no default member initialiser in the header, so this constructor is the
-  only thing that gives it a value — a queue is running when it is built, and only
-  <a href="requeststop.html">RequestStop</a> can say otherwise. The remaining members are default-constructed:
-  <code>queue</code> starts empty and <code>queueLock</code> starts unlocked.
+  The body initialises nothing. Both members are default-constructed: <code>queue</code> starts empty and <code>queueLock</code> starts
+  unlocked, and neither needs a value supplied here.
 </p>
 
 <div class="note">
   <strong>Empty does not mean cheap, and the constructor is where the cost is paid.</strong> The container's 256 priority buckets are an
-  inline array of empties, so construction allocates nothing for the items — but it reserves 10,328 bytes inside whatever holds the
+  inline array of empties, so construction allocates nothing for the items — but it reserves 10,320 bytes inside whatever holds the
   queue (measured: <code>sizeof(MainThreadTaskQueue)</code>, confirmed by the compiler on this tree). Every
   <code>TaskStream</code> owns one as <code>postedTasks</code> (<code>Engine/Core/TaskStream.h</code>), so this constructor runs once per
   stream and the footprint is per stream as well.
@@ -87,7 +84,8 @@
 
 <div class="note">
   <strong>Not defaulted, unlike the destructor</strong> — the pair is asymmetric on purpose. The destructor
-  (<a href="destructor.html">~MainThreadTaskQueue</a>) needs nothing, while this one has a value to establish. The class is
+  (<a href="destructor.html">~MainThreadTaskQueue</a>) is <code>= default</code> in the header, while this one keeps a definition in the
+  source even though that definition is empty, because the house rule puts a non-template body in the <code>.cpp</code>. The class is
   <code>final</code> and holds a <code>std::mutex</code>, so it is neither copyable nor movable; each instance lives where it was
   constructed, which for the engine's uses is a <code>TaskStream</code> member.
 </div>

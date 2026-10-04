@@ -2,7 +2,6 @@
 
 #pragma once
 
-#include <atomic>
 #include <functional>
 #include <mutex>
 
@@ -21,26 +20,14 @@ private:
 	struct TaskItem
 	{
 		uint8_t priority;
-		mutable bool isDone;
 		TTaskFunc taskFunc;
 		void* userData;
 
 		TaskItem(uint8_t p, TTaskFunc t, void* userData)
 			: priority(p)
-			, isDone(false)
 			, taskFunc(t)
 			, userData(userData)
 		{
-		}
-
-		bool operator<(const TaskItem& other) const noexcept
-		{
-			return priority < other.priority;
-		}
-
-		[[nodiscard]] bool HasFinished() const noexcept
-		{
-			return isDone;
 		}
 	};
 
@@ -49,7 +36,6 @@ private:
 
 	TQueue queue;
 	mutable std::mutex queueLock;
-	std::atomic<bool> isRunning;
 
 public:
 	MainThreadTaskQueue();
@@ -58,7 +44,5 @@ public:
 	void Enqueue(TTaskFunc taskFunc, void* userData, uint8_t priority = 128) noexcept;
 	size_t ProcessTasks() noexcept;
 	[[nodiscard]] bool HasPendingTasks() const noexcept;
-	void RequestStop() noexcept;
-	[[nodiscard]] bool IsRunning() const noexcept;
 };
 } // namespace hbe

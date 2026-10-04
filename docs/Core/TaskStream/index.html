@@ -85,7 +85,8 @@
   <code>postedTasks</code> is a <a href="../MainThreadTaskQueue/index.html">MainThreadTaskQueue</a>, not a peer of the stream: "It lives on the stream that the
   engine loop drives, rather than beside the stream, because that is what makes the stream's own pump the only place work is taken: a wait that drives the stream
   then cannot fail to reach posted work, which was a real deadlock and not a hypothetical one" (<code>Engine/Core/TaskStream.h</code>).
-  <a href="dispatchpostedtasks.html">DispatchPostedTasks</a> and <a href="processpostedtasks.html">ProcessPostedTasks</a> are the two ends of it.
+  <a href="dispatchpostedtasks.html">DispatchPostedTasks</a> is the posting end, and <a href="update.html">Update</a> is the draining end —
+  the stream's own pass calls <a href="../MainThreadTaskQueue/processtasks.html">ProcessTasks</a> on it directly.
 </div>
 
 <div class="gap">
@@ -108,7 +109,6 @@
   <tr><td><code>using TStreamIndex = hbe::TStreamIndex;</code> <span class="badge">private</span> <span class="badge">member type</span></td><td><span class="muted">not applicable</span></td><td>The stream's index type; <code>int</code> in <code>Core/TaskStreamIndex.h</code>.</td></tr>
   <tr><td><code>using TThreadID = std::thread::id;</code> <span class="badge">private</span> <span class="badge">member type</span></td><td><span class="muted">not applicable</span></td><td>What <a href="getthreadid.html">GetThreadID</a> returns.</td></tr>
   <tr><td><code>using TWorkItems = TVector&lt;WorkItem&gt;;</code> <span class="badge">private</span> <span class="badge">member type</span></td><td><span class="muted">not applicable</span></td><td>Named buffer type; the two re-add vectors spell the type out directly instead.</td></tr>
-  <tr><td><code>struct TaskQueueItem final</code> <span class="badge">private nested</span></td><td><span class="muted">not applicable</span></td><td>A priority, a mutable <code>WorkItem</code> and a <code>float</code> duration, ordered by priority — a leftover lane entry type nothing constructs; see <a href="#coverage">Coverage</a>.</td></tr>
   <tr><td><code>static constexpr TIndex MaxProvidersPerLane = 8;</code> <span class="badge">private</span></td><td><code>8</code></td><td>Ceiling on producers feeding one lane, sized to keep the list inline; overflow is refused by <a href="attachprovider.html">AttachProvider</a> and reported by the provider that asked.</td></tr>
   <tr><td><code>struct LaneProviders final</code> <span class="badge">private nested</span></td><td><span class="muted">not applicable</span></td><td>An inline array of eight <code>TaskProvider*</code> and a count — one per lane, in the order the drain will ask them.</td></tr>
   <tr><td><code>std::array&lt;LaneProviders, 2&gt; laneProviders;</code> <span class="badge">private</span></td><td><span class="muted">none in the header</span></td><td>The lists the drain reads (R38), indexed FIFO then priority.</td></tr>
@@ -180,7 +180,6 @@
   <tr><td><a href="requestclose.html"><code>RequestClose</code></a></td><td class="sig">void RequestClose() noexcept</td><td>Asks one stream to stop taking work and wakes it; asking is not closing.</td></tr>
   <tr><td><a href="setnestedpumpallowed.html"><code>SetNestedPumpAllowed</code></a></td><td class="sig">void SetNestedPumpAllowed(bool allowed) noexcept</td><td>The only permit for a nested pass, and no code in the repository grants it.</td></tr>
   <tr><td><a href="dispatchpostedtasks.html"><code>DispatchPostedTasks</code></a></td><td class="sig">void DispatchPostedTasks(MainThreadTaskQueue::TTaskFunc taskFunc, void* userData, uint8_t priority = 128) noexcept</td><td>Cannot refuse, cannot report; the default byte is 128 and the run happens on this stream's driver.</td></tr>
-  <tr><td><a href="processpostedtasks.html"><code>ProcessPostedTasks</code></a></td><td class="sig">size_t ProcessPostedTasks() noexcept</td><td>Runs to exhaustion and returns the number of callables invoked; a re-posting callable extends the same call.</td></tr>
   <tr><td><a href="haspostedtasks.html"><code>HasPostedTasks</code></a></td><td class="sig">[[nodiscard]] bool HasPostedTasks() const noexcept</td><td>A snapshot: "none" is only sound once no poster can post any more.</td></tr>
   <tr><td><a href="iscloserequested.html"><code>IsCloseRequested</code></a></td><td class="sig">[[nodiscard]] bool IsCloseRequested() const noexcept</td><td>Asked is not closed; the drain sits between the two answers.</td></tr>
   <tr><td><a href="closedrivenstream.html"><code>CloseDrivenStream</code></a></td><td class="sig">void CloseDrivenStream() noexcept</td><td>For a stream with no thread, after its driver has been withdrawn; abandons rather than drains.</td></tr>
@@ -218,11 +217,10 @@
 <table>
   <tr><th>Not documented here</th><th>Why</th></tr>
   <tr>
-    <td><code>TaskQueueItem</code> and its members</td>
-    <td>The nested type declares a constructor and <code>operator&lt;</code>, both defined in <code>Engine/Core/TaskStream.cpp</code>, and nothing constructs or
-      compares one — no lane uses it since the lanes became a <code>Deque</code> and a <code>BoundedPriorityQueue</code>. Its three fields are named in the
-      properties table; giving pages to members of a type with no instances would document an interface nobody can reach. The
-      <code>&lt;queue&gt;</code> include at the top of the header is likewise unread by either file</td>
+    <td>The <code>&lt;queue&gt;</code> include at the top of the header</td>
+    <td>Neither <code>Engine/Core/TaskStream.h</code> nor <code>Engine/Core/TaskStream.cpp</code> names anything from it: the lanes are a
+      <code>Deque</code> and a <code>BoundedPriorityQueue</code>, not a standard container. It is a reader's deletion, confirmed by a build,
+      and is not this page's to make</td>
   </tr>
   <tr>
     <td>Whether a driven stream's driver ever changes</td>

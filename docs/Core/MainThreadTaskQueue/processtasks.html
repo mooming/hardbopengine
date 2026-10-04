@@ -96,8 +96,7 @@
   <strong>A producer that keeps posting can keep this loop alive indefinitely, and nothing bounds it.</strong> The header states it as
   intended behaviour — "Returns once the queue is observed empty; producers that keep enqueueing can extend the loop, which is the
   behaviour callers already rely on" — but the consequence for a frame budget is real: a self-reposting callable makes this an
-  unbounded loop inside the stream's pass. <a href="requeststop.html">RequestStop</a> will not break it, because the loop never reads
-  that flag.
+  unbounded loop inside the stream's pass.
 </div>
 
 <div class="note">
@@ -118,7 +117,7 @@
   <strong>It ignores a close or shutdown request.</strong> The stream's pass drains posted work before it consults
   <code>closeRequested</code>, so work posted after a close was asked for still runs, and the shutdown pump keeps pumping the base stream
   while <a href="haspendingtasks.html">HasPendingTasks</a> reports anything left. Stopping the drain of posted work is not this
-  function's job — which is why <a href="requeststop.html">the stop flag</a> is wired to nothing here.
+  function's job, and the class owns no flag for such a request to land on.
 </div>
 
 <h2 id="parameters">Parameters</h2>

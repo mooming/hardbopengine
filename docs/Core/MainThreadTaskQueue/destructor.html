@@ -75,8 +75,8 @@
 </div>
 
 <div class="note">
-  <strong>It does not stop the queue.</strong> The flag read by <a href="isrunning.html">IsRunning</a> is left as it was, so destroying a
-  queue does not make <a href="enqueue.html">Enqueue</a> unsafe — that is simply impossible to express here, and nothing claims
+  <strong>It does not stop the queue.</strong> The class exposes no way to mark a queue stopped, so destroying a queue does not make
+  <a href="enqueue.html">Enqueue</a> unsafe — that is simply impossible to express here, and nothing claims
   otherwise. What is required of the caller is the ordinary one: no <a href="enqueue.html">Enqueue</a> may be in flight, and none may
   arrive afterwards, because a queue cannot outlive the threads that hold its function pointers' context.
 </div>

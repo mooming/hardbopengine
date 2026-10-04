@@ -9,7 +9,6 @@
 namespace hbe
 {
 MainThreadTaskQueue::MainThreadTaskQueue()
-	: isRunning(true)
 {
 }
 
@@ -53,15 +52,5 @@ bool MainThreadTaskQueue::HasPendingTasks() const noexcept
 	std::lock_guard lock(queueLock);
 
 	return !queue.IsEmpty();
-}
-
-void MainThreadTaskQueue::RequestStop() noexcept
-{
-	isRunning = false;
-}
-
-bool MainThreadTaskQueue::IsRunning() const noexcept
-{
-	return isRunning;
 }
 } // namespace hbe

@@ -85,7 +85,7 @@
   <strong>Where the callable runs is decided by which stream it was posted to, not by the word "main".</strong>
   The queue lives on the stream (<code>postedTasks</code>), and <a href="update.html">Update</a> drains it at the top of every pass — before the close
   check, and with the queue's lock released so "a posted callable may post again"
-  (<code>Engine/Core/TaskStream.cpp</code>, <a href="processpostedtasks.html">ProcessPostedTasks</a>). The engine posts to the base stream, so
+  (<code>Engine/Core/TaskStream.cpp</code>, <a href="update.html">Update</a>). The engine posts to the base stream, so
   "main thread" work is base-stream work (<code>Engine/Core/TaskSystem.cpp</code>).
 </div>
 
@@ -94,7 +94,7 @@
   The header marks <code>taskFunc</code> "Must not be null" and <code>userData</code> "May be null", and the drain is where the difference would surface:
   <code>ProcessTasks</code> tests the function pointer before calling it and simply does not count an item whose function is null
   (<code>Engine/Core/MainThreadTaskQueue.cpp</code>). So a null function is dropped without a word rather than crashing — and the count
-  <a href="processpostedtasks.html">ProcessPostedTasks</a> returns will not match the number of posts.
+  <a href="../MainThreadTaskQueue/processtasks.html">ProcessTasks</a> returns will not match the number of posts.
 </div>
 
 <h2 id="parameters">Parameters</h2>

@@ -206,7 +206,7 @@ void TaskSystem::JoinAndClear() noexcept
 		while (std::chrono::steady_clock::now() < pumpDeadline &&
 			   (!AreUserStreamsClosed() || baseStream.HasPostedTasks() || baseStream.CountPendingItems() > 0))
 		{
-			baseStream.Update();
+			(void) baseStream.Update();
 			std::this_thread::sleep_for(std::chrono::milliseconds(1));
 		}
 
