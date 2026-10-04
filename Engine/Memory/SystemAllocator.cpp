@@ -2,7 +2,6 @@
 
 #include "SystemAllocator.h"
 
-
 #ifdef __UNIT_TEST__
 #include <vector>
 

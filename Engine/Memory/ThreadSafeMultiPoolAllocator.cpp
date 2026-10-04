@@ -2,20 +2,20 @@
 
 #include "ThreadSafeMultiPoolAllocator.h"
 
-
 #include <algorithm>
 #include <bit>
 #include <map>
-#include "../Engine/Engine.h"
+
 #include "Config/BuildConfig.h"
 #include "Core/SystemStatistics.h"
+#include "Engine/Engine.h"
 #include "Log/Logger.h"
 #include "Memory/MemoryManager.h"
 #include "String/StringBuilder.h"
 
+
 namespace hbe
 {
-
 ThreadSafeMultiPoolAllocator::ThreadSafeMultiPoolAllocator(const char* inName, size_t allocationUnit,
 														   size_t minBlockSize)
 
@@ -32,6 +32,7 @@ ThreadSafeMultiPoolAllocator::ThreadSafeMultiPoolAllocator(const char* inName, s
 	auto allocFunc = [](void* allocPtr, size_t n) -> void*
 	{
 		auto* allocator = static_cast<ThreadSafeMultiPoolAllocator*>(allocPtr);
+
 		return allocator->Allocate(n);
 	};
 
@@ -69,6 +70,7 @@ ThreadSafeMultiPoolAllocator::ThreadSafeMultiPoolAllocator(const char* inName, T
 	auto allocFunc = [](void* allocPtr, size_t n) -> void*
 	{
 		auto* allocator = static_cast<ThreadSafeMultiPoolAllocator*>(allocPtr);
+
 		return allocator->Allocate(n);
 	};
 
@@ -119,7 +121,6 @@ ThreadSafeMultiPoolAllocator::~ThreadSafeMultiPoolAllocator()
 #if PROFILE_ENABLED
 	ReportConfiguration();
 #endif // PROFILE_ENABLED
-
 	{
 		std::lock_guard lockGuard(lock);
 
@@ -186,6 +187,7 @@ void ThreadSafeMultiPoolAllocator::Deallocate(void* ptr, size_t size)
 	if (unlikely(ptr == nullptr))
 	{
 		Assert(size == 0);
+
 		return;
 	}
 
@@ -257,7 +259,6 @@ void ThreadSafeMultiPoolAllocator::PrintUsage()
 			}
 		}
 	}
-
 	{
 		AllocatorScope scope(MemoryManager::SystemAllocatorID);
 
@@ -268,6 +269,7 @@ void ThreadSafeMultiPoolAllocator::PrintUsage()
 		{
 			args << " {" << item.first << ", " << item.second << "}, ";
 		}
+
 		args << "}";
 
 		log.Out(args.c_str());
@@ -296,7 +298,6 @@ void ThreadSafeMultiPoolAllocator::ReportConfiguration()
 
 		found->numberOfBlocks += value;
 	};
-
 	{
 		std::lock_guard lockGuard(lock);
 
@@ -326,6 +327,7 @@ void* ThreadSafeMultiPoolAllocator::NewBankAllocate(size_t size)
 	if (unlikely(index >= banks.size()))
 	{
 		FatalAssert(false);
+
 		return nullptr;
 	}
 
@@ -446,7 +448,6 @@ void ThreadSafeMultiPoolAllocator::GenerateBank(size_t blockSize, size_t numberO
 
 	InlineStringBuilder<1024> str;
 	str << name << '_' << blockSize << '_' << numberOfBlocks;
-
 	{
 		AllocatorScope allocScope(parentID);
 		banks.emplace_back(str.c_str(), blockSize, numberOfBlocks);
@@ -463,7 +464,6 @@ void ThreadSafeMultiPoolAllocator::GenerateBank(size_t blockSize, size_t numberO
 	allocProxy.stats.capacity += incCapacity;
 #endif // PROFILE_ENABLED
 }
-
 } // namespace hbe
 
 #ifdef __UNIT_TEST__
@@ -472,7 +472,6 @@ void ThreadSafeMultiPoolAllocator::GenerateBank(size_t blockSize, size_t numberO
 
 namespace hbe
 {
-
 void ThreadSafeMultiPoolAllocatorTest::Prepare()
 {
 	AddTest("Basic Construction", [this](auto& ls)
@@ -557,7 +556,6 @@ void ThreadSafeMultiPoolAllocatorTest::Prepare()
 		constexpr size_t repeatCount = 100000;
 
 		ThreadSafeMultiPoolAllocator allocator("PerfTestMultiPoolAlloc");
-
 		{
 			AllocatorScope allocScope(allocator);
 			time::ScopedTime timer(heDuration);
@@ -582,7 +580,6 @@ void ThreadSafeMultiPoolAllocatorTest::Prepare()
 				++strLen;
 			}
 		}
-
 		{
 			time::ScopedTime timer(stdDuration);
 
@@ -620,6 +617,5 @@ void ThreadSafeMultiPoolAllocatorTest::Prepare()
 		}
 	});
 }
-
 } // namespace hbe
 #endif //__UNIT_TEST__

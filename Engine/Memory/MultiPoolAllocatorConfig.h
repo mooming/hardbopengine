@@ -3,8 +3,10 @@
 #pragma once
 
 #include <vector>
+
 #include "PoolConfig.h"
 #include "String/StaticStringID.h"
+
 
 namespace hbe
 {
@@ -25,5 +27,4 @@ public:
 
 	bool operator<(const MultiPoolAllocatorConfig& rhs) const noexcept;
 };
-
 } // namespace hbe

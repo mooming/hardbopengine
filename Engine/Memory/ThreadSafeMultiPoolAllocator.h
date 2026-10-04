@@ -8,6 +8,7 @@
 #include "PoolConfig.h"
 #include "String/StaticString.h"
 
+
 namespace hbe
 {
 /// @brief Thread-safe multi-pool allocator with multiple block sizes.

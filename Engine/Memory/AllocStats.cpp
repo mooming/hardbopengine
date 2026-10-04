@@ -3,13 +3,14 @@
 #include "AllocStats.h"
 
 #include <new>
-#include "../Engine/Engine.h"
+
+#include "Engine/Engine.h"
 #include "Log/Logger.h"
 #include "OSAL/OSDebug.h"
 
+
 namespace hbe
 {
-
 AllocStats::AllocStats()
 	: name("")
 	, isInline(false)
@@ -89,5 +90,4 @@ void AllocStats::Print() noexcept
 		   << (allocCount > 0 ? fallbackCount * 100 / allocCount : 0) << ')';
 	});
 }
-
 } // namespace hbe

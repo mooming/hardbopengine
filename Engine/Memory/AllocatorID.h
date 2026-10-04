@@ -2,9 +2,9 @@
 
 #pragma once
 
+
 namespace hbe
 {
-
 /// @brief Type alias for allocator identifier
 using TAllocatorID = int;
 
@@ -19,5 +19,4 @@ static constexpr TAllocatorID InvalidAllocatorID = -1;
 {
 	return id >= 0 && id < MaxNumAllocators;
 }
-
 } // namespace hbe

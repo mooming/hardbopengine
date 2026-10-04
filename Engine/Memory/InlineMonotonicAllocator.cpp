@@ -10,7 +10,6 @@
 
 namespace hbe
 {
-
 void InlineMonotonicAllocatorTest::Prepare() noexcept
 {
 	using namespace std;
@@ -19,7 +18,6 @@ void InlineMonotonicAllocatorTest::Prepare() noexcept
 	AddTest("Vector Allocation", [this](auto& ls)
 	{
 		Allocator alloc("InlineMonotonicAllocator");
-
 		{
 			AllocatorScope scope(alloc.GetID());
 
@@ -37,7 +35,6 @@ void InlineMonotonicAllocatorTest::Prepare() noexcept
 	AddTest("Allocation (2)", [this](auto& ls)
 	{
 		Allocator alloc("InlineMonotonicAllocator");
-
 		{
 			AllocatorScope scope(alloc.GetID());
 
@@ -59,7 +56,6 @@ void InlineMonotonicAllocatorTest::Prepare() noexcept
 	{
 		Allocator alloc("InlineMonotonicAllocator");
 		AllocatorScope scope(alloc.GetID());
-
 		{
 			String a = "0";
 		}
@@ -75,7 +71,6 @@ void InlineMonotonicAllocatorTest::Prepare() noexcept
 	{
 		Allocator alloc("InlineMonotonicAllocator");
 		AllocatorScope scope(alloc.GetID());
-
 		{
 			String a = "0";
 			String b = "1";
@@ -88,7 +83,6 @@ void InlineMonotonicAllocatorTest::Prepare() noexcept
 		}
 	});
 }
-
 } // namespace hbe
 
 #endif //__UNIT_TEST__

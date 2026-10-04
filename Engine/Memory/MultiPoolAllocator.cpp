@@ -2,10 +2,10 @@
 
 #include "MultiPoolAllocator.h"
 
-
 #include <algorithm>
 #include <bit>
 #include <map>
+
 #include "Config/BuildConfig.h"
 #include "Core/SystemStatistics.h"
 #include "Engine/Engine.h"
@@ -13,9 +13,9 @@
 #include "Memory/MemoryManager.h"
 #include "String/StringBuilder.h"
 
+
 namespace hbe
 {
-
 MultiPoolAllocator::MultiPoolAllocator(const char* inName, size_t allocationUnit, size_t minBlockSize)
 
 	: id(InvalidAllocatorID)
@@ -31,6 +31,7 @@ MultiPoolAllocator::MultiPoolAllocator(const char* inName, size_t allocationUnit
 	auto allocFunc = [](void* allocatorPtr, size_t n) -> void*
 	{
 		auto allocator = static_cast<MultiPoolAllocator*>(allocatorPtr);
+
 		return allocator->Allocate(n);
 	};
 
@@ -68,6 +69,7 @@ MultiPoolAllocator::MultiPoolAllocator(const char* inName, TInitializerList init
 	auto allocFunc = [](void* allocatorPtr, size_t n) -> void*
 	{
 		auto allocator = static_cast<MultiPoolAllocator*>(allocatorPtr);
+
 		return allocator->Allocate(n);
 	};
 
@@ -167,6 +169,7 @@ void MultiPoolAllocator::Deallocate(void* ptr, size_t size)
 	if (unlikely(ptr == nullptr))
 	{
 		Assert(size == 0);
+
 		return;
 	}
 
@@ -247,7 +250,6 @@ void MultiPoolAllocator::PrintUsage() const
 			}
 		}
 	}
-
 	{
 		AllocatorScope scope(MemoryManager::SystemAllocatorID);
 
@@ -258,6 +260,7 @@ void MultiPoolAllocator::PrintUsage() const
 		{
 			args << " {" << item.first << ", " << item.second << "}, ";
 		}
+
 		args << "}";
 
 		log.Out(args.c_str());
@@ -315,6 +318,7 @@ void* MultiPoolAllocator::NewBankAllocate(size_t size)
 	if (unlikely(index >= banks.size()))
 	{
 		FatalAssert(false);
+
 		return nullptr;
 	}
 
@@ -435,7 +439,6 @@ void MultiPoolAllocator::GenerateBank(size_t blockSize, size_t numberOfBlocks)
 
 	InlineStringBuilder<1024> str;
 	str << name << '_' << blockSize << '_' << numberOfBlocks;
-
 	{
 		AllocatorScope allocScope(parentID);
 		banks.emplace_back(str.c_str(), blockSize, numberOfBlocks);
@@ -452,7 +455,6 @@ void MultiPoolAllocator::GenerateBank(size_t blockSize, size_t numberOfBlocks)
 	allocProxy.stats.capacity += incCapacity;
 #endif // PROFILE_ENABLED
 }
-
 } // namespace hbe
 
 #ifdef __UNIT_TEST__
@@ -461,7 +463,6 @@ void MultiPoolAllocator::GenerateBank(size_t blockSize, size_t numberOfBlocks)
 
 namespace hbe
 {
-
 void MultiPoolAllocatorTest::Prepare()
 {
 	AddTest("Basic Construction", [this](auto& ls)
@@ -546,7 +547,6 @@ void MultiPoolAllocatorTest::Prepare()
 		constexpr size_t repeatCount = 100000;
 
 		MultiPoolAllocator allocator("PerfTestMultiPoolAlloc");
-
 		{
 			AllocatorScope allocScope(allocator);
 			time::ScopedTime timer(heDuration);
@@ -572,7 +572,6 @@ void MultiPoolAllocatorTest::Prepare()
 				++strLen;
 			}
 		}
-
 		{
 			time::ScopedTime timer(stdDuration);
 
@@ -610,6 +609,5 @@ void MultiPoolAllocatorTest::Prepare()
 		}
 	});
 }
-
 } // namespace hbe
 #endif //__UNIT_TEST__

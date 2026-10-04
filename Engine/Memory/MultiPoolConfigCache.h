@@ -5,6 +5,7 @@
 #include "MultiPoolAllocatorConfig.h"
 #include "String/StaticString.h"
 
+
 namespace hbe
 {
 class Buffer;
@@ -48,5 +49,4 @@ public:
 private:
 	void Normalize();
 };
-
 } // namespace hbe

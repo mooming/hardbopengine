@@ -4,7 +4,9 @@
 
 #include <cstddef>
 #include <cstdint>
+
 #include "AllocatorID.h"
+
 
 namespace hbe
 {
@@ -55,7 +57,6 @@ private:
 
 namespace hbe
 {
-
 class MonotonicAllocatorTest : public TestCollection
 {
 public:
@@ -67,6 +68,5 @@ public:
 protected:
 	void Prepare() override;
 };
-
 } // namespace hbe
 #endif //__UNIT_TEST__

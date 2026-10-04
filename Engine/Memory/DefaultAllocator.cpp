@@ -2,9 +2,9 @@
 
 #include "DefaultAllocator.h"
 
-
 #ifdef __UNIT_TEST__
 #include <vector>
+
 #include "AllocatorScope.h"
 #include "PoolAllocator.h"
 
@@ -13,7 +13,6 @@ void hbe::BaseAllocatorTest::Prepare() noexcept
 	AddTest("Basic Usage", [this](auto& ls)
 	{
 		PoolAllocator alloc("BaseAllocTestAlloc", 1024, 1024);
-
 		{
 			AllocatorScope allocScope(alloc);
 			std::vector<int, DefaultAllocator<int>> v;
@@ -58,7 +57,6 @@ void hbe::BaseAllocatorTest::Prepare() noexcept
 			{
 				ls << "Invalid allocator usage = " << alloc.GetUsage() << ", 0 is expected." << lferr;
 			}
-
 			{
 				PoolAllocator alloc2("BaseAllodTestAlloc2", 1024, 1024);
 				ls << "Second Pool Allocator Buffer =  " << static_cast<void*>(alloc.GetBuffer()) << ", Allocated by "

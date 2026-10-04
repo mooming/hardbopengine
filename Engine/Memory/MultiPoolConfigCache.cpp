@@ -3,12 +3,14 @@
 #include "MultiPoolConfigCache.h"
 
 #include <algorithm>
+
 #include "Log/Logger.h"
 #include "OSAL/Intrinsic.h"
 #include "PoolConfigUtil.h"
 #include "Resource/BufferInputStream.h"
 #include "Resource/BufferOutputStream.h"
 #include "String/StringUtil.h"
+
 
 namespace hbe
 {
@@ -111,6 +113,7 @@ bool MultiPoolConfigCache::Deserialize(const Buffer& buffer)
 	if (unlikely(bis.HasError()))
 	{
 		log.OutError("Input stream failure.");
+
 		return false;
 	}
 
@@ -141,6 +144,7 @@ bool MultiPoolConfigCache::Deserialize(const Buffer& buffer)
 		if (unlikely(bis.HasError()))
 		{
 			log.OutError("Input stream failure.");
+
 			return false;
 		}
 
@@ -241,5 +245,4 @@ void MultiPoolConfigCache::Normalize()
 
 	std::sort(data.begin(), data.end());
 }
-
 } // namespace hbe

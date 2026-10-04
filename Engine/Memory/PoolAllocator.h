@@ -7,9 +7,9 @@
 #include "OSAL/SourceLocation.h"
 #include "String/StaticString.h"
 
+
 namespace hbe
 {
-
 /// @brief Fixed-size block allocator for objects of a single type.
 /// @details Pre-allocates a pool of memory blocks and manages free list.
 /// Efficient for allocations of many objects of the same size.
@@ -116,7 +116,6 @@ private:
 
 	Pointer AllocateBlock();
 };
-
 } // namespace hbe
 
 #ifdef __UNIT_TEST__

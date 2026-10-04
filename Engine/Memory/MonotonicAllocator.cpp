@@ -7,9 +7,9 @@
 #include "Core/Debug.h"
 #include "MemoryManager.h"
 
+
 namespace hbe
 {
-
 MonotonicAllocator::MonotonicAllocator(const char* name, TSize inCapacity)
 	: id(InvalidAllocatorID)
 	, cursor(0)
@@ -29,6 +29,7 @@ MonotonicAllocator::MonotonicAllocator(const char* name, TSize inCapacity)
 	auto allocFunc = [](void* allocatorPtr, size_t n) -> void*
 	{
 		auto allocator = static_cast<MonotonicAllocator*>(allocatorPtr);
+
 		return allocator->Allocate(n);
 	};
 
@@ -56,7 +57,6 @@ MonotonicAllocator::~MonotonicAllocator()
 void* MonotonicAllocator::Allocate(const size_t requested)
 {
 	size_t size = requested;
-
 	{
 		constexpr auto AlignUnit = Config::DefaultAlign;
 		const auto multiplier = (size + AlignUnit - 1) / AlignUnit;
@@ -95,6 +95,7 @@ void MonotonicAllocator::Deallocate(Pointer ptr, TSize requested) noexcept
 	if (unlikely(!IsMine(ptr)))
 	{
 		mmgr.Deallocate(parentID, ptr, requested);
+
 		return;
 	}
 
@@ -115,12 +116,14 @@ void MonotonicAllocator::Deallocate(Pointer ptr, TSize requested) noexcept
 size_t MonotonicAllocator::GetAvailable() const
 {
 	Assert(capacity >= cursor);
+
 	return capacity - cursor;
 }
 
 size_t MonotonicAllocator::GetUsage() const
 {
 	Assert(cursor < capacity);
+
 	return cursor;
 }
 
@@ -139,7 +142,6 @@ bool MonotonicAllocator::IsMine(TPointer ptr) const
 
 	return true;
 }
-
 } // namespace hbe
 
 #ifdef __UNIT_TEST__
@@ -148,7 +150,6 @@ bool MonotonicAllocator::IsMine(TPointer ptr) const
 
 namespace hbe
 {
-
 void MonotonicAllocatorTest::Prepare()
 {
 	using namespace std;
@@ -157,7 +158,6 @@ void MonotonicAllocatorTest::Prepare()
 	AddTest("Vector Allocation", [this](auto& ls)
 	{
 		MonotonicAllocator alloc("Test::MonotonicAllocator", 1024 * 1024);
-
 		{
 			AllocatorScope scope(alloc.GetID());
 
@@ -175,7 +175,6 @@ void MonotonicAllocatorTest::Prepare()
 	AddTest("Allocation (2)", [this](auto& ls)
 	{
 		MonotonicAllocator alloc("Test::MonotonicAllocator", 1024 * 1024);
-
 		{
 			AllocatorScope scope(alloc.GetID());
 
@@ -197,7 +196,6 @@ void MonotonicAllocatorTest::Prepare()
 	{
 		MonotonicAllocator alloc("Test::MonotonicAllocator", 1024);
 		AllocatorScope scope(alloc.GetID());
-
 		{
 			String a = "0";
 		}
@@ -213,7 +211,6 @@ void MonotonicAllocatorTest::Prepare()
 	{
 		MonotonicAllocator alloc("Test::MonotonicAllocator", 1024);
 		AllocatorScope scope(alloc.GetID());
-
 		{
 			String a = "0";
 			String b = "1";
@@ -226,7 +223,6 @@ void MonotonicAllocatorTest::Prepare()
 		}
 	});
 }
-
 } // namespace hbe
 
 #endif //__UNIT_TEST__

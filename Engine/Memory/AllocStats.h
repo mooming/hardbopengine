@@ -3,11 +3,12 @@
 #pragma once
 
 #include <cstddef>
+
 #include "String/StaticString.h"
+
 
 namespace hbe
 {
-
 class AllocStats final
 {
 public:
@@ -36,5 +37,4 @@ public:
 
 	void Print() noexcept;
 };
-
 } // namespace hbe

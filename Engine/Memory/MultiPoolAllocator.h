@@ -8,9 +8,9 @@
 #include "PoolConfig.h"
 #include "String/StaticString.h"
 
+
 namespace hbe
 {
-
 class MemoryManager;
 
 /// @brief A multi-pool allocator that manages multiple pools of different block sizes.

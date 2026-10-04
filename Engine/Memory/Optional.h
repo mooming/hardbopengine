@@ -7,6 +7,7 @@
 #include "Core/Types.h"
 #include "OSAL/OSMemory.h"
 
+
 namespace hbe
 {
 /// @brief Stack-allocated optional value similar to std::optional.
@@ -71,6 +72,7 @@ public:
 		if (hasValue)
 		{
 			Value() = value;
+
 			return *this;
 		}
 
@@ -129,12 +131,14 @@ public:
 	TType& operator*()
 	{
 		FatalAssert(hasValue);
+
 		return Value();
 	}
 
 	const TType& operator*() const
 	{
 		FatalAssert(hasValue);
+
 		return Value();
 	}
 
@@ -294,7 +298,6 @@ public:
 protected:
 	void Prepare() override;
 };
-
 } // namespace hbe
 
 #endif //__UNIT_TEST__

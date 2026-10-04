@@ -4,11 +4,13 @@
 
 #include <cstddef>
 #include <cstdint>
+
 #include "AllocatorID.h"
 #include "Config/BuildConfig.h"
 #include "Core/Debug.h"
 #include "MemoryManager.h"
 #include "OSAL/OSMemory.h"
+
 
 namespace hbe
 {
@@ -38,6 +40,7 @@ public:
 		auto allocFunc = [](void* allocatorPtr, size_t n) -> void*
 		{
 			auto allocator = static_cast<InlineMonotonicAllocator*>(allocatorPtr);
+
 			return allocator->Allocate(n);
 		};
 
@@ -110,6 +113,7 @@ public:
 		if (unlikely(!IsMine(ptr)))
 		{
 			mmgr.Deallocate(parentID, ptr, requested);
+
 			return;
 		}
 
@@ -129,12 +133,14 @@ public:
 	[[nodiscard]] size_t GetAvailable() const
 	{
 		Assert(Capacity >= cursor);
+
 		return Capacity - cursor;
 	}
 
 	[[nodiscard]] size_t GetUsage() const
 	{
 		Assert(cursor < Capacity);
+
 		return cursor;
 	}
 
@@ -167,7 +173,6 @@ private:
 
 namespace hbe
 {
-
 class InlineMonotonicAllocatorTest : public TestCollection
 {
 public:
@@ -179,6 +184,5 @@ public:
 protected:
 	void Prepare() noexcept override;
 };
-
 } // namespace hbe
 #endif //__UNIT_TEST__

@@ -8,6 +8,7 @@
 #include "MemoryManager.h"
 #include "OSAL/OSMemory.h"
 
+
 namespace hbe
 {
 /// @brief Allocator that uses the system heap (malloc/free).

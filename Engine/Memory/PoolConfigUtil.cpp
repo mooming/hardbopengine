@@ -3,14 +3,14 @@
 #include "PoolConfigUtil.h"
 
 #include <algorithm>
+
 #include "Core/Debug.h"
+
 
 namespace hbe
 {
-
 namespace PoolConfigUtil
 {
-
 void Normalize(TPoolConfigs& configs)
 {
 	std::sort(configs.begin(), configs.end());
@@ -142,7 +142,5 @@ void MergeMax(TPoolConfigs& dst, TPoolConfigs& src)
 	src.clear();
 	std::sort(dst.begin(), dst.end());
 }
-
 } // namespace PoolConfigUtil
-
 } // namespace hbe

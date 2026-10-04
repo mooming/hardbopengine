@@ -4,9 +4,9 @@
 
 #include "MemoryManager.h"
 
+
 namespace hbe
 {
-
 AllocatorScope::AllocatorScope() noexcept
 	: AllocatorScope(InvalidAllocatorID)
 {
@@ -26,7 +26,6 @@ AllocatorScope::~AllocatorScope() noexcept
 	auto& mmgr = MemoryManager::GetInstance();
 	mmgr.SetScopedAllocatorID(previous);
 }
-
 } // namespace hbe
 
 #ifdef __UNIT_TEST__
@@ -34,7 +33,6 @@ AllocatorScope::~AllocatorScope() noexcept
 
 namespace hbe
 {
-
 void AllocatorScopeTest::Prepare()
 {
 	AddTest("Alloc Scope Test", [this](auto& ls)
@@ -53,7 +51,6 @@ void AllocatorScopeTest::Prepare()
 		mmgr.Deallocate(ptr, 100);
 	});
 }
-
 } // namespace hbe
 
 #endif //__UNIT_TEST__

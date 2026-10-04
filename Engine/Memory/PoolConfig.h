@@ -4,9 +4,9 @@
 
 #include <cstddef>
 
+
 namespace hbe
 {
-
 /// @brief Configuration for a memory pool block.
 class PoolConfig final
 {
@@ -31,5 +31,4 @@ public:
 		return blockSize < rhs.blockSize;
 	}
 };
-
 } // namespace hbe

@@ -32,6 +32,7 @@
  * size and alignment keeps the information that throwing would lose.
  */
 
+
 namespace
 {
 std::atomic<size_t> globalAllocationBytes{0};
@@ -164,7 +165,6 @@ void Deallocate(void* ptr, size_t size) noexcept
 
 namespace hbe
 {
-
 void MemoryManager::RecordGlobalAllocation(size_t nBytes) noexcept
 {
 	globalAllocationBytes.fetch_add(nBytes, std::memory_order_relaxed);
@@ -196,7 +196,6 @@ uint64_t MemoryManager::GetGlobalFreeCount() noexcept
 {
 	return globalFreeCount.load(std::memory_order_relaxed);
 }
-
 } // namespace hbe
 
 /*

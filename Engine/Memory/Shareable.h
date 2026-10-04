@@ -4,6 +4,7 @@
 
 #include "MemoryManager.h"
 
+
 namespace hbe
 {
 /// @brief Reference-counted smart pointer for shared ownership.
@@ -29,6 +30,7 @@ private:
 		{
 			auto& mmgr = MemoryManager::GetInstance();
 			auto newBody = mmgr.New<Body>(std::forward<Types>(args)...);
+
 			return newBody->Reference();
 		}
 
@@ -40,6 +42,7 @@ private:
 		Body* Reference()
 		{
 			++count;
+
 			return this;
 		}
 

@@ -8,9 +8,9 @@
 #include "MemoryManager.h"
 #include "OSAL/Intrinsic.h"
 
+
 namespace hbe
 {
-
 #if PROFILE_ENABLED
 StackAllocator::StackAllocator(const char* name, SizeType inCapacity, const TSrcLoc& location)
 	: id(InvalidAllocatorID)
@@ -40,6 +40,7 @@ StackAllocator::StackAllocator(const char* name, SizeType inCapacity)
 	auto allocFunc = [](void* allocatorPtr, size_t n) -> void*
 	{
 		auto allocator = static_cast<StackAllocator*>(allocatorPtr);
+
 		return allocator->Allocate(n);
 	};
 
@@ -67,7 +68,6 @@ StackAllocator::~StackAllocator()
 void* StackAllocator::Allocate(const size_t requested)
 {
 	size_t size = requested;
-
 	{
 		constexpr auto AlignUnit = Config::DefaultAlign;
 		const auto multiplier = (size + AlignUnit - 1) / AlignUnit;
@@ -78,6 +78,7 @@ void* StackAllocator::Allocate(const size_t requested)
 	if (unlikely(size > freeSize))
 	{
 		auto& mmgr = MemoryManager::GetInstance();
+
 		return mmgr.FallbackAllocate(GetID(), parentID, requested);
 	}
 
@@ -101,11 +102,11 @@ void StackAllocator::Deallocate(Pointer ptr, const SizeType requested) noexcept
 	if (unlikely(!IsMine(ptr)))
 	{
 		mmgr.Deallocate(parentID, ptr, requested);
+
 		return;
 	}
 
 	SizeType size = requested;
-
 	{
 		constexpr auto AlignUnit = Config::DefaultAlign;
 		const auto multiplier = (size + AlignUnit - 1) / AlignUnit;
@@ -126,6 +127,7 @@ void StackAllocator::Deallocate(Pointer ptr, const SizeType requested) noexcept
 		});
 
 		Assert(false);
+
 		return;
 	}
 
@@ -139,12 +141,14 @@ void StackAllocator::Deallocate(Pointer ptr, const SizeType requested) noexcept
 size_t StackAllocator::GetAvailable() const
 {
 	Assert(capacity >= cursor);
+
 	return capacity - cursor;
 }
 
 size_t StackAllocator::GetUsage() const
 {
 	Assert(cursor < capacity);
+
 	return cursor;
 }
 
@@ -162,7 +166,6 @@ bool StackAllocator::IsMine(Pointer ptr) const
 
 	return true;
 }
-
 } // namespace hbe
 
 #ifdef __UNIT_TEST__
@@ -172,7 +175,6 @@ bool StackAllocator::IsMine(Pointer ptr) const
 
 namespace hbe
 {
-
 void StackAllocatorTest::Prepare()
 {
 	using namespace std;
@@ -181,7 +183,6 @@ void StackAllocatorTest::Prepare()
 	AddTest("Vector Allocation", [this](auto& ls)
 	{
 		StackAllocator stack("Test::StackAllocator", 1024 * 1024);
-
 		{
 			AllocatorScope scope(stack.GetID());
 
@@ -209,7 +210,6 @@ void StackAllocatorTest::Prepare()
 	AddTest("Allocation (2)", [this](auto& ls)
 	{
 		StackAllocator stack("Test::StackAllocator::Allocation (2)", 1024 * 1024);
-
 		{
 			AllocatorScope scope(stack.GetID());
 
@@ -241,7 +241,6 @@ void StackAllocatorTest::Prepare()
 	{
 		StackAllocator stack("Test::StackAllocator::Deallocation", 1024 * 1024);
 		AllocatorScope scope(stack.GetID());
-
 		{
 			String a = "0";
 
@@ -261,7 +260,6 @@ void StackAllocatorTest::Prepare()
 	{
 		StackAllocator stack("Test::StackAllocator", 1024 * 1024);
 		AllocatorScope scope(stack.GetID());
-
 		{
 			String a = "0";
 			String b = "1";
@@ -287,7 +285,6 @@ void StackAllocatorTest::Prepare()
 
 		const auto depth = depthSeed++;
 		ls << "Neted Level " << depth << ", free size = " << scope0.GetAllocator().GetAvailable() << lf;
-
 		{
 			ScopedAllocator<TAlloc> scope1("NestedStack1", 512);
 
@@ -296,7 +293,6 @@ void StackAllocatorTest::Prepare()
 			const auto depth = depthSeed++;
 			ls << "Neted Level " << depth << ", free size = " << scope1.GetAllocator().GetAvailable() << " / "
 			   << scope0.GetAllocator().GetAvailable() << lf;
-
 			{
 				ScopedAllocator<TAlloc> scope2("NestedStack2", 256);
 
@@ -305,7 +301,6 @@ void StackAllocatorTest::Prepare()
 				const auto depth = depthSeed++;
 				ls << "Neted Level " << depth << ", free size = " << scope2.GetAllocator().GetAvailable() << " / "
 				   << scope1.GetAllocator().GetAvailable() << " / " << scope0.GetAllocator().GetAvailable() << lf;
-
 				{
 					ScopedAllocator<TAlloc> scope3("NestedStack3", 128);
 
@@ -315,7 +310,6 @@ void StackAllocatorTest::Prepare()
 					ls << "Neted Level " << depth << ", free size = " << scope3.GetAllocator().GetAvailable() << " / "
 					   << scope2.GetAllocator().GetAvailable() << " / " << scope1.GetAllocator().GetAvailable() << " / "
 					   << scope0.GetAllocator().GetAvailable() << lf;
-
 					{
 						ScopedAllocator<TAlloc> scope4("NestedStack4", 64);
 
@@ -326,7 +320,6 @@ void StackAllocatorTest::Prepare()
 						   << " / " << scope3.GetAllocator().GetAvailable() << " / "
 						   << scope2.GetAllocator().GetAvailable() << " / " << scope1.GetAllocator().GetAvailable()
 						   << " / " << scope0.GetAllocator().GetAvailable() << lf;
-
 						{
 							ScopedAllocator<TAlloc> scope5("NestedStack05", 32);
 
@@ -372,7 +365,6 @@ void StackAllocatorTest::Prepare()
 		ls << "Neted Level " << depth << ", free size = " << scope0.GetAllocator().GetAvailable() << lf;
 	});
 }
-
 } // namespace hbe
 
 #endif //__UNIT_TEST__

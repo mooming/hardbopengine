@@ -13,9 +13,9 @@
 #include "String/StringUtil.h"
 #include "SystemAllocator.h"
 
+
 namespace hbe
 {
-
 static_assert(MaxNumAllocators > 0, "MaxNumAllocators is invalid.");
 
 thread_local MemoryManager::TId MemoryManager::scopedAllocatorID = 0;
@@ -26,12 +26,14 @@ static MemoryManager* mmgrInstance = nullptr;
 StaticStringID MemoryManager::GetMultiPoolConfigCacheFilePath()
 {
 	static const StaticString path(MULTIPOOL_ALLOC_LOG);
+
 	return path.GetID();
 }
 
 MemoryManager& MemoryManager::GetInstance()
 {
 	FatalAssert(mmgrInstance != nullptr);
+
 	return *mmgrInstance;
 }
 
@@ -244,7 +246,6 @@ void MemoryManager::DeregisterAllocator(TId id)
 
 		return;
 	}
-
 	{
 		std::lock_guard lockScope(statsLock);
 
@@ -272,11 +273,11 @@ AllocStats MemoryManager::GetAllocatorStat(TAllocatorID id)
 		{ ls << "[" << funcName << "] Invalid allocator id(" << id << ") is provided."; });
 
 		static const AllocStats stats;
+
 		return stats;
 	}
 
 	AllocStats stats;
-
 	{
 		std::lock_guard lockGuard(statsLock);
 
@@ -296,7 +297,6 @@ void MemoryManager::DeregisterAllocator(TId id, const hbe::source_location& srcL
 
 		return;
 	}
-
 	{
 		std::lock_guard lockGuard(statsLock);
 		auto& allocator = allocators[id];
@@ -401,6 +401,7 @@ void MemoryManager::ReportAllocation(TId id, void* ptr, size_t requested, size_t
 			if (size < 1024)
 			{
 				ls << size;
+
 				return;
 			}
 
@@ -502,6 +503,7 @@ void MemoryManager::ReportDeallocation(TId id, void* ptr, size_t requested, size
 			if (size < 1024)
 			{
 				ls << size;
+
 				return;
 			}
 
@@ -642,6 +644,7 @@ void MemoryManager::Deallocate(TId id, void* ptr, size_t nBytes)
 	if (unlikely(ptr == nullptr))
 	{
 		Assert(nBytes == 0);
+
 		return;
 	}
 
@@ -864,6 +867,7 @@ void MemoryManager::SaveMultiPoolConfigs()
 	auto GetOutputSize = [this]() -> size_t
 	{
 		auto buffer = BufferUtil::GenerateDummyBuffer();
+
 		return multiPoolConfigLog.Serialize(buffer);
 	};
 
@@ -932,5 +936,4 @@ void MemoryManager::SetScopedAllocatorID(TId id)
 
 	scopedAllocatorID = id;
 }
-
 } // namespace hbe

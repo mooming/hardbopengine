@@ -2,9 +2,9 @@
 
 #include "InlinePoolAllocator.h"
 
-
 #ifdef __UNIT_TEST__
 #include <vector>
+
 #include "Core/ScopedTime.h"
 
 namespace
@@ -21,7 +21,6 @@ public:
 		time::TDuration stdTime;
 
 		constexpr int testIterations = 2048;
-
 		{
 			time::ScopedTime measure(inlineTime);
 
@@ -39,7 +38,6 @@ public:
 				v.shrink_to_fit();
 			}
 		}
-
 		{
 			time::ScopedTime measure(stdTime);
 			std::vector<int> v;

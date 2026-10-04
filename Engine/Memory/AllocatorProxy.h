@@ -4,13 +4,14 @@
 
 #include <functional>
 #include <thread>
+
 #include "AllocStats.h"
 #include "AllocatorID.h"
 #include "Config/BuildConfig.h"
 
+
 namespace hbe
 {
-
 class AllocatorProxy final
 {
 public:
@@ -53,5 +54,4 @@ public:
 	}
 #endif // PROFILE_ENABLED
 };
-
 } // namespace hbe

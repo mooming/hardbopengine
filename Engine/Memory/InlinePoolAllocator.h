@@ -4,6 +4,7 @@
 
 #include <cstddef>
 #include <cstring>
+
 #include "AllocatorID.h"
 #include "Config/BuildConfig.h"
 #include "Config/EngineConfig.h"
@@ -12,9 +13,9 @@
 #include "OSAL/OSMemory.h"
 #include "String/StaticString.h"
 
+
 namespace hbe
 {
-
 /**
  * @brief A fixed-size, stack-allocated memory pool allocator for type T.
  *
@@ -120,6 +121,7 @@ public:
 	[[nodiscard]] static StaticString GetName()
 	{
 		static StaticString name("InlinePoolAllocator");
+
 		return name;
 	}
 
@@ -202,6 +204,7 @@ private:
 		if (immediateBlock == nullptr && nBytes <= BlockSizeInBytes)
 		{
 			immediateBlock = ptr;
+
 			return;
 		}
 
@@ -210,6 +213,7 @@ private:
 			// Fallback Deallocation
 			auto& mmgr = MemoryManager::GetInstance();
 			mmgr.Deallocate(parentID, ptr, nBytes);
+
 			return;
 		}
 
@@ -229,6 +233,7 @@ private:
 		auto allocFunc = [](void* allocatorPtr, size_t nBytes) -> void*
 		{
 			auto allocator = static_cast<InlinePoolAllocator*>(allocatorPtr);
+
 			return static_cast<void*>(allocator->AllocateBytes(nBytes));
 		};
 
@@ -260,6 +265,7 @@ private:
 	[[nodiscard]] bool IsValidPointer(void* ptr) const
 	{
 		constexpr size_t LastBlockIndex = ActualNumBlocks - 1;
+
 		return block[0] <= ptr && ptr <= block[LastBlockIndex];
 	}
 
@@ -274,6 +280,7 @@ private:
 	{
 		void** ptrArray = static_cast<void**>(ptr);
 		auto& pointerToNext = reinterpret_cast<void*&>(ptrArray[0]);
+
 		return pointerToNext;
 	}
 };
@@ -284,7 +291,6 @@ private:
 
 namespace hbe
 {
-
 /// @brief Test class for InlinePoolAllocator.
 class InlinePoolAllocatorTest : public TestCollection
 {
@@ -297,6 +303,5 @@ public:
 protected:
 	void Prepare() override;
 };
-
 } // namespace hbe
 #endif //__UNIT_TEST__

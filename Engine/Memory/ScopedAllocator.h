@@ -4,6 +4,7 @@
 
 #include "AllocatorScope.h"
 
+
 namespace hbe
 {
 /// @brief Wrapper that ties an allocator to an allocation scope.
@@ -42,5 +43,4 @@ public:
 		return allocator;
 	}
 };
-
 } // namespace hbe

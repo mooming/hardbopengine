@@ -2,11 +2,11 @@
 
 #include "PoolAllocator.h"
 
-
 #include "Core/CommonUtil.h"
 #include "Core/Debug.h"
 #include "MemoryManager.h"
 #include "OSAL/OSMemory.h"
+
 
 namespace hbe
 {
@@ -55,6 +55,7 @@ PoolAllocator::PoolAllocator(const char* inName, TSize inBlockSize, TSize inNumb
 	auto allocFunc = [](void* allocatorPtr, size_t n)
 	{
 		auto allocator = static_cast<PoolAllocator*>(allocatorPtr);
+
 		return allocator->Allocate(n);
 	};
 
@@ -102,6 +103,7 @@ PoolAllocator::PoolAllocator(PoolAllocator&& rhs) noexcept
 	auto allocFunc = [](void* allocatorPtr, size_t n)
 	{
 		auto allocator = static_cast<PoolAllocator*>(allocatorPtr);
+
 		return allocator->Allocate(n);
 	};
 
@@ -127,6 +129,7 @@ PoolAllocator::~PoolAllocator()
 	if (id == InvalidAllocatorID)
 	{
 		Assert(buffer == nullptr);
+
 		return;
 	}
 
@@ -177,6 +180,7 @@ Pointer PoolAllocator::Allocate(size_t size)
 	if (unlikely(size > blockSize))
 	{
 		auto& mmgr = MemoryManager::GetInstance();
+
 		return mmgr.FallbackAllocate(GetID(), parentID, size);
 	}
 
@@ -202,6 +206,7 @@ void PoolAllocator::Deallocate(Pointer ptr, size_t size)
 	{
 		auto& mmgr = MemoryManager::GetInstance();
 		mmgr.Deallocate(parentID, ptr, size);
+
 		return;
 	}
 
@@ -307,14 +312,12 @@ Pointer PoolAllocator::AllocateBlock()
 
 	return ptr;
 }
-
 } // namespace hbe
 
 #ifdef __UNIT_TEST__
 
 namespace hbe
 {
-
 void PoolAllocatorTest::Prepare()
 {
 	AddTest("Construction", [](auto&)
@@ -375,6 +378,7 @@ void PoolAllocatorTest::Prepare()
 			{
 				ls << "blockSize " << testCase.requested << " should round up to " << testCase.aligned << ", but "
 				   << pool.GetBlockSize() << " was used." << lferr;
+
 				return;
 			}
 
@@ -390,6 +394,7 @@ void PoolAllocatorTest::Prepare()
 					{
 						ls << "blockSize " << testCase.requested << ": round " << round << " found no free block at "
 						   << i << "." << lferr;
+
 						return;
 					}
 
@@ -399,6 +404,7 @@ void PoolAllocatorTest::Prepare()
 						{
 							ls << "blockSize " << testCase.requested << ": round " << round << " handed block " << i
 							   << " the same address as block " << j << "." << lferr;
+
 							return;
 						}
 					}
@@ -409,6 +415,7 @@ void PoolAllocatorTest::Prepare()
 					{
 						ls << "blockSize " << testCase.requested << ": block " << i
 						   << " is not aligned to Config::DefaultAlign." << lferr;
+
 						return;
 					}
 				}
@@ -423,7 +430,6 @@ void PoolAllocatorTest::Prepare()
 		ls << "Clamped block sizes keep one stride: no block was handed out twice." << lf;
 	});
 }
-
 } // namespace hbe
 
 #endif //__UNIT_TEST__

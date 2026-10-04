@@ -7,6 +7,7 @@
 #include "Core/Types.h"
 #include "OSAL/SourceLocation.h"
 
+
 namespace hbe
 {
 /// @brief Stack-based allocator for temporary allocations.
@@ -81,7 +82,6 @@ private:
 
 namespace hbe
 {
-
 /// @brief Test class for StackAllocator.
 class StackAllocatorTest : public TestCollection
 {
@@ -94,6 +94,5 @@ public:
 protected:
 	void Prepare() override;
 };
-
 } // namespace hbe
 #endif //__UNIT_TEST__

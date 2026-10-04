@@ -4,14 +4,15 @@
 
 #include <cstddef>
 #include <cstdlib>
+
 #include "AllocatorID.h"
 #include "AllocatorScope.h"
 #include "Core/Debug.h"
 #include "MemoryManager.h"
 
+
 namespace hbe
 {
-
 // A proxy allocator which uses the current allocator defined in Memory Manager.
 // It should be careful to use this when the current allocator is stack allocators.
 template <typename T>
@@ -67,6 +68,7 @@ public:
 		if (allocatorID == MemoryManager::SystemAllocatorID)
 		{
 			free(ptr);
+
 			return;
 		}
 
@@ -102,7 +104,6 @@ public:
 		return 0;
 	}
 };
-
 } // namespace hbe
 
 #ifdef __UNIT_TEST__
@@ -110,7 +111,6 @@ public:
 
 namespace hbe
 {
-
 class BaseAllocatorTest : public TestCollection
 {
 public:
@@ -122,6 +122,5 @@ public:
 protected:
 	void Prepare() noexcept override;
 };
-
 } // namespace hbe
 #endif //__UNIT_TEST__

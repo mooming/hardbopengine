@@ -4,11 +4,12 @@
 
 #include <cstddef>
 #include <functional>
+
 #include "MemoryManager.h"
+
 
 namespace hbe
 {
-
 using TAllocFunc = std::function<void*(size_t)>;
 using TDeallocFunc = std::function<void(void*, size_t)>;
 
@@ -36,6 +37,7 @@ template <typename TType, typename... TTypes>
 TType* New(TTypes&&... args) noexcept
 {
 	auto& mmgr = MemoryManager::GetInstance();
+
 	return mmgr.New<TType>(std::forward<TTypes>(args)...);
 }
 
@@ -45,5 +47,4 @@ void Delete(TType* ptr) noexcept
 	auto& mmgr = MemoryManager::GetInstance();
 	mmgr.Delete<TType>(ptr);
 }
-
 } // namespace hbe

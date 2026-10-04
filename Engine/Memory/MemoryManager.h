@@ -7,6 +7,7 @@
 #include <mutex>
 #include <thread>
 #include <vector>
+
 #include "AllocatorID.h"
 #include "AllocatorProxy.h"
 #include "Config/BuildConfig.h"
@@ -16,6 +17,7 @@
 #include "MultiPoolConfigCache.h"
 #include "PoolConfig.h"
 #include "String/StaticStringID.h"
+
 
 namespace hbe
 {
@@ -179,6 +181,7 @@ public:
 	{
 		auto ptr = AllocateByType<Type>(1);
 		auto tptr = new (ptr) Type(std::forward<Types>(args)...);
+
 		return tptr;
 	}
 
@@ -249,5 +252,4 @@ private:
 
 	friend class AllocatorScope;
 };
-
 } // namespace hbe
