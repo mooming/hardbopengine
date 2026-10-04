@@ -14,6 +14,7 @@ The approved site shape, from .Plans/AUTHORING_method_and_class_pages.md:
     docs/<Module>/<Entry>/<method>.html  method page, one per method name
 
 Usage:
+    docs_coverage.py --selftest        prove the entry kinds and both address forms, in a temporary tree
     docs_coverage.py ledger            write .Plans/DOCS_COVERAGE.md
     docs_coverage.py check [MODULE ...]  exit 1 while an entry has no page
     docs_coverage.py missing MODULE    list entries of one module that need a page
@@ -510,8 +511,134 @@ def check(argv):
     return 1 if total else 0
 
 
+
+COPYRIGHT = '// Copyright (c) 2026 Hansol Park (mooming.go@gmail.com). All rights reserved.\n'
+
+# Every entry case is (file stem, name, header text, expected entries). The expectations are the ones that were
+# false in this file until 2026-10-04, when three separate blind spots let a header carry its whole contract in
+# `///` blocks while the gate reported the module clean - and `comments.py --strip` would have deleted those
+# blocks with nothing to move them into. Two cases are ones the old reader also satisfied, and they are kept
+# because their point is that fixing the blind spots did not over-reach.
+ENTRY_CASES = [
+    ('SelftestMacros', 'a macro set below line 1 is still a macro set',
+     '\n#pragma once\n\n#define ONCE() while (false)\n',
+     [('SelftestMacros', 'macro set')]),
+    ('SelftestAliases', 'a header of aliases is one surface, not three',
+     '\n#pragma once\n\nnamespace hbe\n{\nusing TByte = uint8_t;\nusing TIndex = size_t;\n'
+     'using TReal = float;\n} // namespace hbe\n',
+     [('SelftestAliases', 'utility header')]),
+    ('SelftestFunctions', 'free functions belong to their header, not to nobody',
+     '\n#pragma once\n\nnamespace hbe::clock\n{\n[[nodiscard]] double GetRate() noexcept;\n'
+     'void SetRate(double hertz) noexcept;\n} // namespace hbe::clock\n',
+     [('SelftestFunctions', 'utility header')]),
+    ('Engine', 'a class owns its file, so no stem entry is demanded beside it',
+     '\n#pragma once\n\nnamespace hbe\n{\nusing THandle = uint32_t;\n\nclass Engine final\n{\n'
+     'public:\n\tvoid Run() noexcept;\n};\n} // namespace hbe\n',
+     [('Engine', 'class')]),
+    ('SelftestGuarded', 'a test-only class does not make a file class-shaped',
+     '\n#pragma once\n\nnamespace hbe\n{\nusing TStreamIndex = int;\n} // namespace hbe\n\n'
+     '#ifdef __UNIT_TEST__\nnamespace hbe\n{\nclass SelftestGuardedTest final\n{\n};\n} // namespace hbe\n'
+     '#endif //__UNIT_TEST__\n',
+     [('SelftestGuardedTest', 'test-only'), ('SelftestGuarded', 'utility header')]),
+    ('Map', 'an alias inside a class body is the class\u2019s business, not a surface',
+     '\n#pragma once\n\nnamespace hbe\n{\nclass Map final\n{\npublic:\n\tusing TEntry = int;\n'
+     '\tusing TSize = size_t;\n};\n} // namespace hbe\n',
+     [('Map', 'class')]),
+    ('SelftestGuardedAlias', 'an alias inside the unit-test region demands nothing',
+     '\n#pragma once\n\n#ifdef __UNIT_TEST__\nnamespace hbe\n{\nusing TTestOnly = int;\n'
+     '} // namespace hbe\n#endif //__UNIT_TEST__\n',
+     []),
+    ('SelftestFwd', 'a forward declaration names a type owned elsewhere',
+     '\n#pragma once\n\nnamespace hbe\n{\nclass Logger;\n} // namespace hbe\n',
+     []),
+]
+
+# Address cases need a docs tree, so each carries (name, header body, module page text, own page text or None,
+# expected exists, expected pointer). The section address - `docs/<Module>/index.html#<Stem>` - is what a header
+# of aliases and free functions is documented by when the module page already carries its table. The two
+# refusals are the whole reason the form is checkable rather than decorative: an anchor is a promise held by a
+# different file than the one carrying the pointer, so it rots silently unless the id is proved.
+ADDRESS_CASES = [
+    ('a section whose id names the header documents it',
+     '/// API reference: docs/SelftestMod/index.html#selftesttarget\nusing TTarget = int;\n',
+     '<h2 id="selftesttarget">SelftestTarget</h2>\n', None, True, True),
+    ('an id that does not exist on that page documents nothing',
+     '/// API reference: docs/SelftestMod/index.html#selftesttarget\nusing TTarget = int;\n',
+     '<h2 id="somethingelse">Other</h2>\n', None, False, False),
+    ('an id naming a different header documents nothing',
+     '/// API reference: docs/SelftestMod/index.html#neighbour\nusing TTarget = int;\n',
+     '<h2 id="neighbour">Neighbour</h2>\n', None, False, False),
+    ('a page of its own still documents it',
+     '/// API reference: docs/SelftestMod/SelftestTarget/index.html\nusing TTarget = int;\n',
+     '', '<h1>SelftestTarget</h1>\n', True, True),
+]
+
+
+def selftest():
+    """Prove the entry kinds and both address forms, in a tree that is not the repository.
+
+    `entries_in` and `module_anchor` read real files, so the fixtures are written into a temporary tree laid out
+    the way `sources()` expects and the module's root constants are pointed at it. Building real files is the
+    point rather than laziness: every bug this file has had was about *where* a pattern was allowed to match -
+    line 1 only, depth 0 only, a class-shaped file only - and a test that handed the patterns a bare string
+    would have passed over all three.
+    """
+    import tempfile
+    root_backup, docs_backup = REPO_ROOT, DOCS
+    failures = 0
+    with tempfile.TemporaryDirectory(prefix='hbe-docs-selftest-') as tmp:
+        try:
+            globals()['REPO_ROOT'] = tmp
+            globals()['DOCS'] = os.path.join(tmp, 'docs')
+            module_dir = os.path.join(tmp, 'Engine', 'SelftestMod')
+            os.makedirs(module_dir)
+            os.makedirs(os.path.join(DOCS, 'SelftestMod'))
+
+            for stem, case, text, expected in ENTRY_CASES:
+                with open(os.path.join(module_dir, stem + '.h'), 'w', encoding='utf-8') as handle:
+                    handle.write(COPYRIGHT + text)
+                got = entries_in(os.path.join(module_dir, stem + '.h'))
+                ok = got == expected
+                failures += 0 if ok else 1
+                print('SELFTEST  %-6s %-56s %s' % ('ok' if ok else 'FAIL', case[:56],
+                                                   '' if ok else 'want %s got %s' % (expected, got)))
+
+            # Every address case documents the same header, so they run in order and the case that gives it a page
+            # of its own runs last. A temporary tree needs no teardown a case cannot leave behind for the next one.
+            for name, body, page, own_page, want_exists, want_pointer in ADDRESS_CASES:
+                with open(os.path.join(module_dir, 'SelftestTarget.h'), 'w', encoding='utf-8') as handle:
+                    handle.write(COPYRIGHT + '\n#pragma once\n\nnamespace hbe\n{\n' + body
+                                 + '} // namespace hbe\n')
+                with open(os.path.join(DOCS, 'SelftestMod', 'index.html'), 'w', encoding='utf-8') as handle:
+                    handle.write('<html><body>' + page + '</body></html>')
+                if own_page is not None:
+                    target = os.path.join(DOCS, 'SelftestMod', 'SelftestTarget')
+                    os.makedirs(target, exist_ok=True)
+                    with open(os.path.join(target, 'index.html'), 'w', encoding='utf-8') as handle:
+                        handle.write(own_page)
+                rows = [r for r in ledger_rows() if r['source'].endswith('SelftestTarget.h')]
+                got = [(r['exists'], r['pointer']) for r in rows]
+                ok = len(rows) == 1 and got == [(want_exists, want_pointer)]
+                failures += 0 if ok else 1
+                print('SELFTEST  %-6s %-56s %s' % ('ok' if ok else 'FAIL', name[:56],
+                                                   '' if ok else 'want %s got %s across %d row(s)' %
+                                                   ([(want_exists, want_pointer)], got, len(rows))))
+
+
+        finally:
+            globals()['REPO_ROOT'], globals()['DOCS'] = root_backup, docs_backup
+    total = len(ENTRY_CASES) + len(ADDRESS_CASES)
+    print('selftest: %d assertion(s), %d failure(s)' % (total, failures))
+    print('        not measured: whether a section\u2019s prose is any good. This proves a surface is demanded and')
+    print('        an address resolves; the convention that a partial page must name what it omits stays a')
+    print('        reader\u2019s judgement, as .Plans/AUTHORING_method_and_class_pages.md leaves it.')
+    return 1 if failures else 0
+
+
 def main(argv):
     action = argv[0] if argv else None
+    if action == '--selftest':
+        return selftest()
     if action == 'ledger':
         return write_ledger()
     if action == 'check':

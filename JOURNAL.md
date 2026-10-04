@@ -1,5 +1,31 @@
 # Journal
 
+## 2026-10-04 03:05 — the gate that authorises deleting comments gets the fixtures it never had
+
+**Cause.** Three defects were found in `docs_coverage.py` today by hand, in one afternoon: `MACRO_SET` with no
+`re.M` so no macro set in the engine was ever demanded; no entry kind for a header of aliases; none for a header
+of free functions. `comments.py`, `blank_lines.py`, `includes.py` and `layout.py` all carry fixtures; the one
+script whose verdict licenses deleting a comment carried none.
+
+**Addition.** `docs_coverage.py --selftest`: 12 assertions over a temporary tree — 8 entry expectations and 4
+address expectations. Fixtures are written as real files under `Engine/<Module>/` with the module's root
+constants repointed at the temp tree, because every one of today's bugs was about *where* a pattern was allowed
+to match — line 1 only, depth 0 only, a class-shaped file only — and a test that handed the patterns a bare
+string would have passed over all three.
+
+| Evidence | Result |
+|---|---|
+| Expectations false against the reader that shipped the bugs (`ab52a14^`) | 4 of 8, and the anchor form did not exist at all |
+| Expectations false against the fixed reader | 0 |
+| Fixtures the old reader also satisfied | 4 — class owns its file, nested alias, guarded alias, forward declaration; they pin that the fix did not over-reach |
+| Selftest exit for all five checker scripts | 0 |
+
+`shutil.rmtree` appeared in a first draft of this and would have been a `NameError` on the first tree that
+needed it: the module never imported `shutil`. It is gone, and the four address cases now run in an order where
+the one that creates a page runs last, so no case needs a teardown. A first draft also asserted the eight entry
+cases inside the address loop — 40 assertions where 12 belonged — removed before committing rather than kept and
+explained.
+
 ## 2026-10-04 02:40 — Engine/Core's comment ban closes at zero, and the gate that let it stay open
 
 **Cause.** "Remove what this session made redundant, then continue to finish Engine/Core fully." Redundancy came
