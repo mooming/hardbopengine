@@ -70,7 +70,7 @@ TaskSystem::EnqueueTask(TaskSystem::GetIOTaskStreamIndex(), *task); // the IO st
 | `TaskSystem::Enqueue(const WorkItem&)` | Engine-internal. General queue: shared, lowest priority, any eligible stream may take it.
 | `TaskSystem::Enqueue(TIndex streamIndex, const WorkItem&)` | Engine-internal. One stream's own queue. |
 | `TaskSystem::EnqueueTask(TIndex streamIndex, Task& task, uint8_t priority = 0)` | **The customer API.** Put a task's work on one stream without building a queue item. |
-| `taskSys.Update()` | One pump pass of the base stream, driven by the engine loop. |
+| `taskSys.Update()` | One pump pass of the base stream, driven by the main thread. |
 | `TestHelper::DriveUntil(taskSys, waitingFor, predicate, patience)` | The designated nested-pump wait; reports a failed wait instead of blocking forever. Test-build API in `namespace hbe::TestHelper` — until 2026-10-02 it was `TaskSystem::DriveUntil`, and it moved because all fourteen of its callers were test bodies. See `docs/Test/TestHelper/drive-until.html`. |
 
 The runnable:
@@ -136,9 +136,9 @@ Three different things used to be called "base". They have three names now (`2b3
 |---|---|
 | `TaskSystem::GetBaseTaskStreamIndex()` / `BaseStreamIndex` | Which stream is the base stream: `0`. |
 | `TaskSystem::IsBaseThread()` | Is the caller **running as stream 0** right now - i.e. inside a task on that thread. |
-| `TaskSystem::EngineLoopThreadName` (`"EngineLoop"`) | The OS thread that drives `Engine::Run` and shuts the engine down. |
+| `TaskSystem::MainThreadName` (`"Main"`) | The OS thread that drives `Engine::Run` and shuts the engine down. |
 
-A thread the application created, and the engine-loop thread itself, report
+A thread the application created, and the main thread itself, report
 `TaskSystem::GetCurrentStreamIndex() == TaskSystem::NonStreamIndex`. That is deliberate and it is not zero:
 before it had its own value, **every** thread in the process answered "stream 0", which made `IsBaseThread`
 useless as a check and charged a foreign thread's contact with a task against stream 0's affinity. The
@@ -252,12 +252,12 @@ is not actually gating its stream, and there is no window boundary that would re
 and the budget-window round exists to close it; once that lands, expect a window to open on each stream's own
 thread and the acquire gate to bite.
 
-## 9. Work that must run on the engine-loop thread
+## 9. Work that must run on the main thread
 
 ```cpp
-taskSystem.DispatchToMainThread([](void* userData) { /* runs on the EngineLoop thread */ }, data, 128);
+taskSystem.DispatchToMainThread([](void* userData) { /* runs on the Main thread */ }, data, 128);
 // No manual drain exists any more: the base stream takes posted callables at the top of every
-// pass, and the engine loop gives it that pass.
+// pass, and the main thread gives it that pass.
 ```
 
 Priority is `0` = least urgent, `255` = most urgent, and the parameter **defaults to 128**. It used to default
@@ -336,7 +336,7 @@ another bank rather than relocating anything. That is what makes a `TaskID` inde
 
 | Area | Test | What stops being true if it fails |
 |---|---|---|
-| Identity | `The base stream is named Base, and the thread driving the engine is not called that` | Stream 0 is `Base`, stream 1 is `IO`, the engine loop's thread is `EngineLoop`, and the thread running a test reports itself as the base stream — so the name in a log line identifies one executor and not two. |
+| Identity | `The base stream is named Base, and the thread driving the engine is not called that` | Stream 0 is `Base`, stream 1 is `IO`, the main thread's thread is `Main`, and the thread running a test reports itself as the base stream — so the name in a log line identifies one executor and not two. |
 | Identity | `A thread that was never given a stream does not claim to have one` | `NonStreamIndex` is not 0, so a thread nobody made a stream is not treated as the base stream, and it lies outside the affinity mask, so the general queue does not charge its sightings to whatever stream shares the value. |
 | Task basics | `Empty Task` | A record with no work item is not marked done before it runs. |
 | Task basics | `Task of size 0` | A zero-length range still reports itself finished rather than hanging whatever waits on the join. |

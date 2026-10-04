@@ -64,6 +64,39 @@ was removing violations. And the `Deque` iterators add **2 rows to that file's e
 the same violation class the layout commit already has to fix, disclosed here rather than left to be
 discovered. `LinkedList.h` and `BoundedPriorityQueue.h` gained no findings.
 
+## 2026-10-04 20:34 — the engine loop **thread** is the main thread, and only the thread was renamed
+
+**Cause.** The owner's call: `EngineLoopThread` becomes `MainThread`. The name was already half-chosen —
+`DispatchToMainThread` posts to the base stream, `MainThreadTaskQueue` lives as `TaskStream::postedTasks` on that
+stream, and `docs/Core/TaskSystem/dispatch-to-main-thread.html` stated outright that "Main thread" is the thread
+driving the base stream. One thread, two vocabularies.
+
+**Checked before renaming that the name would be true.** `DispatchToMainThread` routes to
+`GetStream(GetBaseTaskStreamIndex())`, the base stream is driven by the thread that built the task system, and
+`TaskSystem` records that thread in its initializer list. So the base-stream driver, the owner of the posted-work
+queue and `mainThreadID` are one thread, and the rename unifies rather than reassigns. No collision: `IsMainThread`
+and `mainThreadID` were unclaimed; `MainThreadTaskQueue`, `DispatchToMainThread` and `TMainThreadTask` already
+meant the same thread.
+
+**What moved.** `EngineLoopThreadName` → `MainThreadName` and its value `"EngineLoop"` → `"Main"`,
+`engineLoopThreadID` → `mainThreadID`, `IsEngineLoopThread()` → `IsMainThread()`, and the `isEngineLoopThread`
+local in `JoinAndClear`. The thread's *name string* moving means the log prefix changes: 3056 lines of the Debug
+suite now read `[Main]` where they read `[EngineLoop]`, and the word is gone from that log entirely. That is the
+visible half of this change and it is why the rename was not confined to identifiers.
+
+**The line held.** `Engine::Run`'s pump is still the engine loop, so mentions of it stayed. The sweep replaced the
+thread and left the loop, which is why `Engine/OSAL/Window.cpp`'s "The engine loop never ran the posted window
+creation" and `docs/TaskSystemGuide.md`'s "without becoming a second engine loop" are untouched while
+`docs/Core/TaskSystem/get-stream.html` now says "on the main thread".
+
+**Gate.** Debug, Dev and Release build; Debug and Dev run 375 testlets with the two `SetLoggerStream` asserts
+firing 0 times, the naming diagnostic in the unit-test path quiet, and only the already-logged `WindowTest`
+failure; Release still prints that it contains no tests. `docs_pass.py signatures docs/Core/TaskSystem` reports 44
+pages verbatim against the header with 0 problems after `is-engine-loop-thread.html` became
+`is-main-thread.html`; `docs_coverage.py check Core` and `docs_methods.py Core` are clean; the 41 touched HTML
+pages are valid, and the two findings on `docs/TaskSystemGuide.md` and `docs/TaskSystemRedesign.md` are markdown
+read by the HTML checker and byte-identical at the parent commit.
+
 ## 2026-10-04 20:15 — the setup policy gets a name, and `SetLoggerStream` checks it itself
 
 **Cause.** The owner's direction was a simple policy: setup and configuration belong to the base thread. The

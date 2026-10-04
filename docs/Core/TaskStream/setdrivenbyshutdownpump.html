@@ -69,7 +69,7 @@
   <strong>Not clearing it is the whole design of the flag.</strong>
   "Mark that the shutdown path has taken over this stream's pumping. Never cleared. Not cleared on exit, because a run in which the rescue ever happened is a
   run whose provenance is already compromised, and a reader that checks after the fact must still be able to see it."
-  (<code>Engine/Core/TaskStream.h</code>) The question it answers is about the run as a whole — "did the engine loop drive this, or did the shutdown?" — and a
+  (<code>Engine/Core/TaskStream.h</code>) The question it answers is about the run as a whole — "did the main thread drive this, or did the shutdown?" — and a
   flag that went back to <code>false</code> would answer "the loop did" for a run where the loop never finished the job.
 </div>
 

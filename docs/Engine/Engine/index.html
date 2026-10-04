@@ -138,7 +138,7 @@
 
 <div class="gap">
   <strong>Letting an <code>Engine</code> die without calling
-  <a href="shutdown.html"><code>ShutDown</code></a> does not clean up; on the engine loop thread it stops there
+  <a href="shutdown.html"><code>ShutDown</code></a> does not clean up; on the main thread thread it stops there
   forever.</strong> The destructor's whole body is <a href="close-log.html"><code>CloseLog()</code></a>. Everything else
   is a member destructor, and <code>~TaskSystem()</code> calls <code>JoinAndClear()</code>, which on the thread that
   constructed the task system loops <code>while (isRunning || pending main-thread tasks)</code>. <code>isRunning</code>
@@ -288,7 +288,7 @@
     <td><code>TaskSystem taskSystem;</code></td>
     <td>
       <span class="badge">private</span> Takes no <code>Engine</code> reference — the dependency runs the other way, through
-      <a href="get.html"><code>Get</code></a>. Its constructor records the constructing thread as the engine loop thread,
+      <a href="get.html"><code>Get</code></a>. Its constructor records the constructing thread as the main thread thread,
       which is the thread <a href="run.html"><code>Run</code></a> has to be called from
     </td>
   </tr>

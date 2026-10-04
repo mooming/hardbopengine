@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>TaskSystem::IsEngineLoopThread — Core module — HardBop Engine API reference</title>
+<title>TaskSystem::IsMainThread — Core module — HardBop Engine API reference</title>
 <link rel="stylesheet" href="../../assets/hbe-docs.css">
 </head>
 <body>
@@ -43,10 +43,10 @@
 <p class="breadcrumb">
   <a href="../../index.html">Module Index</a> /
   <a href="../index.html">Core</a> /
-  <a href="index.html">TaskSystem</a> / IsEngineLoopThread
+  <a href="index.html">TaskSystem</a> / IsMainThread
 </p>
 
-<h1><span class="fn">IsEngineLoopThread</span></h1>
+<h1><span class="fn">IsMainThread</span></h1>
 <p class="subtitle">
   <span class="tag">member of hbe::TaskSystem</span>
   <span class="tag">Engine/Core/TaskSystem.h</span>
@@ -57,13 +57,13 @@
 
 <h2 id="signature">Signature</h2>
 
-<pre><code>[[nodiscard]] bool IsEngineLoopThread() const noexcept</code></pre>
+<pre><code>[[nodiscard]] bool IsMainThread() const noexcept</code></pre>
 
 <h2 id="description">Function description</h2>
 
 <p>
-  Defined in <code>Engine/Core/TaskSystem.cpp</code> as <code>TaskSystem::IsEngineLoopThread()</code>: one
-  comparison of <code>std::this_thread::get_id()</code> against <code>engineLoopThreadID</code>. That member is
+  Defined in <code>Engine/Core/TaskSystem.cpp</code> as <code>TaskSystem::IsMainThread()</code>: one
+  comparison of <code>std::this_thread::get_id()</code> against <code>mainThreadID</code>. That member is
   a <code>const TThreadID</code> written once, in the constructor's initializer list at
   <code>Engine/Core/TaskSystem.cpp:83</code>, and never again — so the answer is fixed for the life of the
   instance and cannot drift.
@@ -73,7 +73,7 @@
   It exists to carry one policy: <strong>setup and configuration belong to this thread.</strong> Building the
   streams, installing the logger's stream and closing them are the actions that decide what every other
   thread may assume, so they happen in one place, in order, on one thread. Before this accessor the policy was
-  still enforced, but only from inside <code>TaskSystem</code>, because <code>engineLoopThreadID</code> was a
+  still enforced, but only from inside <code>TaskSystem</code>, because <code>mainThreadID</code> was a
   private member with no accessor — <a href="build-streams.html">BuildStreams</a> compared the raw member and
   <a href="join-and-clear.html">JoinAndClear</a> gated on the comparison. Anything outside the class that
   needed the same answer had to guess at it, and the guess available was
@@ -84,7 +84,7 @@
   <strong>This is not <a href="is-base-thread.html">IsBaseThread</a>, and the difference is not cosmetic.</strong>
   <code>IsBaseThread()</code> reads the thread-local <code>StreamIndex</code>, so it answers <em>this thread is
   draining the base stream right now</em> — true only inside a base-stream pass, and
-  <code>NonStreamIndex</code> on every thread outside one, including this thread. <code>IsEngineLoopThread()</code>
+  <code>NonStreamIndex</code> on every thread outside one, including this thread. <code>IsMainThread()</code>
   answers <em>this thread is the one that built the task system</em> — true outside a pass and false inside one,
   because a thread inside a base pass is still the same thread. Neither implies the other, and the two together
   are what the configuration checks assert. See
@@ -92,8 +92,8 @@
 </div>
 
 <p>
-  "Engine loop" names the thread that built the task system, not the process's first thread and not the OS's
-  UI thread. An embedder that constructs the engine on some other thread moves the policy with it, which is
+  The name "main thread" names the thread that built the task system — not the process's first thread and not
+  the OS's UI thread, and not the thread <code>main</code> is written in, either. An embedder that constructs the engine on some other thread moves the policy with it, which is
   the intended reading: the name describes a role the constructor claims, and
   <a href="../../Log/Logger/driver-loop.html">the logger's own driver thread</a> is a different thread with a
   different job, however the host happens to be shaped.
@@ -123,7 +123,7 @@
 
 <pre><code>void TaskSystem::BuildStreams()
 {
-        Assert(IsEngineLoopThread());
+        Assert(IsMainThread());
         …
         Logger::Get().SetLoggerStream(&amp;GetIOTaskStream());
 }</code></pre>
@@ -133,9 +133,9 @@
   further down inherits the guarantee without restating it.
 </p>
 
-<pre><code>const bool isEngineLoopThread = IsEngineLoopThread();
+<pre><code>const bool isMainThread = IsMainThread();
 …
-if (isEngineLoopThread &amp;&amp; hasStreams)
+if (isMainThread &amp;&amp; hasStreams)
 {
         …
         Logger::Get().SetLoggerStream(nullptr);

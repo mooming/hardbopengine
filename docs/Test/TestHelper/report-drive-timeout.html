@@ -70,7 +70,7 @@
 {
         <span class="ty">Logger</span>::<span class="fn">Get</span>().<span class="fn">AddLog</span>(taskSystem.<span class="fn">GetName</span>(), <span class="ty">ELogLevel</span>::Error, [waitingFor, patience](<span class="kw">auto</span>&amp; logStream)
         {
-                logStream &lt;&lt; <span class="st">"A thread driving the engine loop gave up waiting for "</span> &lt;&lt; waitingFor &lt;&lt; <span class="st">" after "</span>
+                logStream &lt;&lt; <span class="st">"A thread driving the main thread gave up waiting for "</span> &lt;&lt; waitingFor &lt;&lt; <span class="st">" after "</span>
                                   &lt;&lt; patience.count() &lt;&lt; <span class="st">"ms. The work was still queued, so nothing was going to run it, and a caller that proceeds "</span>
                                   <span class="st">"from here usually blocks on the very thing it waited for. The intake that should have drained it is the "</span>
                                   <span class="st">"first thing to look at."</span>;
@@ -108,7 +108,7 @@
 
 <div class="gap">
   <strong>The other branch of <a href="drive-until.html">DriveUntil</a> never calls it.</strong> A caller that is not the
-  engine-loop thread takes the sleep-poll path, and that path returns without reporting. So a wait that times out on an
+  main thread takes the sleep-poll path, and that path returns without reporting. So a wait that times out on an
   application thread is invisible in the log — correct in the sense that the thread could never have driven anything,
   misleading in the sense that the symptom looks like silence rather than like a misuse of the API.
 </div>

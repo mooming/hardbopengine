@@ -61,7 +61,7 @@
 
 <p>
   Returns the constant <code>BaseStreamIndex</code> (<code>Engine/Core/TaskSystem.h</code>), which is
-  <code>0</code>. The base stream is the one that rides the engine loop instead of owning a thread of its own, and it is
+  <code>0</code>. The base stream is the one that rides the main thread instead of owning a thread of its own, and it is
   the last executor to close — <a href="request-other-streams-close.html">RequestOtherStreamsClose</a> deliberately
   leaves it, and the IO stream, open while everything else drains, because the end of the run still has reporting to do
   through them.

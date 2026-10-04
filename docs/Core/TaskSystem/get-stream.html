@@ -74,7 +74,7 @@
 <div class="gap">
   <strong>An out-of-range index silently means the base stream.</strong> The guard's fallback is
   <code>streams[0]</code>, not an assert and not a null: work addressed to a stream that does not exist is queued on stream 0
-  and runs there, on the engine-loop thread, inside the base frame budget. Nothing logs it. The symptoms are all
+  and runs there, on the main thread, inside the base frame budget. Nothing logs it. The symptoms are all
   behavioural — a task that takes far longer than it should, a base stream that appears to be doing someone else's work, and a
   <a href="run-budget-window-pass.html">budget window</a> charged for CPU the real owner was supposed to spend. This is why
   <a href="has-stream.html">HasStream</a> exists, and why <a href="parallel-for.html">ParallelFor</a> validates its whole

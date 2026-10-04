@@ -68,11 +68,11 @@
 </p>
 
 <p>
-  The one decision this constructor makes for the rest of the process is <code>engineLoopThreadID</code>. It captures
+  The one decision this constructor makes for the rest of the process is <code>mainThreadID</code>. It captures
   <code>std::this_thread::get_id()</code> at construction, and two later operations test against it:
   <a href="build-streams.html">BuildStreams</a> asserts it before creating any stream, and
   <a href="join-and-clear.html">JoinAndClear</a> pumps the base stream only when the caller is that thread. So
-  constructing on a thread that never runs the engine loop is not a style violation — it is a shutdown that will not
+  constructing on a thread that never drives the engine is not a style violation — it is a shutdown that will not
   pump, and a build that asserts.
 </p>
 

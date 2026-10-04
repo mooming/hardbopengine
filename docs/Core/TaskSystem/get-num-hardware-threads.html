@@ -113,7 +113,7 @@
     : isRunning(<span class="kw">false</span>)
     , name(<span class="st">"TaskSystem"</span>)
     , numHardwareThreads(<span class="fn">GetNumHardwareThreads</span>())
-    , engineLoopThreadID(std::this_thread::get_id())
+    , mainThreadID(std::this_thread::get_id())
 {
         <span class="fn">FatalAssert</span>(numHardwareThreads &gt; 0, <span class="st">"It should have at least one hardware thread."</span>);
 }</code></pre>

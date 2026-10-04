@@ -70,7 +70,7 @@
 <p>
   The name's meaning depends on who set it, and the engine sets it three ways. A stream's own thread is labelled with
   the stream's name (<code>"Worker3"</code>, <code>"Base"</code>, <code>"IO"</code>) by
-  <code>TaskStream::RunLoop</code>; the engine-loop thread is labelled <code>"EngineLoop"</code> by
+  <code>TaskStream::RunLoop</code>; the main thread is labelled <code>"Main"</code> by
   <a href="build-streams.html">BuildStreams</a>; and the logger's driver thread labels itself <code>"LogDriver"</code>
   (<code>Engine/Log/Logger.cpp</code>) while driving the IO stream. A thread nobody named returns a
   default-constructed <code>StaticString</code> — an application thread, most of the time.

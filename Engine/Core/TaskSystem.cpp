@@ -80,7 +80,7 @@ TaskSystem::TaskSystem() noexcept
 	: isRunning(false)
 	, name("TaskSystem")
 	, numHardwareThreads(GetNumHardwareThreads())
-	, engineLoopThreadID(std::this_thread::get_id())
+	, mainThreadID(std::this_thread::get_id())
 {
 	FatalAssert(numHardwareThreads > 0, "It should have at least one hardware thread.");
 }
@@ -170,9 +170,9 @@ bool TaskSystem::AreUserStreamsClosed() noexcept
 	return true;
 }
 
-bool TaskSystem::IsEngineLoopThread() const noexcept
+bool TaskSystem::IsMainThread() const noexcept
 {
-	return std::this_thread::get_id() == engineLoopThreadID;
+	return std::this_thread::get_id() == mainThreadID;
 }
 
 void TaskSystem::Update() noexcept
@@ -192,7 +192,7 @@ void TaskSystem::Update() noexcept
 
 void TaskSystem::JoinAndClear() noexcept
 {
-	const bool isEngineLoopThread = IsEngineLoopThread();
+	const bool isMainThread = IsMainThread();
 	const bool hasStreams = HasStream(GetBaseTaskStreamIndex());
 
 	if (hasStreams)
@@ -200,7 +200,7 @@ void TaskSystem::JoinAndClear() noexcept
 		RequestOtherStreamsClose();
 	}
 
-	if (isEngineLoopThread && hasStreams)
+	if (isMainThread && hasStreams)
 	{
 		TaskStream& baseStream = GetStream(GetBaseTaskStreamIndex());
 
@@ -754,11 +754,11 @@ const TaskStream& TaskSystem::GetIOTaskStream() const noexcept
 
 void TaskSystem::BuildStreams()
 {
-	Assert(IsEngineLoopThread());
+	Assert(IsMainThread());
 	FatalAssert(numHardwareThreads >= ENGINE_MIN_HARDWARE_THREADS,
 				"Number of hardware threads are less than the minimum requirement");
 
-	SetThreadName(TaskSystem::EngineLoopThreadName);
+	SetThreadName(TaskSystem::MainThreadName);
 
 	TIndex workerIndexStart = 0;
 
@@ -2151,9 +2151,9 @@ void TaskSystemTest::Prepare()
 			ls << "Stream 1 is named \"" << ioName.c_str() << "\", which is what the rename was done next to." << lferr;
 		}
 
-		if (StaticString(TaskSystem::EngineLoopThreadName) != StaticString("EngineLoop"))
+		if (StaticString(TaskSystem::MainThreadName) != StaticString("Main"))
 		{
-			ls << "The thread driving Engine::Run is named \"" << TaskSystem::EngineLoopThreadName << "\" rather"
+			ls << "The thread driving Engine::Run is named \"" << TaskSystem::MainThreadName << "\" rather"
 			   << " than its own name, so two threads would log under one name again." << lferr;
 		}
 

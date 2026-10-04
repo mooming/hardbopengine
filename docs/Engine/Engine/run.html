@@ -144,7 +144,7 @@
 
 <p>
   The main-thread requirement has a mechanical reason rather than being a convention. <code>TaskSystem</code> recorded the
-  thread that constructed it — the thread that ran <a href="constructors.html">the engine constructor</a> — as the engine loop
+  thread that constructed it — the thread that ran <a href="constructors.html">the engine constructor</a> — as the main thread
   thread, and <code>JoinAndClear</code> only runs its wait-and-pump loop when it is called from that thread. Called from
   anywhere else it skips straight to joining the worker threads, so tasks on the main-thread lane are never processed by this
   call, and a task that only ever completes on the main thread leaves the join waiting for it.

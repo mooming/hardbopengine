@@ -62,7 +62,7 @@
   the process main thread — and its actual shipping use is broader: every <code>TaskStream</code> owns one as
   <code>postedTasks</code> (<code>Engine/Core/TaskStream.h</code>), drained at the top of that stream's pass, so a "posted" callable
   now runs on whichever stream it was posted to. <code>TaskSystem::DispatchToMainThread()</code> keeps the old meaning by routing to
-  the <em>base stream's</em> queue (<code>Engine/Core/TaskSystem.cpp</code>), which is the stream the engine loop drives.
+  the <em>base stream's</em> queue (<code>Engine/Core/TaskSystem.cpp</code>), which is the stream the main thread drives.
 </p>
 
 <div class="note">
