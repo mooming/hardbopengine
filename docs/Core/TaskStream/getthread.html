@@ -62,7 +62,7 @@
 <h2 id="description">Function description</h2>
 
 <p>
-  Declared and defined in the header <code>Engine/Core/TaskStream.h</code>; there is no counterpart in
+  Declared in the header <code>Engine/Core/TaskStream.h</code>, defined in
   <code>Engine/Core/TaskStream.cpp</code>. Both overloads return the <code>std::thread</code> member by reference — the <code>const</code> form yielding a
   reference to a const thread — because the only useful thing to do with a thread is to ask it whether it is joinable, and that question has to be asked of the
   object, not a copy.

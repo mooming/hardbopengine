@@ -89,11 +89,13 @@
   the stream's own pass calls <a href="../MainThreadTaskQueue/processtasks.html">ProcessTasks</a> on it directly.
 </div>
 
-<div class="gap">
-  <strong>The <code>@brief</code> line at the top of the header is out of date, and the class contradicts it in two ways.</strong>
-  It reads "Represents a thread that processes a series of tasks from a priority queue." A stream is not necessarily a thread — two of them ride other threads
-  (<a href="start.html">Start</a>) — and it is not one priority queue but a FIFO lane and a priority lane with a policy between them. The header's later comments
-  describe the class correctly; the brief does not (<code>Engine/Core/TaskStream.h</code>).
+<div class="note">
+  <strong>Two readings the name invites, and neither is right.</strong>
+  A stream is not necessarily a thread — two of them ride other threads
+  (<a href="start.html">Start</a>) — and it is not one priority queue but a FIFO lane and a priority lane
+  with a policy between them. Nothing in <code>Engine/Core/TaskStream.h</code> says either fact: the header
+  carries no prose at all, only the address of this page, which is why the two readings used to be argued
+  from the header's stale <code>@brief</code> line. That line is gone, and this note is where the correction lives.
 </div>
 
 <h2 id="template">Template parameters</h2>
