@@ -56,14 +56,12 @@
 
 <h2 id="signature">Signature</h2>
 
-<pre><code>	[[nodiscard]] TaskID ParallelFor(StaticString taskName, TRunnable func, void* userData, TIndex numItems,
+<pre><code>[[nodiscard]] TaskID ParallelFor(StaticString taskName, TRunnable func, void* userData, TIndex numItems,
 									 TIndex numSubJobs, const TIndex* streamIndices, TIndex numStreamIndices,
-									 uint8_t priority = 0, TaskID successor = {},
-									 TIndex successorStream = NonStreamIndex) noexcept;
+									 uint8_t priority = 0, TaskID successor =
 
-	[[nodiscard]] TaskID ParallelFor(StaticString taskName, TRunnable func, void* userData, TIndex numItems,
-									 TIndex numSubJobs, TIndex numStreams, uint8_t priority = 0, TaskID successor = {},
-									 TIndex successorStream = NonStreamIndex) noexcept;</code></pre>
+[[nodiscard]] TaskID ParallelFor(StaticString taskName, TRunnable func, void* userData, TIndex numItems,
+									 TIndex numSubJobs, TIndex numStreams, uint8_t priority = 0, TaskID successor =</code></pre>
 
 <h2 id="description">Function description</h2>
 
