@@ -1,5 +1,37 @@
 # Journal
 
+## 2026-10-04 18:47 — Container cycle opens; the compiler on this machine was refusing every build
+
+**Context.** The owner asked for hb-standards on `Engine/Container`. Measuring it the first time produced a
+result nobody expected: `cmake-build-debug` pins `/usr/bin/c++`, and `/usr/bin/c++` refused to run at all —
+*"You have not agreed to the Xcode license agreements."* Every layer that needs a compiler reported nothing,
+`layout.py` printed `[NONE]`, and the build gate could not have proved anything about any module. The
+Command Line Tools were tried as a substitute and failed differently: their
+`usr/include/c++/v1` holds **3 leftover files** while the real libc++ headers sit in the SDK, so `#include
+<algorithm>` was not found even though the driver ran. Both facts were measured, not inferred, and the
+second one matters because a workaround that only sets `DEVELOPER_DIR` looks like a fix and is not.
+
+**Cleared.** The owner accepted the licence. `Apple clang version 21.0.0 (clang-2100.3.34.2)` now runs, and
+`cmake --build cmake-build-debug --target Container` links `libContainer.a` again, so layer 6 is a real gate
+for this cycle rather than a footnote. The compile database was regenerated without the
+`-nostdinc++ -isystem` pair that the workaround needed, because a database carrying borrowed flags would
+have made every later `layout.py` verdict describe a build tree that does not exist.
+
+**Measured after the rebase, not carried forward.** `master` moved `3902663` → `0f48473`, 119 commits, a pure
+fast-forward. Container's debt changed shape under that: `Array` is finished (pointer present, 14 method
+pages, layout clean, comments gone), layers 1, 2 and 2b came out clean for the whole module, and what
+remains is **55 comment lines in 6 files, 60 layout findings in 8 headers, 128 method pages, 2 entry pages
+and 9 header pointers**. One measurement needed care: raw `clang-format --dry-run` flags all 10 headers for
+the two blanks after the preamble, which is rule A16 — the one seam where the standard and the formatter
+deliberately disagree — so the raw probe was the wrong question and `check.sh`, which compares both sides
+through `blank_lines.py --collapse-seam`, is the right one.
+
+**Deleted by owner decision: `Engine/Container/ReviewNote.txt`.** A tracked prose file whose ISSUES section
+still asserted *"Inconsistent #endif comment for __DEBUG__ in LinkedList.cpp"*, a defect that no longer
+exists. A stale review of a module is worse than no review, because it is read as current. It owned no API
+page and nothing linked it, so it goes rather than moving under `docs/`, where a dead verdict would be
+filed as documentation. Two `.cpp` files with prose that **is** current get the opposite treatment — new
+design documents, then the strip.
 ## 2026-10-04 18:45 — the uncommitted pile is reviewed and filed, and a fatal log line is reverted on measurement
 
 **Cause.** The owner asked for a review of everything `git status` still held and for commits. The tree
