@@ -56,8 +56,9 @@
 
 <h2 id="signature">Signature</h2>
 
-<pre><code>	TaskID RunSplit(StaticString taskName, TRunnable func, void* userData, TIndex numItems, TIndex numSubJobs,
-					TIndex successorStream) noexcept;</code></pre>
+<pre><code>TaskID RunSplit(StaticString taskName, TRunnable func, void* userData, TIndex numItems, TIndex numSubJobs,
+					const TIndex* streamIndices, TIndex numStreamIndices, uint8_t priority, TaskID successor,
+					TIndex successorStream) noexcept</code></pre>
 
 <h2 id="description">Function description</h2>
 
