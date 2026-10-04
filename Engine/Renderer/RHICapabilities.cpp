@@ -8,11 +8,11 @@
 #include "Core/Debug.h"
 #include "Vulkan/VulkanCapabilities.h"
 
+
 namespace hbe
 {
 namespace Renderer
 {
-
 bool RHICapabilities::IsVulkanSupported() noexcept
 {
 #if VULKAN_SDK
@@ -32,7 +32,6 @@ RenderCapabilities RHICapabilities::GetCapabilities() noexcept
 
 	return capabilities;
 }
-
 } // namespace Renderer
 } // namespace hbe
 
@@ -40,7 +39,6 @@ RenderCapabilities RHICapabilities::GetCapabilities() noexcept
 
 namespace hbe
 {
-
 void RHICapabilitiesTest::Prepare()
 {
 	AddTest("IsVulkanSupported", [](auto& ls)
@@ -76,6 +74,7 @@ void RHICapabilitiesTest::Prepare()
 			// No loader, no ICD, or an incompatible driver - a legitimate environment (headless
 			// CI, a machine without MoltenVK), so there is nothing to compare against.
 			ls << "no Vulkan device available; query skipped";
+
 			return;
 		}
 
@@ -115,7 +114,6 @@ void RHICapabilitiesTest::Prepare()
 		Assert(std::strcmp(first.deviceName, second.deviceName) == 0, "Two probes must agree on the device name");
 	});
 }
-
 } // namespace hbe
 
 #endif

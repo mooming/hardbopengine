@@ -64,6 +64,5 @@ void RendererTest::Prepare()
 		log << "null-window round trip is a safe no-op";
 	});
 }
-
 } // namespace hbe
 #endif // __UNIT_TEST__

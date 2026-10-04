@@ -7,9 +7,9 @@
 #include "Config/BuildConfig.h"
 #include "RenderCapabilities.h"
 
+
 namespace hbe::Renderer
 {
-
 /// @brief Translate one Vulkan physical device into the API-neutral capability descriptor.
 /// @details The single place that knows Vulkan's spelling of a capability. Backends are chosen
 ///          by macros at compile time, the way OSAL does it: one neutral RenderCapabilities
@@ -29,5 +29,4 @@ void FillRenderCapabilities(VkPhysicalDevice physicalDevice, RenderCapabilities&
 /// @param outCapabilities Filled in; isDeviceQueried stays false when nothing could be probed.
 /// @return True when a device answered, false when Vulkan is unavailable here.
 bool QueryDefaultDeviceCapabilities(RenderCapabilities& outCapabilities) noexcept;
-
 } // namespace hbe::Renderer

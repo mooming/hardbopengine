@@ -5,11 +5,11 @@
 #include "Config/BuildConfig.h"
 #include "RenderCapabilities.h"
 
+
 namespace hbe
 {
 namespace Renderer
 {
-
 /// @brief Answers RHI questions before a renderer exists, without committing callers to a backend.
 /// @details The renderer is the authority once it owns a device - VulkanRenderer queries the
 ///          device it actually picked and caches the result, which is both cheaper and more
@@ -25,7 +25,6 @@ public:
 	/// @return A descriptor whose isDeviceQueried is false when nothing could be probed.
 	[[nodiscard]] static RenderCapabilities GetCapabilities() noexcept;
 };
-
 } // namespace Renderer
 } // namespace hbe
 
@@ -35,7 +34,6 @@ public:
 
 namespace hbe
 {
-
 class RHICapabilitiesTest : public TestCollection
 {
 public:
@@ -47,7 +45,6 @@ public:
 protected:
 	void Prepare() override;
 };
-
 } // namespace hbe
 
 #endif

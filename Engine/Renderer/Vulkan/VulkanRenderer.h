@@ -10,11 +10,11 @@
 #include "OSAL/Window.h"
 #include "RenderCapabilities.h"
 
+
 namespace hbe
 {
 namespace Renderer
 {
-
 /// @brief Single vertex: position (vec3) + normal (vec3), 24 bytes, tightly packed.
 struct MeshVertex
 {
@@ -168,6 +168,5 @@ private:
 	float viewMat[16];
 	float projMat[16];
 };
-
 } // namespace Renderer
 } // namespace hbe

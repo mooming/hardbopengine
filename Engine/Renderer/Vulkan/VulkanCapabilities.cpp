@@ -7,12 +7,11 @@
 
 #include "Log/Logger.h"
 
+
 namespace hbe::Renderer
 {
-
 namespace
 {
-
 constexpr uint32_t MaxInstanceExtensionProbe = 64;
 
 DeviceType ToDeviceType(VkPhysicalDeviceType type) noexcept
@@ -72,7 +71,6 @@ bool HasInstanceExtension(const char* extensionName) noexcept
 
 	return false;
 }
-
 } // namespace
 
 void FillRenderCapabilities(VkPhysicalDevice physicalDevice, RenderCapabilities& outCapabilities) noexcept
@@ -85,6 +83,7 @@ void FillRenderCapabilities(VkPhysicalDevice physicalDevice, RenderCapabilities&
 	if (physicalDevice == VK_NULL_HANDLE)
 	{
 		log.OutError("Error: cannot query capabilities from a null physical device; leaving capabilities unqueried");
+
 		return;
 	}
 
@@ -194,6 +193,7 @@ bool QueryDefaultDeviceCapabilities(RenderCapabilities& outCapabilities) noexcep
 			ls << "Warning: no Vulkan instance for the capability probe (VkResult=" << static_cast<int>(createResult)
 			   << "); capabilities stay unqueried";
 		});
+
 		return false;
 	}
 
@@ -206,7 +206,9 @@ bool QueryDefaultDeviceCapabilities(RenderCapabilities& outCapabilities) noexcep
 			ls << "Warning: Vulkan exposed no physical device (VkResult=" << static_cast<int>(countResult)
 			   << ", count=" << deviceCount << "); capabilities stay unqueried";
 		});
+
 		vkDestroyInstance(instance, nullptr);
+
 		return false;
 	}
 
@@ -230,7 +232,7 @@ bool QueryDefaultDeviceCapabilities(RenderCapabilities& outCapabilities) noexcep
 	}
 
 	vkDestroyInstance(instance, nullptr);
+
 	return outCapabilities.isDeviceQueried;
 }
-
 } // namespace hbe::Renderer

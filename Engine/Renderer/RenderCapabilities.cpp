@@ -2,9 +2,9 @@
 
 #include "RenderCapabilities.h"
 
+
 namespace hbe::Renderer
 {
-
 /// @brief Builds an "unknown" descriptor: nothing queried, nothing supported, no limits.
 /// @details Every field is zeroed on purpose. An unqueried descriptor must never look like a
 ///          real one - the previous revision shipped 4096/16/16 and supportsTessellation=false
@@ -60,5 +60,4 @@ RenderCapabilities::RenderCapabilities()
 	, timestampPeriodNanoseconds(0.0f)
 {
 }
-
 } // namespace hbe::Renderer

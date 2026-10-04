@@ -8,9 +8,9 @@
 
 #include "Config/BuildConfig.h"
 
+
 namespace hbe::Renderer
 {
-
 /// @brief What kind of physical device the driver is driving, in API-neutral terms.
 enum class DeviceType : uint8_t
 {
@@ -185,5 +185,4 @@ public:
 /// @brief The descriptor is passed by value and copied out of the backend adapter, so it
 ///        must stay a plain, trivially copyable type with no ownership inside it.
 static_assert(std::is_trivially_copyable_v<RenderCapabilities>, "RenderCapabilities must stay trivially copyable");
-
 } // namespace hbe::Renderer

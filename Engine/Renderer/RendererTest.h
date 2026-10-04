@@ -7,7 +7,6 @@
 
 namespace hbe
 {
-
 class RendererTest final : public TestCollection
 {
 public:
@@ -16,7 +15,6 @@ public:
 protected:
 	void Prepare() override;
 };
-
 } // namespace hbe
 
 #endif // __UNIT_TEST__
