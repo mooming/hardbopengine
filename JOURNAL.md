@@ -1,5 +1,40 @@
 # Journal
 
+## 2026-10-04 19:40 — Container judgement review: 55 findings, and four of them are defects not style
+
+**Context.** The owner chose the judgement review before the fix cycle, so this pass edited nothing: 20
+files read in full, two slicings, every citation resolved by `verify-findings.py` (38/38 in the pair pass,
+17/17 in the budget pass), `review_merge.py` folding **55 findings into 55 unique**, confidence 20 high /
+32 medium / 3 low, and **7 of 20 files clean** — all six remaining `.cpp` files plus `Queue.cpp`.
+
+**Independence, stated rather than implied.** Both tracks came from one session. The skill says plainly that
+a session reading its own earlier findings is not a second reviewer, so the **corroboration count of 0 is
+the honest number to read here, not a signal of disagreement**: the two tracks cited different sites (the
+pair pass saw a getter's whole contract, the budget pass counted module-wide shapes), and a merger that
+deduplicates on exact `(file, line, rule)` cannot see two findings that agree while pointing at different
+lines.
+
+**Four findings are behaviour, not standards, and they are escalated rather than fixed.** A standards cycle
+must not repair them silently, because `prove_format.py` proves a reorder moved no code, and these are code.
+
+| Defect | Site | What it does |
+|---|---|---|
+| `LinkedList` leaves a dangling `tail` | `LinkedList.h:325` | `RemoveNode` uses `if (node == head) … else if (node == tail)`, so removing the only node — which is both — takes the first branch and leaves `tail` holding the address `Unlink` is about to free. `Clear()` therefore ends with `head == nullptr` and `tail` dangling, which trips `IsEmpty`'s own `Assert(head != nullptr || head == tail)`, and a following `Add` walks a freed node. No test covers `Clear()` followed by `Add`. |
+| `LinkedList` move-assign leaks | `LinkedList.h:131` | overwrites `head`/`tail` without releasing the nodes it owned; `Deque`, `Vector` and `Map` all release or swap first. |
+| `Deque::begin`/`end` walk off the buffer | `Deque.h:73`, `:78` | returns `&data[head]` and `&data[head + count]` for a ring whose elements live at `WrapIndex(head + i)`; with `head=2, count=3` in a capacity-4 buffer the real slots are 2,3,0 and the range reads 2,3,4. Proved by arithmetic — a `Deque` iterator type cannot be built from a raw pointer at all. No test iterates a `Deque`. |
+| `BoundedPriorityQueue` indexes out of bounds | `BoundedPriorityQueue.h:106` | `item.priority` becomes an index into `std::array` of `MaxPriority` with no range test, so any `MaxPriority` below 256 turns a larger byte into an out-of-bounds write. The default of 256 hides it. |
+
+The rest is the standards surface the layout and docs commits will carry: `explicit` on the two
+`initializer_list` constructors (`Vector.h:42`, `Array.h:71` — `explicit` on `Vector`'s forces one edit in
+`Vector.cpp`'s `Vector<int> v = {1, 2, 3, 4, 5};`), `ConstIterator` aliasing the mutable iterator in `Map` and
+`LinkedList`, `void operator++()` on `LinkedList::Iterator`, 8 getter families missing `[[nodiscard]]`, 4
+parameter/member name collisions, and 44 message-less asserts reduced to one reported pattern because 44
+rows would have buried the four defects above.
+
+**Two rules came back zero, which is a result.** Unit-test guard placement: 20 of 20 files carry exactly one
+`#ifdef __UNIT_TEST__` region and it is at the end of the file. `m_` prefix and snake_case members: none.
+The seven clean files are all translation units — `Array.cpp`, `Deque.cpp`, `HashMap.cpp`, `Map.cpp`, `Queue.cpp`, `RingQueue.cpp` and `Vector.cpp` — and every one of the 55 findings sits in a header or in one of the three test bodies that carry real logic.
+
 ## 2026-10-04 18:47 — Container cycle opens; the compiler on this machine was refusing every build
 
 **Context.** The owner asked for hb-standards on `Engine/Container`. Measuring it the first time produced a

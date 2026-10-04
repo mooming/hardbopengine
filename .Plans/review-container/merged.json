@@ -1,0 +1,717 @@
+[
+ {
+  "file": "Engine/Container/Array.h",
+  "line": 67,
+  "rule": "unmapped: unmapped: missing include",
+  "evidence": "new (&data[i]) Element();",
+  "why": "Array.h constructs and destroys elements in place and names neither <new> nor anything that promises it.",
+  "fix": "Add #include <new> above <initializer_list>.",
+  "confidence": "high",
+  "tracks": [
+   "budget"
+  ],
+  "corroborated": false
+ },
+ {
+  "file": "Engine/Container/Array.h",
+  "line": 71,
+  "rule": "rule 3 explicit ctor missing",
+  "evidence": "Array(std::initializer_list<Element> list)",
+  "why": "Same shape as Vector: one argument, no explicit, so an initializer list converts implicitly wherever an Array is expected.",
+  "fix": "Add explicit; Array.cpp's two Array<int> array({0, 1, ...}) calls already name the object and keep compiling.",
+  "confidence": "high",
+  "tracks": [
+   "pair"
+  ],
+  "corroborated": false
+ },
+ {
+  "file": "Engine/Container/AtomicStackView.cpp",
+  "line": 125,
+  "rule": "unmapped: unmapped: wrong object",
+  "evidence": "values.reserve(5);",
+  "why": "threads is the container about to receive five threads per round; this reserves capacity on values, the 1000-node payload vector, instead.",
+  "fix": "Change to threads.reserve(5).",
+  "confidence": "high",
+  "tracks": [
+   "pair"
+  ],
+  "corroborated": false
+ },
+ {
+  "file": "Engine/Container/AtomicStackView.h",
+  "line": 22,
+  "rule": "unmapped: unmapped: typo in user-visible text",
+  "evidence": "\"The speicified type is not always lock free on this platfrom.\");",
+  "why": "The static_assert message the engineer sees on a port miss reads speicified and platfrom.",
+  "fix": "Correct to \"The specified type is not always lock free on this platform.\"",
+  "confidence": "high",
+  "tracks": [
+   "pair"
+  ],
+  "corroborated": false
+ },
+ {
+  "file": "Engine/Container/AtomicStackView.h",
+  "line": 45,
+  "rule": "rule 2 nodiscard missing",
+  "evidence": "T* Pop() noexcept",
+  "why": "Pop hands over ownership of a node the caller must release; discarding the return is a leak, not a no-op.",
+  "fix": "Mark it [[nodiscard]]; RingQueue's Pop and HashMap's/Map's Insert share the reasoning.",
+  "confidence": "high",
+  "tracks": [
+   "pair"
+  ],
+  "corroborated": false
+ },
+ {
+  "file": "Engine/Container/BoundedPriorityQueue.h",
+  "line": 106,
+  "rule": "rule 6 pointer not validated",
+  "evidence": "const auto priority = static_cast<std::size_t>(item.priority);",
+  "why": "priority indexes buckets, a std::array of MaxPriority, with no range test; any MaxPriority below 256 makes a bigger byte an out-of-bounds write.",
+  "fix": "FatalAssert(priority < MaxPriority, ...) in AcquireBucket, which is where the index is actually formed, and say so on the class page.",
+  "confidence": "high",
+  "tracks": [
+   "pair"
+  ],
+  "corroborated": false
+ },
+ {
+  "file": "Engine/Container/Deque.h",
+  "line": 73,
+  "rule": "rule 6 pointer not validated",
+  "evidence": "return &data[head];",
+  "why": "begin() is the same linear assumption: with head=2 and count=3 in a capacity-4 buffer the real slots are 2,3,0, and this pointer reads 2,3,4.",
+  "fix": "Fix it together with end(); no test iterates a Deque today, which is why it has never been seen.",
+  "confidence": "high",
+  "tracks": [
+   "pair"
+  ],
+  "corroborated": false
+ },
+ {
+  "file": "Engine/Container/Deque.h",
+  "line": 78,
+  "rule": "rule 6 pointer not validated",
+  "evidence": "return &data[head + count];",
+  "why": "end() is a linear pointer past head+count, but a Deque stores its elements at WrapIndex(head+i), so once the ring wraps the range walks off the end of the buffer.",
+  "fix": "Either make Iterator a Deque iterator that carries head and index like HashMap does, or delete begin/end until someone does.",
+  "confidence": "high",
+  "tracks": [
+   "pair"
+  ],
+  "corroborated": false
+ },
+ {
+  "file": "Engine/Container/LinkedList.cpp",
+  "line": 19,
+  "rule": "rule 8 magic number",
+  "evidence": "constexpr int COUNT = CountBase * 16;",
+  "why": "COUNT and COUNT2 are UPPER_SNAKE constants; the rule says constants are PascalCase and the rest of the module obeys it (CountBase, NumItems).",
+  "fix": "Rename to Count and CountRepeat, or better NumNodes and NumPasses, which say what the numbers are.",
+  "confidence": "high",
+  "tracks": [
+   "pair"
+  ],
+  "corroborated": false
+ },
+ {
+  "file": "Engine/Container/LinkedList.cpp",
+  "line": 130,
+  "rule": "unmapped: unmapped: duplicate test name",
+  "evidence": "AddTest(\"Growth and Iteration\", [this](auto& ls)",
+  "why": "Two different tests register under the identical name, so one result cannot be told from the other in the log the suite exists to produce.",
+  "fix": "Name the second \"Iteration cost\"; the first is insertion, this one is repeated traversal.",
+  "confidence": "high",
+  "tracks": [
+   "pair"
+  ],
+  "corroborated": false
+ },
+ {
+  "file": "Engine/Container/LinkedList.h",
+  "line": 82,
+  "rule": "unmapped: unmapped: iterator contract",
+  "evidence": "void operator++() noexcept",
+  "why": "Prefix ++ returns void, so *it++ and every std algorithm that needs Iterator& breaks, while the range-for that works hides it.",
+  "fix": "Return Iterator& like Map::Iterator and HashMap::Iterator already do.",
+  "confidence": "high",
+  "tracks": [
+   "pair"
+  ],
+  "corroborated": false
+ },
+ {
+  "file": "Engine/Container/LinkedList.h",
+  "line": 103,
+  "rule": "unmapped: unmapped: const correctness",
+  "evidence": "using ConstIterator = Iterator;",
+  "why": "ConstIterator is an alias for the mutable iterator, so a const LinkedList hands out TType& through begin() const and an element can be written through a const view.",
+  "fix": "Give ConstIterator a const Node* and return const TType&, the way HashMap already does.",
+  "confidence": "high",
+  "tracks": [
+   "pair"
+  ],
+  "corroborated": false
+ },
+ {
+  "file": "Engine/Container/LinkedList.h",
+  "line": 131,
+  "rule": "rule 4 = default for trivial member",
+  "evidence": "Node* tmpHead = rhs.head;",
+  "why": "Move assignment overwrites head and tail without releasing the nodes it already owned, so every element and node of the old list leaks.",
+  "fix": "Call Clear() first, or delegate to a swap the way Deque and Vector do, so the source releases the destination's old nodes.",
+  "confidence": "high",
+  "tracks": [
+   "pair"
+  ],
+  "corroborated": false
+ },
+ {
+  "file": "Engine/Container/LinkedList.h",
+  "line": 174,
+  "rule": "rule 6 pointer not validated",
+  "evidence": "return head == nullptr;",
+  "why": "IsEmpty's own Assert says a null head implies a null tail, which is exactly what Clear leaves broken: head is null, tail is the freed node.",
+  "fix": "Fixing RemoveNode restores it; until then Clear() followed by any IsEmpty() call trips the assert in Dev.",
+  "confidence": "high",
+  "tracks": [
+   "pair"
+  ],
+  "corroborated": false
+ },
+ {
+  "file": "Engine/Container/LinkedList.h",
+  "line": 325,
+  "rule": "rule 6 pointer not validated",
+  "evidence": "if (node == head)",
+  "why": "RemoveNode updates only one of head and tail: a node that is both head and tail takes the first branch, so tail keeps the address Unlink is about to free.",
+  "fix": "Make the two tests independent ifs, and set tail to node->previous in the second; head becomes nullptr when next is, so tail must too.",
+  "confidence": "high",
+  "tracks": [
+   "pair"
+  ],
+  "corroborated": false
+ },
+ {
+  "file": "Engine/Container/LinkedList.h",
+  "line": 353,
+  "rule": "rule 7 static_assert missing",
+  "evidence": "return reinterpret_cast<Node*>(&element);",
+  "why": "GetNodeOf recovers the node from the payload address, which is only correct while value sits at offset 0, and nothing enforces that.",
+  "fix": "Add static_assert(offsetof(LinkedListNode<TType>, value) == 0) so the cast cannot silently outlive the layout it depends on.",
+  "confidence": "high",
+  "tracks": [
+   "pair"
+  ],
+  "corroborated": false
+ },
+ {
+  "file": "Engine/Container/Map.h",
+  "line": 85,
+  "rule": "unmapped: unmapped: const correctness",
+  "evidence": "using ConstIterator = Iterator;",
+  "why": "ConstIterator names the mutable iterator, so Find and begin on a const Map return an iterator whose operator* yields Pair&.",
+  "fix": "Give ConstIterator a const Pair* like HashMap::ConstIterator already does; the alias is one line and the const overloads need no change.",
+  "confidence": "high",
+  "tracks": [
+   "pair"
+  ],
+  "corroborated": false
+ },
+ {
+  "file": "Engine/Container/RingQueue.h",
+  "line": 111,
+  "rule": "rule 2 nodiscard missing",
+  "evidence": "TElement Pop() noexcept",
+  "why": "Unlike Queue::Pop, this Pop returns the item it removed; dropping it destroys the element and the reader has no clue.",
+  "fix": "Mark it, and Front, Back and operator[] while the file is open.",
+  "confidence": "high",
+  "tracks": [
+   "pair"
+  ],
+  "corroborated": false
+ },
+ {
+  "file": "Engine/Container/Vector.h",
+  "line": 42,
+  "rule": "rule 3 explicit ctor missing",
+  "evidence": "Vector(std::initializer_list<TElement> list)",
+  "why": "A single-argument constructor without explicit, so Vector<int> v = {1, 2}; and any TElement converts to a Vector at an argument list.",
+  "fix": "Add explicit; Vector.cpp's \"Vector<int> v = {1, 2, 3, 4, 5};\" is the one call site that must become brace-initialisation of a named object.",
+  "confidence": "high",
+  "tracks": [
+   "pair"
+  ],
+  "corroborated": false
+ },
+ {
+  "file": "Engine/Container/Vector.h",
+  "line": 167,
+  "rule": "unmapped: unmapped: missing include",
+  "evidence": "new (&data[count]) TElement(value);",
+  "why": "Placement new appears 26 times across six of these headers, no file in Engine/Container includes <new>, and a probe that includes only Vector.h still compiles - so the declaration is arriving transitively from libc++ rather than from anything the file declares.",
+  "fix": "Add #include <new> to Vector.h, Deque.h, Array.h, Map.h, HashMap.h and RingQueue.h, which are the six that use it.",
+  "confidence": "high",
+  "tracks": [
+   "budget"
+  ],
+  "corroborated": false
+ },
+ {
+  "file": "Engine/Container/Array.h",
+  "line": 10,
+  "rule": "unmapped: unmapped: unused include",
+  "evidence": "#include \"Memory/Memory.h\"",
+  "why": "Array.h calls allocator.allocate and allocator.deallocate, which DefaultAllocator.h defines; the New/Delete helpers Memory.h names appear nowhere in the file.",
+  "fix": "Delete the include, or use New<> and Delete<> the way LinkedList.h does, which is the house idiom for an allocator-constructed object.",
+  "confidence": "medium",
+  "tracks": [
+   "budget"
+  ],
+  "corroborated": false
+ },
+ {
+  "file": "Engine/Container/Array.h",
+  "line": 32,
+  "rule": "rule 6 pointer not validated",
+  "evidence": "return &data[0];",
+  "why": "An empty Array holds data == nullptr, and &data[0] on a null pointer is undefined behaviour the optimiser is entitled to use.",
+  "fix": "Return data and data + length, which are the same pointers without the indexed lvalue.",
+  "confidence": "medium",
+  "tracks": [
+   "pair"
+  ],
+  "corroborated": false
+ },
+ {
+  "file": "Engine/Container/Array.h",
+  "line": 163,
+  "rule": "unmapped: unmapped: signature asymmetry",
+  "evidence": "void Swap(Array&& rhs) noexcept",
+  "why": "Array::Swap takes an rvalue while Deque, Vector, RingQueue and Map take an lvalue reference, so a.Swap(b) does not compile and Clear() has to construct a temporary to express the same thing.",
+  "fix": "Take Array& like its four siblings, and let Clear() pass a named empty Array.",
+  "confidence": "medium",
+  "tracks": [
+   "budget"
+  ],
+  "corroborated": false
+ },
+ {
+  "file": "Engine/Container/Array.h",
+  "line": 175,
+  "rule": "rule 2 nodiscard missing",
+  "evidence": "TIndex GetIndex(const Element& element) const noexcept",
+  "why": "GetIndex answers a question about position and is the only query in the class without [[nodiscard]].",
+  "fix": "Mark it, and the pair of ToRawArray already are the pattern to follow.",
+  "confidence": "medium",
+  "tracks": [
+   "pair"
+  ],
+  "corroborated": false
+ },
+ {
+  "file": "Engine/Container/AtomicStackView.cpp",
+  "line": 24,
+  "rule": "rule 5 parameter naming",
+  "evidence": "TNode(const T& value)",
+  "why": "The parameter value names the member it initialises, which is the collision the in prefix exists to remove.",
+  "fix": "Rename the parameter inValue in both constructors.",
+  "confidence": "medium",
+  "tracks": [
+   "pair"
+  ],
+  "corroborated": false
+ },
+ {
+  "file": "Engine/Container/AtomicStackView.h",
+  "line": 27,
+  "rule": "unmapped: unmapped: dead code",
+  "evidence": "using ConstIterator = const T*;",
+  "why": "Iterator and ConstIterator are declared and never used: nothing outside this header even names AtomicStackView except MemoryManager's proxyPool.",
+  "fix": "Delete both aliases, or add the begin/end pair that would make them an iterator.",
+  "confidence": "medium",
+  "tracks": [
+   "pair"
+  ],
+  "corroborated": false
+ },
+ {
+  "file": "Engine/Container/AtomicStackView.h",
+  "line": 52,
+  "rule": "rule 6 pointer not validated",
+  "evidence": "while (!top.compare_exchange_weak(node, node->next, std::memory_order_release, std::memory_order_relaxed))",
+  "why": "node->next is read from a node a concurrent Pop may already have taken, so a recycler that frees a popped node turns this into a use-after-free.",
+  "fix": "State the lifetime contract on the class page - nodes must outlive their stay in the view - and consider a tagged pointer or counted head before any owner recycles one.",
+  "confidence": "medium",
+  "tracks": [
+   "pair"
+  ],
+  "corroborated": false
+ },
+ {
+  "file": "Engine/Container/BoundedPriorityQueue.cpp",
+  "line": 7,
+  "rule": "unmapped: unmapped: unused include",
+  "evidence": "#include <chrono>",
+  "why": "No std::chrono name appears in the file; the timings come from time::TDuration and time::ScopedTime in Core/ScopedTime.h.",
+  "fix": "Delete the include and let the build gate confirm it.",
+  "confidence": "medium",
+  "tracks": [
+   "pair"
+  ],
+  "corroborated": false
+ },
+ {
+  "file": "Engine/Container/BoundedPriorityQueue.cpp",
+  "line": 28,
+  "rule": "rule 3 explicit ctor missing",
+  "evidence": "TestItem(uint8_t p, bool f = false, uint8_t t = 0)",
+  "why": "Callable with one argument, so a bare uint8_t converts to a TestItem anywhere one is expected; p, f and t also say nothing.",
+  "fix": "Add explicit and name the parameters inPriority, inFinished and inTag.",
+  "confidence": "medium",
+  "tracks": [
+   "pair"
+  ],
+  "corroborated": false
+ },
+ {
+  "file": "Engine/Container/BoundedPriorityQueue.h",
+  "line": 31,
+  "rule": "rule 7 static_assert missing",
+  "evidence": "using TBucket = Deque<T>;",
+  "why": "The class documentation demands a uint8_t priority and HasFinished() on T, yet nothing checks either, and HasFinished is never called in this header.",
+  "fix": "Add a requires clause or static_assert for priority, and drop the HasFinished sentence from the contract since Remove takes a predicate instead.",
+  "confidence": "medium",
+  "tracks": [
+   "pair"
+  ],
+  "corroborated": false
+ },
+ {
+  "file": "Engine/Container/BoundedPriorityQueue.h",
+  "line": 160,
+  "rule": "rule 8 magic number",
+  "evidence": "using TPredicate = bool (*)(const T&);",
+  "why": "The type alias sits between Pop and Remove, in the middle of the public function block, where the twelve-block table wants types first.",
+  "fix": "Move it to the type block at the top, beside TBucket and TBuckets; layout.py already reports it.",
+  "confidence": "medium",
+  "tracks": [
+   "pair"
+  ],
+  "corroborated": false
+ },
+ {
+  "file": "Engine/Container/Deque.h",
+  "line": 185,
+  "rule": "rule 1 log-before-failing",
+  "evidence": "FatalAssert(!IsEmpty());",
+  "why": "44 asserts in these ten headers fire with no message, so a failed PopFront prints only a file and line, and the reader cannot tell empty-from-uninitialized from emptied.",
+  "fix": "Give every bounds and empty assert a one-clause message, as RingQueue's \"RingQueue is full\" already does; the module already carries the pattern.",
+  "confidence": "medium",
+  "tracks": [
+   "budget"
+  ],
+  "corroborated": false
+ },
+ {
+  "file": "Engine/Container/Deque.h",
+  "line": 267,
+  "rule": "rule 6 pointer not validated",
+  "evidence": "auto* newData = allocator.allocate(newSize);",
+  "why": "The allocation result is placed-new'd two lines later without a null test; on failure this writes through nullptr.",
+  "fix": "Validate and log before use, module-wide: Vector.h Reserve, Map.h Grow, HashMap.h Rehash and RingQueue's constructor share the shape.",
+  "confidence": "medium",
+  "tracks": [
+   "pair"
+  ],
+  "corroborated": false
+ },
+ {
+  "file": "Engine/Container/HashMap.h",
+  "line": 18,
+  "rule": "unmapped: unmapped: missing include",
+  "evidence": "enum class EHashEntryState : uint8_t",
+  "why": "uint8_t is named here and <cstdint> is not among the four standard includes; it reaches the file through DefaultAllocator.h today.",
+  "fix": "Add #include <cstdint> to the standard block, above <cstddef>.",
+  "confidence": "medium",
+  "tracks": [
+   "pair"
+  ],
+  "corroborated": false
+ },
+ {
+  "file": "Engine/Container/HashMap.h",
+  "line": 41,
+  "rule": "rule 9 class not final",
+  "evidence": "class Iterator",
+  "why": "HashMap::Iterator and HashMap::ConstIterator are both inheritable, and both reach callers through Find and begin.",
+  "fix": "Mark both final.",
+  "confidence": "medium",
+  "tracks": [
+   "budget"
+  ],
+  "corroborated": false
+ },
+ {
+  "file": "Engine/Container/HashMap.h",
+  "line": 52,
+  "rule": "rule 5 parameter naming",
+  "evidence": "explicit Iterator(TMap* map, TIndex index) noexcept",
+  "why": "Both parameters name the members they initialise, so the initializer list reads map(map), index(index) in two of the module's iterators.",
+  "fix": "Rename to inMap and inIndex in Iterator and ConstIterator.",
+  "confidence": "medium",
+  "tracks": [
+   "budget"
+  ],
+  "corroborated": false
+ },
+ {
+  "file": "Engine/Container/HashMap.h",
+  "line": 310,
+  "rule": "rule 2 nodiscard missing",
+  "evidence": "bool Insert(const TKey& key, const TValue& value)",
+  "why": "The same dropped-result surface as Map: Insert, Remove and operator[] all answer a question the caller can ignore.",
+  "fix": "Mark them [[nodiscard]] together with Map's, so the two associative containers carry the same contract.",
+  "confidence": "medium",
+  "tracks": [
+   "pair"
+  ],
+  "corroborated": false
+ },
+ {
+  "file": "Engine/Container/LinkedList.h",
+  "line": 7,
+  "rule": "unmapped: unmapped: missing include",
+  "evidence": "#include \"Core/Debug.h\"",
+  "why": "The file returns and counts with Index, which Core/Types.h names, without including it; today it arrives through Memory.h.",
+  "fix": "Add #include \"Core/Types.h\" to the standard block's project neighbour list.",
+  "confidence": "medium",
+  "tracks": [
+   "pair"
+  ],
+  "corroborated": false
+ },
+ {
+  "file": "Engine/Container/LinkedList.h",
+  "line": 71,
+  "rule": "rule 9 class not final",
+  "evidence": "class Iterator",
+  "why": "LinkedList::Iterator is the fourth unsealed iterator; 30 of the engine's 61 TestCollection subclasses already carry final, so sealing is the house position, not a new rule.",
+  "fix": "Mark it final.",
+  "confidence": "medium",
+  "tracks": [
+   "budget"
+  ],
+  "corroborated": false
+ },
+ {
+  "file": "Engine/Container/LinkedList.h",
+  "line": 77,
+  "rule": "rule 5 parameter naming",
+  "evidence": "Iterator(Node* node) noexcept",
+  "why": "node(node) again, and this iterator is the one the module's own range-for depends on.",
+  "fix": "Rename the parameter inNode.",
+  "confidence": "medium",
+  "tracks": [
+   "budget"
+  ],
+  "corroborated": false
+ },
+ {
+  "file": "Engine/Container/LinkedList.h",
+  "line": 267,
+  "rule": "rule 2 nodiscard missing",
+  "evidence": "bool FindAndRemove(const TType& value) noexcept",
+  "why": "FindAndRemove reports whether anything was removed and the caller can drop that on the floor, which is the silent failure the rule exists for.",
+  "fix": "Mark it [[nodiscard]], and Add/AddLast/AddNext/AddPrevious whose TType& return exists to be used.",
+  "confidence": "medium",
+  "tracks": [
+   "pair"
+  ],
+  "corroborated": false
+ },
+ {
+  "file": "Engine/Container/Map.h",
+  "line": 32,
+  "rule": "rule 9 class not final",
+  "evidence": "class Iterator",
+  "why": "The three nested iterators a module hands out are the classes a caller is most likely to derive from by accident, and none is sealed.",
+  "fix": "Mark Iterator and ConstIterator final; the module's own Pair and LinkedListNode already are.",
+  "confidence": "medium",
+  "tracks": [
+   "budget"
+  ],
+  "corroborated": false
+ },
+ {
+  "file": "Engine/Container/Map.h",
+  "line": 42,
+  "rule": "rule 5 parameter naming",
+  "evidence": "explicit Iterator(Pair* ptr) noexcept",
+  "why": "The parameter ptr names the member it initialises, which is the collision the in prefix exists to remove; the same shape is in all four nested iterators.",
+  "fix": "Rename to inPtr here, inNode in LinkedList.h, and inMap and inIndex in HashMap.h.",
+  "confidence": "medium",
+  "tracks": [
+   "budget"
+  ],
+  "corroborated": false
+ },
+ {
+  "file": "Engine/Container/Map.h",
+  "line": 195,
+  "rule": "rule 2 nodiscard missing",
+  "evidence": "bool Insert(const TKey& key, const TValue& value)",
+  "why": "Insert and Remove return whether the map changed and the result is dropped by the caller as easily as it is honoured.",
+  "fix": "Mark Insert (all three overloads), Remove and operator[] [[nodiscard]]; Map.cpp already depends on the value inside FatalAssert.",
+  "confidence": "medium",
+  "tracks": [
+   "pair"
+  ],
+  "corroborated": false
+ },
+ {
+  "file": "Engine/Container/Map.h",
+  "line": 348,
+  "rule": "rule 7 static_assert missing",
+  "evidence": "new (&entries[idx]) Pair{key, TValue{}};",
+  "why": "InsertSorted default-constructs a TValue and Insert then assigns into it, so TValue must be default-constructible and assignable while nothing says so and a caller learns it from a template error at a distance.",
+  "fix": "static_assert(std::is_default_constructible_v<TValue> && std::is_assignable_v<TValue&, const TValue&>) on the class, and write the requirement on the class page.",
+  "confidence": "medium",
+  "tracks": [
+   "budget"
+  ],
+  "corroborated": false
+ },
+ {
+  "file": "Engine/Container/Map.h",
+  "line": 379,
+  "rule": "rule 7 static_assert missing",
+  "evidence": "auto* raw = allocator.allocate(allocSize);",
+  "why": "A uint8_t block is reinterpret_cast to Pair* with nothing asserting the storage is aligned for Pair, so an over-aligned TValue would be constructed at a misaligned address.",
+  "fix": "static_assert on alignof(Pair) against the allocator's guarantee, or allocate through DefaultAllocator<Pair> like LinkedList does.",
+  "confidence": "medium",
+  "tracks": [
+   "pair"
+  ],
+  "corroborated": false
+ },
+ {
+  "file": "Engine/Container/Queue.h",
+  "line": 5,
+  "rule": "unmapped: unmapped: unused include",
+  "evidence": "#include <cstddef>",
+  "why": "Queue.h names no size_t, no nullptr_t and no std::nullptr_t; the header's whole vocabulary is Deque, FatalAssert and std::move.",
+  "fix": "Delete the include and let the build gate confirm it.",
+  "confidence": "medium",
+  "tracks": [
+   "budget"
+  ],
+  "corroborated": false
+ },
+ {
+  "file": "Engine/Container/Queue.h",
+  "line": 60,
+  "rule": "rule 2 nodiscard missing",
+  "evidence": "TElement& Front() noexcept",
+  "why": "Front and Back (both const and not, four functions) and Emplace return the element they exist to hand over, none marked.",
+  "fix": "Mark them [[nodiscard]]; Size and IsEmpty in the same class already are.",
+  "confidence": "medium",
+  "tracks": [
+   "pair"
+  ],
+  "corroborated": false
+ },
+ {
+  "file": "Engine/Container/RingQueue.h",
+  "line": 38,
+  "rule": "rule 6 pointer not validated",
+  "evidence": "data = alloc.allocate(pow2Capacity);",
+  "why": "The constructor stores the allocation without testing it, so a failed allocate leaves a queue that writes through nullptr on first Push.",
+  "fix": "Validate and log, in step with Deque::Reserve, Vector::Reserve, Map::Grow, HashMap::Rehash.",
+  "confidence": "medium",
+  "tracks": [
+   "pair"
+  ],
+  "corroborated": false
+ },
+ {
+  "file": "Engine/Container/Vector.h",
+  "line": 118,
+  "rule": "rule 2 nodiscard missing",
+  "evidence": "TElement& operator[](TIndex index)",
+  "why": "operator[], Front and Back return the element they were asked for and are not marked, so v[2]; compiles and silently does nothing.",
+  "fix": "Mark all six [[nodiscard]] like Size and Data already are; Queue.h, RingQueue.h, Deque.h and Array.h have the same gap.",
+  "confidence": "medium",
+  "tracks": [
+   "pair"
+  ],
+  "corroborated": false
+ },
+ {
+  "file": "Engine/Container/Vector.h",
+  "line": 203,
+  "rule": "rule 6 pointer not validated",
+  "evidence": "void Resize(TIndex newSize) noexcept",
+  "why": "A negative newSize takes the shrink branch and destroys data[newSize .. count), which is out of bounds on the low side; nothing rejects it.",
+  "fix": "FatalAssert(newSize >= 0, \"Vector::Resize needs a non-negative size\") first, and add the test the suite has none of.",
+  "confidence": "medium",
+  "tracks": [
+   "pair"
+  ],
+  "corroborated": false
+ },
+ {
+  "file": "Engine/Container/Vector.h",
+  "line": 217,
+  "rule": "rule 7 static_assert missing",
+  "evidence": "new (&data[i]) TElement();",
+  "why": "Resize is the one growth path that requires TElement to be default-constructible; every other path takes a value, so the requirement arrives only when someone calls Resize.",
+  "fix": "static_assert(std::is_default_constructible_v<TElement>) beside the class, or take a fill value in Resize's signature.",
+  "confidence": "medium",
+  "tracks": [
+   "budget"
+  ],
+  "corroborated": false
+ },
+ {
+  "file": "Engine/Container/HashMap.h",
+  "line": 407,
+  "rule": "rule 10 noexcept questionable",
+  "evidence": "void Reserve(TIndex newCapacity)",
+  "why": "Reserve is the only public mutator in the class without noexcept, and the Rehash it calls is marked; the omission is invisible to a caller choosing between Reserve and Grow.",
+  "fix": "Mark it noexcept, matching the rest of the file.",
+  "confidence": "low",
+  "tracks": [
+   "budget"
+  ],
+  "corroborated": false
+ },
+ {
+  "file": "Engine/Container/LinkedList.h",
+  "line": 194,
+  "rule": "unmapped: unmapped: duplicate precondition",
+  "evidence": "Assert(ContainsElement(element));",
+  "why": "Remove asserts the address-identity precondition and then calls GetNodeOf, which asserts the identical thing again; two copies of one contract is two places to update.",
+  "fix": "Keep the assert in GetNodeOf, where the cast lives, and drop the one in Remove.",
+  "confidence": "low",
+  "tracks": [
+   "budget"
+  ],
+  "corroborated": false
+ },
+ {
+  "file": "Engine/Container/Queue.h",
+  "line": 105,
+  "rule": "rule 9 class not final",
+  "evidence": "class QueueTest : public TestCollection",
+  "why": "None of the module's ten test fixtures is final, so the one class that can never be a base is declared as if it could.",
+  "fix": "Add final to all ten; Core's TaskRegistryTest and ResultPacketTest are the model.",
+  "confidence": "low",
+  "tracks": [
+   "budget"
+  ],
+  "corroborated": false
+ }
+]
