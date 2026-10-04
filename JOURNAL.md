@@ -1,5 +1,31 @@
 # Journal
 
+## 2026-10-04 20:57 — every local branch except `master` is deleted; the four unique commits survive only as loose objects
+
+**Context.** The owner asked for a single-branch tree, was shown that 4 of the 10 non-`master` branches each
+held one commit `master` cannot reach, and chose deletion without a backup tag. `git branch -D` removed all ten;
+the working tree was clean and nothing was stashed, so no uncommitted work moved.
+
+**The last pointer.** These objects are unreachable and `gc.pruneExpire` is at its default two weeks, so each is
+recoverable until roughly 2026-10-18 with `git branch <name> <sha>` and after that not at all.
+
+| Branch (deleted) | Commit | Subject |
+|---|---|---|
+| `add_glfw` | `c837385` | Added GLFW |
+| `engine_params` | `f5ca35f` | Fixed invalid unit tests of monotonic allocators |
+| `importance_resampling` | `c8e9b1a` | [Math] Monte Carlo Integration Algorithm |
+| `multipoolconfig` | `5b2cdfd` | Refactoring MultiPoolAllocatorConfig |
+| `refactoring` | `ee8ffd1` | Fixed warnings |
+| `revise_mm` | `5e3dea8` | temp — never had an upstream, existed only on this machine |
+| `snake_test` | `7f3ef33` | temp |
+| `statistics` | `935fc73` | System Statistics (WIP) |
+| `task_stream_affinity` | `bd21804` | Added TaskStreamAffinity |
+| `task_system_refactor2` | `dfa9425` | Task System Refactoring |
+
+Six of the ten were already merged into `master`, so those commits stay reachable and the table rows for them are
+deleted for the branch name only. The 7 `origin/*` branches were left untouched: deleting them reaches the shared
+remote, which this task did not cover.
+
 ## 2026-10-04 20:54 — the four Container defects close, and each new test was proved to catch its own bug
 
 **Context.** The owner chose fetch + rebase, then the four defects. The rebase moved `master` forward 3
