@@ -1,5 +1,43 @@
 # Journal
 
+## 2026-10-04 20:54 — the four Container defects close, and each new test was proved to catch its own bug
+
+**Context.** The owner chose fetch + rebase, then the four defects. The rebase moved `master` forward 3
+commits (`ffc74f7`) and replayed both Container commits cleanly except `JOURNAL.md`, where four new upstream
+entries and mine both claimed the top of the file; resolved newest-first, and `git diff --name-only
+0f48473..origin/master` confirmed no Container file moved, so every review citation still resolves.
+
+**The four fixes.**
+
+| Defect | Fix |
+|---|---|
+| `LinkedList` dangling `tail` | `RemoveNode` now tests `node == head` and `node == tail` as **two independent ifs** — the `else if` could never run for the node that is both. |
+| `LinkedList` move-assign leak | `operator=(LinkedList&&)` calls `Clear()` before taking ownership, the way `Deque` and `Vector` release first. |
+| `Deque::begin`/`end` left the buffer | `Iterator` and `ConstIterator` became real ring iterators holding `data`, `mask` and an absolute `index`, dereferencing `data[index & mask]`; a raw `TElement*` cannot express a wrapped range, so the aliases had to go. Nothing in the engine iterates a `Deque` today — `Queue` and `TaskStream` use only the front/back surface — so no caller depended on the pointer type. |
+| `BoundedPriorityQueue` bucket index | `AcquireBucket` asserts `priority < MaxPriority` where the index is actually formed, which covers both `Push` overloads; `Core/Debug.h` joined the preamble because that assert is now the file's own need. |
+
+**A test that has never failed is not evidence.** Each new test was run against the defect it targets, by
+re-injecting the old code into a scratch copy, rebuilding and reading the real output:
+
+| Negative control | Observed against the old code |
+|---|---|
+| `LinkedListTest TC5.Clear leaves no tail behind` | `Assert …/LinkedList.h:169 failed.` — `IsEmpty`'s own `head != nullptr \|\| head == tail` trap, and the whole suite died on `Trace/BPT trap: 5` at that testlet. |
+| `LinkedListTest TC6.Move assignment releases the nodes it owned` | `Move assignment released 0 node(s); it owed exactly 1, so the destination's old node leaked.` |
+| `DequeTest TC5.Iterate Across the Wrap` | `Iteration expected 5, got 2 at position 2.` — the linear iterator read slot 4 of a 4-slot buffer instead of slot 0. |
+| `BoundedPriorityQueueTest TC2` | no negative control is possible: the guard is a `FatalAssert`, so an out-of-range `Push` aborts the process rather than reporting. This test proves the validated path still serves all 8 levels. |
+
+**Gate.** `EngineTest` built in Dev, Debug and Release with `-test`, 0 `error:`, and ran **379 passes with one
+failure in each configuration — `WindowTest::TC0.Create Window`, the global-heap ceiling this journal already
+carries as an owner-declared separate issue** at six earlier entries. It is not this change's: OSAL references
+no Container header, and the diff lists six Container files.
+
+**Two things the checker caught on my own work.** The counting allocator's anonymous namespace opened with a
+blank line, which is rule **A4**, and `blank_lines.py` refused it — a new violation from the commit whose job
+was removing violations. And the `Deque` iterators add **2 rows to that file's existing twelve-block finding**
+(`Iterator` and `ConstIterator` now sit where the aliases sat, below `DefaultCapacity`): 9 → 11 in `Deque.h`,
+the same violation class the layout commit already has to fix, disclosed here rather than left to be
+discovered. `LinkedList.h` and `BoundedPriorityQueue.h` gained no findings.
+
 ## 2026-10-04 19:40 — Container judgement review: 55 findings, and four of them are defects not style
 
 **Context.** The owner chose the judgement review before the fix cycle, so this pass edited nothing: 20

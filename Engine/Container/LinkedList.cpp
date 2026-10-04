@@ -13,6 +13,32 @@
 
 namespace hbe
 {
+namespace
+{
+template <typename T>
+class CountingAllocator final
+{
+public:
+	using value_type = T;
+
+	inline static int allocateCount = 0;
+	inline static int deallocateCount = 0;
+
+	T* allocate(std::size_t n) noexcept
+	{
+		allocateCount += static_cast<int>(n);
+
+		return static_cast<T*>(::operator new(sizeof(T) * n));
+	}
+
+	void deallocate(T* ptr, std::size_t n) noexcept
+	{
+		deallocateCount += static_cast<int>(n);
+		::operator delete(ptr);
+	}
+};
+} // namespace
+
 void LinkedListTest::Prepare()
 {
 	constexpr int CountBase = 1024;
@@ -271,6 +297,91 @@ void LinkedListTest::Prepare()
 		}
 
 		ls << "Remove, AddNext and AddPrevious work on list-owned references." << lf;
+	});
+
+	AddTest("Clear leaves no tail behind", [this](auto& ls)
+	{
+		LinkedList<int> intList;
+		intList.Add(7);
+		intList.Clear();
+
+		if (!intList.IsEmpty())
+		{
+			ls << "Clear left a list that still reports content." << lferr;
+
+			return;
+		}
+
+		intList.Add(9);
+
+		if (intList.Count(9) != 1 || intList.Count(7) != 0)
+		{
+			ls << "Add after Clear wrote to the wrong list: count(9) = " << static_cast<int>(intList.Count(9))
+			   << ", count(7) = " << static_cast<int>(intList.Count(7)) << '.' << lferr;
+
+			return;
+		}
+
+		ls << "Add after Clear lands in an empty list with no tail to walk." << lf;
+	});
+
+	AddTest("Move assignment releases the nodes it owned", [this](auto& ls)
+	{
+		using Alloc = CountingAllocator<LinkedListNode<int>>;
+		using List = LinkedList<int, Alloc>;
+
+		Alloc::allocateCount = 0;
+		Alloc::deallocateCount = 0;
+
+		List destination;
+		destination.Add(1);
+
+		const int allocations = Alloc::allocateCount;
+		const int deallocations = Alloc::deallocateCount;
+
+		List source;
+		source.Add(2);
+
+		destination = std::move(source);
+
+		if (Alloc::deallocateCount != deallocations + 1)
+		{
+			ls << "Move assignment released " << Alloc::deallocateCount - deallocations
+			   << " node(s); it owed exactly 1, so the destination's old node leaked." << lferr;
+
+			return;
+		}
+
+		if (Alloc::allocateCount != allocations + 1)
+		{
+			ls << "Move assignment allocated " << Alloc::allocateCount - allocations << " node(s) instead of none."
+			   << lferr;
+
+			return;
+		}
+
+		int seen = 0;
+		for (const int value : destination)
+		{
+			if (value != 2)
+			{
+				ls << "Move assignment left " << value << " in the destination instead of 2." << lferr;
+
+				return;
+			}
+
+			++seen;
+		}
+
+		if (seen != 1 || !source.IsEmpty())
+		{
+			ls << "After the move the destination held " << seen << " node(s) and the source was "
+			   << (source.IsEmpty() ? "empty" : "not empty") << '.' << lferr;
+
+			return;
+		}
+
+		ls << "The displaced node is released exactly once." << lf;
 	});
 }
 } // namespace hbe

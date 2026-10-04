@@ -21,8 +21,90 @@ public:
 	static constexpr int DefaultCapacity = 4;
 
 	using TIndex = int;
-	using Iterator = TElement*;
-	using ConstIterator = const TElement*;
+
+	class Iterator final
+	{
+		TElement* data;
+		TIndex mask;
+		TIndex index;
+
+	public:
+		Iterator(TElement* inData, TIndex inMask, TIndex inIndex) noexcept
+			: data(inData)
+			, mask(inMask)
+			, index(inIndex)
+		{
+		}
+
+		TElement& operator*() const noexcept
+		{
+			return data[index & mask];
+		}
+
+		TElement* operator->() const noexcept
+		{
+			return &data[index & mask];
+		}
+
+		Iterator& operator++() noexcept
+		{
+			++index;
+
+			return *this;
+		}
+
+		bool operator==(const Iterator& rhs) const noexcept
+		{
+			return index == rhs.index;
+		}
+
+		bool operator!=(const Iterator& rhs) const noexcept
+		{
+			return index != rhs.index;
+		}
+	};
+
+	class ConstIterator final
+	{
+		const TElement* data;
+		TIndex mask;
+		TIndex index;
+
+	public:
+		ConstIterator(const TElement* inData, TIndex inMask, TIndex inIndex) noexcept
+			: data(inData)
+			, mask(inMask)
+			, index(inIndex)
+		{
+		}
+
+		const TElement& operator*() const noexcept
+		{
+			return data[index & mask];
+		}
+
+		const TElement* operator->() const noexcept
+		{
+			return &data[index & mask];
+		}
+
+		ConstIterator& operator++() noexcept
+		{
+			++index;
+
+			return *this;
+		}
+
+		bool operator==(const ConstIterator& rhs) const noexcept
+		{
+			return index == rhs.index;
+		}
+
+		bool operator!=(const ConstIterator& rhs) const noexcept
+		{
+			return index != rhs.index;
+		}
+	};
 
 	Deque() noexcept
 		: head(0)
@@ -70,22 +152,22 @@ public:
 
 	Iterator begin() noexcept
 	{
-		return &data[head];
+		return Iterator(data, mask, head);
 	}
 
 	Iterator end() noexcept
 	{
-		return &data[head + count];
+		return Iterator(data, mask, head + count);
 	}
 
 	ConstIterator begin() const noexcept
 	{
-		return &data[head];
+		return ConstIterator(data, mask, head);
 	}
 
 	ConstIterator end() const noexcept
 	{
-		return &data[head + count];
+		return ConstIterator(data, mask, head + count);
 	}
 
 	TElement& operator[](TIndex index)

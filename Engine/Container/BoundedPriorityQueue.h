@@ -8,6 +8,7 @@
 #include <utility>
 
 #include "Container/Deque.h"
+#include "Core/Debug.h"
 
 
 namespace hbe
@@ -38,6 +39,8 @@ class BoundedPriorityQueue final
 	/// @brief Get the deque for a priority, creating it on first use.
 	[[nodiscard]] TBucket& AcquireBucket(std::size_t priority) noexcept
 	{
+		FatalAssert(priority < MaxPriority, "BoundedPriorityQueue priority is not a bucket index");
+
 		auto& bucket = buckets[priority];
 		if (!bucket.has_value())
 		{

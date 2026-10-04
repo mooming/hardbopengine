@@ -128,14 +128,13 @@ public:
 
 	LinkedList& operator=(LinkedList&& rhs) noexcept
 	{
-		Node* tmpHead = rhs.head;
-		Node* tmpTail = rhs.tail;
+		Clear();
+
+		head = rhs.head;
+		tail = rhs.tail;
 
 		rhs.head = nullptr;
 		rhs.tail = nullptr;
-
-		head = tmpHead;
-		tail = tmpTail;
 
 		return *this;
 	}
@@ -326,7 +325,8 @@ private:
 		{
 			head = next;
 		}
-		else if (node == tail)
+
+		if (node == tail)
 		{
 			tail = node->previous;
 		}
