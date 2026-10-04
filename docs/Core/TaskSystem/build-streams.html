@@ -103,7 +103,7 @@
   </tr>
   <tr>
     <td>7</td>
-    <td><code>Logger::Get().SetLoggerStream(&amp;GetIOTaskStream())</code></td>
+    <td><code>Logger::Get().SetLoggerTaskStream_MainThread(&amp;GetIOTaskStream())</code></td>
     <td>The last statement, so the logger's thread cannot be handed a stream that is not yet constructed — and the reason
       <a href="initialize.html">Initialize</a> implies the logger is started after the task system</td>
   </tr>

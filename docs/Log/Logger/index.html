@@ -395,7 +395,7 @@
       it</em>. Withdrawal is therefore a lock acquisition: asking for the stream back blocks until whatever the driver
       thread was doing inside the stream has returned, which is the only way the task system can free its streams
       without this thread reading a freed one on a pass it had already started. See
-      <a href="set-logger-stream.html"><code>SetLoggerStream</code></a>
+      <a href="setloggertaskstreammainthread.html"><code>SetLoggerTaskStream_MainThread</code></a>
     </td>
   </tr>
   <tr>
@@ -532,8 +532,8 @@
     <td>Destination two: the engine console, through <code>Engine::ConsoleOutLn</code> — which is why draining needs an <code>Engine</code> to be alive</td>
   </tr>
   <tr>
-    <td><a href="set-logger-stream.html">SetLoggerStream</a></td>
-    <td class="sig">void SetLoggerStream(TaskStream* stream) noexcept</td>
+    <td><a href="setloggertaskstreammainthread.html">SetLoggerTaskStream_MainThread</a></td>
+    <td class="sig">void SetLoggerTaskStream_MainThread(TaskStream* stream) noexcept</td>
     <td>Install or withdraw the IO stream this logger's thread drives. The lock it takes is what makes withdrawal
       mean something: <code>nullptr</code> cannot land while a pass is in flight
     </td>

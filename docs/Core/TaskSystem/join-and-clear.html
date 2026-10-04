@@ -101,7 +101,7 @@ next one breaks without it.</p>
   </tr>
   <tr>
     <td>6</td>
-    <td><code>SetLoggerStream(nullptr)</code>, then <code>CloseDrivenStream()</code> on the IO stream and then the base
+    <td><code>SetLoggerTaskStream_MainThread(nullptr)</code>, then <code>CloseDrivenStream()</code> on the IO stream and then the base
       stream</td>
     <td>The driver thread outlives the task system, so each stream must be taken back from its driver before the streams
       are freed. After this the logger writes its queue directly, which keeps it working to the last line of the

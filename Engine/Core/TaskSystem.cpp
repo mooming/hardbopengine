@@ -237,7 +237,7 @@ void TaskSystem::JoinAndClear() noexcept
 
 		Logger::Get().Flush();
 
-		Logger::Get().SetLoggerStream(nullptr);
+		Logger::Get().SetLoggerTaskStream_MainThread(nullptr);
 		GetIOTaskStream().CloseDrivenStream();
 		baseStream.CloseDrivenStream();
 
@@ -798,7 +798,7 @@ void TaskSystem::BuildStreams()
 	}
 
 	auto& logger = Logger::Get();
-	logger.SetLoggerStream(&GetIOTaskStream());
+	logger.SetLoggerTaskStream_MainThread(&GetIOTaskStream());
 }
 } // namespace hbe
 

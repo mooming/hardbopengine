@@ -1,5 +1,43 @@
 # Journal
 
+## 2026-10-04 21:05 — the owner renamed `SetLoggerStream`; the review fixed one inverted guard, and a naming conflict is open
+
+**Cause.** The owner edited `Logger` directly: `SetLoggerStream` became `SetLoggerTaskStream_MainThread`, the
+pass-context `Assert` was removed as redundant, and the tail was rewritten with the project's `returnIf` macro.
+Asked to review and update the PR.
+
+**The assert removal is right, and for a reason the page now states.** My second check was justified at the time as
+a deadlock guard, and that justification was overstated: the thread that already holds `driverLock` is
+`driverThread`, which the main-thread check rejects on its own, so for the infinite hang the pair was one check too
+many. What the removal stops diagnosing is a different case — the main thread configuring while it drains the base
+stream, cross-waiting with a driver-thread pass — and that case is bounded, because every cross-wait the logger can
+make has a timeout (`WaitForFlush` 1000 ms, `StopTask` 1000 ms). Accepted, and
+`docs/Log/Logger/setloggertaskstreammainthread.html` now owns that reasoning under "What the check does not cover",
+which is a more honest title than the one it replaced.
+
+**The rewrite inverted the guard.** `returnIf(cond)` is `if (cond) return`, so `returnIf(stream == nullptr)`
+returns on withdrawal — and clearing `isRunning` is precisely what withdrawal needs. The new shape left the flag set
+after the drain task's stream was taken away, which is the condition the same page warns about in its own words:
+"leaving `isRunning` set would have every later `Flush` wait its full 1000 ms on an executor that no longer exists,
+then report the loss and assert", and it additionally cleared the flag on *install*, which is harmless today only
+because `Engine::Initialize` calls `taskSystem.Initialize()` at `Engine/Engine/Engine.cpp:106` and
+`logger.StartTask` at `:112`, in that order. Corrected to `returnIf(stream != nullptr)`. The suite does not cover
+this window, so the correction rests on the documented invariant rather than on a failing test — stated here because
+that is a weaker proof than a red testlet, and the next reader should know which one they are getting.
+
+**Open, and deliberately not mine to close: the name breaks the project's own naming rule.**
+`docs/CodingStandards.md` says functions use `PascalCase`; `SetLoggerTaskStream_MainThread` mixes an underscore
+segment into it, and the consequence is visible in the docs gate, which derives the page stem by concatenation and
+demanded `setloggertaskstreammainthread.html`. The page is named that now. `SetLoggerTaskStreamOnMainThread` would
+say the same thing in the house shape, following `DispatchToMainThread`. Renamed by the owner once, twice is their
+call, and the sweep is one command.
+
+**Also in this commit.** The reference follows the name across 28 pages; the assert's own message points at the new
+page path, which is why the source moved with the docs; `docs/Log/Logger/get.html` had `<h2>Signatures</h2>` against
+a table of contents that says "Signature" — the plural made the module's signature checker report a missing block,
+and the heading is now the singular house shape, which takes `docs_pass.py signatures docs/Log/Logger` to 19 pages
+verbatim, 0 problems.
+
 ## 2026-10-04 20:57 — every local branch except `master` is deleted; the four unique commits survive only as loose objects
 
 **Context.** The owner asked for a single-branch tree, was shown that 4 of the 10 non-`master` branches each

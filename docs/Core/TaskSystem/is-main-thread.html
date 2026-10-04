@@ -88,7 +88,7 @@
   answers <em>this thread is the one that built the task system</em> — true outside a pass and false inside one,
   because a thread inside a base pass is still the same thread. Neither implies the other, and the two together
   are what the configuration checks assert. See
-  <a href="../../Log/Logger/set-logger-stream.html">Logger::SetLoggerStream</a> for the pair in use.
+  <a href="../../Log/Logger/setloggertaskstreammainthread.html">Logger::SetLoggerTaskStream_MainThread</a> for the pair in use.
 </div>
 
 <p>
@@ -125,7 +125,7 @@
 {
         Assert(IsMainThread());
         …
-        Logger::Get().SetLoggerStream(&amp;GetIOTaskStream());
+        Logger::Get().SetLoggerTaskStream_MainThread(&amp;GetIOTaskStream());
 }</code></pre>
 
 <p>
@@ -138,7 +138,7 @@
 if (isMainThread &amp;&amp; hasStreams)
 {
         …
-        Logger::Get().SetLoggerStream(nullptr);
+        Logger::Get().SetLoggerTaskStream_MainThread(nullptr);
         …
 }</code></pre>
 
@@ -146,7 +146,7 @@ if (isMainThread &amp;&amp; hasStreams)
   The withdraw half, inside <a href="join-and-clear.html">JoinAndClear</a>. Here it is a branch rather than an
   assert, because that function is prepared to be called from a thread that does not own the run: it closes
   what it safely can and leaves the stream installed for the owner rather than tearing down another thread's
-  structures. That is also why <a href="../../Log/Logger/set-logger-stream.html">SetLoggerStream</a> can assert —
+  structures. That is also why <a href="../../Log/Logger/setloggertaskstreammainthread.html">SetLoggerTaskStream_MainThread</a> can assert —
   it has no foreign-thread path to be polite about.
 </p>
 <footer class="prevnext">

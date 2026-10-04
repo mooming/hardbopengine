@@ -55,7 +55,7 @@
     <li><a href="flush-buffer.html">FlushBuffer</a></li>
     <li><a href="write-log.html">WriteLog</a></li>
     <li><a href="print-std-io.html">PrintStdIO</a></li>
-    <li><a href="set-logger-stream.html">SetLoggerStream</a></li>
+    <li><a href="setloggertaskstreammainthread.html">SetLoggerTaskStream_MainThread</a></li>
     <li><a href="stop-driver-thread.html">StopDriverThread</a></li>
     <li><a href="driver-loop.html">DriverLoop</a></li>
   </ul>
@@ -161,7 +161,7 @@ thread can survive is one where the stream is gone, and that is the arm above.</
 <p>After the loop the thread takes <code>driverLock</code> in a scope of its own, calls
 <code>loggerStream-&gt;Update()</code> until it reports no more work, releases the lock, and finishes with
 <a href="process-buffer.html"><code>ProcessBuffer</code></a> — outside it, so the last write to the file does not
-hold the lock that <a href="set-logger-stream.html"><code>SetLoggerStream</code></a> needs to withdraw the stream.
+hold the lock that <a href="setloggertaskstreammainthread.html"><code>SetLoggerTaskStream_MainThread</code></a> needs to withdraw the stream.
 This lives here rather than in <a href="stop-driver-thread.html"><code>StopDriverThread</code></a> so that the
 final write is performed by the thread that owns the file — see that page for why the ordering matters.</p>
 
@@ -183,11 +183,11 @@ joins it.</p>
       it has no overload and no return value.</li>
   <li><strong>Lock discipline.</strong> <code>driverLock</code> is held <em>across</em>
       <code>Update()</code>, never around the pointer read alone. That is what makes
-      <a href="set-logger-stream.html"><code>SetLoggerStream</code></a> with <code>nullptr</code> a synchronisation point
+      <a href="setloggertaskstreammainthread.html"><code>SetLoggerTaskStream_MainThread</code></a> with <code>nullptr</code> a synchronisation point
       rather than a flag write. The cost of holding it that wide is that <code>Update</code> runs <em>tasks</em>, so a
       task pass executes inside this mutex, and anything a task reaches that takes <code>driverLock</code> would be
       waiting on a pass that is itself — <code>std::mutex</code> is not recursive. That is the reason
-      <a href="set-logger-stream.html"><code>SetLoggerStream</code></a> asserts instead of waiting, and the reason no
+      <a href="setloggertaskstreammainthread.html"><code>SetLoggerTaskStream_MainThread</code></a> asserts instead of waiting, and the reason no
       logging path takes this lock at all.</li>
   <li><strong>Starts with the logger, not with the first subsystem that wants to write a line</strong>, so a
       line emitted during early construction has somewhere to go. Logging never depends on the subsystem it is
