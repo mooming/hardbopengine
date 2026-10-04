@@ -244,7 +244,17 @@ void Logger::DriverLoop() noexcept
 
 void Logger::SetLoggerStream(TaskStream* stream) noexcept
 {
+	if (std::this_thread::get_id() == threadID)
+	{
+		Assert(false, "SetLoggerStream was called by the thread this logger drives. DriverLoop holds driverLock "
+					  "across TaskStream::Update, and tasks run inside that pass, so this call is waiting for a pass "
+					  "whose own thread is waiting for this mutex - the mutex is not recursive, so acquiring it here "
+					  "cannot return. Install or withdraw the logger stream from the thread that owns the task "
+					  "system's lifetime, the way TaskSystem::BuildStreams and TaskSystem::JoinAndClear do.");
+	}
+
 	std::lock_guard lock(driverLock);
+
 	loggerStream = stream;
 
 	if (stream == nullptr)

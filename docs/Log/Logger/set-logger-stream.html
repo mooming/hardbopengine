@@ -79,14 +79,22 @@
 
 <h2 id="signature">Signature</h2>
 
-<pre><code><span class="kw">void</span> <span class="fn">SetLoggerStream</span>(<span class="ty">TaskStream</span>* stream) noexcept;</code></pre>
+<pre><code>void SetLoggerStream(TaskStream* stream) noexcept</code></pre>
 
 <h2 id="description">Function description</h2>
 
-<p>Installs the IO stream this logger's driver thread should drive, or withdraws it. The whole body is a
-lock acquisition and an assignment, and the lock is the entire design:</p>
+<p>Installs the IO stream this logger's driver thread should drive, or withdraws it. The body is a thread
+check, a lock acquisition and an assignment. The lock is the entire design, and the check exists so that the
+acquisition is never attempted by the thread that already holds it — the message is elided here, see the
+Notes below for what it reports:</p>
 
-<pre><code><span class="ty">std</span>::<span class="fn">lock_guard</span> lock(driverLock);
+<pre><code><span class="kw">if</span> (std::<span class="ty">this_thread</span>::<span class="fn">get_id</span>() == threadID)
+{
+    <span class="fn">Assert</span>(<span class="kw">false</span>, <span class="st">"SetLoggerStream was called by the thread this logger drives …"</span>);
+}
+
+<span class="ty">std</span>::<span class="fn">lock_guard</span> lock(driverLock);
+
 loggerStream = stream;</code></pre>
 
 <p><a href="index.html"><code>Logger</code></a>'s IO stream is a <em>service</em> stream — the logger is one of
@@ -137,8 +145,15 @@ fewer hop.</p>
       <code>TaskSystem</code> installs <code>&amp;GetIOTaskStream()</code> once its streams exist, and passes
       <code>nullptr</code> while shutting streams down. See
       <a href="../../Core/index.html">TaskSystem</a>.</li>
-  <li><strong>Thread safety.</strong> Safe to call from any thread that may install or withdraw the stream,
-      because the pointer is only ever read or written under <code>driverLock</code>. It is not called by
+  <li><strong>Thread safety.</strong> Any thread that owns the task system's lifetime may call it; the thread
+      this logger drives may not. <a href="driver-loop.html"><code>DriverLoop</code></a> holds
+      <code>driverLock</code> across <code>Update()</code>, and a task pass is where tasks run, so a call from inside
+      one would be one thread acquiring a mutex it already owns — <code>std::mutex</code> is not recursive, and the
+      acquisition would never return. The body therefore compares the calling thread with
+      <code>threadID</code> and asserts <em>before</em> it touches the lock; a check placed after the acquisition
+      could not report anything, because the deadlock it guards is the acquisition itself. It is an
+      <code>Assert</code>, so Debug and Dev report the violation while Release keeps the hang — the rule is
+      enforced where the engine is tested. It is not called by
       <a href="add-log.html"><code>AddLog</code></a> or any logging path.</li>
   <li><strong>Ordering.</strong> Withdrawal must precede stream destruction, and installing must follow stream
       construction. Both are the task system's obligation, and nothing in the signature enforces either.</li>
