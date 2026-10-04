@@ -2,14 +2,13 @@
 
 #include "InlineStringBuilder.h"
 
-
 #ifdef __UNIT_TEST__
 #include <limits>
+
 #include "HSTL/HString.h"
 
 namespace hbe
 {
-
 void InlineStringBuilderTest::Prepare()
 {
 	constexpr size_t MaxLength = 1024;
@@ -326,6 +325,5 @@ void InlineStringBuilderTest::Prepare()
 		}
 	});
 }
-
 } // namespace hbe
 #endif //__UNIT_TEST__

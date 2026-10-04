@@ -7,13 +7,14 @@
 #include <mutex>
 #include <string_view>
 #include <vector>
+
 #include "Config/EngineConfig.h"
 #include "StaticString.h"
 #include "StaticStringID.h"
 
+
 namespace hbe
 {
-
 /// @brief A global table for storing and managing interned static strings.
 class StaticStringTable final
 {
@@ -91,5 +92,4 @@ private:
 
 	static void* Allocate(size_t n);
 };
-
 } // namespace hbe

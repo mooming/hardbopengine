@@ -8,9 +8,9 @@
 #include "Letter.h"
 #include "Memory/Shareable.h"
 
+
 namespace hbe
 {
-
 /// @brief A dynamic string class with automatic memory management and various utility methods.
 class String
 {
@@ -66,6 +66,7 @@ public:
 	String& operator=(String&& rhs) noexcept
 	{
 		Swap(std::move(rhs));
+
 		return *this;
 	}
 
@@ -235,6 +236,7 @@ public:
 				{
 					startIndex = i;
 				}
+
 				endIndex = i;
 			}
 		}
@@ -402,6 +404,7 @@ public:
 		if (buffer)
 		{
 			unsigned long long address = std::stoull(buffer->data(), 0, 16);
+
 			return reinterpret_cast<void*>(address);
 		}
 

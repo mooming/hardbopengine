@@ -5,6 +5,7 @@
 #include <cstdint>
 #include <ostream>
 
+
 namespace hbe
 {
 /// @brief A lightweight identifier for static strings stored in the global string table.
@@ -28,7 +29,6 @@ struct StaticStringID final
 		return ptr < rhs.ptr;
 	}
 };
-
 } // namespace hbe
 
 namespace std

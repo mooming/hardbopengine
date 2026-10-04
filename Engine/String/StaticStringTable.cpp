@@ -4,19 +4,19 @@
 
 #include <iostream>
 #include <mutex>
-#include "../Engine/Engine.h"
+
 #include "Config/EngineConfig.h"
 #include "Core/Debug.h"
+#include "Engine/Engine.h"
 #include "Log/Logger.h"
 #include "Memory/AllocatorScope.h"
 #include "StringUtil.h"
 
+
 namespace hbe
 {
-
 namespace
 {
-
 struct Bank final
 {
 	size_t cursor;
@@ -70,12 +70,12 @@ struct Bank final
 std::vector<Bank> banks;
 size_t bankIndex = 0;
 std::mutex memLock;
-
 } // namespace
 
 StaticStringTable& StaticStringTable::GetInstance()
 {
 	static StaticStringTable instance;
+
 	return instance;
 }
 
@@ -105,7 +105,6 @@ StaticStringID StaticStringTable::Register(const char* text)
 
 	static_assert(!std::is_signed<decltype(tableID)>());
 	Assert(tableID < NumTables);
-
 	{
 		std::lock_guard lock(tableLock);
 
@@ -116,6 +115,7 @@ StaticStringID StaticStringTable::Register(const char* text)
 		if (found != table.end())
 		{
 			id.ptr = reinterpret_cast<const uint8_t*>(found->data());
+
 			return id;
 		}
 
@@ -136,7 +136,6 @@ StaticStringID StaticStringTable::Register(const std::string_view& str)
 
 	static_assert(!std::is_signed<decltype(tableID)>());
 	Assert(tableID < NumTables);
-
 	{
 		std::lock_guard lock(tableLock);
 
@@ -145,6 +144,7 @@ StaticStringID StaticStringTable::Register(const std::string_view& str)
 		if (found != table.end())
 		{
 			id.ptr = reinterpret_cast<const uint8_t*>(found->data());
+
 			return id;
 		}
 
@@ -173,7 +173,6 @@ void StaticStringTable::PrintStringTable() const
 
 	log.Out("= StringTable ==============================");
 	log.Out([](auto& ls) { ls << "Number of Banks = " << banks.size(); });
-
 	{
 		size_t index = 0;
 		for (auto& bank : banks)
@@ -251,6 +250,7 @@ StaticStringTable::TIndex StaticStringTable::GetTableID(const std::string_view& 
 std::string_view StaticStringTable::Store(const char* text)
 {
 	std::string_view sv(text);
+
 	return Store(sv);
 }
 
@@ -286,5 +286,4 @@ void* StaticStringTable::Allocate(size_t n)
 
 	return ptr;
 }
-
 } // namespace hbe

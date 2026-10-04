@@ -6,14 +6,15 @@
 #include <cstring>
 #include <string>
 #include <string_view>
+
 #include "EndLine.h"
 #include "OSAL/Intrinsic.h"
 #include "StaticString.h"
 #include "StringUtil.h"
 
+
 namespace hbe
 {
-
 /// @brief A fixed-size inline string builder with a static buffer for efficient string construction.
 template <size_t BufferSize = 1024, class TChar = char>
 class InlineStringBuilder final
@@ -365,7 +366,6 @@ private:
 	size_t length;
 	TChar buffer[BufferSize];
 };
-
 } // namespace hbe
 
 #ifdef __UNIT_TEST__

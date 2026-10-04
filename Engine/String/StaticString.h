@@ -4,12 +4,13 @@
 
 #include <ostream>
 #include <string_view>
+
 #include "Config/BuildConfig.h"
 #include "StaticStringID.h"
 
+
 namespace hbe
 {
-
 template <typename T>
 concept CToZeroTerminateStr = requires(T t) { t.c_str(); };
 
@@ -60,13 +61,13 @@ public:
 	friend std::ostream& operator<<(std::ostream& os, const StaticString& str) noexcept
 	{
 		os << str.c_str();
+
 		return os;
 	}
 
 private:
 	StaticStringID id;
 };
-
 } // namespace hbe
 
 namespace std
@@ -86,7 +87,6 @@ struct hash<hbe::StaticString> final
 
 namespace hbe
 {
-
 class StaticStringTest : public TestCollection
 {
 public:
@@ -98,6 +98,5 @@ public:
 protected:
 	void Prepare() override;
 };
-
 } // namespace hbe
 #endif //__UNIT_TEST__

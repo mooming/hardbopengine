@@ -2,6 +2,7 @@
 
 #include "StringBuilder.h"
 
+
 namespace hbe
 {
 template class StringBuilder<char, DefaultAllocator<char>>;
@@ -13,7 +14,6 @@ template class StringBuilder<char, DefaultAllocator<char>>;
 
 namespace hbe
 {
-
 void StringBuilderTest::Prepare()
 {
 	using TString = hbe::HInlineString<256>;
@@ -340,6 +340,5 @@ void StringBuilderTest::Prepare()
 		}
 	});
 }
-
 } // namespace hbe
 #endif //__UNIT_TEST__

@@ -4,12 +4,13 @@
 
 #include <cstdio>
 #include <cstring>
+
 #include "Core/Debug.h"
 #include "StringUtil.h"
 
+
 namespace hbe
 {
-
 String::String(const bool value) noexcept
 	: hashCode(0)
 {
@@ -811,7 +812,6 @@ String String::ReplaceAll(String from, String to) const noexcept
 			++i;
 		}
 	}
-
 	while (i < strLength)
 	{
 		result.buffer->push_back((*buffer)[i]);
@@ -853,7 +853,6 @@ void String::ResetBuffer(size_t size) noexcept
 	buffer->clear();
 	buffer->push_back('\0');
 }
-
 } // namespace hbe
 
 #ifdef __UNIT_TEST__
@@ -861,7 +860,6 @@ void String::ResetBuffer(size_t size) noexcept
 
 namespace hbe
 {
-
 void StringTest::Prepare()
 {
 	AddTest("Comparison with Zero-Terminated String", [this](auto& ls)
@@ -1129,7 +1127,6 @@ void StringTest::Prepare()
 		constexpr int COUNT = 100000;
 
 		time::TDuration heTime;
-
 		{
 			time::ScopedTime measure(heTime);
 
@@ -1145,7 +1142,6 @@ void StringTest::Prepare()
 		}
 
 		time::TDuration stlTime;
-
 		{
 			time::ScopedTime measure(stlTime);
 
@@ -1169,6 +1165,5 @@ void StringTest::Prepare()
 		}
 	});
 }
-
 } // namespace hbe
 #endif //__UNIT_TEST__

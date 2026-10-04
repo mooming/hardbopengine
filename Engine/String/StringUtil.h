@@ -4,15 +4,16 @@
 
 #include <functional>
 #include <string_view>
+
 #include "HSTL/HString.h"
 #include "HSTL/HVector.h"
 #include "String/StaticString.h"
+
 
 namespace hbe
 {
 namespace StringUtil
 {
-
 template <typename T>
 using TVector = HVector<T>;
 using TString = HString;
@@ -48,7 +49,6 @@ void ForEachToken(const char* str, const std::function<void(std::string_view)> f
 
 namespace hbe
 {
-
 class StringUtilTest : public TestCollection
 {
 public:
@@ -60,6 +60,5 @@ public:
 protected:
 	void Prepare() override;
 };
-
 } // namespace hbe
 #endif //__UNIT_TEST__

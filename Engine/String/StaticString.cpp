@@ -4,9 +4,9 @@
 
 #include "StaticStringTable.h"
 
+
 namespace hbe
 {
-
 StaticString::StaticString() noexcept
 {
 	static StaticString null("None");
@@ -33,9 +33,9 @@ StaticString::StaticString(const std::string_view& str) noexcept
 const char* StaticString::c_str() const noexcept
 {
 	auto& ssTable = StaticStringTable::GetInstance();
+
 	return ssTable.Get(id);
 }
-
 } // namespace hbe
 
 #ifdef __UNIT_TEST__
@@ -46,7 +46,6 @@ const char* StaticString::c_str() const noexcept
 
 namespace hbe
 {
-
 void StaticStringTest::Prepare()
 {
 	AddTest("Default Construct", [](auto&) { StaticString str; });

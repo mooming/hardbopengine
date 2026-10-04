@@ -5,14 +5,15 @@
 #include <cstdio>
 #include <string>
 #include <string_view>
+
 #include "EndLine.h"
 #include "Memory/DefaultAllocator.h"
 #include "Memory/InlinePoolAllocator.h"
 #include "StaticString.h"
 
+
 namespace hbe
 {
-
 /// @brief A template-based string builder supporting various types with stream-style output.
 template <class TCh = char, class TAlloc = DefaultAllocator<TCh>>
 class StringBuilder final
@@ -56,18 +57,21 @@ public:
 	TThis& operator<<(nullptr_t) noexcept
 	{
 		buffer.append("Null");
+
 		return *this;
 	}
 
 	TThis& operator<<(bool value) noexcept
 	{
 		buffer.append(value ? "True" : "False");
+
 		return *this;
 	}
 
 	TThis& operator<<(char ch) noexcept
 	{
 		buffer.push_back(ch);
+
 		return *this;
 	}
 
@@ -76,6 +80,7 @@ public:
 		char temp[InlineBufferSize];
 		snprintf(temp, InlineBufferSize, "%u", value);
 		buffer.append(temp);
+
 		return *this;
 	}
 
@@ -84,16 +89,19 @@ public:
 		if (str == nullptr)
 		{
 			buffer.append("Null");
+
 			return *this;
 		}
 
 		buffer.append(str);
+
 		return *this;
 	}
 
 	TThis& operator<<(StaticString str) noexcept
 	{
 		buffer.append(str.c_str());
+
 		return *this;
 	}
 
@@ -115,6 +123,7 @@ public:
 		char temp[InlineBufferSize];
 		snprintf(temp, InlineBufferSize, "%d", value);
 		buffer.append(temp);
+
 		return *this;
 	}
 
@@ -123,6 +132,7 @@ public:
 		char temp[InlineBufferSize];
 		snprintf(temp, InlineBufferSize, "%u", value);
 		buffer.append(temp);
+
 		return *this;
 	}
 
@@ -131,6 +141,7 @@ public:
 		char temp[InlineBufferSize];
 		snprintf(temp, InlineBufferSize, "%d", value);
 		buffer.append(temp);
+
 		return *this;
 	}
 
@@ -139,6 +150,7 @@ public:
 		char temp[InlineBufferSize];
 		snprintf(temp, InlineBufferSize, "%u", value);
 		buffer.append(temp);
+
 		return *this;
 	}
 
@@ -147,6 +159,7 @@ public:
 		char temp[InlineBufferSize];
 		snprintf(temp, InlineBufferSize, "%ld", value);
 		buffer.append(temp);
+
 		return *this;
 	}
 
@@ -155,6 +168,7 @@ public:
 		char temp[InlineBufferSize];
 		snprintf(temp, InlineBufferSize, "%lu", value);
 		buffer.append(temp);
+
 		return *this;
 	}
 
@@ -163,6 +177,7 @@ public:
 		char temp[InlineBufferSize];
 		snprintf(temp, InlineBufferSize, "%lld", value);
 		buffer.append(temp);
+
 		return *this;
 	}
 
@@ -171,6 +186,7 @@ public:
 		char temp[InlineBufferSize];
 		snprintf(temp, InlineBufferSize, "%llu", value);
 		buffer.append(temp);
+
 		return *this;
 	}
 
@@ -179,6 +195,7 @@ public:
 		char temp[InlineFloatBufferSize];
 		snprintf(temp, InlineFloatBufferSize, "%f", value);
 		buffer.append(temp);
+
 		return *this;
 	}
 
@@ -187,6 +204,7 @@ public:
 		char temp[InlineLongDoubleBufferSize];
 		snprintf(temp, InlineLongDoubleBufferSize, "%lf", value);
 		buffer.append(temp);
+
 		return *this;
 	}
 
@@ -195,6 +213,7 @@ public:
 		char temp[InlineLongDoubleBufferSize];
 		snprintf(temp, InlineLongDoubleBufferSize, "%Le", value);
 		buffer.append(temp);
+
 		return *this;
 	}
 
@@ -203,19 +222,20 @@ public:
 		char temp[InlineBufferSize];
 		snprintf(temp, InlineBufferSize, "%p", value);
 		buffer.append(temp);
+
 		return *this;
 	}
 
 	TThis& operator<<(EndLine) noexcept
 	{
 		buffer.append("\n");
+
 		return *this;
 	}
 
 private:
 	TString buffer;
 };
-
 } // namespace hbe
 
 #ifdef __UNIT_TEST__

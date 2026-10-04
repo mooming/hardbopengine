@@ -2,9 +2,9 @@
 
 #pragma once
 
+
 namespace hbe
 {
-
 /// @brief A marker class for inserting newlines in string builders.
 class EndLine final
 {
@@ -16,5 +16,4 @@ public:
 };
 
 static constexpr EndLine hendl;
-
 } // namespace hbe

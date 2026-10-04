@@ -4,6 +4,7 @@
 
 #include <algorithm>
 #include <memory>
+
 #include "InlineStringBuilder.h"
 #include "Log/Logger.h"
 #include "Memory/AllocatorScope.h"
@@ -23,7 +24,6 @@ namespace hbe
 {
 namespace StringUtil
 {
-
 TString Trim(const TString& str)
 {
 	auto start = str.begin();
@@ -168,6 +168,7 @@ void ForEachToken(const char* str, const std::function<void(std::string_view)> f
 	if (unlikely(separators == nullptr))
 	{
 		func(std::string_view(str));
+
 		return;
 	}
 
@@ -377,6 +378,7 @@ const char* StrCopy(char* dst, const char* src, size_t n)
 
 #ifdef _MSC_VER
 	strncpy_s(dst, n, src, n);
+
 	return dst;
 #else // _MSC_VER
 	return strncpy(dst, src, n);
@@ -408,7 +410,6 @@ size_t CalculateHash(const std::string_view& str)
 
 	return hashCode;
 }
-
 } // namespace StringUtil
 } // namespace hbe
 
@@ -416,7 +417,6 @@ size_t CalculateHash(const std::string_view& str)
 
 namespace hbe
 {
-
 void StringUtilTest::Prepare()
 {
 	using namespace StringUtil;

@@ -4,6 +4,7 @@
 
 #include "Core/CommonMacros.h"
 
+
 namespace hbe
 {
 /// @brief Utility class for character classification and validation.
