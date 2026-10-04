@@ -7,7 +7,6 @@
 
 namespace hbe
 {
-
 void ArrayTest::Prepare()
 {
 	AddTest("Default Constructor", [this](auto& ls)
@@ -58,6 +57,5 @@ void ArrayTest::Prepare()
 		}
 	});
 }
-
 } // namespace hbe
 #endif //__UNIT_TEST__

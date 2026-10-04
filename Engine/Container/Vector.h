@@ -11,9 +11,9 @@
 #include "Memory/DefaultAllocator.h"
 #include "Memory/Memory.h"
 
+
 namespace hbe
 {
-
 template <typename TElement, class TAllocator = DefaultAllocator<TElement>>
 class Vector final
 {
@@ -118,36 +118,42 @@ public:
 	TElement& operator[](TIndex index)
 	{
 		FatalAssert(IsValidIndex(index));
+
 		return data[index];
 	}
 
 	const TElement& operator[](TIndex index) const
 	{
 		FatalAssert(IsValidIndex(index));
+
 		return data[index];
 	}
 
 	TElement& Front()
 	{
 		FatalAssert(!IsEmpty());
+
 		return data[0];
 	}
 
 	const TElement& Front() const
 	{
 		FatalAssert(!IsEmpty());
+
 		return data[0];
 	}
 
 	TElement& Back()
 	{
 		FatalAssert(!IsEmpty());
+
 		return data[count - 1];
 	}
 
 	const TElement& Back() const
 	{
 		FatalAssert(!IsEmpty());
+
 		return data[count - 1];
 	}
 
@@ -312,7 +318,6 @@ private:
 		}
 	}
 };
-
 } // namespace hbe
 
 #ifdef __UNIT_TEST__
@@ -320,7 +325,6 @@ private:
 
 namespace hbe
 {
-
 class VectorTest : public TestCollection
 {
 public:
@@ -332,6 +336,5 @@ public:
 protected:
 	void Prepare() override;
 };
-
 } // namespace hbe
 #endif //__UNIT_TEST__

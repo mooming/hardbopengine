@@ -4,11 +4,11 @@
 
 #ifdef __UNIT_TEST__
 #include <unordered_map>
+
 #include "Core/ScopedTime.h"
 
 namespace hbe
 {
-
 void HashMapTest::Prepare()
 {
 	AddTest("Default Construction", [](auto&) { HashMap<int, int> m; });
@@ -23,12 +23,14 @@ void HashMapTest::Prepare()
 		if (m[1] != 10 || m[2] != 20 || m[3] != 30)
 		{
 			ls << "Insert/Access failed" << lferr;
+
 			return;
 		}
 
 		if (m.Size() != 3)
 		{
 			ls << "Expected size 3, got " << m.Size() << lferr;
+
 			return;
 		}
 
@@ -44,6 +46,7 @@ void HashMapTest::Prepare()
 		if (m[1] != 10)
 		{
 			ls << "Value should remain 10 after failed duplicate insert" << lferr;
+
 			return;
 		}
 
@@ -63,6 +66,7 @@ void HashMapTest::Prepare()
 		if (m.Size() != 2 || m.Contains(2))
 		{
 			ls << "Remove failed" << lferr;
+
 			return;
 		}
 
@@ -77,6 +81,7 @@ void HashMapTest::Prepare()
 		if (!m.Contains(5) || m.Contains(99))
 		{
 			ls << "Contains check failed" << lferr;
+
 			return;
 		}
 
@@ -93,6 +98,7 @@ void HashMapTest::Prepare()
 		if (it == m.end() || it->value != 100)
 		{
 			ls << "Find(10) failed" << lferr;
+
 			return;
 		}
 
@@ -100,6 +106,7 @@ void HashMapTest::Prepare()
 		if (it != m.end())
 		{
 			ls << "Find(99) should return end()" << lferr;
+
 			return;
 		}
 
@@ -119,6 +126,7 @@ void HashMapTest::Prepare()
 		if (m.Size() != count)
 		{
 			ls << "Expected size " << count << ", got " << m.Size() << lferr;
+
 			return;
 		}
 
@@ -127,6 +135,7 @@ void HashMapTest::Prepare()
 			if (m[i] != i * 2)
 			{
 				ls << "Mismatch at " << i << lferr;
+
 				return;
 			}
 		}
@@ -146,12 +155,14 @@ void HashMapTest::Prepare()
 		if (!m.Contains(2) || m[2] != 200)
 		{
 			ls << "Tombstone reuse failed" << lferr;
+
 			return;
 		}
 
 		if (m.Size() != 3)
 		{
 			ls << "Expected size 3 after tombstone reuse" << lferr;
+
 			return;
 		}
 
@@ -176,6 +187,7 @@ void HashMapTest::Prepare()
 		if (count != 3 || sum != (1 + 2 + 3) + (10 + 20 + 30))
 		{
 			ls << "Iteration failed: count=" << count << " sum=" << sum << lferr;
+
 			return;
 		}
 
@@ -192,6 +204,7 @@ void HashMapTest::Prepare()
 		if (!m.IsEmpty() || m.Size() != 0)
 		{
 			ls << "Clear failed" << lferr;
+
 			return;
 		}
 
@@ -199,6 +212,7 @@ void HashMapTest::Prepare()
 		if (m.Size() != 1 || m[3] != 30)
 		{
 			ls << "Reuse after Clear failed" << lferr;
+
 			return;
 		}
 
@@ -215,6 +229,7 @@ void HashMapTest::Prepare()
 		if (m2.Size() != 2 || m2[1] != 10)
 		{
 			ls << "Move constructor failed" << lferr;
+
 			return;
 		}
 
@@ -223,6 +238,7 @@ void HashMapTest::Prepare()
 		if (m3.Size() != 2 || m3[2] != 20)
 		{
 			ls << "Move assignment failed" << lferr;
+
 			return;
 		}
 
@@ -237,7 +253,6 @@ void HashMapTest::Prepare()
 		time::TDuration stlInsertTime;
 		time::TDuration heFindTime;
 		time::TDuration stlFindTime;
-
 		{
 			time::ScopedTime measure(heInsertTime);
 			HashMap<int, int> m;
@@ -246,7 +261,6 @@ void HashMapTest::Prepare()
 				m[i] = i * 2;
 			}
 		}
-
 		{
 			time::ScopedTime measure(stlInsertTime);
 			std::unordered_map<int, int> m;
@@ -255,7 +269,6 @@ void HashMapTest::Prepare()
 				m[i] = i * 2;
 			}
 		}
-
 		{
 			HashMap<int, int> m;
 			for (int i = 0; i < NumItems; ++i)
@@ -274,7 +287,6 @@ void HashMapTest::Prepare()
 				}
 			}
 		}
-
 		{
 			std::unordered_map<int, int> m;
 			for (int i = 0; i < NumItems; ++i)
@@ -307,7 +319,6 @@ void HashMapTest::Prepare()
 		ls << "Pass";
 	});
 }
-
 } // namespace hbe
 
 #endif //__UNIT_TEST__

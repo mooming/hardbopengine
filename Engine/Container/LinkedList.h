@@ -3,9 +3,11 @@
 #pragma once
 
 #include <functional>
+
 #include "Core/Debug.h"
 #include "Memory/DefaultAllocator.h"
 #include "Memory/Memory.h"
+
 
 namespace hbe
 {
@@ -168,6 +170,7 @@ public:
 	[[nodiscard]] bool IsEmpty() const noexcept
 	{
 		Assert(head != nullptr || head == tail);
+
 		return head == nullptr;
 	}
 
@@ -189,6 +192,7 @@ public:
 	Iterator Remove(TType& element) noexcept
 	{
 		Assert(ContainsElement(element));
+
 		return Iterator(RemoveNode(GetNodeOf(element)));
 	}
 
@@ -256,6 +260,7 @@ public:
 				++count;
 			}
 		}
+
 		return count;
 	}
 
@@ -264,6 +269,7 @@ public:
 		if (auto found = Find(value))
 		{
 			Remove(*found);
+
 			return true;
 		}
 
@@ -343,6 +349,7 @@ private:
 	Node* GetNodeOf(TType& element) noexcept
 	{
 		Assert(ContainsElement(element));
+
 		return reinterpret_cast<Node*>(&element);
 	}
 

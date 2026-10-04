@@ -4,11 +4,11 @@
 
 #ifdef __UNIT_TEST__
 #include <map>
+
 #include "Core/ScopedTime.h"
 
 namespace hbe
 {
-
 void MapTest::Prepare()
 {
 	AddTest("Default Construction", [](auto&) { Map<int, int> m; });
@@ -23,12 +23,14 @@ void MapTest::Prepare()
 		if (m[1] != 10 || m[2] != 20 || m[3] != 30)
 		{
 			ls << "Insert/Access failed" << lferr;
+
 			return;
 		}
 
 		if (m.Size() != 3)
 		{
 			ls << "Expected size 3, got " << m.Size() << lferr;
+
 			return;
 		}
 
@@ -48,6 +50,7 @@ void MapTest::Prepare()
 			if (pair.key != expected)
 			{
 				ls << "Expected key " << expected << ", got " << pair.key << lferr;
+
 				return;
 			}
 
@@ -67,6 +70,7 @@ void MapTest::Prepare()
 		if (it == m.end() || it->value != 50)
 		{
 			ls << "Find(5) failed" << lferr;
+
 			return;
 		}
 
@@ -74,6 +78,7 @@ void MapTest::Prepare()
 		if (it != m.end())
 		{
 			ls << "Find(99) should return end()" << lferr;
+
 			return;
 		}
 
@@ -89,6 +94,7 @@ void MapTest::Prepare()
 		if (m[1] != 10)
 		{
 			ls << "Value should remain 10 after failed duplicate insert" << lferr;
+
 			return;
 		}
 
@@ -108,12 +114,14 @@ void MapTest::Prepare()
 		if (m.Size() != 2)
 		{
 			ls << "Expected size 2, got " << m.Size() << lferr;
+
 			return;
 		}
 
 		if (m.Contains(2))
 		{
 			ls << "Removed key should not exist" << lferr;
+
 			return;
 		}
 
@@ -128,6 +136,7 @@ void MapTest::Prepare()
 		if (!m.Contains(5) || m.Contains(99))
 		{
 			ls << "Contains check failed" << lferr;
+
 			return;
 		}
 
@@ -144,6 +153,7 @@ void MapTest::Prepare()
 		if (!m.IsEmpty() || m.Size() != 0)
 		{
 			ls << "Clear failed" << lferr;
+
 			return;
 		}
 
@@ -151,6 +161,7 @@ void MapTest::Prepare()
 		if (m.Size() != 1 || m[3] != 30)
 		{
 			ls << "Reuse after Clear failed" << lferr;
+
 			return;
 		}
 
@@ -167,6 +178,7 @@ void MapTest::Prepare()
 		if (m2.Size() != 2 || m2[1] != 10)
 		{
 			ls << "Move constructor failed" << lferr;
+
 			return;
 		}
 
@@ -175,6 +187,7 @@ void MapTest::Prepare()
 		if (m3.Size() != 2 || m3[2] != 20)
 		{
 			ls << "Move assignment failed" << lferr;
+
 			return;
 		}
 
@@ -189,7 +202,6 @@ void MapTest::Prepare()
 		time::TDuration stlInsertTime;
 		time::TDuration heFindTime;
 		time::TDuration stlFindTime;
-
 		{
 			time::ScopedTime measure(heInsertTime);
 			Map<int, int> m;
@@ -198,7 +210,6 @@ void MapTest::Prepare()
 				m[i] = i * 2;
 			}
 		}
-
 		{
 			time::ScopedTime measure(stlInsertTime);
 			std::map<int, int> m;
@@ -207,7 +218,6 @@ void MapTest::Prepare()
 				m[i] = i * 2;
 			}
 		}
-
 		{
 			Map<int, int> m;
 			for (int i = 0; i < NumItems; ++i)
@@ -226,7 +236,6 @@ void MapTest::Prepare()
 				}
 			}
 		}
-
 		{
 			std::map<int, int> m;
 			for (int i = 0; i < NumItems; ++i)
@@ -259,7 +268,6 @@ void MapTest::Prepare()
 		ls << "Pass";
 	});
 }
-
 } // namespace hbe
 
 #endif //__UNIT_TEST__

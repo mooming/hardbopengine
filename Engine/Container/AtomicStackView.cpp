@@ -6,15 +6,14 @@
 #include <array>
 #include <atomic>
 #include <thread>
+
 #include "HSTL/HVector.h"
 #include "Log/Logger.h"
 
 namespace hbe
 {
-
 namespace
 {
-
 template <typename T>
 class TNode final
 {
@@ -28,7 +27,6 @@ public:
 	{
 	}
 };
-
 } // namespace
 
 void AtomicStackViewTest::Prepare()
@@ -39,22 +37,18 @@ void AtomicStackViewTest::Prepare()
 			AtomicStackView<TNode<bool>> stack;
 			ls << "Bool Stack: [Done]" << lf;
 		}
-
 		{
 			AtomicStackView<TNode<char>> stack;
 			ls << "Char Stack: [Done]" << lf;
 		}
-
 		{
 			AtomicStackView<TNode<int>> stack;
 			ls << "Int Stack: [Done]" << lf;
 		}
-
 		{
 			AtomicStackView<TNode<float>> stack;
 			ls << "Float Stack: [Done]" << lf;
 		}
-
 		{
 			AtomicStackView<TNode<double>> stack;
 			ls << "Double Stack: [Done]" << lf;
@@ -74,7 +68,6 @@ void AtomicStackViewTest::Prepare()
 			ls << "Push Input = " << value << lf;
 			stack.Push(node);
 		}
-
 		while (auto node = stack.Pop())
 		{
 			if (node == nullptr)
@@ -297,6 +290,5 @@ void AtomicStackViewTest::Prepare()
 		}
 	});
 }
-
 } // namespace hbe
 #endif //__UNIT_TEST__

@@ -9,9 +9,9 @@
 
 #include "Container/Deque.h"
 
+
 namespace hbe
 {
-
 /// @brief A bounded priority queue using bucket-based approach.
 /// @details One deque per priority value, indexed by priority (0-255). The most urgent priority is the
 ///          HIGHEST number, and within one priority items drain oldest-first, so two items sharing a
@@ -144,6 +144,7 @@ public:
 		RetrackHighestBucket();
 
 		item.priority = static_cast<decltype(item.priority)>(servedFromLevel);
+
 		return item;
 	}
 
@@ -225,7 +226,6 @@ public:
 		highestBucket = 0;
 	}
 };
-
 } // namespace hbe
 
 #ifdef __UNIT_TEST__
@@ -244,6 +244,5 @@ public:
 protected:
 	void Prepare() override;
 };
-
 } // namespace hbe
 #endif // __UNIT_TEST__

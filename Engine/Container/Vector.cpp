@@ -4,11 +4,11 @@
 
 #ifdef __UNIT_TEST__
 #include <vector>
+
 #include "Core/ScopedTime.h"
 
 namespace hbe
 {
-
 void VectorTest::Prepare()
 {
 	AddTest("Default Construction", [](auto&) { Vector<int> v; });
@@ -23,12 +23,14 @@ void VectorTest::Prepare()
 		if (v.Size() != 3)
 		{
 			ls << "Expected size 3, got " << v.Size() << lferr;
+
 			return;
 		}
 
 		if (v[0] != 10 || v[1] != 20 || v[2] != 30)
 		{
 			ls << "Unexpected values" << lferr;
+
 			return;
 		}
 
@@ -46,6 +48,7 @@ void VectorTest::Prepare()
 		if (v.Size() != 2 || v.Back() != 2)
 		{
 			ls << "PopBack failed" << lferr;
+
 			return;
 		}
 
@@ -61,6 +64,7 @@ void VectorTest::Prepare()
 		if (v.Front() != 10 || v.Back() != 20)
 		{
 			ls << "Front/Back mismatch" << lferr;
+
 			return;
 		}
 
@@ -74,6 +78,7 @@ void VectorTest::Prepare()
 		if (v.Size() != 5)
 		{
 			ls << "Expected size 5, got " << v.Size() << lferr;
+
 			return;
 		}
 
@@ -82,6 +87,7 @@ void VectorTest::Prepare()
 			if (v[i] != i + 1)
 			{
 				ls << "Mismatch at " << i << lferr;
+
 				return;
 			}
 		}
@@ -102,6 +108,7 @@ void VectorTest::Prepare()
 		if (v.Size() != count)
 		{
 			ls << "Expected size " << count << ", got " << v.Size() << lferr;
+
 			return;
 		}
 
@@ -110,6 +117,7 @@ void VectorTest::Prepare()
 			if (v[i] != i)
 			{
 				ls << "Mismatch at " << i << lferr;
+
 				return;
 			}
 		}
@@ -125,6 +133,7 @@ void VectorTest::Prepare()
 		if (v.Capacity() < 64)
 		{
 			ls << "Expected capacity >= 64, got " << v.Capacity() << lferr;
+
 			return;
 		}
 
@@ -132,6 +141,7 @@ void VectorTest::Prepare()
 		if (v[0] != 42)
 		{
 			ls << "Data corrupted after Reserve" << lferr;
+
 			return;
 		}
 
@@ -147,12 +157,14 @@ void VectorTest::Prepare()
 		if (v.Size() != 2)
 		{
 			ls << "Expected size 2" << lferr;
+
 			return;
 		}
 
 		if (v[0].first != 1 || v[0].second != 2)
 		{
 			ls << "EmplaceBack failed" << lferr;
+
 			return;
 		}
 
@@ -169,6 +181,7 @@ void VectorTest::Prepare()
 		if (!v.IsEmpty())
 		{
 			ls << "Should be empty after Clear" << lferr;
+
 			return;
 		}
 
@@ -176,6 +189,7 @@ void VectorTest::Prepare()
 		if (v.Size() != 1 || v[0] != 10)
 		{
 			ls << "Reuse after Clear failed" << lferr;
+
 			return;
 		}
 
@@ -192,6 +206,7 @@ void VectorTest::Prepare()
 		if (v2.Size() != 2 || v2[0] != 1)
 		{
 			ls << "Move constructor failed" << lferr;
+
 			return;
 		}
 
@@ -200,6 +215,7 @@ void VectorTest::Prepare()
 		if (v3.Size() != 2 || v3[0] != 1)
 		{
 			ls << "Move assignment failed" << lferr;
+
 			return;
 		}
 
@@ -216,12 +232,14 @@ void VectorTest::Prepare()
 		if (v.FindIndex(20) != 1)
 		{
 			ls << "FindIndex(20) should be 1" << lferr;
+
 			return;
 		}
 
 		if (v.FindIndex(99) != -1)
 		{
 			ls << "FindIndex(99) should be -1" << lferr;
+
 			return;
 		}
 
@@ -235,7 +253,6 @@ void VectorTest::Prepare()
 
 		time::TDuration heTime;
 		time::TDuration stlTime;
-
 		{
 			time::ScopedTime measure(heTime);
 			for (int iter = 0; iter < NumIterations; ++iter)
@@ -247,7 +264,6 @@ void VectorTest::Prepare()
 				}
 			}
 		}
-
 		{
 			time::ScopedTime measure(stlTime);
 			for (int iter = 0; iter < NumIterations; ++iter)
@@ -271,7 +287,6 @@ void VectorTest::Prepare()
 		ls << "Pass";
 	});
 }
-
 } // namespace hbe
 
 #endif //__UNIT_TEST__

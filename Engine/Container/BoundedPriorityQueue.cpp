@@ -12,7 +12,6 @@
 
 namespace hbe
 {
-
 struct TestItem final
 {
 	uint8_t priority;
@@ -58,18 +57,21 @@ void BoundedPriorityQueueTest::Prepare()
 		if (!item.has_value())
 		{
 			ls << "Pop returned nullopt" << lferr;
+
 			return;
 		}
 
 		if (item->priority != 15)
 		{
 			ls << "Expected priority 15 (highest = most urgent), got " << item->priority << lferr;
+
 			return;
 		}
 
 		if (queue.Size() != 2)
 		{
 			ls << "Expected size 2, got " << queue.Size() << lferr;
+
 			return;
 		}
 
@@ -89,6 +91,7 @@ void BoundedPriorityQueueTest::Prepare()
 		if (!item1.has_value() || item1->priority != 200)
 		{
 			ls << "First pop should be priority 200 (highest = most urgent)" << lferr;
+
 			return;
 		}
 
@@ -96,6 +99,7 @@ void BoundedPriorityQueueTest::Prepare()
 		if (!item2.has_value() || item2->priority != 100)
 		{
 			ls << "Second pop should be priority 100" << lferr;
+
 			return;
 		}
 
@@ -103,6 +107,7 @@ void BoundedPriorityQueueTest::Prepare()
 		if (!item3.has_value() || item3->priority != 50)
 		{
 			ls << "Third pop should be priority 50" << lferr;
+
 			return;
 		}
 
@@ -110,12 +115,14 @@ void BoundedPriorityQueueTest::Prepare()
 		if (!item4.has_value() || item4->priority != 10)
 		{
 			ls << "Fourth pop should be priority 10" << lferr;
+
 			return;
 		}
 
 		if (!queue.IsEmpty())
 		{
 			ls << "Queue should be empty" << lferr;
+
 			return;
 		}
 
@@ -136,6 +143,7 @@ void BoundedPriorityQueueTest::Prepare()
 			if (!item.has_value())
 			{
 				ls << "Pop returned nullopt at tag " << expectedTag << lferr;
+
 				return;
 			}
 
@@ -143,6 +151,7 @@ void BoundedPriorityQueueTest::Prepare()
 			{
 				ls << "Equal priorities drained tag " << static_cast<int>(item->tag) << " before tag "
 				   << static_cast<int>(expectedTag) << " - newest is winning the tie" << lferr;
+
 				return;
 			}
 		}
@@ -165,6 +174,7 @@ void BoundedPriorityQueueTest::Prepare()
 			if (!drained.has_value() || drained->tag != tag)
 			{
 				ls << "Draining the priority dropped or reordered tag " << static_cast<int>(tag) << lferr;
+
 				return;
 			}
 		}
@@ -172,6 +182,7 @@ void BoundedPriorityQueueTest::Prepare()
 		if (!queue.IsEmpty() || queue.Size() != 0)
 		{
 			ls << "Queue reports " << queue.Size() << " items after draining everything" << lferr;
+
 			return;
 		}
 
@@ -181,6 +192,7 @@ void BoundedPriorityQueueTest::Prepare()
 		if (!item.has_value() || item->tag != 42)
 		{
 			ls << "A re-created bucket lost its item" << lferr;
+
 			return;
 		}
 
@@ -195,6 +207,7 @@ void BoundedPriorityQueueTest::Prepare()
 		if (item.has_value())
 		{
 			ls << "Expected nullopt from empty queue" << lferr;
+
 			return;
 		}
 
@@ -213,6 +226,7 @@ void BoundedPriorityQueueTest::Prepare()
 		if (!top1.has_value() || top1->priority != 100)
 		{
 			ls << "First top should be 100" << lferr;
+
 			return;
 		}
 
@@ -220,12 +234,14 @@ void BoundedPriorityQueueTest::Prepare()
 		if (!top2.has_value() || top2->priority != 100)
 		{
 			ls << "Second top should also be 100" << lferr;
+
 			return;
 		}
 
 		if (queue.Size() != 3)
 		{
 			ls << "Size should still be 3, got " << queue.Size() << lferr;
+
 			return;
 		}
 
@@ -246,6 +262,7 @@ void BoundedPriorityQueueTest::Prepare()
 		if (queue.Size() != 3)
 		{
 			ls << "Expected size 3, got " << queue.Size() << lferr;
+
 			return;
 		}
 
@@ -253,6 +270,7 @@ void BoundedPriorityQueueTest::Prepare()
 		if (!item.has_value() || item->priority != 30)
 		{
 			ls << "First item should be priority 30 (highest = most urgent)" << lferr;
+
 			return;
 		}
 
@@ -271,6 +289,7 @@ void BoundedPriorityQueueTest::Prepare()
 		if (queue.Size() != 4)
 		{
 			ls << "Expected size 4, got " << queue.Size() << lferr;
+
 			return;
 		}
 
@@ -279,12 +298,14 @@ void BoundedPriorityQueueTest::Prepare()
 		if (removed != 2)
 		{
 			ls << "Expected 2 removed, got " << removed << lferr;
+
 			return;
 		}
 
 		if (queue.Size() != 2)
 		{
 			ls << "Expected size 2 after remove, got " << queue.Size() << lferr;
+
 			return;
 		}
 
@@ -292,6 +313,7 @@ void BoundedPriorityQueueTest::Prepare()
 		if (!item.has_value() || item->priority != 25)
 		{
 			ls << "First remaining should be priority 25 (highest = most urgent)" << lferr;
+
 			return;
 		}
 
@@ -299,6 +321,7 @@ void BoundedPriorityQueueTest::Prepare()
 		if (!item.has_value() || item->priority != 20)
 		{
 			ls << "Second remaining should be priority 20" << lferr;
+
 			return;
 		}
 
@@ -317,12 +340,14 @@ void BoundedPriorityQueueTest::Prepare()
 		if (!queue.IsEmpty())
 		{
 			ls << "Queue should be empty after Clear" << lferr;
+
 			return;
 		}
 
 		if (queue.Size() != 0)
 		{
 			ls << "Size should be 0, got " << queue.Size() << lferr;
+
 			return;
 		}
 
@@ -340,6 +365,7 @@ void BoundedPriorityQueueTest::Prepare()
 		if (!popped.has_value() || popped->priority != 42)
 		{
 			ls << "Move semantics failed" << lferr;
+
 			return;
 		}
 
@@ -365,7 +391,6 @@ void BoundedPriorityQueueTest::Prepare()
 				{
 					queue.Push(TestItem(static_cast<uint8_t>(i % 256)));
 				}
-
 				while (!queue.IsEmpty())
 				{
 					(void) queue.Pop();
@@ -384,7 +409,6 @@ void BoundedPriorityQueueTest::Prepare()
 				{
 					queue.push(TestItem(static_cast<uint8_t>(i % 256)));
 				}
-
 				while (!queue.empty())
 				{
 					queue.pop();
@@ -403,7 +427,6 @@ void BoundedPriorityQueueTest::Prepare()
 		ls << "Pass";
 	});
 }
-
 } // namespace hbe
 
 #endif // __UNIT_TEST__

@@ -8,9 +8,9 @@
 #include "Container/Deque.h"
 #include "Core/Debug.h"
 
+
 namespace hbe
 {
-
 template <typename TElement, class TContainer = Deque<TElement>>
 class Queue final
 {
@@ -31,6 +31,7 @@ public:
 	Queue& operator=(Queue&& rhs) noexcept
 	{
 		container = std::move(rhs.container);
+
 		return *this;
 	}
 
@@ -94,7 +95,6 @@ public:
 private:
 	TContainer container;
 };
-
 } // namespace hbe
 
 #ifdef __UNIT_TEST__
@@ -102,7 +102,6 @@ private:
 
 namespace hbe
 {
-
 class QueueTest : public TestCollection
 {
 public:
@@ -114,6 +113,5 @@ public:
 protected:
 	void Prepare() override;
 };
-
 } // namespace hbe
 #endif //__UNIT_TEST__

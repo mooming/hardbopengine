@@ -11,9 +11,9 @@
 #include "Memory/DefaultAllocator.h"
 #include "Memory/Memory.h"
 
+
 namespace hbe
 {
-
 template <typename TKey, typename TValue, class TCompare = std::less<TKey>,
 		  class TAllocator = DefaultAllocator<uint8_t>>
 class Map final
@@ -47,6 +47,7 @@ public:
 		Iterator& operator++() noexcept
 		{
 			++ptr;
+
 			return *this;
 		}
 
@@ -156,6 +157,7 @@ public:
 		}
 
 		idx = InsertSorted(key);
+
 		return entries[idx].value;
 	}
 
@@ -168,6 +170,7 @@ public:
 		}
 
 		idx = InsertSorted(std::move(key));
+
 		return entries[idx].value;
 	}
 
@@ -409,7 +412,6 @@ private:
 		cap = 0;
 	}
 };
-
 } // namespace hbe
 
 #ifdef __UNIT_TEST__
@@ -417,7 +419,6 @@ private:
 
 namespace hbe
 {
-
 class MapTest : public TestCollection
 {
 public:
@@ -429,6 +430,5 @@ public:
 protected:
 	void Prepare() override;
 };
-
 } // namespace hbe
 #endif //__UNIT_TEST__

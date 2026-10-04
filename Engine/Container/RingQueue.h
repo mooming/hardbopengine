@@ -11,9 +11,9 @@
 #include "Memory/DefaultAllocator.h"
 #include "Memory/Memory.h"
 
+
 namespace hbe
 {
-
 template <typename TElement, class TAllocator = DefaultAllocator<TElement>>
 class RingQueue final
 {
@@ -63,18 +63,21 @@ public:
 	RingQueue& operator=(RingQueue&& rhs) noexcept
 	{
 		Swap(rhs);
+
 		return *this;
 	}
 
 	TElement& operator[](TIndex index) noexcept
 	{
 		FatalAssert(IsValidIndex(index));
+
 		return data[WrapIndex(head + index)];
 	}
 
 	const TElement& operator[](TIndex index) const noexcept
 	{
 		FatalAssert(IsValidIndex(index));
+
 		return data[WrapIndex(head + index)];
 	}
 
@@ -101,6 +104,7 @@ public:
 		auto* ptr = new (&data[tail]) TElement(std::forward<Types>(args)...);
 		tail = WrapIndex(tail + 1);
 		++count;
+
 		return *ptr;
 	}
 
@@ -118,24 +122,28 @@ public:
 	TElement& Front() noexcept
 	{
 		FatalAssert(!IsEmpty());
+
 		return data[head];
 	}
 
 	const TElement& Front() const noexcept
 	{
 		FatalAssert(!IsEmpty());
+
 		return data[head];
 	}
 
 	TElement& Back() noexcept
 	{
 		FatalAssert(!IsEmpty());
+
 		return data[WrapIndex(tail - 1)];
 	}
 
 	const TElement& Back() const noexcept
 	{
 		FatalAssert(!IsEmpty());
+
 		return data[WrapIndex(tail - 1)];
 	}
 
@@ -202,7 +210,6 @@ private:
 		}
 	}
 };
-
 } // namespace hbe
 
 #ifdef __UNIT_TEST__
@@ -210,7 +217,6 @@ private:
 
 namespace hbe
 {
-
 class RingQueueTest : public TestCollection
 {
 public:
@@ -222,6 +228,5 @@ public:
 protected:
 	void Prepare() override;
 };
-
 } // namespace hbe
 #endif //__UNIT_TEST__

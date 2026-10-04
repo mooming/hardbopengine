@@ -12,9 +12,9 @@
 #include "Memory/DefaultAllocator.h"
 #include "Memory/Memory.h"
 
+
 namespace hbe
 {
-
 enum class EHashEntryState : uint8_t
 {
 	Empty,
@@ -82,12 +82,14 @@ public:
 		Pair& operator*() noexcept
 		{
 			FatalAssert(map != nullptr && map->IsValidSlot(index));
+
 			return map->entries[index];
 		}
 
 		const Pair& operator*() const noexcept
 		{
 			FatalAssert(map != nullptr && map->IsValidSlot(index));
+
 			return map->entries[index];
 		}
 
@@ -146,6 +148,7 @@ public:
 		const Pair& operator*() const noexcept
 		{
 			FatalAssert(map != nullptr && map->IsValidSlot(index));
+
 			return map->entries[index];
 		}
 
@@ -268,6 +271,7 @@ public:
 
 		auto [inserted, slot] = InsertInternal(key);
 		FatalAssert(inserted);
+
 		return entries[slot].value;
 	}
 
@@ -281,6 +285,7 @@ public:
 
 		auto [inserted, slot] = InsertInternal(std::move(key));
 		FatalAssert(inserted);
+
 		return entries[slot].value;
 	}
 
@@ -364,6 +369,7 @@ public:
 	[[nodiscard]] bool Contains(const TKey& key) const noexcept
 	{
 		auto idx = FindSlot(key);
+
 		return idx >= 0 && states[idx] == EHashEntryState::Occupied;
 	}
 
@@ -529,6 +535,7 @@ private:
 	[[nodiscard]] bool ShouldGrow() const noexcept
 	{
 		auto totalUsed = count + tombstoneCount;
+
 		return cap == 0 || static_cast<double>(totalUsed) >= static_cast<double>(cap) * MaxLoadFactor;
 	}
 
@@ -613,7 +620,6 @@ private:
 		tombstoneCount = 0;
 	}
 };
-
 } // namespace hbe
 
 #ifdef __UNIT_TEST__
@@ -621,7 +627,6 @@ private:
 
 namespace hbe
 {
-
 class HashMapTest : public TestCollection
 {
 public:
@@ -633,6 +638,5 @@ public:
 protected:
 	void Prepare() override;
 };
-
 } // namespace hbe
 #endif //__UNIT_TEST__

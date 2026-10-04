@@ -4,11 +4,11 @@
 
 #ifdef __UNIT_TEST__
 #include <queue>
+
 #include "Core/ScopedTime.h"
 
 namespace hbe
 {
-
 void QueueTest::Prepare()
 {
 	AddTest("Default Construction", [](auto&) { Queue<int> q; });
@@ -23,12 +23,14 @@ void QueueTest::Prepare()
 		if (q.Size() != 3)
 		{
 			ls << "Expected size 3, got " << q.Size() << lferr;
+
 			return;
 		}
 
 		if (q.Front() != 10 || q.Back() != 30)
 		{
 			ls << "Front/Back mismatch" << lferr;
+
 			return;
 		}
 
@@ -36,6 +38,7 @@ void QueueTest::Prepare()
 		if (q.Front() != 20 || q.Size() != 2)
 		{
 			ls << "Pop failed" << lferr;
+
 			return;
 		}
 
@@ -44,6 +47,7 @@ void QueueTest::Prepare()
 		if (!q.IsEmpty())
 		{
 			ls << "Queue should be empty" << lferr;
+
 			return;
 		}
 
@@ -64,6 +68,7 @@ void QueueTest::Prepare()
 			if (q.Front() != i)
 			{
 				ls << "Expected " << i << ", got " << q.Front() << lferr;
+
 				return;
 			}
 
@@ -82,6 +87,7 @@ void QueueTest::Prepare()
 		if (q.Size() != 2 || q.Front().first != 1)
 		{
 			ls << "Emplace failed" << lferr;
+
 			return;
 		}
 
@@ -98,6 +104,7 @@ void QueueTest::Prepare()
 		if (q2.Size() != 2 || q2.Front() != 1)
 		{
 			ls << "Move constructor failed" << lferr;
+
 			return;
 		}
 
@@ -106,6 +113,7 @@ void QueueTest::Prepare()
 		if (q3.Size() != 2 || q3.Front() != 1)
 		{
 			ls << "Move assignment failed" << lferr;
+
 			return;
 		}
 
@@ -122,6 +130,7 @@ void QueueTest::Prepare()
 		if (!q.IsEmpty())
 		{
 			ls << "Queue should be empty after Clear" << lferr;
+
 			return;
 		}
 
@@ -129,6 +138,7 @@ void QueueTest::Prepare()
 		if (q.Size() != 1 || q.Front() != 10)
 		{
 			ls << "Reuse after Clear failed" << lferr;
+
 			return;
 		}
 
@@ -144,7 +154,6 @@ void QueueTest::Prepare()
 		time::TDuration stlPushTime;
 		time::TDuration hePopTime;
 		time::TDuration stlPopTime;
-
 		{
 			time::ScopedTime measure(hePushTime);
 			for (int iter = 0; iter < NumIterations; ++iter)
@@ -156,7 +165,6 @@ void QueueTest::Prepare()
 				}
 			}
 		}
-
 		{
 			time::ScopedTime measure(stlPushTime);
 			for (int iter = 0; iter < NumIterations; ++iter)
@@ -168,7 +176,6 @@ void QueueTest::Prepare()
 				}
 			}
 		}
-
 		{
 			Queue<int> q;
 			for (int i = 0; i < NumItems * NumIterations; ++i)
@@ -185,7 +192,6 @@ void QueueTest::Prepare()
 				}
 			}
 		}
-
 		{
 			std::queue<int> q;
 			for (int i = 0; i < NumItems * NumIterations; ++i)
@@ -216,7 +222,6 @@ void QueueTest::Prepare()
 		ls << "Pass";
 	});
 }
-
 } // namespace hbe
 
 #endif //__UNIT_TEST__

@@ -4,13 +4,14 @@
 
 #include <initializer_list>
 #include <utility>
+
 #include "Core/Debug.h"
 #include "Memory/DefaultAllocator.h"
 #include "Memory/Memory.h"
 
+
 namespace hbe
 {
-
 // Static array supporting custom allocators
 /// @brief A dynamic array template supporting custom memory allocators
 template <typename Element, class TAllocator = DefaultAllocator<Element>>
@@ -104,18 +105,21 @@ public:
 	Array& operator=(Array&& rhs) noexcept
 	{
 		Swap(rhs);
+
 		return *this;
 	}
 
 	Element& operator[](TIndex index) noexcept
 	{
 		FatalAssert(IsValidIndex(index));
+
 		return data[index];
 	}
 
 	const Element& operator[](TIndex index) const noexcept
 	{
 		FatalAssert(IsValidIndex(index));
+
 		return data[index];
 	}
 
@@ -181,7 +185,6 @@ public:
 		return IsValidIndex(delta) ? delta : -1;
 	}
 };
-
 } // namespace hbe
 
 #ifdef __UNIT_TEST__
@@ -190,7 +193,6 @@ public:
 
 namespace hbe
 {
-
 class ArrayTest : public TestCollection
 {
 public:
@@ -202,7 +204,6 @@ public:
 protected:
 	void Prepare() override;
 };
-
 } // namespace hbe
 
 #endif //__UNIT_TEST__

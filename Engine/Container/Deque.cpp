@@ -4,11 +4,11 @@
 
 #ifdef __UNIT_TEST__
 #include <deque>
+
 #include "Core/ScopedTime.h"
 
 namespace hbe
 {
-
 void DequeTest::Prepare()
 {
 	AddTest("Default Construction", [](auto&) { Deque<int> d; });
@@ -23,6 +23,7 @@ void DequeTest::Prepare()
 		if (d.Size() != 3 || d[0] != 1 || d[1] != 2 || d[2] != 3)
 		{
 			ls << "PushBack failed" << lferr;
+
 			return;
 		}
 
@@ -30,6 +31,7 @@ void DequeTest::Prepare()
 		if (d.Size() != 2 || d.Back() != 2)
 		{
 			ls << "PopBack failed" << lferr;
+
 			return;
 		}
 
@@ -46,6 +48,7 @@ void DequeTest::Prepare()
 		if (d.Size() != 3 || d[0] != 30 || d[1] != 20 || d[2] != 10)
 		{
 			ls << "PushFront failed" << lferr;
+
 			return;
 		}
 
@@ -53,6 +56,7 @@ void DequeTest::Prepare()
 		if (d.Size() != 2 || d.Front() != 20)
 		{
 			ls << "PopFront failed" << lferr;
+
 			return;
 		}
 
@@ -69,6 +73,7 @@ void DequeTest::Prepare()
 		if (d.Size() != 3 || d[0] != 1 || d[1] != 2 || d[2] != 3)
 		{
 			ls << "Expected 1,2,3 got " << d[0] << "," << d[1] << "," << d[2] << lferr;
+
 			return;
 		}
 
@@ -89,6 +94,7 @@ void DequeTest::Prepare()
 		if (d.Size() != 3 || d[0] != 3 || d[1] != 4 || d[2] != 5)
 		{
 			ls << "Expected 3,4,5 got " << d[0] << "," << d[1] << "," << d[2] << lferr;
+
 			return;
 		}
 
@@ -108,6 +114,7 @@ void DequeTest::Prepare()
 		if (d.Size() != count)
 		{
 			ls << "Expected size " << count << ", got " << d.Size() << lferr;
+
 			return;
 		}
 
@@ -116,6 +123,7 @@ void DequeTest::Prepare()
 			if (d[i] != i)
 			{
 				ls << "Mismatch at " << i << lferr;
+
 				return;
 			}
 		}
@@ -132,6 +140,7 @@ void DequeTest::Prepare()
 		if (d.Size() != 2 || d[0].first != 1)
 		{
 			ls << "EmplaceBack failed" << lferr;
+
 			return;
 		}
 
@@ -148,6 +157,7 @@ void DequeTest::Prepare()
 		if (!d.IsEmpty() || d.Size() != 0)
 		{
 			ls << "Clear failed" << lferr;
+
 			return;
 		}
 
@@ -155,6 +165,7 @@ void DequeTest::Prepare()
 		if (d.Size() != 1 || d[0] != 10)
 		{
 			ls << "Reuse after Clear failed" << lferr;
+
 			return;
 		}
 
@@ -171,6 +182,7 @@ void DequeTest::Prepare()
 		if (d2.Size() != 2 || d2[0] != 1)
 		{
 			ls << "Move constructor failed" << lferr;
+
 			return;
 		}
 
@@ -179,6 +191,7 @@ void DequeTest::Prepare()
 		if (d3.Size() != 2 || d3[1] != 2)
 		{
 			ls << "Move assignment failed" << lferr;
+
 			return;
 		}
 
@@ -195,6 +208,7 @@ void DequeTest::Prepare()
 		if (d.Front() != 10 || d.Back() != 30)
 		{
 			ls << "Front/Back mismatch" << lferr;
+
 			return;
 		}
 
@@ -203,6 +217,7 @@ void DequeTest::Prepare()
 		if (d.Front() != 20 || d.Back() != 20)
 		{
 			ls << "After pop Front/Back mismatch" << lferr;
+
 			return;
 		}
 
@@ -219,12 +234,14 @@ void DequeTest::Prepare()
 		if (d.Capacity() < 64)
 		{
 			ls << "Expected capacity >= 64, got " << d.Capacity() << lferr;
+
 			return;
 		}
 
 		if (d.Size() != 2 || d[0] != 1 || d[1] != 2)
 		{
 			ls << "Data corrupted after Reserve" << lferr;
+
 			return;
 		}
 
@@ -240,7 +257,6 @@ void DequeTest::Prepare()
 		time::TDuration stlPushTime;
 		time::TDuration hePopTime;
 		time::TDuration stlPopTime;
-
 		{
 			time::ScopedTime measure(hePushTime);
 			for (int iter = 0; iter < NumIterations; ++iter)
@@ -252,7 +268,6 @@ void DequeTest::Prepare()
 				}
 			}
 		}
-
 		{
 			time::ScopedTime measure(stlPushTime);
 			for (int iter = 0; iter < NumIterations; ++iter)
@@ -264,7 +279,6 @@ void DequeTest::Prepare()
 				}
 			}
 		}
-
 		{
 			Deque<int> d;
 			for (int i = 0; i < NumItems * NumIterations; ++i)
@@ -281,7 +295,6 @@ void DequeTest::Prepare()
 				}
 			}
 		}
-
 		{
 			std::deque<int> d;
 			for (int i = 0; i < NumItems * NumIterations; ++i)
@@ -312,7 +325,6 @@ void DequeTest::Prepare()
 		ls << "Pass";
 	});
 }
-
 } // namespace hbe
 
 #endif //__UNIT_TEST__

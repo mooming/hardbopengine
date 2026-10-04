@@ -11,9 +11,9 @@
 #include "Memory/DefaultAllocator.h"
 #include "Memory/Memory.h"
 
+
 namespace hbe
 {
-
 template <typename TElement, class TAllocator = DefaultAllocator<TElement>>
 class Deque final
 {
@@ -64,6 +64,7 @@ public:
 	Deque& operator=(Deque&& rhs) noexcept
 	{
 		Swap(rhs);
+
 		return *this;
 	}
 
@@ -90,12 +91,14 @@ public:
 	TElement& operator[](TIndex index)
 	{
 		FatalAssert(IsValidIndex(index));
+
 		return data[WrapIndex(head + index)];
 	}
 
 	const TElement& operator[](TIndex index) const
 	{
 		FatalAssert(IsValidIndex(index));
+
 		return data[WrapIndex(head + index)];
 	}
 
@@ -134,6 +137,7 @@ public:
 		head = WrapIndex(head - 1);
 		auto* ptr = new (&data[head]) TElement(std::forward<Types>(args)...);
 		++count;
+
 		return *ptr;
 	}
 
@@ -172,6 +176,7 @@ public:
 		auto* ptr = new (&data[tail]) TElement(std::forward<Types>(args)...);
 		tail = WrapIndex(tail + 1);
 		++count;
+
 		return *ptr;
 	}
 
@@ -194,24 +199,28 @@ public:
 	TElement& Front() noexcept
 	{
 		FatalAssert(!IsEmpty());
+
 		return data[head];
 	}
 
 	const TElement& Front() const noexcept
 	{
 		FatalAssert(!IsEmpty());
+
 		return data[head];
 	}
 
 	TElement& Back() noexcept
 	{
 		FatalAssert(!IsEmpty());
+
 		return data[WrapIndex(tail - 1)];
 	}
 
 	const TElement& Back() const noexcept
 	{
 		FatalAssert(!IsEmpty());
+
 		return data[WrapIndex(tail - 1)];
 	}
 
@@ -312,7 +321,6 @@ private:
 		}
 	}
 };
-
 } // namespace hbe
 
 #ifdef __UNIT_TEST__
@@ -320,7 +328,6 @@ private:
 
 namespace hbe
 {
-
 class DequeTest : public TestCollection
 {
 public:
@@ -332,6 +339,5 @@ public:
 protected:
 	void Prepare() override;
 };
-
 } // namespace hbe
 #endif //__UNIT_TEST__

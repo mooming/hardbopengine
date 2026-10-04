@@ -4,11 +4,11 @@
 
 #ifdef __UNIT_TEST__
 #include <queue>
+
 #include "Core/ScopedTime.h"
 
 namespace hbe
 {
-
 void RingQueueTest::Prepare()
 {
 	AddTest("Construction", [this](auto& ls)
@@ -18,6 +18,7 @@ void RingQueueTest::Prepare()
 		if (q.Capacity() != 8 || !q.IsEmpty())
 		{
 			ls << "Construction failed" << lferr;
+
 			return;
 		}
 
@@ -34,6 +35,7 @@ void RingQueueTest::Prepare()
 		if (q.Size() != 3 || q.Front() != 10 || q.Back() != 30)
 		{
 			ls << "Push failed" << lferr;
+
 			return;
 		}
 
@@ -41,12 +43,14 @@ void RingQueueTest::Prepare()
 		if (v1 != 10)
 		{
 			ls << "Pop should return 10, got " << v1 << lferr;
+
 			return;
 		}
 
 		if (q.Size() != 2)
 		{
 			ls << "Expected size 2 after pop" << lferr;
+
 			return;
 		}
 
@@ -67,6 +71,7 @@ void RingQueueTest::Prepare()
 		if (q.Size() != 3 || q[0] != 3 || q[1] != 4 || q[2] != 5)
 		{
 			ls << "Expected 3,4,5 got " << q[0] << "," << q[1] << "," << q[2] << lferr;
+
 			return;
 		}
 
@@ -84,6 +89,7 @@ void RingQueueTest::Prepare()
 		if (!q.IsFull())
 		{
 			ls << "Queue should be full" << lferr;
+
 			return;
 		}
 
@@ -99,6 +105,7 @@ void RingQueueTest::Prepare()
 		if (q.Size() != 2 || q[0].first != 10)
 		{
 			ls << "Emplace failed" << lferr;
+
 			return;
 		}
 
@@ -115,6 +122,7 @@ void RingQueueTest::Prepare()
 		if (q2.Size() != 2 || q2[0] != 1)
 		{
 			ls << "Move constructor failed" << lferr;
+
 			return;
 		}
 
@@ -123,6 +131,7 @@ void RingQueueTest::Prepare()
 		if (q3.Size() != 2 || q3[1] != 2)
 		{
 			ls << "Move assignment failed" << lferr;
+
 			return;
 		}
 
@@ -140,6 +149,7 @@ void RingQueueTest::Prepare()
 		if (!q.IsEmpty() || q.Size() != 0)
 		{
 			ls << "Clear failed" << lferr;
+
 			return;
 		}
 
@@ -147,6 +157,7 @@ void RingQueueTest::Prepare()
 		if (q.Front() != 42 || q.Size() != 1)
 		{
 			ls << "Reuse after Clear failed" << lferr;
+
 			return;
 		}
 
@@ -171,6 +182,7 @@ void RingQueueTest::Prepare()
 				{
 					ls << "Cycle " << iter << " position " << i << ": expected " << (i + iter * 10) << ", got " << v
 					   << lferr;
+
 					return;
 				}
 			}
@@ -186,7 +198,6 @@ void RingQueueTest::Prepare()
 
 		time::TDuration heTime;
 		time::TDuration stlTime;
-
 		{
 			time::ScopedTime measure(heTime);
 			for (int iter = 0; iter < NumIterations; ++iter)
@@ -203,7 +214,6 @@ void RingQueueTest::Prepare()
 				}
 			}
 		}
-
 		{
 			time::ScopedTime measure(stlTime);
 			for (int iter = 0; iter < NumIterations; ++iter)
@@ -213,7 +223,6 @@ void RingQueueTest::Prepare()
 				{
 					q.push(i);
 				}
-
 				while (!q.empty())
 				{
 					q.pop();
@@ -233,7 +242,6 @@ void RingQueueTest::Prepare()
 		ls << "Pass";
 	});
 }
-
 } // namespace hbe
 
 #endif //__UNIT_TEST__

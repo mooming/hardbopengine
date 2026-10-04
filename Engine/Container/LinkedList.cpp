@@ -2,10 +2,10 @@
 
 #include "LinkedList.h"
 
-
 #ifdef __UNIT_TEST__
 
 #include <list>
+
 #include "Core/Debug.h"
 #include "Core/ScopedTime.h"
 #include "Memory/AllocatorScope.h"
@@ -13,7 +13,6 @@
 
 namespace hbe
 {
-
 void LinkedListTest::Prepare()
 {
 	constexpr int CountBase = 1024;
@@ -41,7 +40,6 @@ void LinkedListTest::Prepare()
 
 		PoolAllocator alloc("LinkedListTest::Allocator", NodeSize, COUNT + 10);
 		AllocatorScope allocScope(alloc);
-
 		{
 			LinkedList<int> intList;
 
@@ -78,7 +76,6 @@ void LinkedListTest::Prepare()
 
 		time::TDuration heTime;
 		time::TDuration stlTime;
-
 		{
 			time::ScopedTime measure(heTime);
 
@@ -101,7 +98,6 @@ void LinkedListTest::Prepare()
 				++i;
 			}
 		}
-
 		{
 			time::ScopedTime measure(stlTime);
 
@@ -145,14 +141,12 @@ void LinkedListTest::Prepare()
 
 		long long stlValue = 0;
 		long long heValue = 0;
-
 		{
 			std::list<int> intList;
 			for (int i = 0; i < COUNT; ++i)
 			{
 				intList.push_back(i);
 			}
-
 			{
 				time::ScopedTime measure(stlTime);
 				for (int i = 0; i < COUNT2; ++i)
@@ -164,14 +158,12 @@ void LinkedListTest::Prepare()
 				}
 			}
 		}
-
 		{
 			LinkedList<int> intList;
 			for (int i = 0; i < COUNT; ++i)
 			{
 				intList.Add(i);
 			}
-
 			{
 				time::ScopedTime measure(heTime);
 				for (int i = 0; i < COUNT2; ++i)
@@ -284,6 +276,5 @@ void LinkedListTest::Prepare()
 		ls << "Remove, AddNext and AddPrevious work on list-owned references." << lf;
 	});
 }
-
 } // namespace hbe
 #endif //__UNIT_TEST__

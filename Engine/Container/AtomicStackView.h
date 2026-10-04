@@ -3,11 +3,12 @@
 #pragma once
 
 #include <atomic>
+
 #include "OSAL/Intrinsic.h"
+
 
 namespace hbe
 {
-
 template <typename T>
 concept CNext = requires(T t) { t.next; };
 
@@ -48,7 +49,6 @@ public:
 		{
 			return nullptr;
 		}
-
 		while (!top.compare_exchange_weak(node, node->next, std::memory_order_release, std::memory_order_relaxed))
 		{
 			if (node == nullptr)
@@ -67,7 +67,6 @@ public:
 		return top.load(std::memory_order_relaxed) == nullptr;
 	}
 };
-
 } // namespace hbe
 
 #ifdef __UNIT_TEST__
@@ -75,7 +74,6 @@ public:
 
 namespace hbe
 {
-
 class AtomicStackViewTest : public TestCollection
 {
 public:
@@ -87,7 +85,6 @@ public:
 protected:
 	void Prepare() override;
 };
-
 } // namespace hbe
 
 #endif //__UNIT_TEST__
