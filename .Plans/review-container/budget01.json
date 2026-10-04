@@ -1,0 +1,174 @@
+{
+ "findings": [
+  {
+   "file": "Engine/Container/Deque.h",
+   "line": 185,
+   "evidence": "FatalAssert(!IsEmpty());",
+   "rule": "log before failing",
+   "why": "44 asserts in these ten headers fire with no message, so a failed PopFront prints only a file and line, and the reader cannot tell empty-from-uninitialized from emptied.",
+   "fix": "Give every bounds and empty assert a one-clause message, as RingQueue's \"RingQueue is full\" already does; the module already carries the pattern.",
+   "confidence": "medium",
+   "track": "budget"
+  },
+  {
+   "file": "Engine/Container/Vector.h",
+   "line": 167,
+   "evidence": "new (&data[count]) TElement(value);",
+   "rule": "unmapped: missing include",
+   "why": "Placement new appears 26 times across six of these headers, no file in Engine/Container includes <new>, and a probe that includes only Vector.h still compiles - so the declaration is arriving transitively from libc++ rather than from anything the file declares.",
+   "fix": "Add #include <new> to Vector.h, Deque.h, Array.h, Map.h, HashMap.h and RingQueue.h, which are the six that use it.",
+   "confidence": "high",
+   "track": "budget"
+  },
+  {
+   "file": "Engine/Container/Array.h",
+   "line": 67,
+   "evidence": "new (&data[i]) Element();",
+   "rule": "unmapped: missing include",
+   "why": "Array.h constructs and destroys elements in place and names neither <new> nor anything that promises it.",
+   "fix": "Add #include <new> above <initializer_list>.",
+   "confidence": "high",
+   "track": "budget"
+  },
+  {
+   "file": "Engine/Container/Queue.h",
+   "line": 5,
+   "evidence": "#include <cstddef>",
+   "rule": "unmapped: unused include",
+   "why": "Queue.h names no size_t, no nullptr_t and no std::nullptr_t; the header's whole vocabulary is Deque, FatalAssert and std::move.",
+   "fix": "Delete the include and let the build gate confirm it.",
+   "confidence": "medium",
+   "track": "budget"
+  },
+  {
+   "file": "Engine/Container/Array.h",
+   "line": 10,
+   "evidence": "#include \"Memory/Memory.h\"",
+   "rule": "unmapped: unused include",
+   "why": "Array.h calls allocator.allocate and allocator.deallocate, which DefaultAllocator.h defines; the New/Delete helpers Memory.h names appear nowhere in the file.",
+   "fix": "Delete the include, or use New<> and Delete<> the way LinkedList.h does, which is the house idiom for an allocator-constructed object.",
+   "confidence": "medium",
+   "track": "budget"
+  },
+  {
+   "file": "Engine/Container/Map.h",
+   "line": 32,
+   "evidence": "class Iterator",
+   "rule": "class not final",
+   "why": "The three nested iterators a module hands out are the classes a caller is most likely to derive from by accident, and none is sealed.",
+   "fix": "Mark Iterator and ConstIterator final; the module's own Pair and LinkedListNode already are.",
+   "confidence": "medium",
+   "track": "budget"
+  },
+  {
+   "file": "Engine/Container/HashMap.h",
+   "line": 41,
+   "evidence": "class Iterator",
+   "rule": "class not final",
+   "why": "HashMap::Iterator and HashMap::ConstIterator are both inheritable, and both reach callers through Find and begin.",
+   "fix": "Mark both final.",
+   "confidence": "medium",
+   "track": "budget"
+  },
+  {
+   "file": "Engine/Container/LinkedList.h",
+   "line": 71,
+   "evidence": "class Iterator",
+   "rule": "class not final",
+   "why": "LinkedList::Iterator is the fourth unsealed iterator; 30 of the engine's 61 TestCollection subclasses already carry final, so sealing is the house position, not a new rule.",
+   "fix": "Mark it final.",
+   "confidence": "medium",
+   "track": "budget"
+  },
+  {
+   "file": "Engine/Container/Queue.h",
+   "line": 105,
+   "evidence": "class QueueTest : public TestCollection",
+   "rule": "class not final",
+   "why": "None of the module's ten test fixtures is final, so the one class that can never be a base is declared as if it could.",
+   "fix": "Add final to all ten; Core's TaskRegistryTest and ResultPacketTest are the model.",
+   "confidence": "low",
+   "track": "budget"
+  },
+  {
+   "file": "Engine/Container/Map.h",
+   "line": 348,
+   "evidence": "new (&entries[idx]) Pair{key, TValue{}};",
+   "rule": "static_assert missing",
+   "why": "InsertSorted default-constructs a TValue and Insert then assigns into it, so TValue must be default-constructible and assignable while nothing says so and a caller learns it from a template error at a distance.",
+   "fix": "static_assert(std::is_default_constructible_v<TValue> && std::is_assignable_v<TValue&, const TValue&>) on the class, and write the requirement on the class page.",
+   "confidence": "medium",
+   "track": "budget"
+  },
+  {
+   "file": "Engine/Container/Vector.h",
+   "line": 217,
+   "evidence": "new (&data[i]) TElement();",
+   "rule": "static_assert missing",
+   "why": "Resize is the one growth path that requires TElement to be default-constructible; every other path takes a value, so the requirement arrives only when someone calls Resize.",
+   "fix": "static_assert(std::is_default_constructible_v<TElement>) beside the class, or take a fill value in Resize's signature.",
+   "confidence": "medium",
+   "track": "budget"
+  },
+  {
+   "file": "Engine/Container/Map.h",
+   "line": 42,
+   "evidence": "explicit Iterator(Pair* ptr) noexcept",
+   "rule": "parameter naming",
+   "why": "The parameter ptr names the member it initialises, which is the collision the in prefix exists to remove; the same shape is in all four nested iterators.",
+   "fix": "Rename to inPtr here, inNode in LinkedList.h, and inMap and inIndex in HashMap.h.",
+   "confidence": "medium",
+   "track": "budget"
+  },
+  {
+   "file": "Engine/Container/HashMap.h",
+   "line": 52,
+   "evidence": "explicit Iterator(TMap* map, TIndex index) noexcept",
+   "rule": "parameter naming",
+   "why": "Both parameters name the members they initialise, so the initializer list reads map(map), index(index) in two of the module's iterators.",
+   "fix": "Rename to inMap and inIndex in Iterator and ConstIterator.",
+   "confidence": "medium",
+   "track": "budget"
+  },
+  {
+   "file": "Engine/Container/LinkedList.h",
+   "line": 77,
+   "evidence": "Iterator(Node* node) noexcept",
+   "rule": "parameter naming",
+   "why": "node(node) again, and this iterator is the one the module's own range-for depends on.",
+   "fix": "Rename the parameter inNode.",
+   "confidence": "medium",
+   "track": "budget"
+  },
+  {
+   "file": "Engine/Container/Array.h",
+   "line": 163,
+   "evidence": "void Swap(Array&& rhs) noexcept",
+   "rule": "unmapped: signature asymmetry",
+   "why": "Array::Swap takes an rvalue while Deque, Vector, RingQueue and Map take an lvalue reference, so a.Swap(b) does not compile and Clear() has to construct a temporary to express the same thing.",
+   "fix": "Take Array& like its four siblings, and let Clear() pass a named empty Array.",
+   "confidence": "medium",
+   "track": "budget"
+  },
+  {
+   "file": "Engine/Container/LinkedList.h",
+   "line": 194,
+   "evidence": "Assert(ContainsElement(element));",
+   "rule": "unmapped: duplicate precondition",
+   "why": "Remove asserts the address-identity precondition and then calls GetNodeOf, which asserts the identical thing again; two copies of one contract is two places to update.",
+   "fix": "Keep the assert in GetNodeOf, where the cast lives, and drop the one in Remove.",
+   "confidence": "low",
+   "track": "budget"
+  },
+  {
+   "file": "Engine/Container/HashMap.h",
+   "line": 407,
+   "evidence": "void Reserve(TIndex newCapacity)",
+   "rule": "noexcept questionable",
+   "why": "Reserve is the only public mutator in the class without noexcept, and the Rehash it calls is marked; the omission is invisible to a caller choosing between Reserve and Grow.",
+   "fix": "Mark it noexcept, matching the rest of the file.",
+   "confidence": "low",
+   "track": "budget"
+  }
+ ]
+}
