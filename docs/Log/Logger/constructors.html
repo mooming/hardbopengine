@@ -80,14 +80,11 @@
 
 <h2 id="signature">Signature</h2>
 
-<p>One form constructs a logger; the other four special members exist only to be removed:</p>
+<pre><code>Logger(const Logger&amp;) = delete
 
-<pre><code><span class="ty">Logger</span>(<span class="ty">Engine</span>&amp; engine, <span class="kw">const char</span>* path, <span class="kw">const char</span>* filename) <span class="kw">noexcept</span>;
+Logger(Logger&amp;&amp;) = delete
 
-<span class="ty">Logger</span>(<span class="kw">const</span> <span class="ty">Logger</span>&amp;) = <span class="kw">delete</span>;
-<span class="ty">Logger</span>(<span class="ty">Logger</span>&amp;&amp;) = <span class="kw">delete</span>;
-<span class="ty">Logger</span>&amp; <span class="fn">operator=</span>(<span class="kw">const</span> <span class="ty">Logger</span>&amp;) = <span class="kw">delete</span>;
-<span class="ty">Logger</span>&amp; <span class="fn">operator=</span>(<span class="ty">Logger</span>&amp;&amp;) = <span class="kw">delete</span>;</code></pre>
+Logger(Engine&amp; engine, const char* path, const char* filename) noexcept</code></pre>
 
 <h2 id="description">Function description</h2>
 

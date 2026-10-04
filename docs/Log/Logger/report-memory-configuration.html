@@ -79,11 +79,8 @@
 
 <h2 id="signature">Signature</h2>
 
-<p>Both the declaration and the definition sit inside the same guard, in the header and in the source:</p>
-
-<pre><code><span class="cm">#if PROFILE_ENABLED</span>
-<span class="kw">void</span> <span class="fn">ReportMemoryConfiguration</span>();
-<span class="cm">#endif // PROFILE_ENABLED</span></code></pre>
+<pre><code>#if PROFILE_ENABLED
+	void ReportMemoryConfiguration()</code></pre>
 
 <h2 id="description">Function description</h2>
 
