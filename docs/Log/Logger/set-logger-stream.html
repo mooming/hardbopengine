@@ -83,15 +83,13 @@
 
 <h2 id="description">Function description</h2>
 
-<p>Installs the IO stream this logger's driver thread should drive, or withdraws it. The body is a thread
+<p>Installs the IO stream this logger's driver thread should drive, or withdraws it. The body is a policy
 check, a lock acquisition and an assignment. The lock is the entire design, and the check exists so that the
-acquisition is never attempted by the thread that already holds it — the message is elided here, see the
+acquisition is never attempted by a thread that cannot be satisfied — the message is elided here, see the
 Notes below for what it reports:</p>
 
-<pre><code><span class="kw">if</span> (std::<span class="ty">this_thread</span>::<span class="fn">get_id</span>() == threadID)
-{
-    <span class="fn">Assert</span>(<span class="kw">false</span>, <span class="st">"SetLoggerStream was called by the thread this logger drives …"</span>);
-}
+<pre><code>Assert(TaskSystem::GetCurrentStreamIndex() == TaskSystem::NonStreamIndex,
+	   "SetLoggerStream is setup and configuration, and it was called from inside a task pass …");
 
 <span class="ty">std</span>::<span class="fn">lock_guard</span> lock(driverLock);
 
@@ -141,19 +139,35 @@ fewer hop.</p>
 <h2 id="notes">Notes</h2>
 
 <ul>
-  <li><strong>Who calls it.</strong> The task system, from its own thread — never the driver thread.
-      <code>TaskSystem</code> installs <code>&amp;GetIOTaskStream()</code> once its streams exist, and passes
-      <code>nullptr</code> while shutting streams down. See
+  <li><strong>Who calls it.</strong> The task system, from the engine loop thread — never the driver thread,
+      and never from inside a task pass. <code>TaskSystem</code> installs <code>&amp;GetIOTaskStream()</code> once
+      its streams exist, and passes <code>nullptr</code> while shutting streams down. See
       <a href="../../Core/index.html">TaskSystem</a>.</li>
-  <li><strong>Thread safety.</strong> Any thread that owns the task system's lifetime may call it; the thread
-      this logger drives may not. <a href="driver-loop.html"><code>DriverLoop</code></a> holds
-      <code>driverLock</code> across <code>Update()</code>, and a task pass is where tasks run, so a call from inside
-      one would be one thread acquiring a mutex it already owns — <code>std::mutex</code> is not recursive, and the
-      acquisition would never return. The body therefore compares the calling thread with
-      <code>threadID</code> and asserts <em>before</em> it touches the lock; a check placed after the acquisition
-      could not report anything, because the deadlock it guards is the acquisition itself. It is an
-      <code>Assert</code>, so Debug and Dev report the violation while Release keeps the hang — the rule is
-      enforced where the engine is tested. It is not called by
+  <li><strong>Policy: setup and configuration belong to the engine loop thread.</strong> Both callers are in
+      <a href="../../Core/TaskSystem/index.html"><code>TaskSystem</code></a>, and each already holds the line on that
+      thread by construction: <a href="../../Core/TaskSystem/build-streams.html"><code>BuildStreams</code></a> opens
+      with <code>Assert(std::this_thread::get_id() == engineLoopThreadID)</code> before it installs, and
+      <a href="../../Core/TaskSystem/join-and-clear.html"><code>JoinAndClear</code></a> withdraws only inside
+      <code>if (isEngineLoopThread &amp;&amp; hasStreams)</code>. The thread that owns that identity is
+      <code>TaskSystem</code>'s own member, so the policy is enforced where the data lives rather than being
+      re-derived here.</li>
+  <li><strong>What this method checks itself.</strong> That the call is not happening <em>inside a task
+      pass</em> — which is the case that cannot be satisfied rather than merely slow.
+      <a href="driver-loop.html"><code>DriverLoop</code></a> holds <code>driverLock</code> across
+      <code>Update()</code>, and a task pass is where tasks run, so a call from one is a single thread waiting on a
+      mutex it already owns; <code>std::mutex</code> is not recursive and the acquisition would never return. The
+      check therefore reads <code>TaskSystem::GetCurrentStreamIndex()</code> and requires
+      <code>NonStreamIndex</code>, and it sits <em>before</em> the <code>lock_guard</code>: a check placed after the
+      acquisition could report nothing, because the deadlock it guards is the acquisition. It is an
+      <code>Assert</code>, so Debug and Dev report a violation while Release keeps the hang.</li>
+  <li><strong>Why the check is not <code>TaskSystem::IsBaseThread()</code>.</strong> Measured, that predicate
+      aborts the engine at startup. It tests the thread-local <code>StreamIndex</code>, which is
+      <code>NonStreamIndex</code> on every thread outside a pass and is restored to it when a pass ends, so it
+      means <em>this thread is draining the base stream right now</em> — and both legal callers run outside any
+      pass, on the thread that is about to build or tear down the streams. Comparing thread ids against
+      <code>threadID</code> is no better here: <code>threadID</code> names the thread the logger writes from, which
+      is the IO stream's, not the engine loop's.</li>
+  <li><strong>Not on a logging path.</strong> It is not called by
       <a href="add-log.html"><code>AddLog</code></a> or any logging path.</li>
   <li><strong>Ordering.</strong> Withdrawal must precede stream destruction, and installing must follow stream
       construction. Both are the task system's obligation, and nothing in the signature enforces either.</li>
