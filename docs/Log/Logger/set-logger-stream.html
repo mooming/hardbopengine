@@ -83,13 +83,16 @@
 
 <h2 id="description">Function description</h2>
 
-<p>Installs the IO stream this logger's driver thread should drive, or withdraws it. The body is a policy
-check, a lock acquisition and an assignment. The lock is the entire design, and the check exists so that the
-acquisition is never attempted by a thread that cannot be satisfied — the message is elided here, see the
-Notes below for what it reports:</p>
+<p>Installs the IO stream this logger's driver thread should drive, or withdraws it. The body is two policy
+checks, a lock acquisition and an assignment. The lock is the entire design, and the checks exist so that the
+acquisition is never attempted by a caller that cannot be satisfied — both messages are elided here, see the
+Notes below for what they report:</p>
 
-<pre><code>Assert(TaskSystem::GetCurrentStreamIndex() == TaskSystem::NonStreamIndex,
-	   "SetLoggerStream is setup and configuration, and it was called from inside a task pass …");
+<pre><code>Assert(Engine::Get().GetTaskSystem().IsEngineLoopThread(),
+	   "Setup and configuration belong to the engine loop thread, and this call is not on it …");
+
+Assert(TaskSystem::GetCurrentStreamIndex() == TaskSystem::NonStreamIndex,
+	   "Configuration may not run inside a task pass …");
 
 <span class="ty">std</span>::<span class="fn">lock_guard</span> lock(driverLock);
 
@@ -143,30 +146,37 @@ fewer hop.</p>
       and never from inside a task pass. <code>TaskSystem</code> installs <code>&amp;GetIOTaskStream()</code> once
       its streams exist, and passes <code>nullptr</code> while shutting streams down. See
       <a href="../../Core/index.html">TaskSystem</a>.</li>
-  <li><strong>Policy: setup and configuration belong to the engine loop thread.</strong> Both callers are in
-      <a href="../../Core/TaskSystem/index.html"><code>TaskSystem</code></a>, and each already holds the line on that
-      thread by construction: <a href="../../Core/TaskSystem/build-streams.html"><code>BuildStreams</code></a> opens
-      with <code>Assert(std::this_thread::get_id() == engineLoopThreadID)</code> before it installs, and
+  <li><strong>Policy: setup and configuration belong to the engine loop thread, and this function checks
+      it.</strong> The first statement is
+      <code>Assert(Engine::Get().GetTaskSystem().IsEngineLoopThread(), …)</code>, answered against
+      <code>engineLoopThreadID</code> — the thread captured in the task system's initializer list, on its own page
+      <a href="../../Core/TaskSystem/is-engine-loop-thread.html"><code>IsEngineLoopThread</code></a>. The two
+      legitimate callers already satisfy it, because each holds the line at its own end of the bargain: both live
+      in <a href="../../Core/TaskSystem/index.html"><code>TaskSystem</code></a>,
+      <a href="../../Core/TaskSystem/build-streams.html"><code>BuildStreams</code></a> opens with
+      <code>Assert(IsEngineLoopThread())</code>, and
       <a href="../../Core/TaskSystem/join-and-clear.html"><code>JoinAndClear</code></a> withdraws only inside
-      <code>if (isEngineLoopThread &amp;&amp; hasStreams)</code>. The thread that owns that identity is
-      <code>TaskSystem</code>'s own member, so the policy is enforced where the data lives rather than being
-      re-derived here.</li>
-  <li><strong>What this method checks itself.</strong> That the call is not happening <em>inside a task
-      pass</em> — which is the case that cannot be satisfied rather than merely slow.
+      <code>if (isEngineLoopThread &amp;&amp; hasStreams)</code> — that function is prepared to be called by a thread
+      which does not own the run, and leaves the stream installed rather than dismantling another thread's
+      structures. This method has no such foreign-thread path, so it is free to assert instead of negotiating.</li>
+  <li><strong>What the second check adds.</strong> That the call is not happening <em>inside a task pass</em> —
+      which being on the right thread does not exclude. The engine loop thread is entitled to configure, but not
+      while it is draining the base stream on a task's behalf:
       <a href="driver-loop.html"><code>DriverLoop</code></a> holds <code>driverLock</code> across
-      <code>Update()</code>, and a task pass is where tasks run, so a call from one is a single thread waiting on a
-      mutex it already owns; <code>std::mutex</code> is not recursive and the acquisition would never return. The
-      check therefore reads <code>TaskSystem::GetCurrentStreamIndex()</code> and requires
-      <code>NonStreamIndex</code>, and it sits <em>before</em> the <code>lock_guard</code>: a check placed after the
-      acquisition could report nothing, because the deadlock it guards is the acquisition. It is an
-      <code>Assert</code>, so Debug and Dev report a violation while Release keeps the hang.</li>
-  <li><strong>Why the check is not <code>TaskSystem::IsBaseThread()</code>.</strong> Measured, that predicate
+      <code>Update()</code>, a pass on the IO stream runs the work that stream's tasks hand onward, and a task
+      waiting on the base thread would have that thread parked here. So the second <code>Assert</code> requires
+      <code>TaskSystem::GetCurrentStreamIndex() == NonStreamIndex</code>. Both checks sit <em>before</em> the
+      <code>lock_guard</code>: placed after it, the thread is already blocked in the acquisition the checks exist
+      to prevent and nothing would ever be reported. They are <code>Assert</code>s, so Debug and Dev report a
+      violation while Release keeps the hang.</li>
+  <li><strong>Why neither check is <code>TaskSystem::IsBaseThread()</code>.</strong> Measured, that predicate
       aborts the engine at startup. It tests the thread-local <code>StreamIndex</code>, which is
       <code>NonStreamIndex</code> on every thread outside a pass and is restored to it when a pass ends, so it
       means <em>this thread is draining the base stream right now</em> — and both legal callers run outside any
-      pass, on the thread that is about to build or tear down the streams. Comparing thread ids against
-      <code>threadID</code> is no better here: <code>threadID</code> names the thread the logger writes from, which
-      is the IO stream's, not the engine loop's.</li>
+      pass, on the thread about to build or tear down the streams. Comparing thread ids against
+      <code>threadID</code> is no better: that names the thread the logger writes from, which is the IO stream's,
+      not the engine loop's. The pair that works is documented on
+      <a href="../../Core/TaskSystem/is-engine-loop-thread.html">IsEngineLoopThread</a>.</li>
   <li><strong>Not on a logging path.</strong> It is not called by
       <a href="add-log.html"><code>AddLog</code></a> or any logging path.</li>
   <li><strong>Ordering.</strong> Withdrawal must precede stream destruction, and installing must follow stream

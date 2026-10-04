@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TaskSystem::IsEngineLoopThread — Core module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a class="current" href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Core</a> /
+  <a href="index.html">TaskSystem</a> / IsEngineLoopThread
+</p>
+
+<h1><span class="fn">IsEngineLoopThread</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::TaskSystem</span>
+  <span class="tag">Engine/Core/TaskSystem.h</span>
+  <span class="tag">const noexcept</span>
+  true on the thread that constructed this task system — the one thread allowed to build, configure and
+  tear the streams down, and the identity the policy is stated against
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>[[nodiscard]] bool IsEngineLoopThread() const noexcept</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  Defined in <code>Engine/Core/TaskSystem.cpp</code> as <code>TaskSystem::IsEngineLoopThread()</code>: one
+  comparison of <code>std::this_thread::get_id()</code> against <code>engineLoopThreadID</code>. That member is
+  a <code>const TThreadID</code> written once, in the constructor's initializer list at
+  <code>Engine/Core/TaskSystem.cpp:83</code>, and never again — so the answer is fixed for the life of the
+  instance and cannot drift.
+</p>
+
+<p>
+  It exists to carry one policy: <strong>setup and configuration belong to this thread.</strong> Building the
+  streams, installing the logger's stream and closing them are the actions that decide what every other
+  thread may assume, so they happen in one place, in order, on one thread. Before this accessor the policy was
+  still enforced, but only from inside <code>TaskSystem</code>, because <code>engineLoopThreadID</code> was a
+  private member with no accessor — <a href="build-streams.html">BuildStreams</a> compared the raw member and
+  <a href="join-and-clear.html">JoinAndClear</a> gated on the comparison. Anything outside the class that
+  needed the same answer had to guess at it, and the guess available was
+  <a href="is-base-thread.html">IsBaseThread</a>, which is a different question.
+</p>
+
+<div class="note">
+  <strong>This is not <a href="is-base-thread.html">IsBaseThread</a>, and the difference is not cosmetic.</strong>
+  <code>IsBaseThread()</code> reads the thread-local <code>StreamIndex</code>, so it answers <em>this thread is
+  draining the base stream right now</em> — true only inside a base-stream pass, and
+  <code>NonStreamIndex</code> on every thread outside one, including this thread. <code>IsEngineLoopThread()</code>
+  answers <em>this thread is the one that built the task system</em> — true outside a pass and false inside one,
+  because a thread inside a base pass is still the same thread. Neither implies the other, and the two together
+  are what the configuration checks assert. See
+  <a href="../../Log/Logger/set-logger-stream.html">Logger::SetLoggerStream</a> for the pair in use.
+</div>
+
+<p>
+  "Engine loop" names the thread that built the task system, not the process's first thread and not the OS's
+  UI thread. An embedder that constructs the engine on some other thread moves the policy with it, which is
+  the intended reading: the name describes a role the constructor claims, and
+  <a href="../../Log/Logger/driver-loop.html">the logger's own driver thread</a> is a different thread with a
+  different job, however the host happens to be shaped.
+</p>
+
+<h2 id="parameters">Parameters</h2>
+
+<p>None.</p>
+
+<h2 id="return">Return value</h2>
+
+<table>
+  <tr><th>Type</th><th>What you get</th></tr>
+  <tr>
+    <td><code>bool</code></td>
+    <td>True when the calling thread is the one that constructed this <code>TaskSystem</code>. Says nothing about
+      whether that thread is currently draining a stream — for that, ask
+      <a href="is-base-thread.html">IsBaseThread</a> or read
+      <a href="get-current-stream-index.html">GetCurrentStreamIndex</a> — and nothing about whether the engine has
+      been initialised, since the identity is captured before <a href="initialize.html">Initialize</a> runs</td>
+  </tr>
+</table>
+
+<h2 id="example">Examples</h2>
+
+<p class="meta">From Engine/Core/TaskSystem.cpp</p>
+
+<pre><code>void TaskSystem::BuildStreams()
+{
+        Assert(IsEngineLoopThread());
+        …
+        Logger::Get().SetLoggerStream(&amp;GetIOTaskStream());
+}</code></pre>
+
+<p>
+  The install half of the logger handover. The assert is the first statement in the function, so the install
+  further down inherits the guarantee without restating it.
+</p>
+
+<pre><code>const bool isEngineLoopThread = IsEngineLoopThread();
+…
+if (isEngineLoopThread &amp;&amp; hasStreams)
+{
+        …
+        Logger::Get().SetLoggerStream(nullptr);
+        …
+}</code></pre>
+
+<p>
+  The withdraw half, inside <a href="join-and-clear.html">JoinAndClear</a>. Here it is a branch rather than an
+  assert, because that function is prepared to be called from a thread that does not own the run: it closes
+  what it safely can and leaves the stream installed for the owner rather than tearing down another thread's
+  structures. That is also why <a href="../../Log/Logger/set-logger-stream.html">SetLoggerStream</a> can assert —
+  it has no foreign-thread path to be polite about.
+</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; TaskSystem</a></span>
+  <span><a href="index.html#methods">All TaskSystem methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

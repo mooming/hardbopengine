@@ -170,6 +170,11 @@ bool TaskSystem::AreUserStreamsClosed() noexcept
 	return true;
 }
 
+bool TaskSystem::IsEngineLoopThread() const noexcept
+{
+	return std::this_thread::get_id() == engineLoopThreadID;
+}
+
 void TaskSystem::Update() noexcept
 {
 	auto& baseStream = GetStream(GetBaseTaskStreamIndex());
@@ -187,7 +192,7 @@ void TaskSystem::Update() noexcept
 
 void TaskSystem::JoinAndClear() noexcept
 {
-	const bool isEngineLoopThread = std::this_thread::get_id() == engineLoopThreadID;
+	const bool isEngineLoopThread = IsEngineLoopThread();
 	const bool hasStreams = HasStream(GetBaseTaskStreamIndex());
 
 	if (hasStreams)
@@ -749,7 +754,7 @@ const TaskStream& TaskSystem::GetIOTaskStream() const noexcept
 
 void TaskSystem::BuildStreams()
 {
-	Assert(std::this_thread::get_id() == engineLoopThreadID);
+	Assert(IsEngineLoopThread());
 	FatalAssert(numHardwareThreads >= ENGINE_MIN_HARDWARE_THREADS,
 				"Number of hardware threads are less than the minimum requirement");
 
