@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PoolAllocator::GetBuffer — Memory module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a class="current" href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Memory</a> /
+  <a href="index.html">PoolAllocator</a> / GetBuffer
+</p>
+
+<h1><span class="fn">GetBuffer</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::PoolAllocator</span>
+  <span class="tag">Engine/Memory/PoolAllocator.h</span>
+  <span class="tag">nodiscard</span>
+  Base address of the pool's one backing allocation — the address the parent gave and the address the parent gets back.
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>[[nodiscard]] auto GetBuffer() const</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  Defined in the class body of <code>Engine/Memory/PoolAllocator.h</code>, returning <code>buffer</code> — the <code>Byte*</code> the
+  constructor obtained from one call to <code>MemoryManager::Allocate()</code> and the same address
+  <a href="destructor.html">the destructor</a> hands back to the recorded parent. The declared type is <code>auto</code>, so the
+  return is <code>Byte*</code>.
+</p>
+
+<div class="note">
+  <strong>One address, fixed for the pool's life, and the only memory the pool owns.</strong>
+  The pool never grows, so this is also the address range <a href="ismine.html">IsMine</a> tests and the range a diagnostic prints as
+  <code>[start, start + GetCapacity())</code>. It is <code>nullptr</code> on a moved-from pool and on one whose construction stopped at
+  the zero-capacity early return (<a href="constructors.html">constructors</a>). The alignment of the blocks inside it comes from
+  whoever allocated it, not from the pool (<a href="getblocksize.html">GetBlockSize</a>).
+</div>
+
+<div class="gap">
+  <strong>Nothing about the buffer is safe to keep past the pool.</strong>
+  The bytes go back to the parent id when the destructor runs, and the parent may hand them to another allocator immediately. Holding
+  this pointer, or a pointer to a block inside it, past the pool's destruction is the use-after-free
+  <a href="destructor.html">the destructor</a> does not detect, because it never checks whether blocks came back.
+</div>
+
+<div class="note">
+  <strong>Everything inside the buffer belongs to the pool's bookkeeping or to a holder.</strong>
+  Reading it is harmless; writing to it outside a block you were given corrupts the pool, and the pool cannot detect that — the only
+  witness is a free-list index that no longer makes sense, reported one release late by
+  <a href="deallocate.html">Deallocate</a>. To ask whether a pointer is inside, call
+  <a href="ismine.html">IsMine</a> rather than open-coding this address plus <a href="getcapacity.html">GetCapacity</a>.
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<p>None.</p>
+
+<h2 id="return">Return value</h2>
+
+<table>
+  <tr><th>Type</th><th>What you get</th></tr>
+  <tr><td><code>Byte*</code></td><td>Base of the pool's single backing allocation, valid while the pool is alive and un-moved. Not a block, not a size, and not something to free.</td></tr>
+</table>
+
+<h2 id="example">Examples</h2>
+
+<pre><code>			PoolAllocator alloc("BaseAllocTestAlloc", 1024, 1024);
+			ls &lt;&lt; "First Pool Allocator Buffer =  " &lt;&lt; static_cast&lt;void*&gt;(alloc.GetBuffer()) &lt;&lt; ", Allocated by "
+			   &lt;&lt; MemoryManager::GetCurrentAllocatorID() &lt;&lt; lf;</code></pre>
+
+<p class="meta">From Engine/Memory/DefaultAllocator.cpp, BaseAllocatorTest::Prepare()</p>
+
+<p>
+  The test prints the buffer address next to the id that supplied it, which is the pair worth reading together: the address is the
+  pool's, the ownership is the parent's. The multi-pool prints the same value as the start of a bank's range when no bank will claim a
+  released pointer (<code>Engine/Memory/MultiPoolAllocator.cpp</code>, <code>MultiPoolAllocator::Deallocate()</code>).
+</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; PoolAllocator</a></span>
+  <span><a href="index.html#methods">All PoolAllocator methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

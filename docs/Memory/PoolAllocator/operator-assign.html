@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PoolAllocator::operator= — Memory module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a class="current" href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Memory</a> /
+  <a href="index.html">PoolAllocator</a> / operator=
+</p>
+
+<h1><span class="fn">operator=</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::PoolAllocator</span>
+  <span class="tag">Engine/Memory/PoolAllocator.h</span>
+  <span class="tag">noexcept</span>
+  Ends this pool and rebuilds it in place from rhs, so the old buffer is freed and the old id deregistered first.
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>PoolAllocator&amp; operator=(PoolAllocator&amp;&amp; rhs) noexcept</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  Defined in <code>Engine/Memory/PoolAllocator.cpp</code> as <code>PoolAllocator::operator=(PoolAllocator&amp;&amp; rhs)</code>.
+  It is not an assignment that copies fields: it ends this pool and rebuilds it in place.
+</p>
+
+<pre><code>this-&gt;~PoolAllocator();
+new (this) PoolAllocator(std::move(rhs));
+
+return *this;</code></pre>
+
+<p class="meta">From Engine/Memory/PoolAllocator.cpp, PoolAllocator::operator=(PoolAllocator&amp;&amp; rhs)</p>
+
+<p>
+  Two consequences follow from that shape and nothing else in the class announces them. The destination's buffer is
+  released to <em>its own</em> recorded parent and its registration deregistered, exactly as
+  <a href="destructor.html">the destructor</a> would, before a byte of <code>rhs</code> is read. And the pool that ends up in
+  <code>this</code> carries <code>rhs</code>'s <code>parentID</code>, so the buffer now held here owes its return to the
+  allocator that was current where <code>rhs</code> was built — not where this assignment happens
+  (<a href="index.html#description">the recorded-parent rule</a>).
+</p>
+
+<div class="gap">
+  <strong>Assigning over a pool that is still lending blocks releases that buffer anyway.</strong>
+  Nothing between the caller and <code>this-&gt;~PoolAllocator()</code> compares the free count with
+  <code>numberOfBlocks</code>. Any live object in the destination's buffer is left pointing at memory returned to that pool's
+  parent. This is the same exposure <a href="destructor.html">the destructor</a> carries, and it arrives through ordinary
+  container work: <code>std::sort</code> move-assigns, and <a href="constructors.html">a bank of a multi-pool</a> is a pool
+  with blocks handed out.
+</div>
+
+<div class="gap">
+  <strong>Self-move-assignment ends the pool instead of doing nothing.</strong>
+  There is no <code>this != &amp;rhs</code> guard. The destructor runs on the live object first — releasing its buffer and
+  deregistering its id — so the move constructor that follows is stealing from an object it has just emptied: it copies
+  <code>InvalidAllocatorID</code>, trips its own <code>Assert(id != InvalidAllocatorID)</code>, zeroes the fields again and
+  then asks <code>MemoryManager::GetAllocatorProxy()</code> for <code>InvalidAllocatorID</code>, which logs an error and hands
+  back a throwaway record (<code>Engine/Memory/MemoryManager.cpp</code>). Debug and Dev stop at the assertion; a Release
+  build, where <code>Assert</code> is an empty inline function (<code>Engine/Core/Debug.h</code>), leaves a pool that owns
+  nothing and can never allocate again.
+</div>
+
+<div class="note">
+  <strong>The move that follows a sort is the case a measurement exists for.</strong>
+  <code>std::sort</code> over a vector of pools moves pools repeatedly, and the question worth asking is whether a
+  destructive assignment like this one can release a bank's live buffer mid-shuffle. <code>JOURNAL.md</code> records the
+  2026-10-05 answer as measured, not assumed: libc++'s shift move-assigns only into the slot the previous move has just
+  vacated, and the run recorded zero releases for an out-of-order insert — "Safe by luck, not by contract". The same entry,
+  finding 5, records that the manager's proxy for the id keeps naming the moved-from object
+  (<a href="constructors.html">constructors</a>), so a pool that has been moved should not be allocated through by id.
+</div>
+
+<div class="note">
+  <strong>Copy assignment does not exist.</strong>
+  Declaring the move operations deletes the copy constructor and copy assignment implicitly — verified against a class
+  carrying the same declarations with <code>std::is_copy_assignable_v</code> false. A pool cannot be duplicated, which is the
+  correct answer for a type that owns one buffer and one registration id: a second copy would free the same buffer and
+  deregister the same id twice.
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<table>
+  <tr><th>Parameter</th><th>Type</th><th>Requirement</th></tr>
+  <tr><td><code>rhs</code></td><td><code>PoolAllocator&amp;&amp;</code></td><td>A different pool that still owns its buffer. A moved-from <code>rhs</code> is legal to assign and leaves this pool inert as well; <code>rhs</code> and <code>this</code> being the same object ends the pool, as above.</td></tr>
+</table>
+
+<h2 id="return">Return value</h2>
+
+<table>
+  <tr><th>Type</th><th>What you get</th></tr>
+  <tr><td><code>PoolAllocator&amp;</code></td><td><code>this</code>, now holding what <code>rhs</code> held: its buffer, its id and its recorded parent. Chained assignment is expressible; nothing in the tree uses it.</td></tr>
+</table>
+
+<h2 id="example">Examples</h2>
+
+<pre><code>banks.emplace_back(str.c_str(), blockSize, numberOfBlocks);
+std::sort(banks.begin(), banks.end());</code></pre>
+
+<p class="meta">From Engine/Memory/MultiPoolAllocator.cpp, MultiPoolAllocator::GenerateBank()</p>
+
+<p>
+  The only call site in the repository is an algorithm's, not a person's: <code>std::sort</code> over
+  <code>HVector&lt;PoolAllocator&gt;</code> reaches this operator as it shuffles banks into order
+  (<a href="operator-less.html">operator&lt;</a> decides the order it produces). The same pair appears in
+  <code>Engine/Memory/ThreadSafeMultiPoolAllocator.cpp</code>.
+</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; PoolAllocator</a></span>
+  <span><a href="index.html#methods">All PoolAllocator methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

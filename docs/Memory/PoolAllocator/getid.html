@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PoolAllocator::GetID — Memory module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a class="current" href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Memory</a> /
+  <a href="index.html">PoolAllocator</a> / GetID
+</p>
+
+<h1><span class="fn">GetID</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::PoolAllocator</span>
+  <span class="tag">Engine/Memory/PoolAllocator.h</span>
+  <span class="tag">nodiscard</span>
+  The registration id the manager keys this pool by, or InvalidAllocatorID when there is none.
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>[[nodiscard]] auto GetID() const</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  Defined in the class body of <code>Engine/Memory/PoolAllocator.h</code>, returning <code>id</code> by value — the
+  <code>TAllocatorID</code> the constructor obtained from <code>MemoryManager::RegisterAllocator()</code>. It is the id the
+  <a href="../index.html#allocatorproxy"><code>AllocatorProxy</code></a> record is keyed by, which is what
+  <a href="allocate.html">Allocate</a> passes as the first argument of <code>FallbackAllocate</code> and what the destructor hands to
+  <code>DeregisterAllocator</code>. The body sits in the header, so the call inlines into every includer.
+</p>
+
+<div class="note">
+  <strong><code>InvalidAllocatorID</code> is the only state this reports, and it means the pool owns nothing.</strong>
+  The id is <code>InvalidAllocatorID</code> before the constructor's registration line, on a pool whose construction stopped at the
+  zero-capacity early return (<a href="constructors.html">constructors</a>), and on a pool that has been moved from
+  (<a href="operator-assign.html">operator=</a>). It is a real test of "is this pool live", which is how
+  <a href="destructor.html">the destructor</a> chooses its branch.
+</div>
+
+<div class="gap">
+  <strong>The id is borrowed, not owned, and it does not survive the pool.</strong>
+  <code>MemoryManager::DeregisterAllocator()</code> returns the proxy record to the manager's free pool
+  (<code>Engine/Memory/MemoryManager.cpp</code>), so the number becomes available to the next allocator registered. Keep this value
+  only as long as the pool is alive; holding it past destruction points at whoever got the id next, and the manager's only guard is
+  a range check (<code>IsValid</code>).
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<p>None.</p>
+
+<h2 id="return">Return value</h2>
+
+<table>
+  <tr><th>Type</th><th>What you get</th></tr>
+  <tr><td><code>TAllocatorID</code></td><td>The registration id of this pool, or <code>InvalidAllocatorID</code> (-1) when there is none. Allocation against the id goes to the same pool, through the proxy's function pointers — with the caveat the <a href="constructors.html">move constructor</a> records.</td></tr>
+</table>
+
+<h2 id="example">Examples</h2>
+
+<pre><code>for (auto&amp; bank : banks)
+{
+	auto&amp; proxy = mmgr.GetAllocatorProxy(bank.GetID());
+	proxy.threadId = currentTID;
+}</code></pre>
+
+<p class="meta">From Engine/Memory/MultiPoolAllocator.cpp, MultiPoolAllocator::~MultiPoolAllocator()</p>
+
+<p>
+  A bank's id, used while the banks are still alive, to re-stamp each pool's proxy before the vector is cleared — the
+  <code>MEMORY_VERIFICATION_ENABLED</code> path that records which thread owns a registration. Nothing in the tree allocates through a
+  bank's id, which is the one use the stale-proxy caveat would otherwise make dangerous.
+</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; PoolAllocator</a></span>
+  <span><a href="index.html#methods">All PoolAllocator methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PoolAllocator::PoolAllocator — Memory module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a class="current" href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Memory</a> /
+  <a href="index.html">PoolAllocator</a> / PoolAllocator
+</p>
+
+<h1><span class="fn">PoolAllocator</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::PoolAllocator</span>
+  <span class="tag">Engine/Memory/PoolAllocator.h</span>
+  Allocates the one buffer, links the free list and registers the pool; the move form takes all of it and leaves the source empty but destructible.
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>#endif
+
+public:
+#if PROFILE_ENABLED
+	PoolAllocator(const char* inName, TSize inBlockSize, TSize inNumberOfBlocks,
+				  hbe::source_location location = hbe::source_location::current())
+
+#else
+	PoolAllocator(const char* inName, TSize inBlockSize, TSize inNumberOfBlocks)
+
+#endif
+
+	PoolAllocator(PoolAllocator&amp;&amp; rhs) noexcept</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  Both non-moving forms are defined in <code>Engine/Memory/PoolAllocator.cpp</code> as
+  <code>PoolAllocator::PoolAllocator()</code>; the only difference between them is the
+  <code>location</code> argument that <code>PROFILE_ENABLED</code> adds. In order, construction interns the name,
+  records the allocator that is current at that moment as <code>parentID</code>, takes one allocation of
+  <code>blockSize * numberOfBlocks</code> bytes from that same current allocator, links the blocks, and registers
+  the object with the <a href="../index.html#memorymanager"><code>MemoryManager</code></a> under a new id. The pool
+  is a live allocator from the moment the constructor returns; there is no separate initialisation step.
+</p>
+
+<pre><code>parentID = hbe::MemoryManager::GetCurrentAllocatorID();
+…
+const TSize totalSize = blockSize * numberOfBlocks;
+if (totalSize &lt;= 0)
+{
+	return;
+}
+
+auto&amp; mmgr = MemoryManager::GetInstance();
+buffer = static_cast&lt;Byte*&gt;(mmgr.Allocate(totalSize));
+availables = &amp;buffer[0];</code></pre>
+
+<p class="meta">From Engine/Memory/PoolAllocator.cpp, PoolAllocator::PoolAllocator()</p>
+
+<div class="gap">
+  <strong>A block cannot be narrower than <code>sizeof(size_t)</code>, and the constructor stops there rather than
+  quietly widening it.</strong>
+  <code>Assert(inBlockSize &gt;= sizeof(TSize));</code> is the first statement of the constructor body, and the
+  <a href="deallocate.html">release path</a> and <a href="allocate.html">allocation path</a> both treat a block as
+  holding that value. A Debug or Dev build therefore ends on an undersized request; a Release build, where
+  <code>Assert</code> is an empty inline function (<code>Engine/Core/Debug.h</code>, <code>RELEASE_BUILD</code>),
+  carries on, because the member initialiser has already floored the stride with
+  <code>std::max(inBlockSize, sizeof(TSize))</code> and aligned it to <code>Config::DefaultAlign</code>. Either
+  way the caller-visible floor is the same: <a href="getblocksize.html">GetBlockSize</a> never answers less than
+  16 bytes, so sizing a pool from the number you passed rather than the number you get back under-counts the
+  bytes. Why a free block must be able to hold that value is the pool's internal layout — the reason behind this
+  precondition lives in the free-list mechanism, which the <a href="index.html#coverage">class Coverage
+  section</a> names as owed to a design document; what belongs to a caller is only the floor and the assert.
+</div>
+
+<div class="gap">
+  <strong>An empty pool is a different object than an allocator.</strong>
+  When <code>blockSize * numberOfBlocks</code> comes out zero — in practice <code>inNumberOfBlocks == 0</code>, since
+  the floored block size cannot be zero — the constructor returns before the allocation, before the free list and
+  before the registration. The result is an object whose <code>id</code> is <code>InvalidAllocatorID</code>, whose
+  <code>buffer</code> is <code>nullptr</code>, and whose <code>availables</code> holds whatever happened to be in
+  memory: the header gives that member no initialiser and this path never reaches the line that writes it. Destroying
+  such an object is safe and every figure it reports is zero, but <a href="allocate.html">Allocate</a> is not —
+  <a href="allocateblock.html">AllocateBlock</a> reads that unset head first. A pool of zero blocks is not a pool that
+  is merely full, and the multi-pool that used to build one from a cached <code>{64, 0}</code> pair is recorded as
+  robustness finding 8 in <code>JOURNAL.md</code> (2026-10-05).
+</div>
+
+<div class="note">
+  <strong>The name is interned before the buffer is allocated.</strong>
+  <code>name(inName)</code> runs <code>StaticStringTable::Register</code>, which takes the table lock and can grow the
+  table — an allocation of its own from the allocator that is current, which at that instant is still the parent rather
+  than the pool. It is also why <code>inName</code> is a precondition: a null pointer is handed straight to
+  <code>std::string_view</code> inside <code>StaticStringTable::Register</code>, and <code>RegisterAllocator</code>'s
+  later substitution of <code>"None"</code> never gets the chance, because it receives a second copy of the same pointer.
+</div>
+
+<p>
+  The move constructor steals all of it: the id, the parent id, the name, the stride, both counts, the buffer and the free-list
+  head, plus the profile peak when that build runs. It asserts the source held a real registration
+  (<code>Assert(id != InvalidAllocatorID)</code>), then leaves the source inert — invalid ids, null pointers, zero counts, empty
+  name — which is what makes a moved-from pool safe to destroy and useless for everything else. Then it repairs the manager's
+  record for the id it just took:
+</p>
+
+<pre><code>auto&amp; allocProxy = mmgr.GetAllocatorProxy(GetID());
+…
+allocProxy.allocate = allocFunc;
+allocProxy.deallocate = deallocFunc;</code></pre>
+
+<p class="meta">From Engine/Memory/PoolAllocator.cpp, PoolAllocator::PoolAllocator(PoolAllocator&amp;&amp; rhs)</p>
+
+<div class="gap">
+  <strong>A move refreshes the manager's function pointers for the id but not the object pointer they are called with.</strong>
+  <code>AllocatorProxy::allocator</code> is written once, by <code>RegisterAllocator</code> inside the original constructor, and the
+  move never touches it — while dispatch is <code>allocProxy.allocate(allocProxy.allocator, nBytes)</code>
+  (<code>Engine/Memory/MemoryManager.cpp</code>, <code>MemoryManager::Allocate()</code>). Allocation routed through the pool's id
+  therefore keeps reaching the object that was moved <em>from</em>. Every bank in a multi-pool is a pool that has been moved at
+  least once, and the vector growth that generates a bank moves them again; <code>JOURNAL.md</code> records the measurement of the
+  <code>std::sort</code> case on 2026-10-05 as finding 5 — "Safe by luck, not by contract", latent because nothing in the tree
+  allocates through a bank's own id yet. Do not start.
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<table>
+  <tr><th>Parameter</th><th>Type</th><th>Requirement</th></tr>
+  <tr><td><code>inName</code></td><td><code>const char*</code></td><td>A valid null-terminated string, interned as the pool's name and as its registration name.</td></tr>
+  <tr><td><code>inBlockSize</code></td><td><code>TSize</code></td><td>At least <code>sizeof(size_t)</code>. Rounded up to <code>Config::DefaultAlign</code>; the request is never the block size, <a href="getblocksize.html">GetBlockSize</a> is.</td></tr>
+  <tr><td><code>inNumberOfBlocks</code></td><td><code>TSize</code></td><td>At least 1. Zero produces the inert object described above, not an allocator that is temporarily full.</td></tr>
+  <tr><td><code>location</code></td><td><code>hbe::source_location</code></td><td>Only under <code>PROFILE_ENABLED</code>; defaults to the call site and is passed on to the deregistration. Never executed in this tree.</td></tr>
+  <tr><td><code>rhs</code></td><td><code>PoolAllocator&amp;&amp;</code></td><td>A pool still owning its buffer. After the move it is inert: destructible, reportable as empty, and never allocatable again.</td></tr>
+</table>
+
+<h2 id="return">Return value</h2>
+
+<p>
+  Nothing — a constructor. Success is implicit: a constructed pool owns a buffer, holds a registration id, and is ready to be
+  entered as an <a href="../index.html#allocatorscope"><code>AllocatorScope</code></a>. There is no null, no error code, and no
+  query that distinguishes a registered pool from the zero-block object, other than
+  <a href="getid.html">GetID</a> answering <code>InvalidAllocatorID</code>.
+</p>
+
+<h2 id="example">Examples</h2>
+
+<pre><code>PoolAllocator alloc("LinkedListTest::Allocator", NodeSize, COUNT + 10);
+AllocatorScope allocScope(alloc);</code></pre>
+
+<p class="meta">From Engine/Container/LinkedList.cpp, LinkedListTest::Prepare()</p>
+
+<p>
+  The direct form: a pool sized for a node, then entered as the current allocator so everything built inside the scope arrives from
+  it. <code>Engine/Memory/DefaultAllocator.cpp</code> uses the same pair to give a <code>std::vector</code> a pool of its own.
+</p>
+
+<pre><code>banks.emplace_back(str.c_str(), blockSize, numberOfBlocks);
+std::sort(banks.begin(), banks.end());</code></pre>
+
+<p class="meta">From Engine/Memory/MultiPoolAllocator.cpp, MultiPoolAllocator::GenerateBank()</p>
+
+<p>
+  The indirect form, and the one that exercises the move constructor: <code>emplace_back</code> constructs a bank in place and
+  <code>std::sort</code> then move-assigns banks into order (<a href="operator-assign.html">operator=</a>,
+  <a href="operator-less.html">operator&lt;</a>). A multi-pool's own buffer is the parent here, because the call sits inside
+  <code>AllocatorScope allocScope(parentID);</code>.
+</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; PoolAllocator</a></span>
+  <span><a href="index.html#methods">All PoolAllocator methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

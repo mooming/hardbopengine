@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MultiPoolAllocator — Memory module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a class="current" href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This class</h3>
+  <ul>
+    <li><a href="#description">Class description</a></li>
+    <li><a href="#template">Template parameters</a></li>
+    <li><a href="#properties">Class properties</a></li>
+    <li><a href="#methods">Class methods</a></li>
+    <li><a href="#non-member">Non-member helper functions</a></li>
+    <li><a href="#coverage">Coverage</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Memory</a> /
+  MultiPoolAllocator
+</p>
+
+<h1>MultiPoolAllocator</h1>
+<p class="subtitle">
+  <span class="tag">Engine/Memory/MultiPoolAllocator.h</span>
+  <span class="tag">final</span>
+  Banks of fixed-size blocks, one per size class, grown on demand - and no synchronisation at all, so one thread owns the instance.
+</p>
+
+<h2 id="description">Class description</h2>
+
+<p>
+  <code>class MultiPoolAllocator final</code> at <code>Engine/Memory/MultiPoolAllocator.h</code>: a set of
+  <a href="../index.html#allocators">fixed-block pools</a> called banks, one per size class, kept in ascending block-size
+  order and grown on demand. A request is answered by the smallest bank that can hold it, is not full, and would not
+  waste more than double the request; anything else builds a new bank. Blocks come back by address, because
+  <a href="deallocate.html">Deallocate</a> asks each bank whether it owns the pointer.
+</p>
+
+<div class="gap">
+  <strong>One thread owns an instance, for its whole life, and that is a contract rather than an absence.</strong>
+  The class declares no mutex, no atomic and no lock — <code>banks</code> is a plain
+  <code>hbe::HVector&lt;PoolAllocator&gt;</code>, every bank's free list is plain data, and
+  <a href="allocate.html">Allocate</a>, <a href="deallocate.html">Deallocate</a>,
+  <a href="generate-bank.html">GenerateBank</a> and <a href="print-usage.html">PrintUsage</a> all read and write that
+  state with nothing between them and the caller. Construction, every allocation, every release and the destructor
+  belong to a single thread, and no other thread may touch the instance while they run. Nothing checks it: the manager's
+  one thread comparison is made at <a href="destructor.html">deregistration</a>, and the class overwrites the value it
+  compares for its banks on the way there. The allocator built for sharing is the other entry in the
+  <a href="../index.html#allocators">allocator catalogue</a> — same strategy, one mutex, and a locking protocol of its own
+  to be careful about.
+</div>
+
+<div class="note">
+  <strong>The ladder only ever grows.</strong> A bank is created by
+  <a href="new-bank-allocate.html">NewBankAllocate</a> and lives until the allocator is destroyed: no member releases an
+  exhausted or unused bank, and the memory a bank holds is <code>blockSize × numberOfBlocks</code> borrowed from the
+  parent allocator. A size class that once ran dry is a bank forever, so the shape of a long-lived instance is a record
+  of every size it was ever asked for.
+</div>
+
+<div class="note">
+  <strong>The name is the allocator's identity outside this object.</strong>
+  <a href="generate-banks-by-cache.html">The next run boots from the last one's report</a> by name, and
+  <a href="report-configuration.html">ReportConfiguration</a> files its ladder under the same key — so two instances
+  that share a name share a ladder, and their reports merge into one entry
+  (<code>MultiPoolConfigCache::Normalize</code> in <code>Engine/Memory/MultiPoolConfigCache.cpp</code>).
+</div>
+
+<table>
+  <tr><th>Who uses it in the engine</th><th>As what</th><th>What that shows</th></tr>
+  <tr>
+    <td><code>Logger</code> (<code>Engine/Log/Logger.h</code>)</td>
+    <td>A member, alongside a thread-safe twin for the input buffer</td>
+    <td>The logger's own allocations run on the thread the logger names, and
+      <code>Logger::StartTask</code> re-stamps the allocator's proxy when the IO thread takes over
+      (<code>Engine/Log/Logger.cpp</code>) — a thread hand-over asserted by the caller, not protected by the class</td>
+  </tr>
+  <tr>
+    <td><code>TaskStream</code> (<code>Engine/Core/TaskStream.h</code>)</td>
+    <td>One member per stream</td>
+    <td>Entered with <code>AllocatorScope</code> at the top of <code>TaskStream::RunLoop()</code> and
+      <code>TaskStream::Update()</code> — the ordinary way to use an allocator in this engine is to stand inside one, not
+      to call it</td>
+  </tr>
+  <tr>
+    <td>Every unit testlet (<code>Engine/Test/TestCollection.cpp</code>, <code>Engine/Test/UnitTestCollection.cpp</code>)</td>
+    <td>One instance per testlet body, named after the testlet</td>
+    <td>Construction, scope, body, <a href="print-usage.html">PrintUsage</a>, destruction, all on one thread — the shape
+      this class is designed for</td>
+  </tr>
+</table>
+
+<h2 id="template">Template parameters</h2>
+
+<p>
+  None. <code>MultiPoolAllocator</code> is <code>final</code> and not a template; everything variable about it — bank
+  size, minimum block size, the initial ladder — is a constructor argument or a cached configuration rather than a type.
+</p>
+
+<h2 id="properties">Class properties</h2>
+
+<table>
+  <tr><th>Type + Name</th><th>Default Value</th><th>Description</th></tr>
+  <tr><td><code>using This = MultiPoolAllocator;</code> <span class="badge">member type</span></td><td><span class="muted">not applicable</span></td><td>Self-alias; nothing in the class or its sources uses it.</td></tr>
+  <tr><td><code>static constexpr size_t DefaultMinBlock = 16;</code> <span class="badge">public</span></td><td><code>16</code></td><td>The <code>minBlockSize</code> default, and equal to <code>Config::DefaultAlign</code>: the smallest block the ladder will create and the size every smaller request is raised to.</td></tr>
+  <tr><td><code>static constexpr size_t DefaultBankUnit = 1024ULL * 1024;</code> <span class="badge">public</span></td><td><code>1024ULL * 1024</code></td><td>The <code>allocationUnit</code> default — the byte target a generated bank is sized against, which is a floor for large classes rather than a ceiling.</td></tr>
+  <tr><td><code>static constexpr size_t MinNumberOfBlocks = 16;</code> <span class="badge">public</span></td><td><code>16</code></td><td>Floor on the blocks in any bank whose block size is under one mebibyte; the reason a bank can be far larger than the bank unit.</td></tr>
+  <tr><td><code>using TInitializerList = std::initializer_list&lt;PoolConfig&gt;;</code> <span class="badge">private</span> <span class="badge">member type</span></td><td><span class="muted">not applicable</span></td><td>The pre-configured ladder type of the second constructor; declared here because <code>PoolConfig</code> is an incomplete name to a caller of the header.</td></tr>
+  <tr><td><code>TAllocatorID id;</code> <span class="badge">private</span></td><td><span class="muted">none in the header</span></td><td>The manager's registration handle, assigned last in the constructor and never re-checked for validity.</td></tr>
+  <tr><td><code>TAllocatorID parentID;</code> <span class="badge">private</span></td><td><span class="muted">none in the header</span></td><td>Whichever allocator was current at construction — the source every bank's backing buffer is borrowed from and the scope the destructor opens.</td></tr>
+  <tr><td><code>StaticString name;</code> <span class="badge">private</span></td><td><span class="muted">none in the header</span></td><td>Log category, bank-name prefix and configuration-cache key at once; written once and read by everything.</td></tr>
+  <tr><td><code>hbe::HVector&lt;PoolAllocator&gt; banks;</code> <span class="badge">private</span></td><td><span class="muted">none in the header</span></td><td>The ladder, ascending by block size wherever a sort has run; growable, so a reference into it dies on the next bank.</td></tr>
+  <tr><td><code>size_t bankSize;</code> <span class="badge">private</span></td><td><span class="muted">none in the header</span></td><td>The byte target read by <a href="calculate-number-of-blocks.html">CalculateNumberOfBlocks</a> every time a bank is generated.</td></tr>
+  <tr><td><code>size_t minBlock;</code> <span class="badge">private</span></td><td><span class="muted">none in the header</span></td><td>The rounding unit of <a href="calculate-block-size.html">CalculateBlockSize</a> and the floor applied to every size comparison; a divisor, and not validated against zero.</td></tr>
+</table>
+
+<h2 id="methods">Class methods</h2>
+
+<table class="methods">
+  <tr><th>Name</th><th>Signature</th><th>What a caller depends on</th></tr>
+  <tr><td><a href="constructors.html"><code>MultiPoolAllocator</code></a><span class="badge">2 overloads</span></td><td class="sig">explicit MultiPoolAllocator(const char* name, size_t allocationUnit = DefaultBankUnit, size_t minBlockSize = DefaultMinBlock)<br>MultiPoolAllocator(const char* name, TInitializerList initialConfigurations, size_t allocationUnit = DefaultBankUnit, size_t minBlockSize = DefaultMinBlock)</td><td>Records the ambient allocator as its parent, may build banks before it returns, and cannot report a failed registration.</td></tr>
+  <tr><td><a href="destructor.html"><code>~MultiPoolAllocator</code></a></td><td class="sig">~MultiPoolAllocator()</td><td>Returns every bank's buffer to the parent it recorded, then deregisters; blocks still checked out vanish with the bank.</td></tr>
+  <tr><td><a href="allocate.html"><code>Allocate</code></a></td><td class="sig">void* Allocate(size_t size)</td><td>Null only for a request of zero; anything it cannot serve from the ladder grows the ladder, and out of memory aborts instead of returning null.</td></tr>
+  <tr><td><a href="deallocate.html"><code>Deallocate</code></a></td><td class="sig">void Deallocate(void* ptr, size_t size)</td><td>Finds the bank by address, so <code>size</code> is a checked hint and not a selector; a foreign pointer is logged and dropped.</td></tr>
+  <tr><td><a href="get-name.html"><code>GetName</code></a></td><td class="sig">[[nodiscard]] auto GetName() const</td><td>A copy of the name, safe to keep past the allocator's life; defined in the header.</td></tr>
+  <tr><td><a href="get-id.html"><code>GetID</code></a></td><td class="sig">[[nodiscard]] auto GetID() const</td><td>The multi-pool's own id — never a bank's — and indistinguishable from a failed registration's.</td></tr>
+  <tr><td><a href="print-usage.html"><code>PrintUsage</code></a></td><td class="sig">void PrintUsage() const</td><td>Human-readable totals and a line per bank; the whole body is profiling-only, and it reads the ladder unsynchronised.</td></tr>
+  <tr><td><a href="report-configuration.html"><code>ReportConfiguration</code></a></td><td class="sig">void ReportConfiguration() const</td><td>Publishes the per-size peak for the next run, behind an assertion that the published total equals the summed bank peak; exists only under <code>PROFILE_ENABLED</code>.</td></tr>
+  <tr><td><a href="new-bank-allocate.html"><code>NewBankAllocate</code></a></td><td class="sig">void* NewBankAllocate(size_t size)</td><td>Private: the only route to growth, counted as an engine-level fallback, and it requires a live <code>Engine</code>.</td></tr>
+  <tr><td><a href="generate-banks-by-cache.html"><code>GenerateBanksByCache</code></a></td><td class="sig">bool GenerateBanksByCache(MemoryManager&amp; mmgr)</td><td>Private: builds the previous run's ladder for this name; called once, by the name-only constructor, whose result is discarded.</td></tr>
+  <tr><td><a href="get-bank-index.html"><code>GetBankIndex</code></a><span class="badge">2 overloads</span></td><td class="sig">[[nodiscard]] size_t GetBankIndex(size_t nBytes) const<br>[[nodiscard]] size_t GetBankIndex(void* ptr) const</td><td>Private: an index or <code>banks.size()</code> for none; the size answer depends on who has taken what, the pointer answer does not.</td></tr>
+  <tr><td><a href="calculate-block-size.html"><code>CalculateBlockSize</code></a></td><td class="sig">[[nodiscard]] size_t CalculateBlockSize(size_t requested) const</td><td>Private: <code>minBlock</code> times a power of two, at least the request and never more than double it.</td></tr>
+  <tr><td><a href="calculate-number-of-blocks.html"><code>CalculateNumberOfBlocks</code></a></td><td class="sig">static size_t CalculateNumberOfBlocks(size_t bankSize, size_t blockSize)</td><td>Private and static: <code>ceil(bankSize / blockSize)</code> with a floor of sixteen blocks under a mebibyte.</td></tr>
+  <tr><td><a href="generate-bank.html"><code>GenerateBank</code></a></td><td class="sig">void GenerateBank(size_t blockSize, size_t numberOfBlocks)</td><td>Private: borrows the buffer from the parent, inserts, and re-sorts — the one member that moves banks that are already live.</td></tr>
+</table>
+
+<h2 id="non-member">Non-member helper functions</h2>
+
+<p>
+  None. The only helpers in <code>Engine/Memory/MultiPoolAllocator.cpp</code> are function-local lambdas — the
+  <code>allocFunc</code> and <code>deallocFunc</code> trampolines both constructors hand to
+  <code>MemoryManager::RegisterAllocator</code>, and <code>InsertItem</code> inside
+  <a href="report-configuration.html">ReportConfiguration</a> — none of them reachable outside the function that defines
+  it. The <code>allocFunc</code> pair is worth one sentence: both cast the manager's untyped first argument back to a
+  <code>MultiPoolAllocator*</code> and call this class's own members, which is why
+  <a href="generate-bank.html">moving a bank</a> leaves a stale pointer in the manager rather than a broken call here.
+</p>
+
+<h2 id="coverage">Coverage</h2>
+
+<table>
+  <tr><th>Not documented here, or not answered</th><th>Why, and where the question stands</th></tr>
+  <tr>
+    <td><code>MultiPoolAllocatorTest</code> and its four testlets</td>
+    <td>Test-only code: the class is declared inside <code>#ifdef __UNIT_TEST__</code> in the header and its
+      <code>Prepare()</code> in the source, so the authoring contract puts it in this section rather than on a page. The
+      four testlets cover construction, a zero-size request, allocation with fallback, and a performance comparison
+      against <code>std::malloc</code>. Two facts about them belong here: none of them starts a second thread, so nothing
+      tests the single-thread contract, and the fallback expectation in the third sits inside
+      <code>#if PROFILE_ENABLED</code> — compiled out of every configuration this tree builds</td>
+  </tr>
+  <tr>
+    <td>Whether the differences from <code>ThreadSafeMultiPoolAllocator</code> are design or drift</td>
+    <td><strong>Open question, and the pages refuse to guess.</strong> The two classes declare the same nine private
+      members and the same strategy; what differs is this class's <code>PrintUsage() const</code> and
+      <code>ReportConfiguration() const</code> against non-const versions there, this
+      <code>GenerateBanksByCache(MemoryManager&amp;)</code> against a const-reference version there, this class's
+      <code>PrintUsage</code> opening its system-allocator scope around one statement block instead of as its first
+      statement, and a prose comment above this header's <code>NewBankAllocate</code> that the twin does not carry. That last
+      item is now closed: the comment — <code>// Generate a new bank to allocae</code>, misspelling included — explained nothing
+      and has since been deleted by the comment migration, and what the function actually does is on the
+      <a href="new-bank-allocate.html"><code>NewBankAllocate</code> page</a>. No
+      design document in <code>docs/design/</code> states any of the four differences, so each is named where it is
+      visible and none is called intentional</td>
+  </tr>
+  <tr>
+    <td>Why the destructor re-stamps each bank proxy's thread id</td>
+    <td><strong>Open question.</strong> <code>~MultiPoolAllocator</code> writes the destroying thread's id into every
+      bank's proxy under <code>MEMORY_VERIFICATION_ENABLED</code> immediately before destroying them, and that id is the
+      value <code>MemoryManager::DeregisterAllocator</code> compares against. Whether the write legitimises a hand-over
+      (as <code>Logger::StartTask</code> does for the logger's own pool) or silences the check, the source does not say
+      and the twin does the same thing</td>
+  </tr>
+  <tr>
+    <td>Why <code>GenerateBank</code> opens the parent scope twice</td>
+    <td><strong>Open question.</strong> The outer and inner <code>AllocatorScope</code> both install
+      <code>parentID</code>, so the inner one has no effect a reader can identify
+      (<code>Engine/Memory/MultiPoolAllocator.cpp</code>)</td>
+  </tr>
+  <tr>
+    <td>Copy and move</td>
+    <td>The header declares neither for this class, and this page makes no claim about what compiles: proving that needs
+      a compiler, and authoring the reference does not run one. What can be stated from the sources is the consequence —
+      the object owns <code>banks</code>, whose element type owns a registration and a buffer, so any copy would put two
+      objects in charge of the same bank ids</td>
+  </tr>
+  <tr>
+    <td>Alignment and exhaustion, as contract rather than intent</td>
+    <td>Both are recorded on <a href="allocate.html">Allocate</a> as the behaviour a caller gets, and both are known-open
+      findings of the 2026-10-05 review rather than designed limits: no form of <code>Allocate</code> expresses an
+      alignment above <code>Config::DefaultAlign</code> (finding 9), and a request that cannot be served aborts instead of
+      returning null (finding 6). Neither has been changed since</td>
+  </tr>
+  <tr>
+    <td>Whether any of the <code>PROFILE_ENABLED</code> behaviour has been executed</td>
+    <td>No, and this is the largest gap on the page. Setting that macro to <code>1</code> breaks the build in three
+      unrelated places before any Memory file compiles, as the journal entry of 2026-10-05 18:31 records, so
+      <a href="print-usage.html">PrintUsage</a> and <a href="report-configuration.html">ReportConfiguration</a> are
+      described from reading alone. Every number quoted for them on these pages is attributed to the measurement that
+      produced it — in both cases a standalone model, not the engine binary</td>
+  </tr>
+  <tr>
+    <td>Where the manager's own contracts live</td>
+    <td><code>RegisterAllocator</code>, the 255-slot proxy pool, the statistics record, <code>GetAllocatorProxy</code>'s
+      dummy, and the cache file's serialisation are the manager's. They are indexed on the
+      <a href="../index.html#memorymanager">module page</a> and argued in
+      <a href="../../design/MemoryManagerInternals_Design.html">the Memory manager internals document</a>; this page cites
+      them as facts a caller of this class inherits</td>
+  </tr>
+  <tr>
+    <td>Signature text</td>
+    <td>Emitted straight from the header by <code>docs_pass.py signatures</code>, which is what makes it verifiable. Where
+      a declaration sits behind a preprocessor guard or under an access label, the emitted block carries that line with
+      it, so <a href="report-configuration.html">ReportConfiguration</a> shows its <code>#if</code> and
+      <a href="new-bank-allocate.html">NewBankAllocate</a> shows the label above it</td>
+  </tr>
+</table>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; MultiPoolAllocator</a></span>
+  <span><a href="index.html#methods">All MultiPoolAllocator methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

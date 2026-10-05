@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ThreadSafeMultiPoolAllocator::PrintUsage — Memory module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a class="current" href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Memory</a> /
+  <a href="index.html">ThreadSafeMultiPoolAllocator</a> / PrintUsage
+</p>
+
+<h1><span class="fn">PrintUsage</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::ThreadSafeMultiPoolAllocator</span>
+  <span class="tag">Engine/Memory/ThreadSafeMultiPoolAllocator.h</span>
+  <span class="tag">PROFILE_ENABLED body</span>
+  Per-bank usage report and the summed per-block-size peak, redirected to the system allocator before it touches a container.
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>void PrintUsage()</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  Declared in <code>Engine/Memory/ThreadSafeMultiPoolAllocator.h</code>, defined in
+  <code>Engine/Memory/ThreadSafeMultiPoolAllocator.cpp</code>. The declaration is unconditional; the entire body sits
+  between <code>#if PROFILE_ENABLED</code> and <code>#endif</code>. <code>Engine/Config/BuildConfig.h</code> defines
+  that macro as 0, so in the tree as it stands this call does and allocates nothing at all.
+</p>
+
+<p class="meta">From Engine/Memory/ThreadSafeMultiPoolAllocator.cpp, ThreadSafeMultiPoolAllocator::PrintUsage()</p>
+
+<pre><code>#if PROFILE_ENABLED
+        AllocatorScope scope(MemoryManager::SystemAllocatorID);
+
+        std::map&lt;size_t, size_t&gt; usageMap;
+        HVector&lt;BankUsageRecord&gt; bankUsages;
+
+        auto log = Logger::Get(name, ELogLevel::Info);
+        log.Out([this](auto&amp; ls) { ls &lt;&lt; hendl &lt;&lt; "## MultipoolAllocator(" &lt;&lt; name &lt;&lt; ") Usage ##"; });
+        {
+                std::lock_guard lockGuard(lock);
+…
+        }
+
+        for (const auto&amp; bank : bankUsages)
+        {</code></pre>
+
+<p>
+  Three things follow from those lines, and all three are what a caller of a reporting function needs. The scope
+  opened on the first statement is <code>MemoryManager::SystemAllocatorID</code> — so the <code>std::map</code> nodes,
+  the <code>HVector</code> growth and the <code>StringBuilder</code> at the end allocate from the system allocator
+  and never from this instance. That is what makes it legal to call <code>PrintUsage</code> while this allocator is
+  the ambient scope, including from a thread already deep in this instance's own bookkeeping. The map is filled
+  inside the locked region but under that system scope, so it cannot re-enter this mutex. And every allocation-capable
+  log call sits outside the locked region: one header line before it, one line per bank and the summary after it.
+</p>
+
+<p>
+  What it reports, under the category this instance is <a href="get-name.html">named</a>: one
+  <code>[blockSize] Memory = usage / capacity, Max Usage = maxUsage</code> line per bank, where the peak is
+  <code>GetUsedBlocksMax() * GetBlockSize()</code>, and one final
+  <code>Opt. Args: &lt;name&gt; { {blockSize, peakBlocks}, ... }</code> line holding the per-block-size peaks summed
+  across banks — the exact <code>{blockSize, numberOfBlocks}</code> brace shape
+  <a href="constructors.html">the second constructor</a> takes. Banks whose peak is zero are left out of that sum.
+</p>
+
+<div class="gap">
+  <strong>Today the guard means the report, and the test that guards it, cannot run.</strong> The suite case
+  <em>Print Usage Under Its Own Allocator Scope</em> exists precisely to prove the scope redirect above — and it
+  cannot fail in any configuration this tree builds, because the body it exercises is compiled out and a tree with
+  <code>PROFILE_ENABLED</code> set to 1 does not currently compile (<code>JOURNAL.md</code>, 2026-10-05). Everything
+  on this page describes the source as written, not a measured run.
+</div>
+
+<div class="note">
+  <strong>It reports; it does not save.</strong> The configuration the next boot reads is written by
+  <a href="report-configuration.html"><code>ReportConfiguration</code></a>, which this function does not call. The
+  <code>Opt. Args</code> line and that function's report are two renderings of the same summed peak, produced
+  independently.
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<p>None.</p>
+
+<h2 id="return">Return value</h2>
+
+<p><code>void</code>. The output is the log; the function returns nothing a caller can inspect.</p>
+
+<h2 id="example">Examples</h2>
+
+<p class="meta">From Engine/Memory/ThreadSafeMultiPoolAllocator.cpp</p>
+
+<pre><code>ThreadSafeMultiPoolAllocator allocator("TC5 PrintUsage", {{64, 16}, {128, 16}});
+
+AllocatorScope scope(allocator);
+
+auto* block = allocator.Allocate(64);
+…
+
+allocator.PrintUsage();
+allocator.Deallocate(block, 64);</code></pre>
+
+<p>
+  The shape the suite uses: report while the allocator under test is the ambient scope, which is the case the
+  system-allocator redirect on the first statement exists to make safe. Elided lines are the null-block early return
+  (<code>Engine/Memory/ThreadSafeMultiPoolAllocator.cpp</code>).
+</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; ThreadSafeMultiPoolAllocator</a></span>
+  <span><a href="index.html#methods">All ThreadSafeMultiPoolAllocator methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

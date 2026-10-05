@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PoolAllocator::GetCapacity — Memory module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a class="current" href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Memory</a> /
+  <a href="index.html">PoolAllocator</a> / GetCapacity
+</p>
+
+<h1><span class="fn">GetCapacity</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::PoolAllocator</span>
+  <span class="tag">Engine/Memory/PoolAllocator.h</span>
+  <span class="tag">nodiscard</span>
+  Block stride times block count — the one allocation the pool owns, and its whole budget.
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>[[nodiscard]] size_t GetCapacity() const</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  Defined in the class body of <code>Engine/Memory/PoolAllocator.h</code> as <code>numberOfBlocks * blockSize</code>. It is the
+  exact byte count the constructor asked the parent for and the exact count <a href="destructor.html">the destructor</a> hands back —
+  the same expression, computed three times from two members that never change after construction.
+</p>
+
+<pre><code>const TSize totalSize = blockSize * numberOfBlocks;</code></pre>
+
+<p class="meta">From Engine/Memory/PoolAllocator.cpp, PoolAllocator::PoolAllocator()</p>
+
+<div class="note">
+  <strong>Capacity is measured after the block size was floored and aligned.</strong>
+  A pool requested as 24 bytes by 64 blocks has a capacity of 32 × 64 = 2,048, not 1,536 (<a href="getblocksize.html">block size
+  rounding</a>). Anything that sizes or budgets a pool from the request rather than from this answer is working with a number the pool
+  does not use.
+</div>
+
+<div class="note">
+  <strong>This is the whole budget; the pool never grows.</strong>
+  There is no second allocation, no bank generation and no fallback inside the pool — an oversized request goes to the parent and an
+  exhausted one returns <code>nullptr</code> (<a href="allocate.html">Allocate</a>). The bytes counted here are the only bytes the pool
+  will ever own, and growing is the caller's job. <a href="../index.html#allocators">The multi-pool allocators</a> are that job, done
+  once, for a ladder of block sizes.
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<p>None.</p>
+
+<h2 id="return">Return value</h2>
+
+<table>
+  <tr><th>Type</th><th>What you get</th></tr>
+  <tr><td><code>size_t</code></td><td>Bytes in the pool's single backing allocation. Zero on a moved-from pool or one whose construction stopped at the zero-capacity early return. <a href="getusage.html">GetUsage</a> + <a href="getavailablememory.html">GetAvailableMemory</a> is always this number.</td></tr>
+</table>
+
+<h2 id="example">Examples</h2>
+
+<pre><code>			for (auto&amp; bank : banks)
+			{
+				Byte* start = bank.GetBuffer();
+				void* end = (start + bank.GetCapacity());
+				ls &lt;&lt; '\n' &lt;&lt; "Bank PTR: " &lt;&lt; static_cast&lt;void*&gt;(start) &lt;&lt; " - " &lt;&lt; end;
+			}</code></pre>
+
+<p class="meta">From Engine/Memory/MultiPoolAllocator.cpp, MultiPoolAllocator::Deallocate()</p>
+
+<p>
+  The diagnostic for a pointer no bank claimed prints each bank's range as <code>[GetBuffer(), GetBuffer() + GetCapacity())</code> —
+  which is precisely the range <a href="ismine.html">IsMine</a> tests, written out by hand from these two accessors.
+</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; PoolAllocator</a></span>
+  <span><a href="index.html#methods">All PoolAllocator methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

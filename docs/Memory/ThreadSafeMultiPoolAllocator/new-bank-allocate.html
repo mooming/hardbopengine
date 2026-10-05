@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ThreadSafeMultiPoolAllocator::NewBankAllocate — Memory module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a class="current" href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Memory</a> /
+  <a href="index.html">ThreadSafeMultiPoolAllocator</a> / NewBankAllocate
+</p>
+
+<h1><span class="fn">NewBankAllocate</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::ThreadSafeMultiPoolAllocator</span>
+  <span class="tag">Engine/Memory/ThreadSafeMultiPoolAllocator.h</span>
+  <span class="tag">private</span>
+  The growth path: add one bank, then take a block from it — entered from Allocate with the mutex already held.
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>#endif
+
+private:
+	void* NewBankAllocate(size_t size)</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  Private, defined in <code>Engine/Memory/ThreadSafeMultiPoolAllocator.cpp</code>, and reached from exactly one
+  place: the two <code>return NewBankAllocate(requested);</code> statements in
+  <a href="allocate.html"><code>Allocate</code></a>, which sit inside that function's <code>std::lock_guard</code>
+  scope. It therefore runs with <code>lock</code> already held by the same thread, and must never be called from
+  anywhere else — the mutex is not recursive, so a caller outside that region would have to release the lock and
+  re-decide the bank to do it safely.
+</p>
+
+<p class="meta">From Engine/Memory/ThreadSafeMultiPoolAllocator.cpp, ThreadSafeMultiPoolAllocator::NewBankAllocate()</p>
+
+<pre><code>auto&amp; engine = Engine::Get();
+auto&amp; statistics = engine.GetStatistics();
+statistics.IncFallbackAllocCount();
+
+auto blockSize = CalculateBlockSize(size);
+auto numBlocks = CalculateNumberOfBlocks(bankSize, blockSize);
+
+GenerateBank(blockSize, numBlocks);
+auto index = GetBankIndex(size);
+if (unlikely(index &gt;= banks.size()))
+{
+        FatalAssert(false);
+
+        return nullptr;
+}</code></pre>
+
+<p>
+  So one growth event is: one bank, sized by <a href="calculate-block-size.html"><code>CalculateBlockSize</code></a>
+  and <a href="calculate-number-of-blocks.html"><code>CalculateNumberOfBlocks</code></a>, built by
+  <a href="generate-bank.html"><code>GenerateBank</code></a> out of <code>parentID</code>, then one block taken from
+  it. The re-scan of <a href="get-bank-index.html"><code>GetBankIndex</code></a> afterwards is the reason the new
+  bank has to be findable by size alone — it is, because a fresh bank is entirely free and its block size is at
+  least the request.
+</p>
+
+<p>
+  Growth for a size class that already exists but is exhausted produces a second bank of that same block size:
+  <code>GetBankIndex</code> skips banks with no free block, so an empty <code>{64}</code> bank sends a 64-byte request
+  here, and the new bank lands on the same block size. It is a full bank, though — block sizes are chosen from the
+  request while block counts are chosen from <code>bankSize</code>, so a second <code>{64}</code> bank under the
+  default one-megabyte unit holds 16,384 blocks rather than the sixteen the caller asked to replace. The re-sort in
+  <a href="generate-bank.html"><code>GenerateBank</code></a> orders equal sizes by most free blocks first, so the
+  freshest bank of a class is the one served next.
+</p>
+
+<div class="gap">
+  <strong>The failure path ends the process, in every configuration.</strong> <code>FatalAssert(false)</code> is not
+  a Debug construct — <code>Engine/Core/Debug.h</code> defines it outside the release guard, and it flushes the logs,
+  breaks and calls <code>std::abort()</code>. The <code>return nullptr;</code> beneath it is unreachable in any build
+  that reaches it. This is the review finding of 2026-10-05 recorded as an open robustness item: an allocator that
+  cannot grow gives a caller no branch to take (<code>JOURNAL.md</code>).
+</div>
+
+<div class="note">
+  <strong>Growth is visible as fallback allocations, and it reaches the engine.</strong> The first three statements
+  ask <code>Engine::Get()</code> for the <code>SystemStatistics</code> object and increment its fallback counter
+  (<code>Engine/Core/SystemStatistics.h</code>) — so a burst of bank creation is readable as a rise in fallback
+  allocations, and a Memory module object calls into <code>Engine/</code> while holding this class's mutex. It is a
+  counter, not a log call — <code>fallbackAllocCount.fetch_add(1, std::memory_order_relaxed)</code> — which is what
+  keeps it out of the reentrancy problem described on
+  <a href="deallocate.html"><code>Deallocate</code></a>.
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<table>
+  <tr><th>Parameter</th><th>Type</th><th>Requirement</th></tr>
+  <tr><td><code>size</code></td><td><code>size_t</code></td><td>The original request, non-zero. Rounded up to a block size by <a href="calculate-block-size.html"><code>CalculateBlockSize</code></a>; the caller already holds <code>lock</code></td></tr>
+</table>
+
+<h2 id="return">Return value</h2>
+
+<table>
+  <tr><th>Type</th><th>What you get</th></tr>
+  <tr><td><code>void*</code></td><td>One block from the bank that was just created, or the process ends at the assert. Never a graceful null</td></tr>
+</table>
+
+<h2 id="example">Examples</h2>
+
+<p class="note">Illustrative — this function is private and has no call site other than
+<a href="allocate.html"><code>Allocate</code></a>, which shows the call on its own page.</p>
+
+<p>
+  What a caller causes rather than calls: an allocator built as
+  <code>ThreadSafeMultiPoolAllocator shared("Growth", {{16, 16}})</code> — the shape the suite builds everywhere
+  (<code>Engine/Memory/ThreadSafeMultiPoolAllocator.cpp</code>) — serves sixteen 16-byte blocks from its one bank,
+  and the seventeenth request takes this path: one more bank of the same block size, 16,384 blocks of memory taken
+  from <code>parentID</code>, under the mutex the request already held.
+</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; ThreadSafeMultiPoolAllocator</a></span>
+  <span><a href="index.html#methods">All ThreadSafeMultiPoolAllocator methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

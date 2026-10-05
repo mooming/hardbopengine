@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MultiPoolAllocator::CalculateNumberOfBlocks — Memory module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a class="current" href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Memory</a> /
+  <a href="index.html">MultiPoolAllocator</a> / CalculateNumberOfBlocks
+</p>
+
+<h1><span class="fn">CalculateNumberOfBlocks</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::MultiPoolAllocator</span>
+  <span class="tag">Engine/Memory/MultiPoolAllocator.h</span>
+  Private: turn a bank's byte target into a block count, with a floor of sixteen blocks.
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>static size_t CalculateNumberOfBlocks(size_t bankSize, size_t blockSize)</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  Private, and the only static helper in the class: it does not read the object's state, so the bank size and block size
+  have to be handed to it explicitly. It converts a bank's byte target into a block count, with a floor.
+</p>
+
+<pre><code>	size_t numberOfBlocks = (bankSize + blockSize - 1) / blockSize;
+
+	constexpr size_t megaBytes = 1024 * 1024;
+	if (blockSize &lt; megaBytes)
+	{
+		numberOfBlocks = std::max(MinNumberOfBlocks, numberOfBlocks);
+	}
+	else
+	{
+		numberOfBlocks = std::max((size_t) 1, numberOfBlocks);
+	}
+
+	return numberOfBlocks;</code></pre>
+
+<p class="meta">From Engine/Memory/MultiPoolAllocator.cpp, MultiPoolAllocator::CalculateNumberOfBlocks()</p>
+
+<p>
+  The floor is <a href="index.html#properties"><code>MinNumberOfBlocks</code></a>, sixteen, and it applies to every class
+  under one mebibyte. Above that, the floor is one block.
+</p>
+
+<table>
+  <tr><th><code>bankSize</code></th><th><code>blockSize</code></th><th>Quotient</th><th>Blocks returned</th><th>Memory the bank reserves</th></tr>
+  <tr><td>1 MiB (the default)</td><td>16</td><td>65536</td><td>65536</td><td>1 MiB</td></tr>
+  <tr><td>1 MiB</td><td>8192</td><td>128</td><td>128</td><td>1 MiB</td></tr>
+  <tr><td>1 MiB</td><td>1 MiB</td><td>1</td><td>1</td><td>1 MiB</td></tr>
+  <tr><td>1 MiB</td><td>8 MiB</td><td>1</td><td>1</td><td>8 MiB — eight times the target</td></tr>
+  <tr><td>4 KiB</td><td>4 KiB</td><td>1</td><td>16</td><td>64 KiB — sixteen times the target</td></tr>
+  <tr><td>1 MiB</td><td>32 MiB</td><td>1</td><td>1</td><td>32 MiB — thirty-two times the target</td></tr>
+</table>
+
+<div class="gap">
+  <strong><code>allocationUnit</code> is a target for small classes and a floor for large ones.</strong>
+  A bank reserves <code>blockSize × numberOfBlocks</code>, and both of the rules above can push that figure above
+  <code>bankSize</code>: a class at or above one mebibyte gets at least one whole block, and any class under it gets at
+  least sixteen. A caller who passes a small <a href="constructors.html"><code>allocationUnit</code></a> to keep banks
+  small therefore gets the opposite for any class near or above it. Nothing caps the result, and the product is taken
+  again by the pool, whose only overflow witness is <code>totalSize &lt;= 0</code> — an unsigned comparison that can
+  detect an exact wrap to zero and nothing else (<code>Engine/Memory/PoolAllocator.cpp</code>).
+</div>
+
+<div class="note">
+  <strong>Each bank is a registration, and registrations are a shared resource.</strong> The count this returns becomes
+  one <code>PoolAllocator</code>, which registers itself with the manager and takes one slot from the 255 the process
+  shares (<code>Engine/Memory/PoolAllocator.cpp</code>, <code>Engine/Memory/AllocatorID.h</code>). The block count is
+  free; the bank it describes is not.
+</div>
+
+<div class="note">
+  <strong>Sixteen blocks is a latency choice, not a correctness one.</strong> Sixteen blocks per class is what lets a
+  size class absorb sixteen allocations of churn before the allocator grows again, and each growth is a
+  <a href="new-bank-allocate.html">fallback event</a> that borrows a fresh buffer from the parent and re-sorts the
+  ladder. Lowering the floor trades memory for more of those events; there is no configuration knob — the constant is a
+  <a href="index.html#properties"><code>static constexpr</code></a> member of the class.
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<table>
+  <tr><th>Parameter</th><th>Type</th><th>Requirement</th></tr>
+  <tr>
+    <td><code>bankSize</code></td>
+    <td><code>size_t</code></td>
+    <td>The bank's byte target. The caller passes <code>bankSize</code>, the member set from the constructor's
+      <code>allocationUnit</code></td>
+  </tr>
+  <tr>
+    <td><code>blockSize</code></td>
+    <td><code>size_t</code></td>
+    <td>The block size the bank will use. Must not be zero: the first statement divides by it. The only caller passes
+      what <a href="calculate-block-size.html">CalculateBlockSize</a> returned, which is never below
+      <code>minBlock</code></td>
+  </tr>
+</table>
+
+<h2 id="return">Return value</h2>
+
+<table>
+  <tr><th>Type</th><th>What you get</th></tr>
+  <tr>
+    <td><code>size_t</code></td>
+    <td>Blocks in the new bank: at least sixteen for a sub-mebibyte class, at least one for any other, and otherwise
+      <code>ceil(bankSize / blockSize)</code></td>
+  </tr>
+</table>
+
+<h2 id="example">Examples</h2>
+
+<p class="meta">From Engine/Memory/MultiPoolAllocator.cpp, MultiPoolAllocator::NewBankAllocate()</p>
+
+<pre><code>	auto blockSize = CalculateBlockSize(size);
+	auto numBlocks = CalculateNumberOfBlocks(bankSize, blockSize);
+	GenerateBank(blockSize, numBlocks);</code></pre>
+
+<p>
+  The only call site. Because the second argument is always this constructor's bank target, every bank an instance ever
+  generates is sized against the same figure, whatever the size class.
+</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; MultiPoolAllocator</a></span>
+  <span><a href="index.html#methods">All MultiPoolAllocator methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

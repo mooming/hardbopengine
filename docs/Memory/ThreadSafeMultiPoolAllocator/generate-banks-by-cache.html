@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ThreadSafeMultiPoolAllocator::GenerateBanksByCache — Memory module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a class="current" href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Memory</a> /
+  <a href="index.html">ThreadSafeMultiPoolAllocator</a> / GenerateBanksByCache
+</p>
+
+<h1><span class="fn">GenerateBanksByCache</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::ThreadSafeMultiPoolAllocator</span>
+  <span class="tag">Engine/Memory/ThreadSafeMultiPoolAllocator.h</span>
+  <span class="tag">private</span>
+  Build the banks a previous run saved under this name, so an allocator given only a name still boots with a bank list.
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>bool GenerateBanksByCache(const class MemoryManager&amp; mmgr)</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  Private, defined in <code>Engine/Memory/ThreadSafeMultiPoolAllocator.cpp</code>, and called by exactly one of the
+  two <a href="constructors.html">constructors</a> — the one that takes a name alone. The brace-list constructor never
+  consults the cache: a caller who names banks explicitly gets those banks and nothing else. This is how an allocator
+  built with only a name acquires a bank list at all, and the return value is discarded at the call site.
+</p>
+
+<p class="meta">From Engine/Memory/ThreadSafeMultiPoolAllocator.cpp, ThreadSafeMultiPoolAllocator::GenerateBanksByCache()</p>
+
+<pre><code>auto nameID = name.GetID();
+auto&amp; cacheItem = mmgr.LookUpMultiPoolConfig(nameID);
+if (cacheItem.uniqueName != nameID)
+{
+        return false;
+}
+
+auto&amp; configs = cacheItem.configs;
+for (auto&amp; config : configs)
+{
+        InlineStringBuilder&lt;1024&gt; str;
+        str &lt;&lt; name &lt;&lt; '_' &lt;&lt; config.blockSize &lt;&lt; '_' &lt;&lt; config.numberOfBlocks;
+
+        banks.emplace_back(str.c_str(), config.blockSize, config.numberOfBlocks);
+}
+
+return true;</code></pre>
+
+<p>
+  The miss test is the comparison at the top, because <code>MemoryManager::LookUpMultiPoolConfig</code> answers with a
+  default-constructed configuration rather than a failure (<code>Engine/Memory/MemoryManager.cpp</code>); the id it
+  carries is not the one asked for. A miss builds nothing and the instance starts empty, growing on demand through
+  <a href="new-bank-allocate.html"><code>NewBankAllocate</code></a>. A hit builds one bank per entry, named
+  <code>&lt;name&gt;_&lt;blockSize&gt;_&lt;numberOfBlocks&gt;</code> — the same naming
+  <a href="generate-bank.html"><code>GenerateBank</code></a> uses — taking each bank's buffer from whichever scope is
+  open, which at this moment in the constructor is by definition the value that gets stored as
+  <code>parentID</code>.
+</p>
+
+<p>
+  The function takes no lock, and no other thread can observe the object yet: the pointer is not published to
+  <a href="../index.html#memorymanager"><code>MemoryManager</code></a> until the constructor's last statement
+  (<code>Engine/Memory/ThreadSafeMultiPoolAllocator.cpp</code>).
+</p>
+
+<div class="note">
+  <strong>Where the entries come from.</strong> The cache is read by <code>MemoryManager</code>'s own constructor via
+  <code>LoadMultiPoolConfigs</code> and written by <code>PreEngineShutdown</code> — the save half under
+  <code>PROFILE_ENABLED</code>, which this tree defines as 0 (<code>Engine/Memory/MemoryManager.cpp</code>,
+  <code>Engine/Config/BuildConfig.h</code>) — so on a machine that has never run a profiling build there is no file,
+  and every name misses. The entries themselves are what
+  <a href="report-configuration.html"><code>ReportConfiguration</code></a> reported about a previous run, normalised
+  on the way out: one ascending entry per block size, counts summed, zero totals dropped
+  (<code>Engine/Memory/PoolConfigUtil.cpp</code>).
+</div>
+
+<div class="gap">
+  <strong>Nothing sorts the result, and nothing checks a value.</strong> The banks are emplaced in stored order and
+  this function never calls <code>std::sort</code> — unlike <a href="generate-bank.html"><code>GenerateBank</code></a>,
+  which sorts after every insertion. The ascending-by-block-size order that
+  <a href="get-bank-index.html"><code>GetBankIndex</code></a>'s "not more than double the request" rule leans on is
+  therefore inherited from the file, and the file is only normalised by the writer. On load, the ordering of a pool's
+  entries is checked and a violation reported, but no values are validated
+  (<code>Engine/Memory/MultiPoolConfigCache.cpp</code>), and the first sort this instance performs happens inside the
+  first bank it generates for itself.
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<table>
+  <tr><th>Parameter</th><th>Type</th><th>Requirement</th></tr>
+  <tr><td><code>mmgr</code></td><td><code>const class MemoryManager&amp;</code></td><td>The live manager, which the constructor passes; the header writes the type as an elaborated-type-specifier because it does not include <code>Engine/Memory/MemoryManager.h</code>. Only used to reach <code>LookUpMultiPoolConfig</code></td></tr>
+</table>
+
+<h2 id="return">Return value</h2>
+
+<table>
+  <tr><th>Type</th><th>What you get</th></tr>
+  <tr><td><code>bool</code></td><td><code>true</code> if this name was in the cache and its entries became banks, <code>false</code> if nothing was built. The caller does not read it — an empty bank list is the same starting state either way</td></tr>
+</table>
+
+<h2 id="example">Examples</h2>
+
+<p class="meta">From Engine/Memory/ThreadSafeMultiPoolAllocator.cpp, ThreadSafeMultiPoolAllocator::ThreadSafeMultiPoolAllocator()</p>
+
+<pre><code>auto&amp; mmgr = MemoryManager::GetInstance();
+GenerateBanksByCache(mmgr);
+
+size_t capacity = 0;
+for (auto&amp; bank : banks)
+{
+        capacity += bank.GetCapacity();
+}</code></pre>
+
+<p>
+  The whole of the call site: whatever the cache supplied is summed into the capacity the instance registers with, so
+  a cached allocator reports its full backing from the first moment, while a name miss registers with capacity zero
+  and grows from there.
+</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; ThreadSafeMultiPoolAllocator</a></span>
+  <span><a href="index.html#methods">All ThreadSafeMultiPoolAllocator methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

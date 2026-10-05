@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MultiPoolAllocator::Deallocate — Memory module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a class="current" href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Memory</a> /
+  <a href="index.html">MultiPoolAllocator</a> / Deallocate
+</p>
+
+<h1><span class="fn">Deallocate</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::MultiPoolAllocator</span>
+  <span class="tag">Engine/Memory/MultiPoolAllocator.h</span>
+  Find the bank that owns the pointer and hand the block back; the size is a check, not a selector.
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>void Deallocate(void* ptr, size_t size)</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  Finds which bank owns the pointer, hands the block back, and refuses anything it does not own. The bank is chosen by
+  address, never by size, and that single fact is the contract of this member.
+</p>
+
+<pre><code>	auto index = GetBankIndex(ptr);
+	if (index &gt;= banks.size())
+	{
+…
+		return;
+	}
+
+	auto&amp; bank = banks[index];
+	Assert(size &lt;= bank.GetBlockSize());
+
+	bank.Deallocate(ptr, size);</code></pre>
+
+<p class="meta">From Engine/Memory/MultiPoolAllocator.cpp, MultiPoolAllocator::Deallocate()</p>
+
+<p>
+  <a href="get-bank-index.html">GetBankIndex(void*)</a> asks each bank
+  <code>IsMine(ptr)</code> in turn — a range test against that bank's buffer — so releasing costs one linear scan over
+  the banks no matter which one owns the block.
+</p>
+
+<div class="gap">
+  <strong>A foreign pointer is reported and dropped, not forwarded.</strong>
+  When no bank owns the address, the member logs <code>OutFatalError</code> naming the pointer followed by every bank's
+  <code>start - end</code> range and then returns without releasing anything
+  (<code>Engine/Memory/MultiPoolAllocator.cpp</code>). The block leaks. This is not what the bank underneath does:
+  <code>PoolAllocator::Deallocate</code> forwards a pointer it does not own to its parent allocator
+  (<code>Engine/Memory/PoolAllocator.cpp</code>). The multi-pool has no parent to forward to on a block's behalf, so
+  the release simply does not happen and no error code comes back — a mismatched allocator pair shows up as a log line
+  in a growing leak, not as a failure at the call.
+</div>
+
+<div class="gap">
+  <strong><code>size</code> is a checked hint here, not a selector — and the check is Debug-only.</strong>
+  Because the bank is found by address, a wrong size cannot send a block to the wrong size class, which is the damage
+  the <a href="../index.html#allocators">module page's</a> general warning about mismatched sizes describes for pools
+  selected by size. What <code>Assert(size &lt;= bank.GetBlockSize())</code> protects is the profiling record, and
+  <code>Assert</code> compiles to nothing in a Release build (<code>Engine/Core/Debug.h</code>);
+  <code>PoolAllocator::Deallocate</code> then ignores the argument except for its own profiling assert. A wrong size is
+  therefore invisible in Release, and the block still returns to the list it belongs on.
+</div>
+
+<div class="gap">
+  <strong>A double release is not detected at the second release.</strong>
+  Nothing in this member or in <code>PoolAllocator::Deallocate</code> asks whether the block already sits on the free
+  list; the block is re-linked and <code>numberOfFreeBlocks</code> is incremented regardless
+  (<code>Engine/Memory/PoolAllocator.cpp</code>). The only witness there is
+  <code>Assert(numberOfFreeBlocks &lt;= numberOfBlocks)</code>, which can fire only after the count has passed the
+  bank's total, so the first double free in a bank is silent and the second may not be caught either. Two live owners
+  of one block is the result, and it is undetectable from this class's public surface.
+</div>
+
+<div class="note">
+  <strong>Releasing null is legal once.</strong>
+  <code>Deallocate(nullptr, size)</code> asserts <code>size == 0</code> and returns, so
+  <code>Deallocate(nullptr, 64)</code> stops a Debug or Dev build and does nothing in Release
+  (<code>Engine/Memory/MultiPoolAllocator.cpp</code>, <code>Engine/Core/Debug.h</code>). The same pairing exists in
+  <code>MemoryManager::Deallocate</code>, which answers null before reaching any allocator
+  (<code>Engine/Memory/MemoryManager.cpp</code>).
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<table>
+  <tr><th>Parameter</th><th>Type</th><th>Requirement</th></tr>
+  <tr>
+    <td><code>ptr</code></td>
+    <td><code>void*</code></td>
+    <td>A pointer this instance obtained from <a href="allocate.html">Allocate</a> and has not released yet. Null is
+      accepted. Anything else — including a block belonging to another allocator of the same shape — is logged and
+      dropped</td>
+  </tr>
+  <tr>
+    <td><code>size</code></td>
+    <td><code>size_t</code></td>
+    <td>The size originally requested, and no more than the block size of the bank that owns the pointer. It does not
+      choose the bank; it is asserted against it and recorded in the profiling counters</td>
+  </tr>
+</table>
+
+<h2 id="return">Return value</h2>
+
+<p>
+  <code>void</code>. Nothing distinguishes a successful release from a refused one at the call site, and the
+  distinction is visible only in the log and in <code>deallocCount</code> under
+  <code>PROFILE_ENABLED</code>.
+</p>
+
+<h2 id="example">Examples</h2>
+
+<p>
+  No engine source calls this member by name either: it is the deallocate half of the pair the constructor registered,
+  reached through <code>MemoryManager::Deallocate</code> by whatever stands in an
+  <a href="../index.html#allocatorscope"><code>AllocatorScope</code></a> over the instance.
+</p>
+
+<p class="meta">From Engine/Memory/MultiPoolAllocator.cpp, MultiPoolAllocatorTest::Prepare() — test-only code</p>
+
+<pre><code>		for (auto ptr : pointers)
+		{
+			mmgr.Deallocate(ptr, 0);
+		}</code></pre>
+
+<p>
+  The testlet releases every block with a size of zero. Each release is answered by the address lookup, which finds
+  the owning bank regardless, and the profiling assert on the size never sees a value to complain about — which is
+  exactly why this page states the size argument as a hint rather than as a key.
+</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; MultiPoolAllocator</a></span>
+  <span><a href="index.html#methods">All MultiPoolAllocator methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

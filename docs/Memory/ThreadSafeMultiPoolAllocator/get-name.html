@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ThreadSafeMultiPoolAllocator::GetName — Memory module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a class="current" href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Memory</a> /
+  <a href="index.html">ThreadSafeMultiPoolAllocator</a> / GetName
+</p>
+
+<h1><span class="fn">GetName</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::ThreadSafeMultiPoolAllocator</span>
+  <span class="tag">Engine/Memory/ThreadSafeMultiPoolAllocator.h</span>
+  The construction-time name, by value — also the log category, the bank-name prefix and the configuration cache key.
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>[[nodiscard]] auto GetName() const</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  Declared and defined in <code>Engine/Memory/ThreadSafeMultiPoolAllocator.h</code>: the body is
+  <code>return name;</code>, so the deduced return type is the member's type, <code>StaticString</code> — a copy of
+  the interned string handle, not a reference into the object.
+</p>
+
+<p>
+  <code>name</code> is written by the constructor's member initialiser list and assigned by nothing else: no method
+  in <code>Engine/Memory/ThreadSafeMultiPoolAllocator.cpp</code> stores to it. The value is therefore fixed for the
+  object's life, which is why this accessor reads it without taking <code>lock</code> and is safe to call from any
+  thread at any point except before construction and after destruction.
+</p>
+
+<p>
+  The name is load-bearing in three places besides this accessor. It is the log category — every diagnostic this
+  allocator writes goes out under <code>Logger::Get(name)</code>
+  (<code>Engine/Memory/ThreadSafeMultiPoolAllocator.cpp</code>). It is the prefix of every bank's registration name,
+  built as <code>&lt;name&gt;_&lt;blockSize&gt;_&lt;numberOfBlocks&gt;</code> by
+  <a href="generate-bank.html"><code>GenerateBank</code></a>. And its
+  <code>StaticStringID</code> is the key the configuration cache is looked up and stored under, which
+  <a href="generate-banks-by-cache.html"><code>GenerateBanksByCache</code></a> reads back at construction — so two
+  instances given one name are one cache entry, and a name shared between unrelated allocators makes their saved
+  configurations interchangeable.
+</p>
+
+<div class="note">
+  <strong>The one instance the engine shares between threads is named for its owner, not for itself.</strong>
+  <code>Logger</code> builds its allocator as <code>inputAlloc("LoggerInputPool")</code>
+  (<code>Engine/Log/Logger.cpp</code>), so every line this class writes about the logger's pool is filed under
+  <code>LoggerInputPool</code>, not under <code>Logger</code>.
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<p>None.</p>
+
+<h2 id="return">Return value</h2>
+
+<table>
+  <tr><th>Type</th><th>What you get</th></tr>
+  <tr><td><code>auto</code> deducing <code>StaticString</code></td><td>A copy of the construction-time name. Safe to keep past the call, and convertible to <code>const char*</code> by the <code>StaticString</code> conversion operator</td></tr>
+</table>
+
+<h2 id="example">Examples</h2>
+
+<p class="meta">From Engine/Memory/ThreadSafeMultiPoolAllocator.cpp, BankGenerationLog::~BankGenerationLog()</p>
+
+<pre><code>const auto logName = allocator-&gt;GetName();
+auto log = Logger::Get(logName);
+log.Out(ELogLevel::Verbose, [this, logName](auto&amp; ls)
+{ ls &lt;&lt; "The bank[" &lt;&lt; logName &lt;&lt; '_' &lt;&lt; blockSize &lt;&lt; '_' &lt;&lt; numberOfBlocks &lt;&lt; "] has been generated. "; });</code></pre>
+
+<p>
+  The deferred bank-generation message: it reads the name of the allocator that grew a bank after that allocator's
+  mutex has been released, so the log line can allocate without re-locking it. The same value is what a caller sees
+  from a log filter or from the usage report under <a href="print-usage.html"><code>PrintUsage</code></a>.
+</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; ThreadSafeMultiPoolAllocator</a></span>
+  <span><a href="index.html#methods">All ThreadSafeMultiPoolAllocator methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

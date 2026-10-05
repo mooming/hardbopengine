@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MultiPoolAllocator::GenerateBanksByCache — Memory module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a class="current" href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Memory</a> /
+  <a href="index.html">MultiPoolAllocator</a> / GenerateBanksByCache
+</p>
+
+<h1><span class="fn">GenerateBanksByCache</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::MultiPoolAllocator</span>
+  <span class="tag">Engine/Memory/MultiPoolAllocator.h</span>
+  Private: build the bank ladder the previous profiling run filed under this name.
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>bool GenerateBanksByCache(MemoryManager&amp; mmgr)</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  Private. Asks the manager whether the previous profiling run recorded a bank ladder under this allocator's name, and
+  if so builds that ladder before the object finishes constructing. It is the only reason two runs of the same program
+  do not both spend their first hundred allocations building banks.
+</p>
+
+<pre><code>	auto nameID = name.GetID();
+	auto&amp; cacheItem = mmgr.LookUpMultiPoolConfig(nameID);
+	if (cacheItem.uniqueName != nameID)
+	{
+		return false;
+	}
+
+	auto&amp; configs = cacheItem.configs;
+	for (auto&amp; config : configs)
+	{
+		InlineStringBuilder&lt;1024&gt; str;
+		str &lt;&lt; name &lt;&lt; '_' &lt;&lt; config.blockSize &lt;&lt; '_' &lt;&lt; config.numberOfBlocks;
+
+		banks.emplace_back(str.c_str(), config.blockSize, config.numberOfBlocks);
+	}
+
+	return true;</code></pre>
+
+<p class="meta">From Engine/Memory/MultiPoolAllocator.cpp, MultiPoolAllocator::GenerateBanksByCache()</p>
+
+<p>
+  A miss is answered by <code>MemoryManager::LookUpMultiPoolConfig</code> returning a default-constructed record whose
+  name compares unequal, so the test on the returned name is the whole lookup result — there is no null and no error
+  path (<code>Engine/Memory/MemoryManager.cpp</code>).
+</p>
+
+<table>
+  <tr><th>Question a caller asks</th><th>What the sources say</th></tr>
+  <tr>
+    <td>Who calls this?</td>
+    <td>The name-only <a href="constructors.html">constructor</a>, once, before registration. The
+      <code>initializer_list</code> constructor never consults the cache, so a hand-configured ladder is never
+      silently replaced by a cached one</td>
+  </tr>
+  <tr>
+    <td>Who reads the result?</td>
+    <td>Nobody. The constructor calls it as a statement and discards the boolean
+      (<code>Engine/Memory/MultiPoolAllocator.cpp</code>) — the difference between "started empty" and "started from the
+      cache" is visible only in the bank count and in the log line the lookup itself writes</td>
+  </tr>
+  <tr>
+    <td>Where does the cache come from?</td>
+    <td><code>MemoryManager::MemoryManager()</code> calls <code>LoadMultiPoolConfigs()</code>, which reads the file
+      named by <code>GetMultiPoolConfigCacheFilePath()</code>; that file is written by
+      <code>SaveMultiPoolConfigs()</code> in <code>PreEngineShutdown()</code> under
+      <code>PROFILE_ENABLED</code> (<code>Engine/Memory/MemoryManager.cpp</code>). With the profiling switch off — the
+      shipped configuration — no run writes the file, so a fresh cache holds nothing and every name-only allocator
+      starts with zero banks</td>
+  </tr>
+  <tr>
+    <td>What geometry arrives?</td>
+    <td>The previous run's high-water mark per block size, merged across every instance that shared this name:
+      <a href="report-configuration.html">ReportConfiguration</a> reports peaks and
+      <code>MultiPoolConfigCache::Normalize</code> folds same-name entries by maximum at save time
+      (<code>Engine/Memory/MultiPoolConfigCache.cpp</code>).</td>
+  </tr>
+</table>
+
+<div class="gap">
+  <strong>The cached order is trusted, never re-established.</strong>
+  The banks are appended in the order the cache holds them and this member sorts nothing — unlike the
+  <code>initializer_list</code> constructor, which sorts before building, and <a href="generate-bank.html">GenerateBank</a>,
+  which sorts after every insertion. <code>MemoryManager::LookUpMultiPoolConfig</code> binary-searches the table by
+  name, and <code>MultiPoolConfigCache::Deserialize</code> only <em>checks</em> that each entry's configurations ascend
+  by block size, logging a fatal error when one does not (<code>Engine/Memory/MultiPoolConfigCache.cpp</code>, non-Release
+  builds). That order is what makes <a href="get-bank-index.html">GetBankIndex</a> a best fit at all: it stops at the
+  first bank large enough, which is only the smallest one if the vector ascends.
+</div>
+
+<div class="note">
+  <strong>The rest of the configuration is this run's, not the cached one.</strong>
+  Only block sizes and counts come from the cache. <code>bankSize</code> and <code>minBlock</code> still come from this
+  object's <a href="constructors.html">constructor arguments</a>, so a cached ladder and a generated bank can disagree
+  about the size-class ladder in the same instance — the cached entries keep their own sizes, and anything later is
+  rounded to <code>minBlock</code>.
+</div>
+
+<div class="note">
+  <strong>The parameter asks for more than the body uses.</strong>
+  <code>LookUpMultiPoolConfig</code> is a <code>const</code> member (<code>Engine/Memory/MemoryManager.h</code>), so this
+  signature's non-const <code>MemoryManager&amp;</code> is not needed by anything it calls; the twin declares the same
+  helper as taking a const reference (<code>Engine/Memory/ThreadSafeMultiPoolAllocator.h</code>). The difference is a
+  narrowing of who may call the helper, not a difference in behaviour, and it is listed on the
+  <a href="index.html#coverage">class page</a> with the other divergences between the two classes.
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<table>
+  <tr><th>Parameter</th><th>Type</th><th>Requirement</th></tr>
+  <tr>
+    <td><code>mmgr</code></td>
+    <td><code>MemoryManager&amp;</code></td>
+    <td>The live manager — the constructor passes <code>MemoryManager::GetInstance()</code>. Used read-only, through a
+      const member, despite the parameter type</td>
+  </tr>
+</table>
+
+<h2 id="return">Return value</h2>
+
+<table>
+  <tr><th>Type</th><th>What you get</th></tr>
+  <tr>
+    <td><code>bool</code></td>
+    <td><code>true</code> if a cached ladder was found and built, <code>false</code> if the name is unknown to the
+      cache and no bank was created. The only caller ignores it</td>
+  </tr>
+</table>
+
+<h2 id="example">Examples</h2>
+
+<p class="meta">From Engine/Memory/MultiPoolAllocator.cpp, MultiPoolAllocator::MultiPoolAllocator()</p>
+
+<pre><code>	auto&amp; mmgr = MemoryManager::GetInstance();
+	GenerateBanksByCache(mmgr);</code></pre>
+
+<p>
+  The whole of its use in the engine: a statement whose effect is measured by what <code>banks</code> holds when it
+  returns, immediately before the constructor sums the banks' capacities for the registration.
+</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; MultiPoolAllocator</a></span>
+  <span><a href="index.html#methods">All MultiPoolAllocator methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

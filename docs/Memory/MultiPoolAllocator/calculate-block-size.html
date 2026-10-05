@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MultiPoolAllocator::CalculateBlockSize — Memory module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a class="current" href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Memory</a> /
+  <a href="index.html">MultiPoolAllocator</a> / CalculateBlockSize
+</p>
+
+<h1><span class="fn">CalculateBlockSize</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::MultiPoolAllocator</span>
+  <span class="tag">Engine/Memory/MultiPoolAllocator.h</span>
+  Private: round a request up to minBlock times a power of two - the whole size-class policy in four lines.
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>[[nodiscard]] size_t CalculateBlockSize(size_t requested) const</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  Private. The rounding rule of the whole allocator: a block size is <code>minBlock</code> times a power of two, never
+  smaller than the request.
+</p>
+
+<pre><code>	size_t blockSize = (requested + minBlock - 1) / minBlock;
+	blockSize = std::bit_ceil(blockSize);
+	blockSize *= minBlock;
+	blockSize = std::max(minBlock, blockSize);
+
+	return blockSize;</code></pre>
+
+<p class="meta">From Engine/Memory/MultiPoolAllocator.cpp, MultiPoolAllocator::CalculateBlockSize()</p>
+
+<p>
+  Called only by <a href="new-bank-allocate.html">NewBankAllocate</a>, so it shapes banks that are about to be created —
+  never a bank that already exists. A bank built from the <a href="constructors.html">initializer list</a> or from the
+  <a href="generate-banks-by-cache.html">cache</a> keeps whatever size it was given, however untidy, and a request below
+  that size is served by it regardless of this rule.
+</p>
+
+<table>
+  <tr><th>Requested</th><th>Blocks of <code>minBlock</code> 16</th><th>Rounded up to a power of two</th><th>Block size</th></tr>
+  <tr><td>1</td><td>1</td><td>1</td><td>16</td></tr>
+  <tr><td>16</td><td>1</td><td>1</td><td>16</td></tr>
+  <tr><td>17</td><td>2</td><td>2</td><td>32</td></tr>
+  <tr><td>33</td><td>3</td><td>4</td><td>64</td></tr>
+  <tr><td>65</td><td>5</td><td>8</td><td>128</td></tr>
+  <tr><td>100</td><td>7</td><td>8</td><td>128</td></tr>
+  <tr><td>4032</td><td>252</td><td>256</td><td>4096</td></tr>
+  <tr><td>5000</td><td>313</td><td>512</td><td>8192</td></tr>
+</table>
+
+<div class="note">
+  <strong>The result is always at least the request and never more than double it.</strong>
+  That upper bound is the reason <a href="new-bank-allocate.html">NewBankAllocate</a> can trust its own bank: the
+  2× ceiling in <a href="get-bank-index.html">GetBankIndex</a> rejects a bank whose size exceeds twice the rounded
+  request, and a bank rounded by this rule can never exceed twice that same figure. The last statement,
+  <code>std::max(minBlock, blockSize)</code>, is what guarantees the lower bound for a request below the minimum.
+</div>
+
+<div class="gap">
+  <strong><code>minBlock</code> is a divisor, and it is only ever assigned from a constructor argument.</strong>
+  A <code>minBlockSize</code> of zero reaches this division unchecked from either
+  <a href="constructors.html">constructor</a> and is integer division by zero — a trap, not a wrong answer. Zero is not
+  the only unexamined value either: nothing requires the figure to be a power of two, and nothing compares it to
+  <code>Config::DefaultAlign</code>, so <code>minBlockSize = 24</code> yields block sizes of 24, 48, 96 … and the pool
+  underneath then rounds each of them <em>up</em> to a multiple of 16 (<code>Engine/Memory/PoolAllocator.cpp</code>,
+  <code>OS::GetAligned</code>). The bank's real block size is then no longer a multiple of the figure this function
+  computed, and the two disagree about the size class the bank belongs to.
+</div>
+
+<div class="note">
+  <strong>Waste grows with the ladder.</strong> A 65-byte request against <code>minBlock</code> 16 takes a 128-byte
+  block, so up to just under half the reserved memory of a class is unusable by design. That is the cost of the
+  power-of-two ladder — one multiply instead of a search — and it is the figure
+  <a href="print-usage.html">PrintUsage</a> exposes as <code>Max Usage</code> per bank against
+  <code>Memory = usage / capacity</code>.
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<table>
+  <tr><th>Parameter</th><th>Type</th><th>Requirement</th></tr>
+  <tr>
+    <td><code>requested</code></td>
+    <td><code>size_t</code></td>
+    <td>The byte count a request needs. Zero yields <code>minBlock</code>; a value whose rounded count would overflow
+      <code>size_t</code> is not diagnosed</td>
+  </tr>
+</table>
+
+<h2 id="return">Return value</h2>
+
+<table>
+  <tr><th>Type</th><th>What you get</th></tr>
+  <tr>
+    <td><code>size_t</code></td>
+    <td>A block size in bytes: <code>minBlock × 2^k</code>, at least <code>minBlock</code> and at least
+      <code>requested</code>, and never more than twice <code>requested</code> when <code>minBlock</code> is not
+      itself larger than the request</td>
+  </tr>
+</table>
+
+<h2 id="example">Examples</h2>
+
+<p class="meta">From Engine/Memory/MultiPoolAllocator.cpp, MultiPoolAllocator::NewBankAllocate()</p>
+
+<pre><code>	auto blockSize = CalculateBlockSize(size);
+	auto numBlocks = CalculateNumberOfBlocks(bankSize, blockSize);
+	GenerateBank(blockSize, numBlocks);</code></pre>
+
+<p>
+  Its only call site, in the three lines that turn one unservable request into a permanent size class. The
+  <code>Multiple Allocations &amp; Fallback</code> testlet in the same file is the observable form: 8 becomes a 16-byte
+  class and 5000 an 8192-byte class, while 8000 — under 8192 — takes a block from the bank the previous request created.
+</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; MultiPoolAllocator</a></span>
+  <span><a href="index.html#methods">All MultiPoolAllocator methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

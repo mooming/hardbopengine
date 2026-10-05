@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PoolAllocator::GetName — Memory module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a class="current" href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Memory</a> /
+  <a href="index.html">PoolAllocator</a> / GetName
+</p>
+
+<h1><span class="fn">GetName</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::PoolAllocator</span>
+  <span class="tag">Engine/Memory/PoolAllocator.h</span>
+  <span class="tag">nodiscard</span>
+  A copy of the interned name the constructor was given.
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>[[nodiscard]] auto GetName() const</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  Defined in the class body of <code>Engine/Memory/PoolAllocator.h</code>, returning the <code>name</code> member. The declared type
+  is <code>auto</code>, so the return is a <code>StaticString</code> copy rather than a reference: the caller keeps a valid name even
+  after the pool is gone. The name is the one the constructor was given, interned by
+  <code>StaticStringTable::Register()</code> and passed a second time to <code>MemoryManager::RegisterAllocator()</code> for the
+  registration record.
+</p>
+
+<div class="note">
+  <strong>On a moved-from pool this answers an empty string.</strong>
+  The move constructor assigns <code>rhs.name = StaticString();</code> (<code>Engine/Memory/PoolAllocator.cpp</code>), and the same
+  applies to a pool whose construction stopped at the zero-capacity early return
+  (<a href="constructors.html">constructors</a>), whose name was interned before that branch. A log line built from it prints
+  nothing where the pool's name used to be.
+</div>
+
+<div class="note">
+  <strong>The pool's registration name can differ from this one.</strong>
+  <code>MemoryManager::RegisterAllocator()</code> substitutes <code>"None"</code> for a null name in its own copy, and under
+  <code>PROFILE_ENABLED</code> stores its own copy in the statistics record. So a name read from the manager's usage report is not
+  necessarily the string this function returns.
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<p>None.</p>
+
+<h2 id="return">Return value</h2>
+
+<table>
+  <tr><th>Type</th><th>What you get</th></tr>
+  <tr><td><code>StaticString</code></td><td>A copy of the pool's name, safe to hold past the pool's lifetime. Interned, so the copy is an id, not a string allocation.</td></tr>
+</table>
+
+<h2 id="example">Examples</h2>
+
+<p class="note">Illustrative — no call site for this exists in the repository.</p>
+
+<pre><code>auto poolName = pool.GetName();
+log.Out(ELogLevel::Info, [poolName](auto&amp; ls) { ls &lt;&lt; poolName.c_str() &lt;&lt; " is out of blocks"; });</code></pre>
+
+<p>
+  The reason the return is a copy: <code>MultiPoolAllocator</code> and <code>ThreadSafeMultiPoolAllocator</code> name their banks by
+  appending the block size and block count to the parent's name before constructing each pool
+  (<code>Engine/Memory/MultiPoolAllocator.cpp</code>, <code>MultiPoolAllocator::GenerateBank()</code>), so a bank's own name is the
+  only thing that identifies it in a log after the vector has been reordered.
+</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; PoolAllocator</a></span>
+  <span><a href="index.html#methods">All PoolAllocator methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

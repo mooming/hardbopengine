@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PoolAllocator::IsMine — Memory module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a class="current" href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Memory</a> /
+  <a href="index.html">PoolAllocator</a> / IsMine
+</p>
+
+<h1><span class="fn">IsMine</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::PoolAllocator</span>
+  <span class="tag">Engine/Memory/PoolAllocator.h</span>
+  Whether the address falls inside the pool's buffer — a range test, not an ownership record.
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>bool IsMine(Pointer ptr) const</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  Defined in <code>Engine/Memory/PoolAllocator.cpp</code> as <code>PoolAllocator::IsMine(Pointer ptr) const</code>. It is a
+  comparison against one address range, and nothing more.
+</p>
+
+<pre><code>auto bytePtr = static_cast&lt;Byte*&gt;(ptr);
+auto offset = static_cast&lt;size_t&gt;(bytePtr - buffer);
+auto totalSize = blockSize * numberOfBlocks;
+
+return buffer &lt;= bytePtr &amp;&amp; offset &lt; totalSize;</code></pre>
+
+<p class="meta">From Engine/Memory/PoolAllocator.cpp, PoolAllocator::IsMine(Pointer ptr) const</p>
+
+<div class="note">
+  <strong>True means "this address is inside my buffer", not "this address is one I handed out".</strong>
+  The test is byte-range only, so it answers true for the middle of a block, for a block sitting on the free list, and for a block
+  the pool released an hour ago. It is the right question for routing a release
+  (<a href="deallocate.html">Deallocate</a> asks exactly this before it decides whether the pointer is the parent's) and the wrong
+  question for validating a pointer you are unsure of.
+</div>
+
+<div class="note">
+  <strong>The range is fixed, so the answer never changes.</strong>
+  <code>buffer</code>, <code>blockSize</code> and <code>numberOfBlocks</code> are written once by the constructor and never again, so
+  two calls with the same pointer agree however much allocation happened between them. One address one past the end is excluded:
+  <code>offset &lt; totalSize</code>, not <code>&lt;=</code>. A moved-from pool, whose buffer is null and whose byte count is zero,
+  claims nothing.
+</div>
+
+<div class="gap">
+  <strong>The comparison is arithmetic on pointers, and it is not a check that the pointer is one the pool owns.</strong>
+  Because <a href="deallocate.html">Deallocate</a> forwards anything this answers false for to the pool's parent
+  (<code>MemoryManager::Deallocate(parentID, ptr, size)</code>), a wrong answer here decides which allocator is asked to free the
+  memory. Callers that want certainty about ownership should compare against the pointer they were given by
+  <a href="allocate.html">Allocate</a> rather than asking this afterwards.
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<table>
+  <tr><th>Parameter</th><th>Type</th><th>Requirement</th></tr>
+  <tr><td><code>ptr</code></td><td><code>Pointer</code></td><td>An address to test. Any value is answerable; a null pointer is outside a live pool's buffer, so it is not yours.</td></tr>
+</table>
+
+<h2 id="return">Return value</h2>
+
+<table>
+  <tr><th>Type</th><th>What you get</th></tr>
+  <tr><td><code>bool</code></td><td>Whether the address lies within <code>[GetBuffer(), GetBuffer() + GetCapacity())</code>.</td></tr>
+</table>
+
+<h2 id="example">Examples</h2>
+
+<pre><code>for (auto&amp; bank : banks)
+{
+	if (bank.IsMine(ptr))
+	{
+		return index;
+	}
+
+	++index;
+}</code></pre>
+
+<p class="meta">From Engine/Memory/MultiPoolAllocator.cpp, MultiPoolAllocator::GetBankIndex(void*) const</p>
+
+<p>
+  The engine's use is a routing loop: a release arrives at a multi-pool as a bare pointer, and the first bank that claims the
+  address is the bank asked to take it back. That is the same question this class answers for itself in
+  <a href="deallocate.html">Deallocate</a>, one level up.
+</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; PoolAllocator</a></span>
+  <span><a href="index.html#methods">All PoolAllocator methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PoolAllocator — Memory module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a class="current" href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This class</h3>
+  <ul>
+    <li><a href="#description">Class description</a></li>
+    <li><a href="#template">Template parameters</a></li>
+    <li><a href="#properties">Class properties</a></li>
+    <li><a href="#methods">Class methods</a></li>
+    <li><a href="#non-member">Non-member helper functions</a></li>
+    <li><a href="#coverage">Coverage</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Memory</a> /
+  PoolAllocator
+</p>
+
+<h1>PoolAllocator</h1>
+<p class="subtitle">
+  <span class="tag">Engine/Memory/PoolAllocator.h</span>
+  <span class="tag">final</span>
+  Fixed-size blocks for objects of one type: one pre-allocated buffer, one free list, and a parent allocator that receives everything the pool cannot serve.
+</p>
+
+<h2 id="description">Class description</h2>
+
+<p>
+  <code>class PoolAllocator final</code> at <code>Engine/Memory/PoolAllocator.h</code> is a fixed-size block
+  allocator for objects of a single type. It pre-allocates a pool of memory blocks and manages a free list, which
+  makes it the efficient choice for many allocations of objects that all have the same size. Construction is one
+  allocation of <code>blockSize * numberOfBlocks</code> bytes from the allocator that is current at that moment,
+  the linking of those blocks into a free list, and a registration of the object with the
+  <a href="../index.html#memorymanager"><code>MemoryManager</code></a> under an id of its own.
+</p>
+
+<p>
+  The registration is what lets a pool serve code that never sees it. The shape the repository actually uses is in
+  <code>Engine/Container/LinkedList.cpp</code>: construct the pool, open <code>AllocatorScope allocScope(alloc);</code>,
+  and every node the list then builds arrives from the pool through the default allocator.
+</p>
+
+<pre><code>const auto NodeSize = sizeof(LinkedList&lt;int&gt;::Node);
+
+PoolAllocator alloc("LinkedListTest::Allocator", NodeSize, COUNT + 10);
+AllocatorScope allocScope(alloc);</code></pre>
+
+<p class="meta">From Engine/Container/LinkedList.cpp, LinkedListTest::Prepare()</p>
+
+<div class="gap">
+  <strong>A pool returns everything to the allocator recorded at construction, not to whichever one is current later.</strong>
+  The id the constructor found current is stored as <code>parentID</code>, and it is that recorded id — never the ambient
+  scope — that <a href="destructor.html">the destructor</a> releases the buffer through, that
+  <a href="allocate.html">Allocate</a> sends oversized requests to, and that <a href="deallocate.html">Deallocate</a> sends foreign
+  pointers to. Pools are destroyed by other allocators' teardown: a bank of a
+  <a href="../index.html#allocators">multi-pool</a> is destroyed when the vector holding it is emptied, under whatever scope that
+  happens to run in. Before the fix of 2026-10-05 the destructor released through the current scope, and the failure was visible as
+  <code>PoolAllocator.cpp</code>'s own testlet reporting that the buffer "is allocated by another allocator". The consequence for a
+  caller: destroy a pool wherever it suits you, and do not open an <a href="../index.html#allocatorscope">AllocatorScope</a> to
+  protect the destruction.
+</div>
+
+<div class="note">
+  <strong>Two behaviours the names do not announce.</strong>
+  <a href="allocate.html">Allocate</a> with a request larger than the pool's block size does not fail: it asks the parent through
+  <code>MemoryManager::FallbackAllocate(GetID(), parentID, size)</code>, and the pointer you get back belongs to the parent, not to
+  the pool. <a href="deallocate.html">Deallocate</a> with a pointer outside the pool's buffer does not fail either: it forwards to the
+  same parent. The two are one contract seen from both ends — an oversized block never touches the free list, and handing it back to
+  the same pool object is the correct way to release it.
+</div>
+
+<div class="note">
+  <strong>The block size you pass is not the block size the pool uses.</strong>
+  The constructor stores <code>OS::GetAligned(std::max(inBlockSize, sizeof(TSize)), Config::DefaultAlign)</code> — a floor of
+  <code>sizeof(size_t)</code> and a round up to <a href="../../Config/index.html"><code>Config::DefaultAlign</code></a> (16 bytes). The
+  floor is a precondition the constructor asserts rather than a value it can serve, and the rounding is why a request of 24 bytes
+  becomes a 32-byte block; <a href="getblocksize.html">GetBlockSize</a> is the truth, the constructor argument is a request. A caller
+  who sizes a pool from the request rather than the answer over-counts capacity: the buffer holds
+  <code>GetCapacity()</code> bytes, which is <em>more</em> than requested, but only
+  <code>numberOfBlocks</code> blocks of it.
+</div>
+
+<div class="gap">
+  <strong>Nothing in this class is synchronised.</strong>
+  <code>Engine/Memory/PoolAllocator.cpp</code> takes no lock and reads or writes no atomic: the counters, the free-list head and the
+  profile peak are plain members. One pool is one thread's at a time, including the two
+  <a href="../index.html#allocators">multi-pool allocators</a> that hold pools as banks — those own their own synchronisation and
+  hand out a bank without publishing it. The engine's shareable shape is
+  <a href="../index.html#allocators"><code>ThreadSafeMultiPoolAllocator</code></a>; a bare pool is not it, and it is not reentrant
+  either, because <a href="deallocate.html">Deallocate</a> and <a href="allocate.html">Allocate</a> can both reach the logger.
+</div>
+
+<p>
+  The class is move-only. Declaring the move constructor and move-assignment operator deletes the copy constructor and copy
+  assignment implicitly, which is the correct answer for a type that owns a buffer and holds a registration id: two live copies of a
+  pool would deregister the same id and free the same buffer twice. Verified by compiling a class carrying the same five declarations
+  with <code>c++ -std=c++2b -fsyntax-only</code> and <code>std::is_copy_constructible_v</code> and
+  <code>std::is_copy_assignable_v</code> both false, both move operations true.
+</p>
+
+<h2 id="template">Template parameters</h2>
+
+<p>
+  None. <code>PoolAllocator</code> is <code>final</code> and not a template: everything variable about a pool — name, block size,
+  block count — is a constructor argument, and the element type is carried by the caller's arithmetic rather than by the pool.
+</p>
+
+<h2 id="properties">Class properties</h2>
+
+<table>
+  <tr><th>Type + Name</th><th>Default Value</th><th>Description</th></tr>
+  <tr><td><code>using TSize = size_t;</code> <span class="badge">private</span> <span class="badge">member type</span></td><td><span class="muted">not applicable</span></td><td>Size and block-count type of the pool; also the type of a free-list link, which is why it is <code>size_t</code>.</td></tr>
+  <tr><td><code>TAllocatorID id;</code> <span class="badge">private</span></td><td><span class="muted">none in the header</span></td><td>This pool's registration id. <code>InvalidAllocatorID</code> until the constructor registers it, and again on a moved-from pool.</td></tr>
+  <tr><td><code>TAllocatorID parentID;</code> <span class="badge">private</span></td><td><span class="muted">none in the header</span></td><td>The allocator that was current at construction, recorded once: where the buffer came from and where everything the pool cannot serve goes.</td></tr>
+  <tr><td><code>StaticString name;</code> <span class="badge">private</span></td><td><span class="muted">none in the header</span></td><td>Copy of the constructor's name, also handed to the registration; empty on a moved-from pool.</td></tr>
+  <tr><td><code>TSize blockSize;</code> <span class="badge">private</span></td><td><span class="muted">none in the header</span></td><td>The floored and aligned block size every later path strides by; zero on a moved-from pool.</td></tr>
+  <tr><td><code>TSize numberOfBlocks;</code> <span class="badge">private</span></td><td><span class="muted">none in the header</span></td><td>How many blocks the buffer holds; fixed for the object's life.</td></tr>
+  <tr><td><code>TSize numberOfFreeBlocks;</code> <span class="badge">private</span></td><td><span class="muted">none in the header</span></td><td>Blocks currently free. Every usage figure the class reports is derived from this one counter.</td></tr>
+  <tr><td><code>Byte* buffer;</code> <span class="badge">private</span></td><td><span class="muted">none in the header</span></td><td>The single backing allocation, obtained from <code>parentID</code>; <code>nullptr</code> on a moved-from pool.</td></tr>
+  <tr><td><code>Pointer availables;</code> <span class="badge">private</span></td><td><span class="muted">none in the header</span></td><td>Head of the free list, <code>nullptr</code> when no block is free. The header gives it no initialiser and the constructor's zero-capacity early return does not reach it.</td></tr>
+  <tr><td><code>size_t maxUsedBlocks;</code> <span class="badge">private</span></td><td><span class="muted">none in the header</span></td><td>Peak blocks handed out at once. Exists only under <code>PROFILE_ENABLED</code>, a configuration this tree does not compile.</td></tr>
+  <tr><td><code>hbe::source_location srcLocation;</code> <span class="badge">private</span></td><td><span class="muted">none in the header</span></td><td>Construction site, passed to the deregistration call. Exists only under <code>PROFILE_ENABLED</code>.</td></tr>
+</table>
+
+<h2 id="methods">Class methods</h2>
+
+<table class="methods">
+  <tr><th>Name</th><th>Signature</th><th>What a caller depends on</th></tr>
+  <tr><td><a href="constructors.html"><code>PoolAllocator</code></a><span class="badge">3 overloads</span></td><td class="sig">PoolAllocator(const char* inName, TSize inBlockSize, TSize inNumberOfBlocks, hbe::source_location location = hbe::source_location::current())<br>PoolAllocator(const char* inName, TSize inBlockSize, TSize inNumberOfBlocks)<br>PoolAllocator(PoolAllocator&amp;&amp; rhs) noexcept</td><td>Allocates the buffer, links the free list, registers the pool; the move form steals all of it and leaves the source empty but destructible.</td></tr>
+  <tr><td><a href="destructor.html"><code>~PoolAllocator</code></a></td><td class="sig">~PoolAllocator()</td><td>Returns the buffer to the recorded parent and deregisters the id; legal under any scope, and a no-op on a moved-from pool.</td></tr>
+  <tr><td><a href="operator-assign.html"><code>operator=</code></a></td><td class="sig">PoolAllocator&amp; operator=(PoolAllocator&amp;&amp; rhs) noexcept</td><td>Destructs this pool in place and move-constructs over it, so the old buffer is freed and the old id deregistered first.</td></tr>
+  <tr><td><a href="operator-less.html"><code>operator&lt;</code></a></td><td class="sig">bool operator&lt;(const PoolAllocator&amp; rhs) const noexcept</td><td>Orders by block size, and within one block size puts the pool with <em>more</em> free blocks first.</td></tr>
+  <tr><td><a href="allocate.html"><code>Allocate</code></a></td><td class="sig">Pointer Allocate(size_t size)</td><td>One block, or the parent's answer when the request is bigger than a block; <code>nullptr</code> once the pool is empty.</td></tr>
+  <tr><td><a href="deallocate.html"><code>Deallocate</code></a></td><td class="sig">void Deallocate(Pointer ptr, size_t size)</td><td>Null is ignored, a foreign pointer goes to the parent, and a block released twice is not detected.</td></tr>
+  <tr><td><a href="ismine.html"><code>IsMine</code></a></td><td class="sig">bool IsMine(Pointer ptr) const</td><td>A range test on the buffer, so a pointer into the middle of a block counts as yours.</td></tr>
+  <tr><td><a href="getid.html"><code>GetID</code></a></td><td class="sig">[[nodiscard]] auto GetID() const</td><td>The registration id, or <code>InvalidAllocatorID</code> once the pool has been moved from.</td></tr>
+  <tr><td><a href="getname.html"><code>GetName</code></a></td><td class="sig">[[nodiscard]] auto GetName() const</td><td>A copy of the name, so it stays readable after the pool dies.</td></tr>
+  <tr><td><a href="getsize.html"><code>GetSize</code></a></td><td class="sig">[[nodiscard]] size_t GetSize(Pointer) const</td><td>Answers the pool's block size and ignores which pointer it was asked about, owned or not.</td></tr>
+  <tr><td><a href="getusage.html"><code>GetUsage</code></a></td><td class="sig">[[nodiscard]] size_t GetUsage() const</td><td>Bytes handed out, counted at the aligned block size — never the size the caller asked for.</td></tr>
+  <tr><td><a href="getavailableblocks.html"><code>GetAvailableBlocks</code></a></td><td class="sig">[[nodiscard]] TSize GetAvailableBlocks() const</td><td>Blocks still free; the figure a multi-pool reads before it decides to generate a bank.</td></tr>
+  <tr><td><a href="getavailablememory.html"><code>GetAvailableMemory</code></a></td><td class="sig">[[nodiscard]] size_t GetAvailableMemory() const</td><td>Free blocks times block size; nothing in the tree calls it.</td></tr>
+  <tr><td><a href="getcapacity.html"><code>GetCapacity</code></a></td><td class="sig">[[nodiscard]] size_t GetCapacity() const</td><td>Block size times block count — the size of the one allocation the pool owns.</td></tr>
+  <tr><td><a href="getblocksize.html"><code>GetBlockSize</code></a></td><td class="sig">[[nodiscard]] auto GetBlockSize() const</td><td>The aligned block size actually in force, which is the only size a block stride or a size comparison should use.</td></tr>
+  <tr><td><a href="numberoffreeblocks.html"><code>NumberOfFreeBlocks</code></a></td><td class="sig">[[nodiscard]] auto NumberOfFreeBlocks() const</td><td>The same free-block count <a href="getavailableblocks.html">GetAvailableBlocks</a> reports, under a second name; nothing calls it.</td></tr>
+  <tr><td><a href="getbuffer.html"><code>GetBuffer</code></a></td><td class="sig">[[nodiscard]] auto GetBuffer() const</td><td>Base address of the backing allocation — what the parent gave and what the parent gets back.</td></tr>
+  <tr><td><a href="getusedblocksmax.html"><code>GetUsedBlocksMax</code></a></td><td class="sig">[[nodiscard]] auto GetUsedBlocksMax() const</td><td>Peak blocks handed out at once; exists only under <code>PROFILE_ENABLED</code>, and is the figure a multi-pool caches into the next boot.</td></tr>
+  <tr><td><a href="getindex.html"><code>GetIndex</code></a></td><td class="sig">TSize GetIndex(Pointer ptr) const</td><td>Private: which block of the buffer a pointer sits in, with no range check of its own.</td></tr>
+  <tr><td><a href="readnextindex.html"><code>ReadNextIndex</code></a></td><td class="sig">TSize ReadNextIndex(Pointer ptr) const</td><td>Private: reads the link a free block carries, asserting it is inside the pool.</td></tr>
+  <tr><td><a href="writenextindex.html"><code>WriteNextIndex</code></a></td><td class="sig">void WriteNextIndex(Pointer ptr, TSize index)</td><td>Private: writes that link as a block is released, asserting the index is a real block.</td></tr>
+  <tr><td><a href="allocateblock.html"><code>AllocateBlock</code></a></td><td class="sig">Pointer AllocateBlock()</td><td>Private: pops the free list; <code>nullptr</code> and a logged error when nothing is free.</td></tr>
+</table>
+
+<h2 id="non-member">Non-member helper functions</h2>
+
+<p>
+  None. A pool is reached through its own object or through the <a href="../index.html#memorymanager"><code>MemoryManager</code></a>
+  registration the constructor created; the free functions in <code>Engine/Memory/Memory.h</code> work on any allocator and belong to
+  the <a href="../index.html#functions">module page</a>.
+</p>
+
+<h2 id="coverage">Coverage</h2>
+
+<table>
+  <tr><th>Not documented here</th><th>Why, and where it belongs</th></tr>
+  <tr>
+    <td>How the free list is encoded, and why that encoding forces the constructor's <code>sizeof(size_t)</code> floor</td>
+    <td>Mechanism, so it belongs to a Memory design document under <code>docs/</code>, which this wave has not written. The
+        caller-facing consequence of the same fact <em>is</em> documented: the precondition on
+        <a href="constructors.html">the constructor</a>, the byte count <a href="allocate.html">Allocate</a> hands back as usable, and
+        the <code>size</code> argument <a href="deallocate.html">Deallocate</a> cannot use for anything. The private helpers
+        <a href="readnextindex.html">ReadNextIndex</a> and <a href="writenextindex.html">WriteNextIndex</a> name the link without
+        describing the layout.</td>
+  </tr>
+  <tr>
+    <td>The mechanism behind the free list's terminating link, and the block released twice</td>
+    <td>The contract itself is documented and test-guarded, not an open question: the link value <code>numberOfBlocks</code> is the
+        terminating sentinel, <a href="allocateblock.html">AllocateBlock</a> reads a link below it as "another block follows",
+        <a href="deallocate.html">Deallocate</a>'s empty-list branch writes that sentinel,
+        <a href="writenextindex.html">WriteNextIndex</a> accepts the same bound
+        <a href="readnextindex.html">ReadNextIndex</a> applies, and the testlet
+        <code>Reallocation After An Exhausted Free List</code> in <code>PoolAllocatorTest::Prepare</code> guards it — restoring the
+        <code>numberOfBlocks - 1</code> that branch used to write makes the testlet fail. What this page still owes is the
+        <em>mechanism</em> behind the link, which belongs to a Memory design document under <code>docs/</code> that this wave has not
+        written (the first row above), and the double-release case, which no testlet covers and which
+        <a href="deallocate.html">Deallocate</a> names as a gap.</td>
+  </tr>
+  <tr>
+    <td><code>MemoryManager</code> contracts the class leans on: <code>RegisterAllocator</code>, <code>DeregisterAllocator</code>,
+        <code>AllocatorProxy</code> dispatch, <code>FallbackAllocate</code>, the nesting of <code>AllocatorScope</code></td>
+    <td>Owned by <a href="../index.html#memorymanager">the Memory module page</a>. This page states what a pool does with them, not
+        what they promise.</td>
+  </tr>
+  <tr>
+    <td>Every path behind <code>#if PROFILE_ENABLED</code></td>
+    <td>The profiling configuration of this tree does not compile — recorded in <code>JOURNAL.md</code> on 2026-10-05, which also
+        notes that <code>hbe::source_location</code> is only ever forward declared while
+        <code>Engine/OSAL/SourceLocation.h</code> defines <code>SourceLocation</code>. So
+        <a href="getusedblocksmax.html">GetUsedBlocksMax</a>, the <code>location</code> parameter,
+        <code>maxUsedBlocks</code>, <code>srcLocation</code> and the reporting calls inside
+        <a href="allocate.html">Allocate</a> and <a href="deallocate.html">Deallocate</a> are described from the source and have never
+        run.</td>
+  </tr>
+  <tr>
+    <td>Serving a request whose alignment exceeds <code>Config::DefaultAlign</code></td>
+    <td>No such interface exists: the class takes no alignment argument, and blocks are only as aligned as the buffer the parent
+        returned. Recorded as review finding 9 on 2026-10-05 and still open — a known gap in the interface, not intended design.</td>
+  </tr>
+  <tr>
+    <td>What happens when the constructor's single backing allocation fails</td>
+    <td>Not stated as a contract. The constructor does not test <code>buffer</code> for null before writing the free list through
+        it, while an exhausted pool at <a href="allocate.html">Allocate</a> time does return <code>nullptr</code> after logging. The
+        unchecked side belongs with review finding 6 (2026-10-05), which is open robustness work rather than documented behaviour.</td>
+  </tr>
+  <tr>
+    <td><code>PoolAllocatorTest</code></td>
+    <td>Test-only: declared in <code>Engine/Memory/PoolAllocator.h</code> inside <code>#ifdef __UNIT_TEST__</code>, with the three
+        testlets <code>Construction</code>, <code>Allocation &amp; Deallocation</code> and
+        <code>Allocation With A Clamped Block Size</code> defined in <code>Engine/Memory/PoolAllocator.cpp</code>. It owns no page of
+        its own; what it proves is quoted where each claim is made.</td>
+  </tr>
+</table>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; PoolAllocator</a></span>
+  <span><a href="index.html#methods">All PoolAllocator methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

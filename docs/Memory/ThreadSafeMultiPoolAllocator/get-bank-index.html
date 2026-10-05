@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ThreadSafeMultiPoolAllocator::GetBankIndex — Memory module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a class="current" href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Memory</a> /
+  <a href="index.html">ThreadSafeMultiPoolAllocator</a> / GetBankIndex
+</p>
+
+<h1><span class="fn">GetBankIndex</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::ThreadSafeMultiPoolAllocator</span>
+  <span class="tag">Engine/Memory/ThreadSafeMultiPoolAllocator.h</span>
+  <span class="tag">private</span>
+  <span class="tag">2 overloads</span>
+  Which bank serves a size, and which bank owns an address — both scan every bank, and both answer one-past-the-end for none.
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>[[nodiscard]] size_t GetBankIndex(size_t nBytes) const
+
+[[nodiscard]] size_t GetBankIndex(void* ptr) const</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  Two private helpers, both defined in <code>Engine/Memory/ThreadSafeMultiPoolAllocator.cpp</code>, both reading
+  <code>banks</code> with no synchronisation of their own — every caller (<a href="allocate.html"><code>Allocate</code></a>,
+  <a href="deallocate.html"><code>Deallocate</code></a>,
+  <a href="new-bank-allocate.html"><code>NewBankAllocate</code></a>) holds <code>lock</code> across the call. Both
+  scan every bank, and both answer <code>banks.size()</code> for "none of them" — an index one past the end, which is
+  exactly why their callers test <code>index &gt;= banks.size()</code>.
+</p>
+
+<p class="meta">From Engine/Memory/ThreadSafeMultiPoolAllocator.cpp, ThreadSafeMultiPoolAllocator::GetBankIndex(size_t) const</p>
+
+<pre><code>nBytes = std::max(minBlock, nBytes);
+const auto doubleSize = nBytes * 2;
+
+const auto len = banks.size();
+for (size_t i = 0; i &lt; len; ++i)
+{
+        auto&amp; bank = banks[i];
+        if (nBytes &gt; bank.GetBlockSize())
+        {
+                continue;
+        }
+
+        if (bank.GetAvailableBlocks() &lt;= 0)
+        {
+                continue;
+        }
+
+        if (bank.GetBlockSize() &gt; doubleSize)
+        {
+                return len;
+        }
+
+        return i;
+}</code></pre>
+
+<p>
+  The size form answers "which bank should serve a request of <code>nBytes</code>", and three rules decide it: the
+  request is floored at <code>minBlock</code>; a bank is skipped if its block is smaller or if it has no free block;
+  and a bank whose block is more than double the request is refused outright — a 16-byte request will not take a
+  64-byte block, and the answer is "build a bank" rather than "keep looking".
+</p>
+
+<div class="gap">
+  <strong>The answer depends on what is free right now, not on size alone.</strong> A bank with no free block is
+  skipped, so the same request size can land in a different bank on two consecutive calls, and a bank that is full
+  silently shifts load to the next size class or to a brand-new bank. Nothing records which bank served a pointer,
+  which is why the pointer form below has to scan. The review of 2026-10-05 named this as the thing any locking
+  redesign must remove first — "make <code>size</code> to bank a pure function" (<code>JOURNAL.md</code>) — and it
+  is also why a free path must scan by address.
+</div>
+
+<div class="gap">
+  <strong>The double-size refusal stops the scan instead of continuing it.</strong> <code>return len</code> on a bank
+  that is too big assumes the list is ascending in block size, so a suitable smaller bank sitting behind a large one
+  would never be examined. <a href="generate-bank.html"><code>GenerateBank</code></a> sorts after every insertion and
+  the brace-list constructor sorts before its first one, so the assumption holds — but the banks this instance is
+  born with come from
+  <a href="generate-banks-by-cache.html"><code>GenerateBanksByCache</code></a> in stored order, unsorted by this
+  class, so a configuration file that is not ascending can make the refusal wrong on the first request.
+</div>
+
+<p class="meta">From Engine/Memory/ThreadSafeMultiPoolAllocator.cpp, ThreadSafeMultiPoolAllocator::GetBankIndex(void*) const</p>
+
+<pre><code>size_t index = 0;
+
+for (auto&amp; bank : banks)
+{
+        if (bank.IsMine(ptr))
+        {
+                return index;
+        }
+
+        ++index;
+}</code></pre>
+
+<p>
+  The pointer form asks each bank in turn <code>IsMine(ptr)</code>, which is a range test on the bank's buffer —
+  <code>buffer &lt;= ptr</code> and the offset below <code>blockSize * numberOfBlocks</code>
+  (<code>Engine/Memory/PoolAllocator.cpp</code>). Two consequences follow from the test as written: an address
+  anywhere inside a bank counts as owned, including the middle of a live block, and a bank that is empty still owns
+  its buffer, so a freed bank's address range is only unreachable once the banks are destroyed.
+</p>
+
+<div class="note">
+  <strong>Bank order changes when a bank is added, and the banks move destructively.</strong> Every
+  <a href="generate-bank.html"><code>GenerateBank</code></a> re-sorts the list, and
+  <code>PoolAllocator</code>'s move assignment is <code>this-&gt;~PoolAllocator()</code> followed by a placement new
+  (<code>Engine/Memory/PoolAllocator.cpp</code>) — a bank moved into a slot that still owns a buffer would release a
+  live bank. Measured against the standard library's sort, that never happens, because a move-assign always targets
+  the slot a previous destructive move has just emptied; the review recorded the result as "safe by luck, not by
+  contract" (<code>JOURNAL.md</code>, 2026-10-05). The indices these two functions return are positions in that
+  shifting list, so they are valid for one locked operation only, never to be cached.
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<table>
+  <tr><th>Parameter</th><th>Type</th><th>Requirement</th></tr>
+  <tr><td><code>nBytes</code></td><td><code>size_t</code></td><td>Size form: bytes requested. Floored at <code>minBlock</code> before the scan, so a request below the floor competes for the smallest class</td></tr>
+  <tr><td><code>ptr</code></td><td><code>void*</code></td><td>Pointer form: an address to test for ownership. No null check here — the caller in <a href="deallocate.html"><code>Deallocate</code></a> has already returned on null</td></tr>
+</table>
+
+<h2 id="return">Return value</h2>
+
+<table>
+  <tr><th>Type</th><th>What you get</th></tr>
+  <tr><td><code>size_t</code></td><td>A valid index into <code>banks</code>, or <code>banks.size()</code> meaning "no bank qualifies" — for the size form, generate one; for the pointer form, the address belongs to no bank of this instance. Both callers test with <code>&gt;=</code>, never <code>==</code></td></tr>
+</table>
+
+<h2 id="example">Examples</h2>
+
+<p class="meta">From Engine/Memory/ThreadSafeMultiPoolAllocator.cpp, ThreadSafeMultiPoolAllocator::Allocate()</p>
+
+<pre><code>std::lock_guard lockGuard(lock);
+
+auto index = GetBankIndex(requested);
+if (index &gt;= banks.size())
+{
+        return NewBankAllocate(requested);
+}</code></pre>
+
+<p>
+  The size form in its only decision role: an answer of one-past-the-end is not an error but the trigger to grow, and
+  the pointer form's equivalent is the <code>foreignPointer</code> branch under
+  <a href="deallocate.html"><code>Deallocate</code></a>. Both calls sit inside the caller's locked region
+  (<code>Engine/Memory/ThreadSafeMultiPoolAllocator.cpp</code>).
+</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; ThreadSafeMultiPoolAllocator</a></span>
+  <span><a href="index.html#methods">All ThreadSafeMultiPoolAllocator methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

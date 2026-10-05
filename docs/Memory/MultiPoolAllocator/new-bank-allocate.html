@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MultiPoolAllocator::NewBankAllocate — Memory module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a class="current" href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Memory</a> /
+  <a href="index.html">MultiPoolAllocator</a> / NewBankAllocate
+</p>
+
+<h1><span class="fn">NewBankAllocate</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::MultiPoolAllocator</span>
+  <span class="tag">Engine/Memory/MultiPoolAllocator.h</span>
+  Private: the only member that grows the ladder, and the only one that reaches for the Engine object.
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>#endif
+
+private:
+
+	void* NewBankAllocate(size_t size)</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  Private, and the only member that adds a bank. <a href="allocate.html">Allocate</a> calls it when no existing bank
+  will serve a request, and it converts that request into geometry: a block size, a block count, a new
+  <a href="../index.html#allocators">pool bank</a>, and one block taken from it.
+</p>
+
+<pre><code>	auto&amp; engine = Engine::Get();
+	auto&amp; statistics = engine.GetStatistics();
+	statistics.IncFallbackAllocCount();
+…
+	auto blockSize = CalculateBlockSize(size);
+	auto numBlocks = CalculateNumberOfBlocks(bankSize, blockSize);
+	GenerateBank(blockSize, numBlocks);
+
+	auto index = GetBankIndex(size);
+	if (unlikely(index &gt;= banks.size()))
+	{
+		FatalAssert(false);
+
+		return nullptr;
+	}
+
+	auto&amp; bank = banks[index];
+	auto ptr = bank.Allocate(size);</code></pre>
+
+<p class="meta">From Engine/Memory/MultiPoolAllocator.cpp, MultiPoolAllocator::NewBankAllocate()</p>
+
+<p>
+  The two geometry decisions belong to
+  <a href="calculate-block-size.html">CalculateBlockSize</a> and
+  <a href="calculate-number-of-blocks.html">CalculateNumberOfBlocks</a>; the creation and its cost belong to
+  <a href="generate-bank.html">GenerateBank</a>. What this member owns is the sequence, and the fact that it is a
+  <em>growth</em> path rather than an allocation path: one call borrows a bank's whole backing buffer from the parent
+  allocator.
+</p>
+
+<div class="note">
+  <strong>Every call is counted as a fallback allocation, at engine level.</strong>
+  <code>IncFallbackAllocCount</code> is a <code>SystemStatistics</code> counter on the live
+  <a href="../../Engine/index.html">Engine</a> object (<code>Engine/Core/SystemStatistics.h</code>), and it is a
+  different quantity from <code>AllocStats::fallbackCount</code>, which counts the manager's own
+  <code>FallbackAllocate</code> calls and is read by <a href="print-usage.html">PrintUsage</a>
+  (<code>Engine/Memory/MemoryManager.cpp</code>, <code>MemoryManager::ReportFallback()</code>). Bank generation moves the
+  first figure and not the second, so a pool that grew twenty times can report zero fallbacks while the engine reports
+  twenty.
+</div>
+
+<div class="gap">
+  <strong>Growth needs a live engine.</strong> The first statement is <code>Engine::Get()</code>, which asserts on a
+  null instance in every non-Release build and dereferences it regardless
+  (<code>Engine/Engine/Engine.cpp</code>). An allocator constructed before the engine exists can still serve requests
+  from banks it was given at construction; the moment one of them is exhausted, or the ladder cannot answer a size, this
+  member runs and the missing engine becomes the failure. <code>TaskStream</code> builds its allocator during stream
+  construction and only reaches this path on a pass that allocates
+  (<code>Engine/Core/TaskStream.cpp</code>).
+</div>
+
+<div class="gap">
+  <strong>The assert at the end is a witness, not a recovery, and it aborts in every configuration.</strong>
+  <code>FatalAssert</code> lives outside the <code>RELEASE_BUILD</code> guard and calls
+  <code>std::abort()</code> (<code>Engine/Core/Debug.h</code>), so the <code>return nullptr</code> after it is dead code
+  and the caller never learns that a request failed. Reaching it means the bank that was just generated still did not
+  satisfy <a href="get-bank-index.html">GetBankIndex</a> for the same size — which every earlier guard makes hard to
+  reach: <code>CalculateBlockSize</code> returns a block size never below the request,
+  <code>CalculateNumberOfBlocks</code> returns at least one block, and <code>GenerateBank</code> asserts both. A build
+  that lands here has already broken one of those invariants — a zero <code>minBlock</code>, or a bank whose backing
+  allocation left it with no blocks at all.
+</div>
+
+<div class="note">
+  <strong>The pointer comes back through the ladder, not out of the new bank directly.</strong> After growth, this
+  member re-runs <a href="get-bank-index.html">GetBankIndex</a> and takes <code>banks[index]</code>, so the bank that
+  serves the request is whatever the sorted ladder now considers best — normally the bank that was just created, and
+  provably a bank whose block size is at least the request. The bank underneath
+  (<code>PoolAllocator::Allocate</code>) has its own route to the parent allocator for a request larger than its block
+  size, and neither path into this member can reach it.
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<table>
+  <tr><th>Parameter</th><th>Type</th><th>Requirement</th></tr>
+  <tr>
+    <td><code>size</code></td>
+    <td><code>size_t</code></td>
+    <td>The original request, non-zero — <a href="allocate.html">Allocate</a> has already returned null for zero. It is
+      the input to the rounding rules, so the value decides both the block size and how many blocks the bank holds</td>
+  </tr>
+</table>
+
+<h2 id="return">Return value</h2>
+
+<table>
+  <tr><th>Type</th><th>What you get</th></tr>
+  <tr>
+    <td><code>void*</code></td>
+    <td>A block from a bank that exists because of this call. The null return is unreachable while
+      <code>FatalAssert</code> aborts, so a caller of <a href="allocate.html">Allocate</a> has no way to distinguish
+      success from the failure this member reports by aborting</td>
+  </tr>
+</table>
+
+<h2 id="example">Examples</h2>
+
+<p>
+  Private, with one caller: <a href="allocate.html">Allocate</a>, from both of its refusal branches. No source outside
+  the class can call it, and the unit tests observe it only through the engine's fallback counter — the
+  <code>Multiple Allocations &amp; Fallback</code> testlet in
+  <code>Engine/Memory/MultiPoolAllocator.cpp</code> expects two growth events across eleven requests against a
+  <code>{64 … 4096}</code> ladder, and that assertion is compiled out with <code>PROFILE_ENABLED</code>.
+</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; MultiPoolAllocator</a></span>
+  <span><a href="index.html#methods">All MultiPoolAllocator methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

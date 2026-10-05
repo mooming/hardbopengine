@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MultiPoolAllocator::ReportConfiguration — Memory module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a class="current" href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Memory</a> /
+  <a href="index.html">MultiPoolAllocator</a> / ReportConfiguration
+</p>
+
+<h1><span class="fn">ReportConfiguration</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::MultiPoolAllocator</span>
+  <span class="tag">Engine/Memory/MultiPoolAllocator.h</span>
+  Publish the peak bank ladder for the next run to boot from, behind an assertion on its own total.
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>#if PROFILE_ENABLED
+	void ReportConfiguration() const</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  Publishes this allocator's bank ladder — one entry per block size, each holding the largest number of blocks the
+  banks of that size ever held simultaneously — to the manager, which is what a later run boots from. It exists only
+  when <code>PROFILE_ENABLED</code> is on, and the counters it reads exist only then too
+  (<code>Engine/Memory/MultiPoolAllocator.h</code>, <code>PoolAllocator::GetUsedBlocksMax()</code>).
+</p>
+
+<pre><code>	MemoryManager::TPoolConfigs configs;
+	configs.reserve(banks.size());
+
+	auto InsertItem = [&amp;configs](const PoolAllocator&amp; alloc)
+	{
+		auto key = alloc.GetBlockSize();
+		auto value = alloc.GetUsedBlocksMax();
+
+		auto pred = [key](const PoolConfig&amp; item) { return item.blockSize == key; };
+
+		auto found = std::find_if(configs.begin(), configs.end(), pred);
+		if (found == configs.end())
+		{
+			configs.emplace_back(key, value);
+		}
+		else
+		{
+			found-&gt;numberOfBlocks += value;
+		}
+	};</code></pre>
+
+<p class="meta">From Engine/Memory/MultiPoolAllocator.cpp, MultiPoolAllocator::ReportConfiguration()</p>
+
+<p>
+  The <code>else</code> branch is the whole point of the aggregation. Before 2026-10-05 the accumulation ran after the
+  not-found test rather than inside it, and because <code>configs.reserve(banks.size())</code> guarantees the
+  <code>emplace_back</code> does not reallocate, that new element was constructed at the address <code>found</code>
+  already held — so the value was added twice for every size class the report introduced. The journal entry at 18:31
+  records the fix, and this function gained its assertion the same day:
+</p>
+
+<pre><code>	size_t peakBlocks = 0;
+	size_t reportedBlocks = 0;
+
+	for (auto&amp; bank : banks)
+	{
+		InsertItem(bank);
+		peakBlocks += bank.GetUsedBlocksMax();
+	}
+
+	for (const auto&amp; config : configs)
+	{
+		reportedBlocks += config.numberOfBlocks;
+	}
+
+	Assert(reportedBlocks == peakBlocks, "ReportConfiguration: the reported block count ", reportedBlocks,
+		   " does not match the summed bank peak ", peakBlocks);</code></pre>
+
+<p class="meta">From Engine/Memory/MultiPoolAllocator.cpp, MultiPoolAllocator::ReportConfiguration()</p>
+
+<div class="gap">
+  <strong>The invariant, and which side is wrong when it breaks.</strong>
+  Summing the grouped configurations must reproduce the sum of the individual banks:
+  <code>Σ over configs of numberOfBlocks == Σ over banks of GetUsedBlocksMax()</code>. Two banks of one block size
+  merge into one entry, nothing else may change the total. <code>peakBlocks</code> is read straight out of each bank one
+  at a time, so when the assert fires the grouped figure is the defective one: trust <code>peakBlocks</code> and treat
+  the report as wrong. The assert sits before
+  <code>mmgr.ReportMultiPoolConfigutation(uniqueName.GetID(), std::move(configs))</code>, so in a build where
+  <code>Assert</code> is live — every non-Release build, per <a href="../../Core/index.html#debug">Core: Debug</a> — the
+  process stops without publishing anything, and the cache keeps the last correct ladder. A configuration in which the
+  assert is compiled out would publish the wrong figure, and that configuration is also one the tree cannot currently
+  build at all, which the same journal entry records as an open task.
+</div>
+
+<div class="gap">
+  <strong>What a wrong figure costs is the next run, not this one.</strong> The published entries land in
+  <code>MemoryManager::multiPoolConfigLog</code>, which <code>PreEngineShutdown</code> serialises to the cache file; the
+  next boot loads it and <a href="generate-banks-by-cache.html">GenerateBanksByCache</a> builds this allocator's banks
+  from it (<code>Engine/Memory/MemoryManager.cpp</code>). An entry that counted every size class twice makes the next run
+  boot with a bank twice the size it needed, forever, because each over-sized run reports its own over-sized peak.
+  The doubled figures the journal prints — 18 against a true 9, 25 against 15, 80 against 40 — were measured on a
+  standalone model built from the two variants of the lambda above, not on the engine binary, which the profiling switch
+  cannot currently compile. They are reproduced here as the order of the defect, not as engine measurements.
+</div>
+
+<div class="note">
+  <strong>The peak is a lifetime high-water mark and is never reset.</strong>
+  <code>PoolAllocator::AllocateBlock()</code> raises <code>maxUsedBlocks</code> on every allocation and nothing lowers it
+  (<code>Engine/Memory/PoolAllocator.cpp</code>), so what this member reports is the worst moment the instance ever
+  reached, and an allocator that ran for an hour reports its hour's maximum.
+</div>
+
+<div class="note">
+  <strong>Cost is quadratic in the number of banks, not in bytes.</strong>
+  Each bank runs a <code>std::find_if</code> over the configurations collected so far, so a ladder of
+  <code>n</code> banks costs on the order of <code>n²</code> comparisons at destruction. It runs once, in
+  <a href="destructor.html">the destructor</a>, and the same day's benchmark work is what measures the allocation path
+  instead.
+</div>
+
+<div class="note">
+  <strong><code>const</code> here, not there.</strong>
+  This member is <code>const</code>; <code>ThreadSafeMultiPoolAllocator::ReportConfiguration</code> is not, and neither
+  is that class's <code>PrintUsage</code> (<code>Engine/Memory/MultiPoolAllocator.h</code> against
+  <code>Engine/Memory/ThreadSafeMultiPoolAllocator.h</code>). Both bodies read state and hand it to the manager, so the
+  qualifier is not telling a caller anything about behaviour — it is drift between two classes that were edited
+  separately, and it is named as an open question on the <a href="index.html#coverage">class page</a>.
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<p>None.</p>
+
+<h2 id="return">Return value</h2>
+
+<p>
+  <code>void</code>. The configuration goes to <code>MemoryManager::ReportMultiPoolConfigutation</code> keyed on the
+  allocator's name id, and there is no read-back: a caller cannot ask the manager what this instance reported, only what
+  the next instance boots from.
+</p>
+
+<h2 id="example">Examples</h2>
+
+<p class="meta">From Engine/Log/Logger.cpp, Logger::ReportMemoryConfiguration()</p>
+
+<pre><code>	allocator.ReportConfiguration();</code></pre>
+
+<p>
+  The logger owns a <code>MultiPoolAllocator</code> member and offers this one-line accessor so a profiling shutdown can
+  ask for its ladder without waiting for the logger itself to die. The other caller is
+  <a href="destructor.html">~MultiPoolAllocator</a>, which calls it under <code>PROFILE_ENABLED</code> before any bank is
+  destroyed.
+</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; MultiPoolAllocator</a></span>
+  <span><a href="index.html#methods">All MultiPoolAllocator methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

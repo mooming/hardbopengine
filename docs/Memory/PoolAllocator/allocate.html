@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PoolAllocator::Allocate — Memory module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a class="current" href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Memory</a> /
+  <a href="index.html">PoolAllocator</a> / Allocate
+</p>
+
+<h1><span class="fn">Allocate</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::PoolAllocator</span>
+  <span class="tag">Engine/Memory/PoolAllocator.h</span>
+  One block off the free list, the parent's answer to an oversized request, or null when the pool is empty.
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>Pointer Allocate(size_t size)</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  Defined in <code>Engine/Memory/PoolAllocator.cpp</code> as <code>PoolAllocator::Allocate(size_t size)</code>. One
+  comparison decides everything: a request that fits the pool's block size pops a block off the free list, and a
+  request that does not is answered by the pool's parent.
+</p>
+
+<pre><code>if (unlikely(size &gt; blockSize))
+{
+	auto&amp; mmgr = MemoryManager::GetInstance();
+
+	return mmgr.FallbackAllocate(GetID(), parentID, size);
+}
+
+auto ptr = AllocateBlock();</code></pre>
+
+<p class="meta">From Engine/Memory/PoolAllocator.cpp, PoolAllocator::Allocate(size_t size)</p>
+
+<div class="note">
+  <strong>A request bigger than a block does not fail — the parent answers it.</strong>
+  <code>FallbackAllocate</code> is a thin call at the pool's parent id, and the parent allocates the bytes
+  (<code>Engine/Memory/MemoryManager.cpp</code>, <code>MemoryManager::FallbackAllocate()</code>). The pointer that comes back is
+  the parent's, not the pool's: <a href="ismine.html">IsMine</a> answers false for it, and the pool's counters never moved, so
+  <a href="getusage.html">GetUsage</a> and <a href="getavailableblocks.html">GetAvailableBlocks</a> say nothing about it. Handing
+  that pointer back to <a href="deallocate.html">the same pool's Deallocate</a> is nonetheless correct — it recognises the pointer
+  as foreign and forwards it to that same parent.
+</div>
+
+<div class="gap">
+  <strong>An exhausted pool returns null. It does not grow, retry, or stop the program.</strong>
+  <a href="allocateblock.html">AllocateBlock</a> reports the shortage through the manager and hands back
+  <code>nullptr</code>, and <code>Allocate</code> passes that through. Two consequences a caller has to live with: the pool never
+  enlarges itself, so a pool sized too small stays too small for its whole life; and the complaint is a log line, which
+  <code>MemoryManager::Log()</code> drops entirely unless <code>MEMORY_LOGGING_ENABLED</code> is on
+  (<code>Engine/Memory/MemoryManager.cpp</code>). The null itself is the only reliable signal. The engine's own caller does not
+  look at it: <code>MultiPoolAllocator::Allocate()</code> checks the bank's <a href="getavailableblocks.html">free-block
+  count</a> first and then returns <code>bank.Allocate(size)</code> as its own result
+  (<code>Engine/Memory/MultiPoolAllocator.cpp</code>), so a bank that emptied between those two steps propagates a null upward.
+  The fatal assert on an out-of-memory path belongs one level up, to a multi-pool that generated a bank and still found no index
+  (<code>Engine/Memory/ThreadSafeMultiPoolAllocator.cpp</code>, <code>ThreadSafeMultiPoolAllocator::NewBankAllocate()</code>);
+  that is review finding 6 in <code>JOURNAL.md</code> (2026-10-05), open robustness work rather than intended design, and this
+  class has no part in it.
+</div>
+
+<div class="note">
+  <strong>Asking for zero bytes costs a whole block.</strong>
+  Only <code>size &gt; blockSize</code> is special, so a zero-sized request takes an ordinary block off the free list and reports it
+  as used. Nothing here normalises a zero the way the allocation entry points do, and nothing distinguishes it afterwards: the
+  block is indistinguishable from any other until it is released.
+</div>
+
+<div class="note">
+  <strong>While you hold a block, all of it is yours.</strong>
+  The pool writes into a block only as part of <a href="deallocate.html">releasing</a> it
+  (<a href="writenextindex.html">WriteNextIndex</a> has one caller), so nothing of yours is disturbed while the block is checked
+  out, and the usable size is the full <a href="getblocksize.html">block size</a> — not the size you asked for, and not smaller
+  because the pool stores bookkeeping inside the block. What it stores there, and why that forces the
+  <a href="constructors.html">constructor's block-size floor</a>, is the layout the
+  <a href="index.html#coverage">class Coverage section</a> leaves to a design document.
+</div>
+
+<div class="gap">
+  <strong>Alignment is inherited, never requested.</strong>
+  A block sits at <code>buffer + index * blockSize</code>, and <code>blockSize</code> is a multiple of
+  <code>Config::DefaultAlign</code> (16 bytes), so every block is as aligned as the buffer the parent handed over — which the
+  pool's own testlet asserts rather than assumes (<code>Allocation With A Clamped Block Size</code>,
+  <code>Engine/Memory/PoolAllocator.cpp</code>). There is no alignment parameter, no aligned entry point, and no fallback for a
+  type whose <code>alignof</code> exceeds 16: such a type is silently under-aligned. That is review finding 9 in
+  <code>JOURNAL.md</code> (2026-10-05) — a gap in the interface that is still open, not a design decision to rely on.
+</div>
+
+<div class="note">
+  <strong>Allocation is not synchronised, and it can reach the logger.</strong>
+  No lock is taken here, and <a href="allocateblock.html">the empty case</a> logs through the manager. Two threads allocating from
+  one pool corrupt its free list; one thread allocating while another logs from inside a lock that this call would have to take is
+  the shape of the deadlock recorded in <code>JOURNAL.md</code> (2026-10-05) for the class that banks pools. A pool is a
+  single-threaded object.
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<table>
+  <tr><th>Parameter</th><th>Type</th><th>Requirement</th></tr>
+  <tr><td><code>size</code></td><td><code>size_t</code></td><td>Bytes wanted. At most <a href="getblocksize.html">GetBlockSize</a>() keeps the request inside the pool; more is served by the parent; zero is served by the pool and costs a whole block.</td></tr>
+</table>
+
+<h2 id="return">Return value</h2>
+
+<table>
+  <tr><th>Type</th><th>What you get</th></tr>
+  <tr>
+    <td><code>Pointer</code></td>
+    <td>A block of <code>GetBlockSize()</code> bytes drawn from the pool's buffer — release it with
+        <a href="deallocate.html">Deallocate</a>. Or, for an oversized request, whatever the parent returned, which is not the
+        pool's memory. Or <code>nullptr</code>: the pool was empty, or the parent could not serve the oversized request either.</td>
+  </tr>
+</table>
+
+<h2 id="example">Examples</h2>
+
+<pre><code>auto ptr = pool.Allocate(allocSize);
+auto size = pool.GetSize(ptr);
+
+if (size != 4096)
+{
+	ls &lt;&lt; "The size is incorrect. " &lt;&lt; size &lt;&lt; ", but 4096 expected." &lt;&lt; lferr;
+	break;
+}
+
+pool.Deallocate(ptr, allocSize);</code></pre>
+
+<p class="meta">From Engine/Memory/PoolAllocator.cpp, PoolAllocatorTest::Prepare()</p>
+
+<p>
+  The allocation and its matching release, and the check that matters afterwards: the size you get back is the block size, not the
+  50 bytes you asked for. The engine's production-shaped caller is a bank loop that asks for availability first and treats the
+  result as non-null — <code>Engine/Memory/MultiPoolAllocator.cpp</code>, <code>MultiPoolAllocator::Allocate()</code>.
+</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; PoolAllocator</a></span>
+  <span><a href="index.html#methods">All PoolAllocator methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

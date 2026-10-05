@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PoolAllocator::~PoolAllocator — Memory module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a class="current" href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Memory</a> /
+  <a href="index.html">PoolAllocator</a> / ~PoolAllocator
+</p>
+
+<h1><span class="fn">~PoolAllocator</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::PoolAllocator</span>
+  <span class="tag">Engine/Memory/PoolAllocator.h</span>
+  Returns the buffer to the allocator recorded at construction and releases the registration, under whatever scope the destruction happens in.
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>~PoolAllocator()</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  Defined in <code>Engine/Memory/PoolAllocator.cpp</code> as <code>PoolAllocator::~PoolAllocator()</code>. Two branches:
+  an object with no registration — a moved-from pool, or one whose construction stopped at the zero-capacity early
+  return (<a href="constructors.html">constructors</a>) — gives up immediately; anything else returns its buffer and
+  releases its registration.
+</p>
+
+<pre><code>if (id == InvalidAllocatorID)
+{
+	Assert(buffer == nullptr);
+
+	return;
+}</code></pre>
+
+<p class="meta">From Engine/Memory/PoolAllocator.cpp, PoolAllocator::~PoolAllocator()</p>
+
+<pre><code>const size_t totalSize = blockSize * numberOfBlocks;
+Assert(buffer != nullptr);
+
+auto&amp; mmgr = MemoryManager::GetInstance();
+mmgr.Deallocate(parentID, buffer, totalSize);
+
+#if PROFILE_ENABLED
+	mmgr.DeregisterAllocator(GetID(), srcLocation);
+#else // PROFILE_ENABLED
+	mmgr.DeregisterAllocator(GetID());
+#endif // PROFILE_ENABLED
+
+buffer = nullptr;
+id = InvalidAllocatorID;</code></pre>
+
+<p class="meta">From Engine/Memory/PoolAllocator.cpp, PoolAllocator::~PoolAllocator()</p>
+
+<div class="gap">
+  <strong>The buffer goes back to the allocator recorded at construction, whatever scope the destruction happens
+  in.</strong>
+  <code>mmgr.Deallocate(parentID, buffer, totalSize)</code> names the recorded id explicitly rather than calling the
+  no-id overload that follows the current scope. That is the fix recorded in <code>JOURNAL.md</code> on 2026-10-05 as F2,
+  and it is a contract about where a pool may die: pools are destroyed by other allocators' teardown — a bank of a
+  <a href="../index.html#allocators">multi-pool</a> goes when the vector holding it is cleared, in the middle of that
+  multi-pool's own destruction — so a destructor that asked the ambient allocator to release memory it never borrowed
+  hands a foreign pointer to a stranger. Before the fix, the guard testlet <code>Pool Buffer Returns To Its Recorded
+  Parent</code> in <code>Engine/Memory/PoolAllocator.cpp</code> fails exactly that way, logging that the buffer
+  <code>is allocated by another allocator</code> and trapping. The consequence for a caller: no
+  <a href="../index.html#allocatorscope">AllocatorScope</a> is needed to destroy a pool safely, and opening one changes
+  nothing about where the buffer goes.
+</div>
+
+<div class="gap">
+  <strong>A recorded id is a number, not a lease on the parent.</strong>
+  <code>parentID</code> is validated only as a range (<code>IsValid</code>), and an out-of-range id is replaced by id 0
+  with a logged error while <code>Assert(id != InvalidAllocatorID)</code> is the only complaint about the invalid one
+  (<code>Engine/Memory/MemoryManager.cpp</code>, <code>MemoryManager::Deallocate()</code>). A registration id is freed for
+  reuse by <code>MemoryManager::DeregisterAllocator()</code> the moment its owner deregisters. So the ordering requirement
+  is on the caller: a pool must be destroyed while its parent's registration is still alive, or its buffer is handed to
+  whatever allocator happens to hold that id by then.
+</div>
+
+<div class="gap">
+  <strong>Nothing checks that the blocks came back.</strong>
+  The destructor compares nothing against <code>numberOfBlocks</code>; it releases the buffer while blocks are still
+  handed out. Anything still pointing into the pool is then reading memory that has gone back to the parent, and the pool
+  says nothing about it. Returning every block — or being certain nobody holds one — is caller work
+  (<a href="deallocate.html">Deallocate</a>, <a href="getusage.html">GetUsage</a>), and the only witness the tree has is
+  the profile build's leak warning inside <code>MemoryManager::DeregisterAllocator()</code>, a configuration this tree does
+  not compile.
+</div>
+
+<div class="note">
+  <strong>The two size arguments are recomputed, not remembered.</strong>
+  <code>totalSize</code> is <code>blockSize * numberOfBlocks</code> again at destruction. Nothing in the class changes
+  either member after construction — the counters that move are the free count and, under
+  <code>PROFILE_ENABLED</code>, the peak — so the product is the same number the constructor allocated. A pool whose
+  members were moved out of never reaches this line at all.
+</div>
+
+<div class="note">
+  <strong>The destructor ends the object for the manager too.</strong>
+  <code>buffer</code> and <code>id</code> are reset last, so an object that has been destroyed reads as inert to the accessors
+  — which is not the same as being alive: nothing here prevents the object's own storage from being reused, and the class
+  has no virtual destructor because it is <code>final</code> and never a base. Destruction is implicitly
+  <code>noexcept</code> (verified by compiling a class of the same shape and asserting
+  <code>noexcept(p.~P())</code>), so a throw beneath it ends the process rather than propagating.
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<p>None.</p>
+
+<h2 id="return">Return value</h2>
+
+<p>Nothing. There is no failure to report: a pool with no registration releases nothing, and a pool with one cannot fail to release.</p>
+
+<h2 id="example">Examples</h2>
+
+<pre><code>banks.clear();
+
+mmgr.DeregisterAllocator(GetID());</code></pre>
+
+<p class="meta">From Engine/Memory/MultiPoolAllocator.cpp, MultiPoolAllocator::~MultiPoolAllocator()</p>
+
+<p>
+  The one place the engine destroys pools in quantity: <code>banks.clear()</code> runs this destructor over every bank, and the
+  multi-pool has already opened <code>AllocatorScope scope(parentID);</code> as its first statement. That scope is why the fix of
+  this destructor and the fix of the multi-pool destructors had to be tested separately — with the scope in place the multi-pool
+  masks a reverted <code>~PoolAllocator</code>, so the guard testlet drives a bare pool instead
+  (<code>JOURNAL.md</code>, 2026-10-05).
+</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; PoolAllocator</a></span>
+  <span><a href="index.html#methods">All PoolAllocator methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

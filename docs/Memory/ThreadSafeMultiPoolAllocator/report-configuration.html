@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ThreadSafeMultiPoolAllocator::ReportConfiguration — Memory module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a class="current" href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Memory</a> /
+  <a href="index.html">ThreadSafeMultiPoolAllocator</a> / ReportConfiguration
+</p>
+
+<h1><span class="fn">ReportConfiguration</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::ThreadSafeMultiPoolAllocator</span>
+  <span class="tag">Engine/Memory/ThreadSafeMultiPoolAllocator.h</span>
+  <span class="tag">private</span>
+  <span class="tag">PROFILE_ENABLED only</span>
+  Feed the summed per-block-size peak into the configuration cache, asserting the reported total equals it.
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>#if PROFILE_ENABLED
+	void ReportConfiguration()</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  Both halves exist only in a profiling build: the declaration sits between <code>#if PROFILE_ENABLED</code> and
+  <code>#endif</code> in <code>Engine/Memory/ThreadSafeMultiPoolAllocator.h</code> — which is why the Signature block
+  above carries those guard lines as printed — and so does the definition in
+  <code>Engine/Memory/ThreadSafeMultiPoolAllocator.cpp</code>. It cannot be compiled outside
+  <code>PROFILE_ENABLED</code> even in principle: the peak it reports, <code>PoolAllocator::GetUsedBlocksMax()</code>,
+  is itself a <code>PROFILE_ENABLED</code> member (<code>Engine/Memory/PoolAllocator.h</code>).
+</p>
+
+<p>
+  It is private and has one caller: <a href="destructor.html">the destructor</a>, which runs it while the banks are
+  still there and outside the lock, so this function is free to take the lock itself. What it produces is the
+  configuration the next boot will boot from.
+</p>
+
+<p class="meta">From Engine/Memory/ThreadSafeMultiPoolAllocator.cpp, ThreadSafeMultiPoolAllocator::ReportConfiguration()</p>
+
+<pre><code>auto InsertItem = [&amp;configs](const PoolAllocator&amp; alloc)
+{
+        auto key = alloc.GetBlockSize();
+        auto value = alloc.GetUsedBlocksMax();
+…
+        auto found = std::ranges::find_if(configs, pred);
+        if (found == configs.end())
+        {
+                configs.emplace_back(key, value);
+        }
+        else
+        {
+                found-&gt;numberOfBlocks += value;
+        }
+};
+
+size_t peakBlocks = 0;
+size_t reportedBlocks = 0;
+{
+        std::lock_guard lockGuard(lock);
+
+        for (auto&amp; bank : banks)
+        {
+                InsertItem(bank);
+                peakBlocks += bank.GetUsedBlocksMax();
+        }
+}
+…
+        Assert(reportedBlocks == peakBlocks, "ReportConfiguration: the reported block count ", reportedBlocks,
+               " does not match the summed bank peak ", peakBlocks);</code></pre>
+
+<p>
+  The shape of that lambda is the fix, not an accident. The accumulate must be the <code>else</code> branch of the
+  not-found test: <code>configs.reserve(banks.size())</code> above it means a reallocation never moves the elements,
+  so an entry introduced by <code>emplace_back</code> is constructed at the very address the earlier
+  <code>found</code> iterator referred to, and an unconditional add afterwards counts that bank's peak twice. The
+  measured failure, recorded in <code>JOURNAL.md</code>, 2026-10-05: a true peak of 15 blocks was cached as 25, and
+  every block size a run introduced was over-sized by one bank's peak. The assert is the guard the fix left behind,
+  and it is live in Debug and Dev only — <code>Assert</code> is compiled away in Release
+  (<code>Engine/Core/Debug.h</code>).
+</p>
+
+<p>
+  After the assert, the vector goes to <code>MemoryManager::ReportMultiPoolConfigutation</code> — spelled that way in
+  <a href="../index.html#memorymanager"><code>MemoryManager</code></a> — keyed on this instance's
+  <a href="get-name.html">name</a> as a <code>StaticStringID</code>. That is the entry
+  <a href="generate-banks-by-cache.html"><code>GenerateBanksByCache</code></a> looks up on the next construction.
+  The file itself is written by <code>MemoryManager::PreEngineShutdown</code>
+  (<code>Engine/Memory/MemoryManager.cpp</code>), also under <code>PROFILE_ENABLED</code>, and the writer normalises
+  what it stores: one entry per block size, peaks summed and sorted ascending, a block size whose total is zero
+  dropped (<code>Engine/Memory/PoolConfigUtil.cpp</code>, <code>PoolConfigUtil::Normalize</code>).
+</p>
+
+<div class="note">
+  <strong>What it reports, and what that number means.</strong> One <code>PoolConfig</code> per distinct block size,
+  counting <code>GetUsedBlocksMax()</code> — the peak block count of each bank, summed across banks of the same size
+  — including banks that never went above zero. It is a peak, not a live count, and it is per block size rather than
+  per bank, so a configuration that boots from it reproduces the high-water mark, not the shape of the bank list that
+  produced it.
+</div>
+
+<div class="gap">
+  <strong>Nothing here has run.</strong> A tree with <code>PROFILE_ENABLED</code> set to 1 does not compile today —
+  the breakage is in unrelated files, and every <code>PROFILE_ENABLED</code> path in the Memory module is therefore
+  unverified (<code>JOURNAL.md</code>, 2026-10-05). The figures above come from a standalone model of this exact
+  lambda, not from this binary.
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<p>None.</p>
+
+<h2 id="return">Return value</h2>
+
+<p><code>void</code>. The report is handed to <code>MemoryManager</code>; nothing comes back to the caller.</p>
+
+<h2 id="example">Examples</h2>
+
+<p class="meta">From Engine/Memory/ThreadSafeMultiPoolAllocator.cpp, ThreadSafeMultiPoolAllocator::~ThreadSafeMultiPoolAllocator()</p>
+
+<pre><code>#if PROFILE_ENABLED
+        ReportConfiguration();
+#endif // PROFILE_ENABLED</code></pre>
+
+<p>
+  The only call site in the repository, and it runs after the destructor's <code>AllocatorScope(parentID)</code> and
+  before the banks are cleared (<code>Engine/Memory/ThreadSafeMultiPoolAllocator.cpp</code>) — so a configuration is
+  recorded even for an allocator nobody reports on by hand.
+</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; ThreadSafeMultiPoolAllocator</a></span>
+  <span><a href="index.html#methods">All ThreadSafeMultiPoolAllocator methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

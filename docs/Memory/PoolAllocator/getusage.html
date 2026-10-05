@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PoolAllocator::GetUsage — Memory module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a class="current" href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Memory</a> /
+  <a href="index.html">PoolAllocator</a> / GetUsage
+</p>
+
+<h1><span class="fn">GetUsage</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::PoolAllocator</span>
+  <span class="tag">Engine/Memory/PoolAllocator.h</span>
+  <span class="tag">nodiscard</span>
+  Blocks checked out, charged at the pool's block stride.
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>[[nodiscard]] size_t GetUsage() const</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  Defined in the class body of <code>Engine/Memory/PoolAllocator.h</code> as
+  <code>(numberOfBlocks - numberOfFreeBlocks) * blockSize</code>: the blocks currently checked out, charged at the pool's block
+  stride. Both operands are the pool's own counters, so the figure is the pool's view of itself and nothing the callers know can
+  contradict it.
+</p>
+
+<div class="gap">
+  <strong>Usage is counted at the stride, not at the request.</strong>
+  A pool of 4096-byte blocks from which a hundred callers each took 50 bytes reports 409,600 bytes in use
+  (<code>Engine/Memory/PoolAllocator.cpp</code>, the <code>Allocation &amp; Deallocation</code> testlet is exactly this shape). That
+  is the right number for "how much of my buffer is committed" and a misleading one for "how many bytes did my subsystem ask for" —
+  and the gap between the two is the padding the pool exists to create.
+</div>
+
+<div class="note">
+  <strong>Requests the parent served are not in it.</strong>
+  An oversized request leaves the counters untouched (<a href="allocate.html">Allocate</a> returns before the free list is
+  touched), so a pool can be reporting zero usage while a caller holds a large allocation that came through it. The bytes exist — they
+  belong to the parent. The <code>PROFILE_ENABLED</code> fallback counter in the manager is the only place that traffic is totalled,
+  and that build does not compile in this tree (<a href="index.html#coverage">Coverage</a>).
+</div>
+
+<div class="note">
+  <strong>Nothing is excluded, including leaked blocks.</strong>
+  A block that was handed out and never released stays in this figure for the pool's life, and
+  <a href="destructor.html">the destructor</a> neither reports it nor refuses to run. Read this next to
+  <a href="getcapacity.html">GetCapacity</a> and <a href="getavailableblocks.html">GetAvailableBlocks</a> before deciding a pool is
+  healthy: an exhausted pool and a leaking pool look identical here.
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<p>None.</p>
+
+<h2 id="return">Return value</h2>
+
+<table>
+  <tr><th>Type</th><th>What you get</th></tr>
+  <tr><td><code>size_t</code></td><td>Bytes committed to holders, at <a href="getblocksize.html">GetBlockSize</a>() per block. Zero on a moved-from pool or one whose construction stopped early. The exact complement of <a href="getavailablememory.html">GetAvailableMemory</a> against <a href="getcapacity.html">GetCapacity</a>.</td></tr>
+</table>
+
+<h2 id="example">Examples</h2>
+
+<pre><code>for (auto&amp; pool : banks)
+{
+	log.Out([&amp;pool](auto&amp; ls)
+	{
+		ls &lt;&lt; '[' &lt;&lt; pool.GetBlockSize() &lt;&lt; "] Memory = " &lt;&lt; pool.GetUsage() &lt;&lt; " / " &lt;&lt; pool.GetCapacity()
+		   &lt;&lt; ", Max Usage = " &lt;&lt; (pool.GetUsedBlocksMax() * pool.GetBlockSize());
+	});</code></pre>
+
+<p class="meta">From Engine/Memory/MultiPoolAllocator.cpp, MultiPoolAllocator::PrintUsage()</p>
+
+<p>
+  The usage report prints each bank's committed bytes against its capacity, which is the pairing this figure was built for. Note
+  where the quote lives: <code>MultiPoolAllocator::PrintUsage()</code> is a <code>#if PROFILE_ENABLED</code> function, so this call
+  site — like the peak in its second line — never runs in a build this tree compiles
+  (<a href="index.html#coverage">Coverage</a>).
+</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; PoolAllocator</a></span>
+  <span><a href="index.html#methods">All PoolAllocator methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

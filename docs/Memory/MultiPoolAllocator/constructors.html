@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MultiPoolAllocator::MultiPoolAllocator — Memory module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a class="current" href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Memory</a> /
+  <a href="index.html">MultiPoolAllocator</a> / MultiPoolAllocator
+</p>
+
+<h1><span class="fn">MultiPoolAllocator</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::MultiPoolAllocator</span>
+  <span class="tag">Engine/Memory/MultiPoolAllocator.h</span>
+  Build the ladder from a cached configuration, from a hand-written one, or from nothing at all - and record who owns the banks.
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>explicit MultiPoolAllocator(const char* name, size_t allocationUnit = DefaultBankUnit,
+								size_t minBlockSize = DefaultMinBlock)
+
+MultiPoolAllocator(const char* name, TInitializerList initialConfigurations,
+					   size_t allocationUnit = DefaultBankUnit, size_t minBlockSize = DefaultMinBlock)</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  Both forms end at the same two statements: record whichever allocator is current at this instant as
+  <code>parentID</code>, then register this object with the manager. Everything between them decides only how many
+  banks exist at the moment the object becomes usable.
+</p>
+
+<pre><code>	parentID = hbe::MemoryManager::GetCurrentAllocatorID();
+…
+	id = mmgr.RegisterAllocator(this, name, false, capacity, allocFunc, deallocFunc);</code></pre>
+
+<p class="meta">From Engine/Memory/MultiPoolAllocator.cpp, both MultiPoolAllocator::MultiPoolAllocator() overloads</p>
+
+<p>
+  The <a href="../index.html#allocatorscope"><code>AllocatorScope</code></a> a caller happens to be standing in when
+  it constructs an allocator therefore decides where every bank's backing buffer is later borrowed from, and which
+  allocator <a href="destructor.html">the destructor</a> opens as its scope. That is recorded once, at construction,
+  and never revised.
+</p>
+
+<table>
+  <tr><th>Form</th><th>Banks at the end of construction</th><th>Configuration cache</th></tr>
+  <tr>
+    <td>name, optional bank size and minimum block size</td>
+    <td>None when the cache has no entry for the name — the first request for each size class then builds its own bank</td>
+    <td>Read. <a href="generate-banks-by-cache.html">GenerateBanksByCache</a> is called, and its return value is discarded</td>
+  </tr>
+  <tr>
+    <td>name plus an <code>std::initializer_list</code> of <a href="../index.html#poolconfig"><code>PoolConfig</code></a></td>
+    <td>One bank per entry, in ascending block size; the list is sorted before any bank is built</td>
+    <td>Never consulted — a hand-configured ladder is never replaced by a cached one</td>
+  </tr>
+</table>
+
+<div class="gap">
+  <strong>A registration that fails is not reported to the caller.</strong>
+  <code>MemoryManager::RegisterAllocator</code> returns <code>InvalidAllocatorID</code> when the shared proxy pool is
+  empty, and neither constructor tests the id it stores (<code>Engine/Memory/MultiPoolAllocator.cpp</code>). The pool
+  holds <code>MaxNumAllocators</code> minus one usable slots — 255 — and every bank is a registration of its own on
+  top of the multi-pool's own
+  (<code>Engine/Memory/AllocatorID.h</code>, <code>PoolAllocator::PoolAllocator()</code>). An allocator built after the
+  255th slot still allocates correctly through its own <a href="allocate.html">Allocate</a>, because the banks it owns
+  work; what breaks is everything that reaches it by id, which is to say
+  <a href="report-configuration.html">its reports</a> and any scope opened over it. See
+  <a href="../../design/MemoryManagerInternals_Design.html#register">what registration records</a>.
+</div>
+
+<div class="gap">
+  <strong>A <code>minBlockSize</code> of zero is not diagnosed, and it is a divisor.</strong>
+  The constructor stores the argument in <code>minBlock</code> without a check, and
+  <a href="calculate-block-size.html">CalculateBlockSize</a> computes
+  <code>(requested + minBlock - 1) / minBlock</code> (<code>Engine/Memory/MultiPoolAllocator.cpp</code>). Nothing in
+  this class rejects zero, so the first request large enough to need a new bank divides by zero instead. The unit tests
+  in <code>Engine/Memory/MultiPoolAllocator.cpp</code> never pass zero, so no test catches it.
+</div>
+
+<div class="note">
+  <strong>The name is the allocator's identity, in two places that both outlive this object.</strong>
+  It is the log category of every line the instance writes, and <code>name.GetID()</code> is the key
+  <a href="generate-banks-by-cache.html">GenerateBanksByCache</a> looks the bank ladder up with and
+  <a href="report-configuration.html">ReportConfiguration</a> reports it under
+  (<code>Engine/Memory/MultiPoolAllocator.cpp</code>). Two instances that share a name share a ladder and merge into
+  one cache entry, because <code>MultiPoolConfigCache::Normalize</code> folds same-name entries by taking the maximum
+  block count per size. See <a href="../../design/MemoryManagerInternals_Design.html#names">what an allocator name is
+  worth</a> for what the manager itself does with the name string.
+</div>
+
+<div class="note">
+  <strong><code>allocationUnit</code> reserves nothing at construction.</strong>
+  It becomes <code>bankSize</code>, and <code>bankSize</code> is read only by
+  <a href="calculate-number-of-blocks.html">CalculateNumberOfBlocks</a> when a bank is generated later
+  (<code>Engine/Memory/MultiPoolAllocator.cpp</code>). The bytes this constructor actually takes are exactly
+  <code>blockSize × numberOfBlocks</code> over the configurations it was given — or none, for the name-only form —
+  and a bank generated later may be considerably larger than <code>allocationUnit</code> rather than smaller.
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<table>
+  <tr><th>Parameter</th><th>Type</th><th>Requirement</th></tr>
+  <tr>
+    <td><code>name</code></td>
+    <td><code>const char*</code></td>
+    <td>Copied into a <code>StaticString</code> member, so the buffer need not outlive the call. It is the log category and the configuration-cache key at once; a null pointer is turned into <code>"None"</code> by the manager, not rejected</td>
+  </tr>
+  <tr>
+    <td><code>initialConfigurations</code></td>
+    <td><code>TInitializerList</code> (<code>std::initializer_list&lt;PoolConfig&gt;</code>)</td>
+    <td>Second form only. At most 128 entries — <code>Assert(initialConfigurations.size() &lt;= InlineBufferSize)</code> with <code>InlineBufferSize</code> 128 — and nothing validates a block size or block count, so a zero-count entry reaches <code>PoolAllocator</code>, whose own early return leaves its free-list head uninitialised (<code>Engine/Memory/PoolAllocator.cpp</code>)</td>
+  </tr>
+  <tr>
+    <td><code>allocationUnit</code></td>
+    <td><code>size_t</code></td>
+    <td>Defaults to <a href="index.html#properties"><code>DefaultBankUnit</code></a>, one mebibyte. The backing size a generated bank asks for, not a total budget and not a reservation now</td>
+  </tr>
+  <tr>
+    <td><code>minBlockSize</code></td>
+    <td><code>size_t</code></td>
+    <td>Defaults to <a href="index.html#properties"><code>DefaultMinBlock</code></a>, 16, which is <code>Config::DefaultAlign</code>. Every generated block size is a power-of-two multiple of it, and every request below it is rounded up to it. Must not be zero — see the hazard above</td>
+  </tr>
+</table>
+
+<h2 id="return">Return value</h2>
+
+<p>
+  Construction, so there is no value and no status. Both forms allocate during construction — a bank's buffer is a
+  request to the parent allocator, and the initializer-list form sorts and reserves first — so the
+  <a href="../index.html#allocatorscope">ambient scope</a> at the call site is charged for the object itself. A
+  profiling build records the sum of the initial banks' capacities as the registered capacity
+  (<code>Engine/Memory/MultiPoolAllocator.cpp</code>); a build without profiling records the number and never reads it
+  back.
+</p>
+
+<h2 id="example">Examples</h2>
+
+<p class="meta">From Engine/Test/TestCollection.cpp, TestCollection::RunTestAt()</p>
+
+<pre><code>		MultiPoolAllocator alloc(testName);
+		AllocatorScope scope(alloc);</code></pre>
+
+<p>
+  Every unit-testlet body runs inside its own multi-pool built by the name-only form, and the pool is what the
+  testlet's allocations are charged to; the same function calls <a href="print-usage.html">PrintUsage</a> on it
+  afterwards, from inside that scope.
+</p>
+
+<p class="meta">From Engine/Core/TaskStream.cpp, the TaskStream::TaskStream() overloads</p>
+
+<pre><code>	, allocator("None")</code></pre>
+
+<p>
+  A <a href="../../Core/index.html">TaskStream</a> owns one instance as a member and enters it with
+  <code>AllocatorScope</code> on every pass, so the stream's pool is built before the engine has finished
+  initialising — a bank is only generated once that pass allocates something
+  (<code>Engine/Core/TaskStream.cpp</code>, <code>TaskStream::RunLoop()</code>).
+</p>
+
+<p class="meta">From Engine/Memory/MultiPoolAllocator.cpp, MultiPoolAllocatorTest::Prepare() — test-only code</p>
+
+<pre><code>		MultiPoolAllocator allocator(
+				"TestMultiPoolAlloc",
+				{{64, 1024}, {128, 1024}, {256, 1024}, {512, 1024}, {1024, 1024}, {2048, 1024}, {4096, 1024}});</code></pre>
+
+<p>
+  The pre-configured form: seven size classes, one thousand and twenty-four blocks each, in a literal that is already
+  in ascending order — the sort in the constructor is what makes the order a property of the type rather than of the
+  literal.
+</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; MultiPoolAllocator</a></span>
+  <span><a href="index.html#methods">All MultiPoolAllocator methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PoolAllocator::GetAvailableBlocks — Memory module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a class="current" href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Memory</a> /
+  <a href="index.html">PoolAllocator</a> / GetAvailableBlocks
+</p>
+
+<h1><span class="fn">GetAvailableBlocks</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::PoolAllocator</span>
+  <span class="tag">Engine/Memory/PoolAllocator.h</span>
+  <span class="tag">nodiscard</span>
+  Blocks still on the free list — the direct answer to whether the pool can serve the next request.
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>[[nodiscard]] TSize GetAvailableBlocks() const</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  Defined in the class body of <code>Engine/Memory/PoolAllocator.h</code>, returning <code>numberOfFreeBlocks</code> — the only
+  counter the class maintains, from which every other figure is arithmetic. It is the count of blocks on the free list, so it is the
+  direct answer to "can this pool serve the next request".
+</p>
+
+<div class="note">
+  <strong>Non-zero is a snapshot, not a reservation.</strong>
+  Nothing is synchronised, so on a pool that another thread can reach the count may be stale before the caller finishes reading it,
+  and a following <a href="allocate.html">Allocate</a> can still return <code>nullptr</code>. The engine's own caller uses this to
+  decide whether to generate a new bank, and then allocates without re-checking
+  (<code>Engine/Memory/MultiPoolAllocator.cpp</code>, <code>MultiPoolAllocator::GetBankIndex(size_t)</code>).
+</div>
+
+<div class="note">
+  <strong>Blocks the pool cannot serve are not counted here either way.</strong>
+  A request larger than a block never consumes the free list (<a href="allocate.html">Allocate</a> sends it to the parent), so this
+  count says nothing about whether the pool can serve a particular request size — only whether it has any block left. Compare
+  against <a href="getblocksize.html">GetBlockSize</a> for the size question; that is the pairing the bank scan above makes.
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<p>None.</p>
+
+<h2 id="return">Return value</h2>
+
+<table>
+  <tr><th>Type</th><th>What you get</th></tr>
+  <tr><td><code>TSize</code></td><td>Blocks on the free list — <code>size_t</code>, unsigned. A caller comparing it with <code>&lt;= 0</code> is comparing against zero, which is what the engine does; the comparison reads as signed and the value is not. <a href="numberoffreeblocks.html">NumberOfFreeBlocks</a> answers the same number under a second name.</td></tr>
+</table>
+
+<h2 id="example">Examples</h2>
+
+<pre><code>		if (bank.GetAvailableBlocks() &lt;= 0)
+		{
+			continue;
+		}</code></pre>
+
+<p class="meta">From Engine/Memory/MultiPoolAllocator.cpp, MultiPoolAllocator::GetBankIndex(size_t) const</p>
+
+<p>
+  A bank with no free block is skipped rather than chosen, and the scan falls through to generating a new bank when none qualifies.
+  It is the only production use of this accessor, and it is a decision made on a number that allocation is about to change.
+</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; PoolAllocator</a></span>
+  <span><a href="index.html#methods">All PoolAllocator methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

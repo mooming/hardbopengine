@@ -48,6 +48,7 @@
   <ul>
     <li><a href="../AllocatorGuide.md">Allocator guide</a></li>
     <li><a href="../MemoryManagement_Guide.md">Memory management</a></li>
+    <li><a href="../design/ThreadSafeMultiPoolLocking_Design.html">Thread-safe multi-pool locking</a></li>
   </ul>
 </nav>
 
@@ -204,9 +205,9 @@
   <tr><td><code>DefaultAllocator&lt;T&gt;</code></td><td>Proxy to the current <a href="#memorymanager"><code>MemoryManager</code></a> allocator — the default of every engine container</td><td>DefaultAllocator.h</td><td>Yes</td></tr>
   <tr><td><code>MonotonicAllocator</code></td><td>Linear bump pointer</td><td>MonotonicAllocator.h</td><td>No — reset only</td></tr>
   <tr><td><code>StackAllocator</code></td><td>Stack-like linear allocation, LIFO release</td><td>StackAllocator.h</td><td>Only in reverse order</td></tr>
-  <tr><td><code>PoolAllocator</code></td><td>Fixed-size blocks with a free list</td><td>PoolAllocator.h</td><td>Yes, same size class</td></tr>
-  <tr><td><code>MultiPoolAllocator</code></td><td>Several pools covering different size classes</td><td>MultiPoolAllocator.h</td><td>Yes</td></tr>
-  <tr><td><code>ThreadSafeMultiPoolAllocator</code></td><td>The same with internal synchronisation</td><td>ThreadSafeMultiPoolAllocator.h</td><td>Yes, from any thread</td></tr>
+  <tr><td><a href="PoolAllocator/index.html"><code>PoolAllocator</code></a></td><td>Fixed-size blocks with a free list</td><td>PoolAllocator.h</td><td>Yes, same size class</td></tr>
+  <tr><td><a href="MultiPoolAllocator/index.html"><code>MultiPoolAllocator</code></a></td><td>Several pools covering different size classes</td><td>MultiPoolAllocator.h</td><td>Yes</td></tr>
+  <tr><td><a href="ThreadSafeMultiPoolAllocator/index.html"><code>ThreadSafeMultiPoolAllocator</code></a></td><td>The same with internal synchronisation</td><td>ThreadSafeMultiPoolAllocator.h</td><td>Yes, from any thread</td></tr>
   <tr><td><code>InlineMonotonicAllocator&lt;Capacity&gt;</code></td><td>Bump allocation inside a fixed inline buffer</td><td>InlineMonotonicAllocator.h</td><td>No</td></tr>
   <tr><td><code>InlinePoolAllocator&lt;T, BlockSize, NumBlocks&gt;</code></td><td>Fixed-size pool inside the object — what <a href="../HSTL/index.html#hstring"><code>HInlineString</code></a> and <a href="../HSTL/index.html#hvector"><code>HInlineVector</code></a> are built on</td><td>InlinePoolAllocator.h</td><td>Yes</td></tr>
 </table>
@@ -606,9 +607,14 @@ DoWork();
   </tr>
   <tr>
     <td>Per-allocator API</td>
-    <td>The <a href="#allocators">catalogue</a> says what each strategy is and which header holds it, not each
-        class's constructor arguments and reset semantics. That is nine classes' worth of reading, and a
-        constructor guessed wrongly is worse than a gap stated plainly.</td>
+    <td>Three of the nine now have their own folder: <a href="PoolAllocator/index.html"><code>PoolAllocator</code></a>,
+        <a href="MultiPoolAllocator/index.html"><code>MultiPoolAllocator</code></a> and
+        <a href="ThreadSafeMultiPoolAllocator/index.html"><code>ThreadSafeMultiPoolAllocator</code></a>. The remaining
+        six — <code>SystemAllocator</code>, <code>DefaultAllocator</code>, <code>MonotonicAllocator</code>,
+        <code>StackAllocator</code>, <code>InlineMonotonicAllocator</code>, <code>InlinePoolAllocator</code> — still
+        have only the catalogue row above, which says what each strategy is and which header holds it, not each
+        class's constructor arguments and reset semantics. A constructor guessed wrongly is worse than a gap stated
+        plainly, which is why the six stay a gap.</td>
   </tr>
   <tr>
     <td>Allocation failure</td>

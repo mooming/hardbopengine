@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MultiPoolAllocator::~MultiPoolAllocator — Memory module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a class="current" href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Memory</a> /
+  <a href="index.html">MultiPoolAllocator</a> / ~MultiPoolAllocator
+</p>
+
+<h1><span class="fn">~MultiPoolAllocator</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::MultiPoolAllocator</span>
+  <span class="tag">Engine/Memory/MultiPoolAllocator.h</span>
+  Return every bank to the allocator that lent its memory, then give up the registration.
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>~MultiPoolAllocator()</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  Opens the recorded parent as the ambient allocator, hands out what a profiling build wants to know, destroys every
+  bank, then deregisters this allocator. The first statement is the one that decides who pays.
+</p>
+
+<pre><code>	AllocatorScope scope(parentID);
+
+	auto&amp; mmgr = MemoryManager::GetInstance();
+…
+	banks.clear();
+
+	mmgr.DeregisterAllocator(GetID());</code></pre>
+
+<p class="meta">From Engine/Memory/MultiPoolAllocator.cpp, MultiPoolAllocator::~MultiPoolAllocator()</p>
+
+<p>
+  <code>banks.clear()</code> runs <code>PoolAllocator::~PoolAllocator()</code> on each bank, and that destructor
+  releases its backing buffer with <code>mmgr.Deallocate(parentID, buffer, totalSize)</code> — the parent the
+  <em>bank</em> recorded when it was built, not whatever scope is open now
+  (<code>Engine/Memory/PoolAllocator.cpp</code>). Both halves were changed together on 2026-10-05: the journal entry
+  at 18:31 records the defect and its fix, and the consequence for a caller is unchanged either way — an allocator may
+  be destroyed under any scope, including one of its own.
+</p>
+
+<p>
+  Between the scope and the clear, two conditional blocks run, and both are switched off in the configuration the
+  repository ships (<code>Engine/Config/BuildConfig.h</code> defines <code>PROFILE_ENABLED</code> and
+  <code>MEMORY_VERIFICATION_ENABLED</code> to <code>0</code>):
+</p>
+
+<table>
+  <tr><th>Guard</th><th>What the destructor does there</th><th>Why</th></tr>
+  <tr>
+    <td><code>PROFILE_ENABLED</code></td>
+    <td>Calls <a href="report-configuration.html">ReportConfiguration</a> before any bank dies</td>
+    <td>The block ladder has to be read while it still exists; the figure is what the next run boots from</td>
+  </tr>
+  <tr>
+    <td><code>MEMORY_VERIFICATION_ENABLED</code></td>
+    <td>Writes the current thread id into every bank's allocator proxy before clearing the vector</td>
+    <td>See the box below — this is the one place the class can erase evidence rather than produce it</td>
+  </tr>
+</table>
+
+<div class="gap">
+  <strong>The bank proxies are re-stamped to the destroying thread before they are checked.</strong>
+  <code>MemoryManager::DeregisterAllocator</code> is the only place in the manager that compares a thread id at all,
+  and it compares the deregistering thread against the one recorded on the proxy
+  (<code>Engine/Memory/MemoryManager.cpp</code>). <code>~MultiPoolAllocator</code> overwrites each bank's recorded id
+  with <code>std::this_thread::get_id()</code> immediately before destroying it
+  (<code>Engine/Memory/MultiPoolAllocator.cpp</code>), so a bank registered on one thread and destroyed on another
+  cannot produce that mismatch report. Whether the write exists to legitimise a thread hand-over or to keep the check
+  quiet is not stated anywhere in the sources or in a design document, and is named as an open question on the
+  <a href="index.html#coverage">class page</a>.
+</div>
+
+<div class="gap">
+  <strong>Blocks still checked out are not detected here; they are destroyed with the bank.</strong>
+  The class has no per-block bookkeeping of its own — a live block is simply a byte range inside a bank's buffer — so
+  a block that was never returned is released along with the whole buffer back to the parent. The only witness is
+  <code>MemoryManager::DeregisterAllocator</code> reporting <code>usage &gt; 0</code> under
+  <code>PROFILE_ENABLED</code>, which in a non-Release build calls <code>debugBreak()</code> and
+  <strong>returns early</strong>, before its own statistics reset and before the proxy goes back to the pool
+  (<code>Engine/Memory/MemoryManager.cpp</code>, and
+  <a href="../../design/MemoryManagerInternals_Design.html#break">where a checked build stops instead of continuing</a>).
+  A profiling build that leaks one block out of a pool therefore also retires that pool's registration slot for the
+  rest of the run.
+</div>
+
+<div class="note">
+  <strong>The scope line above has no observable effect today, and that is a measured result, not an assumption.</strong>
+  The 2026-10-05 journal entry at 18:31 states it directly for both multi-pools: once
+  <code>PoolAllocator::~PoolAllocator()</code> releases through its own recorded parent, "the <code>banks</code>
+  vector's own storage is freed after locals are destroyed, so no scope reaches it", which makes the line unfalsifiable
+  by test. It stays in the source, and this page records what it is worth rather than what it was meant to be worth.
+</div>
+
+<div class="note">
+  <strong>Destruction is a single-thread act, like everything else the class does.</strong>
+  It walks <code>banks</code>, mutates a vector the manager owns and rewrites proxies — none of it under any lock,
+  because <code>MultiPoolAllocator</code> declares none. The thread that created the instance, or a thread that can
+  prove nothing else is inside it, is the only legal caller.
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<p>None.</p>
+
+<h2 id="return">Return value</h2>
+
+<p>
+  <code>void</code>. Destruction cannot refuse. It can leave a registration slot retired and a leak unreported
+  (Release builds, where <code>Assert</code> and <code>debugBreak</code> are compiled out —
+  <a href="../../Core/index.html#debug">Core: Debug</a>), but it will not fail to return.
+</p>
+
+<h2 id="example">Examples</h2>
+
+<p class="meta">From Engine/Test/TestCollection.cpp, TestCollection::RunTestAt()</p>
+
+<pre><code>		MultiPoolAllocator alloc(testName);
+		AllocatorScope scope(alloc);
+…
+		alloc.PrintUsage();
+	}</code></pre>
+
+<p>
+  The destructor runs at the closing brace of a testlet body's block, while the scope over itself is still open and
+  after the usage report has been written. It is the ordinary shape: an allocator declared before its scope, destroyed
+  after everything that used it.
+</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; MultiPoolAllocator</a></span>
+  <span><a href="index.html#methods">All MultiPoolAllocator methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

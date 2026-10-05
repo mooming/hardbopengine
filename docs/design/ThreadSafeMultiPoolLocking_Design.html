@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Thread-safe multi-pool locking design — Memory module — HardBop Engine design document</title>
+<link rel="stylesheet" href="../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../Config/index.html">Config</a></li>
+    <li><a href="../Container/index.html">Container</a></li>
+    <li><a href="../Core/index.html">Core</a></li>
+    <li><a href="../Engine/index.html">Engine</a></li>
+    <li><a href="../HSTL/index.html">HSTL</a></li>
+    <li><a href="../Log/index.html">Log</a></li>
+    <li><a href="../Math/index.html">Math</a></li>
+    <li><a class="current" href="../Memory/index.html">Memory</a></li>
+    <li><a href="../OSAL/index.html">OSAL</a></li>
+    <li><a href="../Renderer/index.html">Renderer</a></li>
+    <li><a href="../Resource/index.html">Resource</a></li>
+    <li><a href="../String/index.html">String</a></li>
+    <li><a href="../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This document</h3>
+  <ul>
+    <li><a href="#cost">What the current design pays for</a></li>
+    <li><a href="#crux">The deciding question: how a free finds its bank</a></li>
+    <li><a href="#primitives">Primitives the engine already owns</a></li>
+    <li><a href="#options">Five designs compared</a></li>
+    <li><a href="#target">Recommended target design</a></li>
+    <li><a href="#prereq">Prerequisites that hold for every option</a></li>
+    <li><a href="#gate">The measurement that chooses between them</a></li>
+    <li><a href="#coverage">What this document does not own</a></li>
+    <li><a href="#seealso">Where else to look</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+  <div class="breadcrumb"><a href="../index.html">Docs</a> / <a href="../Memory/index.html">Memory</a> / Thread-safe multi-pool locking design</div>
+
+<h1>Thread-safe multi-pool locking design</h1>
+  <div class="subtitle">Five candidate replacements for the single mutex in <em>ThreadSafeMultiPoolAllocator</em>, decided by the one question every design has to answer first</div>
+
+<div class="note">
+  <strong>Scope.</strong> This document owns the design reasoning behind the locking model of
+  <a href="../../Engine/Memory/ThreadSafeMultiPoolAllocator.h">Engine/Memory/ThreadSafeMultiPoolAllocator.h</a>:
+  what the lock is bought with, how a deallocation locates its bank, and which primitive is strong enough to retire
+  the mutex. The defects found while reviewing that class are recorded in
+  <a href="../../JOURNAL.md">JOURNAL.md</a> under 2026-10-05, and the allocation and ownership contracts belong to
+  the <a href="../Memory/index.html">Memory module page</a>. <strong>Nothing here is implemented.</strong> The
+  measurement that settles the choice has now run: <a href="#gate">the gate section</a> holds Dev-build figures from
+  the four testlets, and every other performance claim is still labelled predicted.
+</div>
+
+<h2 id="cost">What the current design pays for</h2>
+<p>
+One <code>std::mutex</code> guards the whole bank array. Two costs follow from that single decision, and only one of
+them is the mutex:
+</p>
+<table>
+  <tr><th>Cost</th><th>Where it comes from</th><th>Status</th></tr>
+  <tr><td>Every allocation and deallocation through one instance serializes</td><td><code>ThreadSafeMultiPoolAllocator.cpp:154</code>, <code>:198</code></td><td><strong>Measured</strong>: 0.020381 s against <code>std::malloc</code> at 0.019169 s on the existing single-threaded testlet, so 6.3 percent slower with no contention at all, while the single-threaded <code>MultiPoolAllocator</code> is 6.7 percent faster than the same baseline</td></tr>
+  <tr><td>An extra scan over every bank on both paths</td><td><code>GetBankIndex</code> for a size at <code>:344</code>, for a pointer at <code>:362</code></td><td><strong>Structural</strong>: O(number of banks) on every free, independent of the lock</td></tr>
+  <tr><td>Other threads block while one thread obtains a bank's backing memory</td><td><code>GenerateBank</code> at <code>:460</code> takes a whole <code>DefaultBankUnit</code> of one megabyte from the parent inside the lock</td><td><strong>Measured by M4</strong>: a typical allocation is 42 ns, the 99th percentile 27,916 ns and the worst single call 189,542 ns at eight threads, so the tail is 4,513 times the typical operation. A latency spike, which is exactly what a throughput benchmark cannot see</td></tr>
+</table>
+<p>
+The comparison against <code>std::malloc</code> is the uncomfortable one. The platform allocator already keeps
+per-thread caches, so a design whose fast path touches a single shared word cannot overtake it even uncontended,
+which is the reason this document looks at ownership rather than at cheaper locks.
+</p>
+
+<h2 id="crux">The deciding question: how a free finds its bank</h2>
+<p>
+<code>Allocate</code> can pick a bank from the requested size. <code>Deallocate(void* ptr, size_t size)</code> has to
+recover that choice, and today it recovers it by asking every bank whether the pointer is its own. Every option below
+is really an answer to this question, so it is settled first.
+</p>
+<table>
+  <tr><th>Way</th><th>Cost</th><th>What it has to assume</th><th>Verdict</th></tr>
+  <tr><td>Scan every bank with <code>IsMine</code>, as today</td><td>O(banks) per free</td><td>nothing</td><td>Must go. It is the second of the two costs above</td></tr>
+  <tr><td>Recompute the size class from <code>size</code></td><td>O(1)</td><td>that the caller passes the same size it allocated with</td><td><strong>Unsafe today.</strong> <a href="../../JOURNAL.md">JOURNAL.md</a> records <code>operator delete(void*, align_val_t)</code> passing its alignment where <code>Deallocate</code> expects a size, and the suite contains calls of the form <code>Deallocate(ptr, 0)</code>. Trusting the argument inherits both</td></tr>
+  <tr><td>Eight-byte header per block holding class and owner</td><td>O(1), plus eight bytes taken from every block</td><td>nothing</td><td>Rejected: <code>GetBlockSize()</code> stops meaning usable payload, which is a promise to callers</td></tr>
+  <tr><td><strong>Address-indexed chunk map</strong>: each bank is split into chunks holding a power-of-two block count, a chunk header sits at a masked address, and a published sorted range table maps an address to a bank</td><td>one masked load and a binary search over banks</td><td>nothing</td><td><strong>Chosen.</strong> Class and owner both come from the address, and a reader takes no lock</td></tr>
+</table>
+<p>
+There is a second, quieter problem behind the scan. The bank chosen today depends on which banks still hold free
+blocks, because an exhausted bank is skipped rather than grown. That is why the mapping from size to bank is not a
+function, and why the free path cannot recompute it. Replacing several banks per size with one bank per size grown in
+chunks makes the mapping a function again, and the scan loses its reason to exist even where the address table is
+present only as a fallback.
+</p>
+
+<h2 id="primitives">Primitives the engine already owns</h2>
+<p>
+The design deliberately reuses what is in the tree, so no option here asks for a new platform guarantee.
+</p>
+<table>
+  <tr><th>Primitive</th><th>Location</th><th>Use, and the caveat</th></tr>
+  <tr><td><code>AtomicStackView</code>, a Treiber stack over a <code>T*</code></td><td><a href="../../Engine/Container/AtomicStackView.h">Container/AtomicStackView.h</a></td><td>Shape only. Its <code>Pop</code> compares a bare pointer, which is the ABA pattern, so it must not be reused verbatim for block lists. Its own users recycle nodes through it, so the precondition ABA needs does hold there</td></tr>
+  <tr><td>A 64-bit compare-and-swap assumed lock-free</td><td><code>AtomicStackView.h:20</code>, a <code>static_assert</code> on <code>is_always_lock_free</code> for a pointer</td><td>The tagged head below is one <code>uint64_t</code>, the same width, so it asks for nothing new. The assertion also matters because a non-lock-free atomic in the standard library is a hidden mutex, which would make the whole exercise theatre</td></tr>
+  <tr><td><code>static thread_local TId scopedAllocatorID</code></td><td><a href="../../Engine/Memory/MemoryManager.h">Memory/MemoryManager.h</a></td><td>Thread-local bank and shard pointers use the mechanism allocation scoping already relies on</td></tr>
+  <tr><td><code>TaskSystem::GetCurrentStreamIndex</code></td><td><a href="../../Engine/Core/TaskSystem.h">Core/TaskSystem.h:58</a></td><td>A bounded engine-level thread key, a better shard index than a raw thread identifier in a task system</td></tr>
+  <tr><td>Cache-line padding idiom</td><td><a href="../../Engine/Core/TaskRegistry.h">Core/TaskRegistry.h:34</a>, with a <code>static_assert</code> that records start on 64-byte boundaries</td><td>Padding for shard control blocks, following a convention the tree already enforces</td></tr>
+  <tr><td>Index-based free list written inside each free block</td><td><code>PoolAllocator.cpp</code>, <code>ReadNextIndex</code> and <code>WriteNextIndex</code></td><td>The redesign changes the link's encoding, not where the link lives, so bank layout is unchanged and every block already holds at least <code>Config::DefaultAlign</code> bytes</td></tr>
+</table>
+
+<h2 id="options">Five designs compared</h2>
+<p>
+A compare-and-swap proves only that a word still reads as expected, so a loop built on it retries under contention and
+inherits the ABA hazard. A <code>fetch_add</code> makes no such assumption, which is why it is wait-free and immune.
+That distinction, not the presence or absence of a mutex, is what separates the options.
+</p>
+<table>
+  <tr><th>Design</th><th>Allocate fast path</th><th>Free fast path</th><th>Guarantee</th><th>How it scales when shared</th><th>Extra memory</th><th>ABA hazard</th><th>Teardown</th><th>Risk</th></tr>
+  <tr><td><strong>A</strong> Deterministic size class, mutex kept</td><td>mutex</td><td>mutex, but O(1)</td><td>blocking</td><td>unchanged</td><td>none</td><td>none</td><td>unchanged</td><td>low</td></tr>
+  <tr><td><strong>B</strong> Tagged-index lock-free stack, one shared list per size class</td><td>one compare-and-swap</td><td>one compare-and-swap</td><td>lock-free</td><td>poor: one hot word serializes at roughly the rate of a very short critical section</td><td>none</td><td>solved by packing an index with a version</td><td>drain one stack per class</td><td>medium</td></tr>
+  <tr><td><strong>C</strong> Thread-sharded chunks, foreign blocks returned to the owner</td><td><strong>no atomic at all</strong>: a private last-in-first-out list</td><td>same owner: no atomic. Different owner: one compare-and-swap</td><td>lock-free, and the private list is touched by one thread only</td><td><strong>good</strong>: contention only where threads genuinely share</td><td>chunk granularity, about 1.6 percent for headers, plus lease granularity</td><td>solved the same way, on a colder path</td><td><strong>hardest</strong>: a thread that exits orphans its chunks, which must migrate to a shared list</td><td>high</td></tr>
+  <tr><td><strong>D</strong> Wait-free lease: a bump pointer claimed by <code>fetch_add</code></td><td>one <code>fetch_add</code></td><td>one compare-and-swap, because frees still dominate a recycled pool</td><td>wait-free allocate</td><td>good on allocate, poor on free</td><td>lease granularity</td><td>none on the bump path</td><td>drain leases</td><td>medium</td></tr>
+  <tr><td><strong>E</strong> Bounded spin lock replacing the mutex</td><td>spin</td><td>spin</td><td>blocking</td><td>better than a mutex for short sections only</td><td>none</td><td>none</td><td>unchanged</td><td>low</td></tr>
+</table>
+<p>
+Two honest readings of that table. First, calling B and D lock-free does not make them fast when shared, because both
+funnel frees onto one cache line: the current workload is overwhelmingly allocate then free on the same thread, so
+both would move work from a mutex onto a contended word. Second, only C makes the common path touch no atomic at all,
+which is the only condition under which this class can beat the platform allocator rather than match it. E is
+viable only after growth leaves the critical section, because a spin lock held across a one megabyte parent
+allocation is worse than the mutex it replaced.
+</p>
+
+<h2 id="target">Recommended target design</h2>
+<p>
+Option C, built on the address-indexed chunk map from <a href="#crux">the deciding question</a>. Blocks belong to
+chunks, chunks belong to a size class and to the thread that claimed them, and a block's owner is read from the chunk
+header rather than stored per block.
+</p>
+<pre>
+Allocate(n)
+  class  = f(n)                              pure function of size, no bank state read
+  shard  = classSlots[class][streamIndex]    thread local, padded to a cache line
+  if shard.freeHead is not empty             NO ATOMIC: private last-in-first-out pop
+       take that block
+  else if shard.inbound has a block          cross-thread returns, drained by the owner alone
+       take that block
+  else ClaimChunk(bank[class])               rare: mutex or compare-and-swap, this is growth
+
+Deallocate(ptr, n)
+  chunk  = address of ptr AND NOT (chunkBytes - 1)     chunkBytes is a power of two
+  class  = chunk header class
+  owner  = chunk header owner
+  if owner is this stream                  NO ATOMIC: push onto that owner's private list
+  else push onto owner.inbound             one compare-and-swap, the cold path
+</pre>
+<table>
+  <tr><th>Mechanism</th><th>Why it is safe here</th></tr>
+  <tr><td>Tagged head: a <code>uint64_t</code> holding a 32-bit block index and a 32-bit push counter</td><td>An index returning to a previous position cannot return with a previous version, so the ABA pattern cannot be constructed. The whole tag fits one word, so no 128-bit compare-and-swap is needed and no new platform guarantee is asked for</td></tr>
+  <tr><td>Chunk header located by masking the block address</td><td>No per-block metadata, so <code>GetBlockSize()</code> keeps meaning usable bytes</td></tr>
+  <tr><td>Chunks hold a power-of-two block count</td><td>Making the owner and class reachable by one mask rather than a search. <code>numberOfBlocks</code> per bank stays a 32-bit index, so the bank plan needs an assertion that it fits</td></tr>
+  <tr><td>Chunks are about 64 KiB of target volume, clamped to a power-of-two block count, minimum eight blocks</td><td>Otherwise a 4 KiB class leases 256 KiB per thread per class. This is the only way the design can lose, and it is bounded by a rule rather than by hope</td></tr>
+  <tr><td>Banks grow in chunks and never shrink while the allocator lives</td><td>Banks are released only by the destructor, which is what removes any need for epoch or hazard-pointer reclamation. Individual blocks are recycled, so the shared head still needs the tag</td></tr>
+  <tr><td>Foreign returns land on the owner's inbound list and the owner drains it</td><td>Keeps the cost of a cross-thread deallocation at one compare-and-swap and keeps the private list single-threaded. It is the same shape <code>PoolAllocator</code> already uses when it forwards a foreign pointer to its parent</td></tr>
+</table>
+
+<h2 id="prereq">Prerequisites that hold for every option</h2>
+<table>
+  <tr><th>Order</th><th>Work</th><th>Why it comes first</th></tr>
+  <tr><td>0</td><td>The correctness defects recorded under 2026-10-05 in <a href="../../JOURNAL.md">JOURNAL.md</a>: the configuration cache that over-counts every block size it introduces, the destructor releasing bank memory through the ambient allocator rather than the recorded parent, logging while holding the allocator lock where the logger allocates from that same allocator, and the map in <code>PrintUsage</code> allocating under the lock</td><td>Orthogonal to the locking model. Removing the mutex turns the deadlock into recursion, which is not the same as being correct</td></tr>
+  <tr><td>1</td><td>Stop registering every bank as an allocator</td><td><code>MaxNumAllocators</code> is 256 in <a href="../../Engine/Memory/AllocatorID.h">Memory/AllocatorID.h</a>. Sharding multiplies banks by streams, so shards must report into one proxy or the table exhausts first</td></tr>
+  <tr><td>2</td><td>Make the size class a pure function of the requested size by growing one bank in chunks</td><td>Dissolves both scans. Every option after it assumes this</td></tr>
+  <tr><td>3</td><td>Decide alignment in the interface, either an aligned entry point or a documented prohibition</td><td><code>Allocate(size_t)</code> can only ever return memory aligned to <code>Config::DefaultAlign</code>. The gap exists because it was never decided, and deciding it during a rewrite is cheaper than retrofitting it</td></tr>
+  <tr><td>4</td><td>Add the contended benchmark below</td><td>The only figure in existence is single-threaded. Choosing between B, C and D without it is opinion</td></tr>
+</table>
+
+<h2 id="gate">The measurement that chooses between them</h2>
+<p>
+Specified in <a href="../../.Plans/PLAN_lockfree-contention-benchmark.md">.Plans/PLAN_lockfree-contention-benchmark.md</a>
+and implemented as four testlets in the class's own test collection. Figures below are one representative Dev-build
+run of <code>EngineTest</code>; the workload is 20,000 operations per thread over the eight fixed block sizes, timed
+as one allocate plus one free per operation, measured as direct calls on the allocator object so the
+<code>MemoryManager</code> proxy dispatch is excluded from every figure.
+</p>
+<table>
+  <tr><th>Id</th><th>What it measures</th><th>Which choice it decides</th><th>Result</th></tr>
+  <tr><td>M1</td><td>Throughput through one shared instance at one, two, four and eight threads, as scaling efficiency</td><td>Whether the lock rather than the allocator is the cost. Efficiency falling toward one over N says yes</td><td><strong>Measured.</strong> 24.6 ns per operation at one thread, rising to 29.7, 91.4 and 127.0 ns. Efficiency 0.414 at two threads, 0.067 at four, 0.024 at eight. Answer: yes, decisively</td></tr>
+  <tr><td>M2</td><td>The same workload against <code>std::malloc</code>, and against a private <code>MultiPoolAllocator</code> per thread that nothing shares</td><td><strong>The number that matters most.</strong> The private instance is the ceiling for option C, so the gap between it and M1 is the headroom sharding buys</td><td><strong>Measured.</strong> Shared instance over private pool: 2.1 times at one thread, 5.8 at two, 21.1 at four, <strong>67.5 at eight</strong>. Shared instance over <code>std::malloc</code>: 0.86 at one thread, then 1.9, 3.5 and <strong>6.7 times slower</strong> at eight</td></tr>
+  <tr><td>M3</td><td>Cost of a deallocation performed by a thread other than the one that allocated</td><td>Whether a shared inbound list is affordable, which both B and C pay</td><td><strong>Measured.</strong> Cross-thread against same-thread free: 0.87 in the Dev run, 0.98 in Release, so the finding is <strong>parity</strong>, which makes the mechanism affordable. The Dev figure sits inside a 47 percent run-to-run spread and is not distinguishable from 1.00</td></tr>
+  <tr><td>M4</td><td>Worst and worst-one-percent latency of a single allocation while another thread grows a bank</td><td>The price of holding the lock across a one megabyte parent allocation, and therefore whether growth must move out of the critical section before anything else</td><td><strong>Measured.</strong> Typical 42 ns, 99th percentile 27,916 ns, worst 189,542 ns at eight threads. Growth must leave the critical section, and this applies to every option including A and E</td></tr>
+</table>
+
+<div class="note">
+  <strong>Three caveats on these figures, stated rather than buried.</strong> First, the M2 private-pool pass was
+  pre-sized to 5,000 blocks per size class precisely so that no bank grows inside its timed region, while the shared
+  column grows banks during its measurement. Part of the 67.5 times therefore measures the absence of growth rather
+  than the presence of sharding, and M4 shows growth is expensive, so the honest reading is that sharding and
+  pre-sizing together buy 67.5 times and the split between them is not yet known.
+
+  Second, the benchmark was repeated in Release, and several figures moved by more than a quarter between runs:
+
+  <table>
+    <tr><th>Figure</th><th>Run 1</th><th>Run 2</th><th>Spread</th></tr>
+    <tr><td>M1 one thread, nanoseconds per operation</td><td>41.8</td><td>30.3</td><td>27.5 percent</td></tr>
+    <tr><td>M1 efficiency at two threads</td><td>0.306</td><td>0.448</td><td>46.4 percent</td></tr>
+    <tr><td>M2 private pool at eight threads</td><td>1.4</td><td>2.2</td><td>57.1 percent, 0.8 ns absolute</td></tr>
+    <tr><td>M2 shared over private at eight threads</td><td>77.2</td><td>47.9</td><td>38.0 percent</td></tr>
+    <tr><td>M1 shared instance at eight threads</td><td>110.2</td><td>106.1</td><td><strong>3.7 percent</strong></td></tr>
+    <tr><td>M4 typical, 99th percentile, worst</td><td>42, 26,500, 166,667</td><td>42, 26,208, 198,750</td><td><strong>0, 1.1, 19.2 percent</strong></td></tr>
+  </table>
+
+  The ratios move because their denominators are 1 to 3 nanoseconds, while the shared column and the latency tail stay
+  put. What survives repetition is the shape: efficiency collapses under sharing, and a private pool is far faster than
+  a shared one. What does not survive is any individual ratio, so <strong>no number in this document is a target to
+  hit</strong>. Absolute nanoseconds are not comparable across configurations either, since the Dev build measured 24.6
+  ns uncontended where Release measured 41.8 and then 30.3, so only ratios taken inside one configuration carry meaning.
+
+  Third, the workload is 20,000 operations per thread on one machine. That is enough to show a collapse and enough to
+  show headroom; it is not enough to rank two options against each other by a factor of two.
+</div>
+
+<p>
+Taken together the four measurements settle the choice in
+<a href="#options">the comparison</a> on the reproduced shape rather than on any magnitude. M1 says the mutex is the
+cost and not the pool logic, and the shared column is the stable measurement that carries that claim. M2 says thread
+sharding has headroom that is large in every run of both configurations, so option C earns its implementation risk
+while option B, which only moves work from a mutex onto a contended word, does not. M3 says a cross-thread free costs
+about the same as a same-thread one, so the return mechanism C depends on is affordable. M4 says bank growth has to
+leave the critical section whatever is chosen, which is a prerequisite rather than a design option, and it is the most
+reproducible of the four.
+</p>
+
+<h2 id="coverage">What this document does not own</h2>
+<div class="gap">
+  <p>
+  <strong>The class has no reference page.</strong> <a href="../Memory/index.html">docs/Memory/index.html</a> is the
+  only page the module has, so no per-method contract page exists for <code>ThreadSafeMultiPoolAllocator</code>. The
+  behaviour of <code>Allocate</code>, <code>Deallocate</code> and <code>PrintUsage</code> as a caller must obey it is
+  a contract that page will own; this document describes only the locking design behind them.
+  </p>
+  <p>
+  <strong>No defect list, no implemented design.</strong> Defects and the repeated-run spread live in
+  <a href="../../JOURNAL.md">JOURNAL.md</a>, the contention figures are in <a href="#gate">the gate section</a> and
+  are reproducible through the class's own test collection, and the tree still contains the mutex described in
+  <a href="#cost">the first section</a>.
+  </p>
+  <p>
+  <strong>Alignment policy, allocator selection between engine allocator types, and the manager's registration and
+  statistics contract are not described here.</strong> See <a href="../AllocatorGuide.md">docs/AllocatorGuide.md</a>
+  and <a href="MemoryManagerInternals_Design.html">Memory manager internals</a>.
+  </p>
+</div>
+
+<h2 id="seealso">Where else to look</h2>
+<table>
+  <tr><th>Question</th><th>Where it lives</th></tr>
+  <tr><td>Which allocator type to choose for a given lifetime and access pattern</td><td><a href="../AllocatorGuide.md">docs/AllocatorGuide.md</a>, <a href="../MemoryManagement_Guide.md">docs/MemoryManagement_Guide.md</a></td></tr>
+  <tr><td>What registration, proxy lookup and the error paths of the manager do</td><td><a href="MemoryManagerInternals_Design.html">Memory manager internals</a></td></tr>
+  <tr><td>How allocation scoping and the global allocation buckets are accounted</td><td><a href="../MemoryManagement_Guide.md">docs/MemoryManagement_Guide.md</a>, <a href="../../JOURNAL.md">JOURNAL.md</a></td></tr>
+  <tr><td>The benchmark specification behind <a href="#gate">the measurement gate</a></td><td><a href="../../.Plans/PLAN_lockfree-contention-benchmark.md">.Plans/PLAN_lockfree-contention-benchmark.md</a></td></tr>
+  <tr><td>What a page must contain, and how the reference is validated</td><td><a href="../CodingStandards.md">docs/CodingStandards.md</a>, <a href="../index.html">the module index</a></td></tr>
+</table>
+
+</main>
+</body>
+</html>

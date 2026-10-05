@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PoolAllocator::NumberOfFreeBlocks — Memory module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a class="current" href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Memory</a> /
+  <a href="index.html">PoolAllocator</a> / NumberOfFreeBlocks
+</p>
+
+<h1><span class="fn">NumberOfFreeBlocks</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::PoolAllocator</span>
+  <span class="tag">Engine/Memory/PoolAllocator.h</span>
+  <span class="tag">nodiscard</span>
+  The same free-block count GetAvailableBlocks reports, under a second name and with no caller.
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>[[nodiscard]] auto NumberOfFreeBlocks() const</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  Defined in the class body of <code>Engine/Memory/PoolAllocator.h</code>, returning <code>numberOfFreeBlocks</code> — the same
+  member <a href="getavailableblocks.html">GetAvailableBlocks</a> returns. The two are interchangeable in every respect: same value,
+  same <code>size_t</code>, same absence of locking, same dependence on no other state. It is the one accessor in the class without a
+  <code>Get</code> prefix, which is the only difference a reader can see from the declaration.
+</p>
+
+<div class="note">
+  <strong>Two names, one counter, no second opinion.</strong>
+  There is no computation here that could disagree with the other accessor, so comparing the two proves nothing about the pool's
+  health. Nothing in <code>Engine/</code> or <code>Applications/</code> calls this one; the multi-pool that banks pools asks
+  <a href="getavailableblocks.html">GetAvailableBlocks</a>. Treat this as an alias kept for callers outside the tree, and prefer the
+  <code>Get</code>-prefixed name in new code so the two do not drift into meaning different things.
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<p>None.</p>
+
+<h2 id="return">Return value</h2>
+
+<table>
+  <tr><th>Type</th><th>What you get</th></tr>
+  <tr><td><code>TSize</code></td><td>Blocks on the free list. <code>numberOfBlocks</code> minus this is what <a href="getusage.html">GetUsage</a> divides by the stride to get bytes.</td></tr>
+</table>
+
+<h2 id="example">Examples</h2>
+
+<p class="note">Illustrative — no call site for this exists in the repository.</p>
+
+<pre><code>if (pool.NumberOfFreeBlocks() &lt; highWatermark)
+{
+	log.Out(ELogLevel::Warning, [&amp;pool](auto&amp; ls) { ls &lt;&lt; "pool low on blocks: " &lt;&lt; pool.NumberOfFreeBlocks(); });
+}</code></pre>
+
+<p>
+  Every real use of a free-block count in the tree is the multi-pool asking the other accessor before choosing a bank
+  (<code>Engine/Memory/MultiPoolAllocator.cpp</code>, <code>MultiPoolAllocator::GetBankIndex(size_t)</code>), which is the shape this
+  snippet imitates.
+</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; PoolAllocator</a></span>
+  <span><a href="index.html#methods">All PoolAllocator methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>
