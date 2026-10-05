@@ -110,6 +110,8 @@ MultiPoolAllocator::MultiPoolAllocator(const char* inName, TInitializerList init
 
 MultiPoolAllocator::~MultiPoolAllocator()
 {
+	AllocatorScope scope(parentID);
+
 	auto& mmgr = MemoryManager::GetInstance();
 
 #if PROFILE_ENABLED
@@ -288,14 +290,28 @@ void MultiPoolAllocator::ReportConfiguration() const
 		{
 			configs.emplace_back(key, value);
 		}
-
-		found->numberOfBlocks += value;
+		else
+		{
+			found->numberOfBlocks += value;
+		}
 	};
+
+	size_t peakBlocks = 0;
+	size_t reportedBlocks = 0;
 
 	for (auto& bank : banks)
 	{
 		InsertItem(bank);
+		peakBlocks += bank.GetUsedBlocksMax();
 	}
+
+	for (const auto& config : configs)
+	{
+		reportedBlocks += config.numberOfBlocks;
+	}
+
+	Assert(reportedBlocks == peakBlocks, "ReportConfiguration: the reported block count ", reportedBlocks,
+		   " does not match the summed bank peak ", peakBlocks);
 
 	auto& mmgr = MemoryManager::GetInstance();
 	auto uniqueName = GetName();
@@ -325,7 +341,7 @@ void* MultiPoolAllocator::NewBankAllocate(size_t size)
 	auto& bank = banks[index];
 	auto ptr = bank.Allocate(size);
 
-#ifdef PROFILE_ENABLED
+#if PROFILE_ENABLED
 	{
 		auto& mmgr = MemoryManager::GetInstance();
 		mmgr.ReportAllocation(GetID(), ptr, size, bank.GetBlockSize());
