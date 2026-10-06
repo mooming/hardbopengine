@@ -50,7 +50,7 @@ MonotonicAllocator::~MonotonicAllocator()
 	mmgr.ReportDeallocation(id, bufferPtr, 0, cursor);
 #endif // PROFILE_ENABLED
 
-	mmgr.Deallocate(bufferPtr, capacity);
+	mmgr.Deallocate(parentID, bufferPtr, capacity);
 	mmgr.DeregisterAllocator(GetID());
 }
 
@@ -145,6 +145,8 @@ bool MonotonicAllocator::IsMine(TPointer ptr) const
 } // namespace hbe
 
 #ifdef __UNIT_TEST__
+#include <new>
+
 #include "HSTL/HVector.h"
 #include "String/String.h"
 
@@ -220,6 +222,43 @@ void MonotonicAllocatorTest::Prepare()
 		{
 			ls << "Monotonic Allocator doesn't provide deallocation."
 			   << " Usage should not be zero, but " << alloc.GetUsage() << lferr;
+		}
+	});
+
+	AddTest("Destroy In Own Scope", [this](auto& ls)
+	{
+		auto& mmgr = MemoryManager::GetInstance();
+
+		auto globalAlloc = [](void*, const size_t n) -> void* { return ::operator new(n); };
+
+		auto globalFree = [](void*, void* ptr, const size_t n) { ::operator delete(ptr, n); };
+
+		constexpr size_t capacity = 128 * 1024;
+		const auto parentID =
+				mmgr.RegisterAllocator(nullptr, "Test::GlobalBackedParent", false, capacity, globalAlloc, globalFree);
+
+		const auto allocBytesBefore = MemoryManager::GetGlobalAllocationBytes();
+		const auto freeBytesBefore = MemoryManager::GetGlobalFreeBytes();
+		{
+			AllocatorScope parentScope(parentID);
+
+			auto alloc = new MonotonicAllocator("Test::MonotonicAllocator", capacity);
+			{
+				AllocatorScope selfScope(alloc->GetID());
+				delete alloc;
+			}
+		}
+
+		const auto allocBytes = MemoryManager::GetGlobalAllocationBytes() - allocBytesBefore;
+		const auto freedBytes = MemoryManager::GetGlobalFreeBytes() - freeBytesBefore;
+
+		mmgr.DeregisterAllocator(parentID);
+
+		if (freedBytes < allocBytes)
+		{
+			ls << "Destroying MonotonicAllocator while its own AllocatorScope is open retained "
+			   << (allocBytes - freedBytes) << " bytes: the backing buffer was released to the allocator's own inert"
+			   << " Deallocate instead of its parent." << lferr;
 		}
 	});
 }
