@@ -7,12 +7,7 @@
 
 namespace hbe
 {
-/// @brief Reference-counted smart pointer for shared ownership.
-/// @details Manages a heap-allocated object with reference counting.
-/// Automatically deallocates when reference count reaches zero.
-/// @brief Reference-counted smart pointer for shared ownership.
-/// @details Manages a heap-allocated object with reference counting.
-/// Automatically deallocates when reference count reaches zero.
+/// API reference: docs/Memory/Shareable/index.html
 template <typename TType, typename RefCount = uint8_t>
 class Shareable
 {

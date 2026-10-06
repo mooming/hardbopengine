@@ -13,8 +13,7 @@
 
 namespace hbe
 {
-// A proxy allocator which uses the current allocator defined in Memory Manager.
-// It should be careful to use this when the current allocator is stack allocators.
+/// API reference: docs/Memory/DefaultAllocator/index.html
 template <typename T>
 class DefaultAllocator final
 {
@@ -44,10 +43,6 @@ public:
 
 	[[nodiscard]] T* allocate(std::size_t n) noexcept
 	{
-		// Fast-path: when the scoped allocator is the SystemAllocator,
-		// bypass the MemoryManager indirection chain and call malloc directly.
-		// This eliminates multiple function calls per allocation that dominate
-		// performance in hot paths (e.g., std::vector growth).
 		if (allocatorID == MemoryManager::SystemAllocatorID)
 		{
 			return static_cast<T*>(malloc(n * sizeof(T)));
@@ -64,7 +59,6 @@ public:
 	{
 		Assert(ptr != nullptr);
 
-		// Fast-path: mirror the allocate() optimization for deallocation.
 		if (allocatorID == MemoryManager::SystemAllocatorID)
 		{
 			free(ptr);

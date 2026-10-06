@@ -24,19 +24,7 @@ namespace hbe
 struct source_location;
 class Engine;
 
-/// @brief Centralized memory management system for the engine.
-/// @details This singleton class serves as the core memory controller, providing:
-/// - **Allocator Management**: Registration and retrieval of various allocators (System, Pool, Stack, etc.)
-///   via `TAllocatorID`.
-/// - **Scoped Allocation**: Support for thread-local allocation scopes using `ScopedAllocator`.
-/// - **Object Lifecycle**: Type-safe object creation (`New`, `NewArray`) and destruction (`Delete`, `DeleteArray`)
-///   with automatic constructor/destructor calls.
-/// - **Tracking & Statistics**: Real-time tracking of allocation/deallocation counts, usage, and capacity
-///   across all registered allocators.
-/// - **Fallthrough Mechanism**: A hierarchical fallback system for handling exhausted allocators.
-/// - **Configuration Persistence**: Loading and saving `MultiPool` configurations via `MultiPoolConfigCache`.
-/// - **Profiling Support**: Built-in hooks for memory investigation, logging, and detailed usage reporting
-///   when `PROFILE_ENABLED` is active.
+/// API reference: docs/Memory/MemoryManager/index.html
 class MemoryManager final
 {
 public:
@@ -71,15 +59,9 @@ public:
 	/// @details Cumulative, not live: freeing does not reduce it. Read it as a delta around a region of
 	/// interest, which is how the test suite uses it to see allocations that no allocator scope can report.
 	/// @note SystemAllocator's own traffic is deliberately absent. Its usage lives in the paired UsageRecord
-	/// reported under PROFILE_ENABLED, and the two are not the same measure - this one counts bytes requested,
-	/// that one counts capacity obtained. Merging them would also misattribute a pool's bank backing, which
-	/// arrives through SystemAllocator, to whichever testlet happened to trigger the bank.
 	[[nodiscard]] static size_t GetGlobalAllocationBytes() noexcept;
-	/// @brief Number of requests that reached a global allocation entry point since process start.
 	[[nodiscard]] static uint64_t GetGlobalAllocationCount() noexcept;
-	/// @brief Bytes released through global deallocation entry points since process start.
 	[[nodiscard]] static size_t GetGlobalFreeBytes() noexcept;
-	/// @brief Number of releases that reached a global deallocation entry point since process start.
 	[[nodiscard]] static uint64_t GetGlobalFreeCount() noexcept;
 
 	[[nodiscard]] static size_t GetOSAllocationBytes() noexcept;
