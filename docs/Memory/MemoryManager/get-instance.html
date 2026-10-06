@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MemoryManager::GetInstance — Memory module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a class="current" href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Memory</a> /
+  <a href="index.html">MemoryManager</a> / GetInstance
+</p>
+
+<h1><span class="fn">GetInstance</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::MemoryManager</span>
+  <span class="tag">Engine/Memory/MemoryManager.h</span>
+  The one instance, as a reference — and a fatal abort, not a null, once it is gone.
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>static MemoryManager&amp; GetInstance()</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+Defined in <code>Engine/Memory/MemoryManager.cpp</code> as <code>MemoryManager::GetInstance()</code>, and the whole
+body is <code>FatalAssert(mmgrInstance != nullptr);</code> followed by <code>return *mmgrInstance;</code>. The pointer
+it reads is a file-scope <code>static</code> in that same translation unit, not a member, and it is written by exactly
+two places: <a href="constructors.html">the constructor</a>, which publishes <code>this</code> after asserting the
+slot was empty, and <a href="destructor.html">the destructor</a>, which clears it.
+</p>
+
+<div class="gap">
+  <strong>Absence is an abort, never a null.</strong>
+  <code>FatalAssert</code> flushes the logs, prints its message, calls <code>debugBreak()</code> and then
+  <code>std::abort()</code> (<code>Engine/Core/Debug.h</code>) — in every configuration, including Release, unlike
+  <code>Assert</code>, which compiles away there. So a call before the engine's <code>MemoryManager</code> member is
+  constructed, or after it is destroyed, is not a value you can test for. The only guard the engine offers is
+  <code>Engine::IsMemoryManagerReady()</code>, set by the constructor's last act
+  (<code>Engine/Engine/Engine.h</code>).
+</div>
+
+<div class="note">
+  <strong>Usable earlier than the engine is initialised.</strong>
+  Because <code>Engine::memoryManager</code> is an ordinary member
+  (<code>Engine/Engine/Engine.h</code>), it is constructed as part of <code>Engine::Engine()</code> — before
+  <code>Engine::Initialize()</code> runs, and before <code>logger</code>, <code>statistics</code> and
+  <code>taskSystem</code> exist. Every allocator in the module assumes the window is open and calls
+  <code>GetInstance()</code> from its own constructor (<code>Engine/Memory/MonotonicAllocator.cpp</code>,
+  <code>MonotonicAllocator::MonotonicAllocator()</code>; <code>Engine/Memory/InlinePoolAllocator.h</code>,
+  <code>InlinePoolAllocator::RegisterAllocator()</code>). What is <em>not</em> ready during that window is the
+  logger: the constructor's own <a href="load-multi-pool-configs.html">cache load</a> logs while
+  <code>Engine::isLoggerReady</code> is still false.
+</div>
+
+<p>
+The returned reference is to the manager itself, never a copy — the class deletes both the copy constructor and copy
+assignment precisely because two objects would fight over <code>mmgrInstance</code>. The reference is valid for as long
+as the <code>Engine</code> object, which in every application in this repository is a static-lifetime object, so
+storing it for a process's whole life is what the allocators do.
+</p>
+
+<h2 id="parameters">Parameters</h2>
+
+<p>None.</p>
+
+<h2 id="return">Return value</h2>
+
+<table>
+  <tr><th>Type</th><th>What you get</th></tr>
+  <tr><td><code>MemoryManager&amp;</code></td><td>The single instance. Non-null by construction: a null instance aborts inside this call instead of producing a reference to test. Its lifetime is <code>Engine</code>'s.</td></tr>
+</table>
+
+<h2 id="example">Examples</h2>
+
+<pre><code>auto&amp; mmgr = MemoryManager::GetInstance();
+auto newBody = mmgr.New&lt;Body&gt;(std::forward&lt;Types&gt;(args)...);</code></pre>
+
+<p class="meta">From Engine/Memory/Shareable.h, Shareable&lt;TType, RefCount&gt;::Body::Create()</p>
+
+<p>
+The dominant shape in the engine: take the instance, then use the typed
+<a href="new.html">New</a>/<a href="delete.html">Delete</a> pair on it. There are over thirty such sites; the
+allocators reach the manager the same way to register themselves
+(<code>Engine/Memory/MultiPoolAllocator.cpp</code>, <code>MultiPoolAllocator::MultiPoolAllocator()</code>) and to
+report what they handed out (<a href="report-allocation.html">ReportAllocation</a>).
+</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; MemoryManager</a></span>
+  <span><a href="index.html#methods">All MemoryManager methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

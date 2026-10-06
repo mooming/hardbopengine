@@ -30,11 +30,11 @@
 
   <h3>This document</h3>
   <ul>
-    <li><a href="#names">What an allocator name is worth</a></li>
-    <li><a href="#register">What registration records</a></li>
-    <li><a href="#dummy">An invalid id answers with a dummy proxy</a></li>
+    <li><a href="#policy">One error policy, nine different answers</a></li>
+    <li><a href="#owned">Who owns each behaviour now</a></li>
     <li><a href="#break">Where a checked build stops instead of continuing</a></li>
     <li><a href="#coverage">What this document does not own</a></li>
+    <li><a href="#seealso">Where else to look</a></li>
   </ul>
 </nav>
 
@@ -42,60 +42,65 @@
   <div class="breadcrumb"><a href="../index.html">Docs</a> / <a href="../Memory/index.html">Memory</a> / Memory manager internals</div>
 
 <h1>Memory manager internals</h1>
-  <div class="subtitle">The three error paths of <em>MemoryManager</em> that answer instead of failing, and what <code>PROFILE_ENABLED</code> decides about the answer</div>
+  <div class="subtitle">The manager's error policy — <em>answer instead of failing</em> — and the build flags that decide what a report is worth</div>
 
 <div class="note">
-  <strong>Scope.</strong> This document owns the invariants behind <em>Engine/Memory/MemoryManager.cpp</em>'s error
-  and diagnostic paths. Allocation and deallocation contracts, ownership, and the proxy interface belong to the
-  <a href="../Memory/index.html">Memory module page</a> and to <a href="../Memory/index.html">AllocatorProxy</a>;
-  <code>PROFILE_ENABLED</code> itself is a Core build flag, documented where the profiling counters live.
+  <strong>Scope.</strong> This document owns the invariants behind <em>Engine/Memory/MemoryManager.cpp</em>'s error and
+  diagnostic paths — the patterns that hold across several methods at once. The per-method contracts, including the three
+  behaviours that used to be written here, live on the method pages of
+  <a href="../Memory/MemoryManager/index.html">MemoryManager</a>. Allocation and deallocation contracts, ownership and the
+  proxy interface belong to the <a href="../Memory/index.html">Memory module page</a>; <code>PROFILE_ENABLED</code> itself is a
+  Core build flag, documented where the profiling counters live.
 </div>
 
-<h2 id="names">What an allocator name is worth</h2>
+<h2 id="policy">One error policy, nine different answers</h2>
 <p>
-<code>MemoryManager::GetAllocatorName</code> answers in three different ways, and only one of them is a name:
+Across every entry point that receives a <code>TAllocatorID</code>, the manager's policy is identical in shape and startling in
+detail: <strong>validate, then answer instead of failing.</strong> Nothing in the class throws, returns an error code or refuses a
+call outright because an id is out of range — each substitutes something, and what it substitutes is decided per method.
+<a href="../Memory/MemoryManager/is-valid.html">IsValid</a> carries the table of those outcomes. The invariant this document exists
+to state is the one no single method page can: a bad id is almost never fatal, and its only trace is a log line, which in a build of
+this repository (<code>MEMORY_LOGGING_ENABLED</code> = <code>0</code>) means the trace is nowhere.
+</p>
+<p>
+Two of those answers are design rather than accident, and both are reasons a defect reproduces as wrong data rather than as a crash:
+</p>
+<ul>
+  <li>On the dispatch path an invalid id is rewritten to <code>SystemAllocatorID</code> and the request proceeds, so a mis-scoped
+  allocation succeeds from the wrong place instead of failing at the right one
+  (<a href="../Memory/MemoryManager/allocate.html">Allocate</a>, <a href="../Memory/MemoryManager/deallocate.html">Deallocate</a>).</li>
+  <li>On the inspection path an invalid id answers with a stand-in that is type-indistinguishable from a real answer —
+  <code>"Null"</code> from <a href="../Memory/MemoryManager/get-allocator-name.html">GetAllocatorName</a>, a zeroed record from
+  <a href="../Memory/MemoryManager/get-allocator-stat.html">GetAllocatorStat</a>, a default proxy from
+  <a href="../Memory/MemoryManager/get-allocator-proxy.html">GetAllocatorProxy</a>.</li>
+</ul>
+
+<h2 id="owned">Who owns each behaviour now</h2>
+<p>
+This document was once the only home for three behaviours that are really contracts of individual methods.
+<code>docs_coverage.py</code> used to report that the class had no reference page at all, which is why they were shelved here; the
+pages exist, the prose has moved to them, and what is left below is the pointer plus the one generalisation each behaviour is an
+instance of.
 </p>
 <table>
-  <tr><th>Condition</th><th>Answer</th><th>Meaning</th></tr>
-  <tr><td><code>id</code> fails <code>IsValid</code></td><td><code>"Null"</code></td><td>The id was never registered, or is the invalid id</td></tr>
-  <tr><td><code>PROFILE_ENABLED</code> on</td><td><code>allocators[id].stats.name</code></td><td>The name registration was given</td></tr>
-  <tr><td><code>PROFILE_ENABLED</code> off</td><td><code>"Unknown"</code></td><td>Names are not stored at all in this configuration</td></tr>
+  <tr><th>Behaviour</th><th>Owned by</th><th>What this document still generalises</th></tr>
+  <tr id="names">
+    <td>The three answers of the allocator-name getter, and why <code>"Null"</code> and <code>"Unknown"</code> are different facts</td>
+    <td><a href="../Memory/MemoryManager/get-allocator-name.html">GetAllocatorName</a></td>
+    <td>That allocator identity in a log line is a build-flag dependency, so a diagnostic's usefulness is not a property of the code that writes it</td>
+  </tr>
+  <tr id="register">
+    <td>What a registration records, what a null name becomes, how it can fail, and what the returned id is worth afterwards</td>
+    <td><a href="../Memory/MemoryManager/register-allocator.html">RegisterAllocator</a></td>
+    <td>That outside <code>PROFILE_ENABLED</code> a registration stores routing data only, and that an id is a recycled array index rather than a generation-tagged handle — the shared reason no stored id may outlive its registrant</td>
+  </tr>
+  <tr id="dummy">
+    <td>The default-constructed dummy proxy returned for an invalid id, and the properties of it that nobody has decided</td>
+    <td><a href="../Memory/MemoryManager/get-allocator-proxy.html">GetAllocatorProxy</a>, with the open question recorded in
+    <a href="../Memory/MemoryManager/index.html#coverage">the class Coverage table</a></td>
+    <td>That this getter is an inspection-and-mutation door and <em>not</em> a step on the dispatch path: an earlier revision of this document claimed "every allocation crosses" it, which <a href="../Memory/MemoryManager/allocate.html">Allocate</a> contradicts — it indexes <code>allocators</code> directly and does its own range check</td>
+  </tr>
 </table>
-<p>
-A caller printing allocator identity therefore learns nothing about the allocator in a build without profiling, and
-<code>"Unknown"</code> is not a name that some allocator happens to have. <code>"Null"</code> and
-<code>"Unknown"</code> are two different facts and must not be collapsed into one "no name" case by a caller.
-</p>
-
-<h2 id="register">What registration records</h2>
-<p>
-<code>RegisterAllocator</code> takes the allocator pointer, a name, whether it is inline, its capacity, and the
-allocate and deallocate function pointers. A null name becomes <code>"None"</code> rather than an error, so the
-registration never fails on the name alone. Under <code>PROFILE_ENABLED</code> the name, the inline flag and the
-capacity are stored in the allocator's statistics and the registration takes <code>statsLock</code>; without it the
-recording lambda does not capture them at all, so the same call records only the three things needed to route
-allocations. The return value is the assigned id, and a registration whose id came back invalid is caught by the
-<code>Assert</code> on the way out — which is live in Debug and Dev only, so a Release build records the failure in
-the <code>Info</code> log line and returns the id it was given.
-</p>
-
-<h2 id="dummy">An invalid id answers with a dummy proxy</h2>
-<p>
-<code>GetAllocatorProxy</code> is the path every allocation crosses, and it does not fail: an id that fails
-<code>IsValid</code> logs an <code>Error</code> and returns a default-constructed <code>AllocatorProxy</code> held as
-a function-local <code>static</code>, re-constructed on each call. The intent is that a bad id cannot index
-<code>allocators</code> out of bounds; the consequence a caller must know is that the returned proxy is real and
-usable-looking, so the allocation that follows it does not fail where the mistake was made. A bad id therefore
-surfaces as a log line plus work that goes somewhere other than the allocator named, not as a crash at the call.
-</p>
-<div class="gap">
-  <strong>Two properties of that dummy are not decided anywhere.</strong> The <code>static</code> object is shared by
-  every thread that asks with a bad id, and it is placement-reconstructed while another thread may be inside a call
-  that received it, so the dummy is not a thread-safe object. And because a default-constructed proxy routes
-  nowhere, an allocation through it neither returns an error nor reaches the system allocator — it is dropped.
-  Recorded here rather than answered, because the fix is a policy choice: fail loudly, or route the dummy to the
-  system allocator so the work at least happens.
-</div>
 
 <h2 id="break">Where a checked build stops instead of continuing</h2>
 <p>
@@ -118,11 +123,26 @@ allocator without changing a single call site.
 <h2 id="coverage">What this document does not own</h2>
 <div class="gap">
   <p>
-  <strong>The class has no reference page.</strong> <code>docs_coverage.py</code> reports that
-  <em>Engine/Memory/MemoryManager.h</em> has no <em>docs/Memory/MemoryManager/index.html</em>, so no per-method
-  contract page exists. The three behaviours above are contracts of <code>GetAllocatorName</code>,
-  <code>RegisterAllocator</code> and <code>GetAllocatorProxy</code> and are shelved here until that page is authored;
-  when it is, they move to the method pages and this document keeps only the invariants.
+  <strong>The per-method contracts do not live here.</strong> <em>Engine/Memory/MemoryManager.h</em> now carries its
+  address — <em>docs/Memory/MemoryManager/index.html</em> — and every declared name has a page, so anything that is a
+  contract of one method belongs there. This document keeps only what spans methods: the error policy above, the
+  checked-build-versus-Release pattern below, and the generalisation each retired section was an instance of. Where a page
+  and this document seem to disagree, the page is the one that read the function.
+  </p>
+  <p>
+  <strong>Two findings are recorded on pages, not here, so they are not lost by the move.</strong> A profiled build adds
+  <code>Config::MemCapacity</code> to the engine-wide total twice — once unconditionally in
+  <a href="../Memory/MemoryManager/register-system-allocator.html">RegisterSystemAllocator</a> and again inside the
+  <code>PROFILE_ENABLED</code> block — and <a href="../Memory/MemoryManager/report-deallocation.html">ReportDeallocation</a>
+  logs a usage underflow and then performs the subtraction anyway, wrapping an unsigned figure. Both are stated with their
+  consequences on those pages.
+  </p>
+  <p>
+  <strong>Two questions still have no answer anywhere.</strong> What a caller holding a live block must do when its allocator is
+  deregistered, and what a registration attempted after shutdown is meant to achieve (the free-slot pool contains slot 0 by then,
+  and slot 0 is the one proxy whose <code>id</code> was never written). Neither is answered by any source, comment or test; they are
+  named as omissions in <a href="../Memory/MemoryManager/index.html#coverage">the class Coverage table</a>, and this document does not
+  guess at them either.
   </p>
   <p>
   <strong>Allocator selection policy, alignment rules and the pool geometry are not described here.</strong> Only the
@@ -133,6 +153,7 @@ allocator without changing a single call site.
 <h2 id="seealso">Where else to look</h2>
 <table>
   <tr><th>Question</th><th>Where it lives</th></tr>
+  <tr><td>What any single <code>MemoryManager</code> method guarantees</td><td><a href="../Memory/MemoryManager/index.html">MemoryManager class page</a>, one page per declared name</td></tr>
   <tr><td>What each allocator type does and when to use it</td><td><a href="../Memory/index.html">Memory module page</a></td></tr>
   <tr><td>Whether a diagnostic is compiled in, and what <code>Assert</code> does</td><td><a href="../Core/index.html#debug">Core: Debug</a>, <a href="AssertMacros_Design.html">Assertion design</a></td></tr>
   <tr><td>Which configurations define what</td><td><a href="BuildMacros_Design.html">Build macros</a>, <a href="../BuildSystem.md">docs/BuildSystem.md</a></td></tr>

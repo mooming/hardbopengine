@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MemoryManager::DeregisterSystemAllocator — Memory module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a class="current" href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Memory</a> /
+  <a href="index.html">MemoryManager</a> / DeregisterSystemAllocator
+</p>
+
+<h1><span class="fn">DeregisterSystemAllocator</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::MemoryManager</span>
+  <span class="tag">Engine/Memory/MemoryManager.h</span>
+  An ordinary DeregisterAllocator on id 0, called by the destructor — which means it can refuse, and does.
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>void DeregisterSystemAllocator()</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+Defined in <code>Engine/Memory/MemoryManager.cpp</code> as <code>MemoryManager::DeregisterSystemAllocator()</code>, declared
+<code>private</code>, and its entire body is <code>DeregisterAllocator(SystemAllocatorID);</code>. It is the teardown half of
+<a href="register-system-allocator.html">RegisterSystemAllocator</a>, called once from
+<a href="destructor.html">~MemoryManager</a> — but it is <em>not</em> a special teardown: it is the ordinary deregistration
+applied to id 0, and it inherits every quirk of that method, including the ability to refuse.
+</p>
+
+<div class="gap">
+  <strong>It can refuse, and the destructor does not look.</strong>
+  Under <code>PROFILE_ENABLED</code> the shared path returns early on a thread-id mismatch or on
+  <code>stats.usage &gt; 0</code> — after already nulling the slot's two function pointers and without returning the slot to the
+  pool (<a href="deregister-allocator.html">DeregisterAllocator</a>). The destructor then clears the global handle anyway, so a
+  system allocator still holding bytes produces one warning line and nothing else: no retry, no summary, no way for the process
+  to know its teardown was incomplete.
+</div>
+
+<div class="gap">
+  <strong>It puts slot 0 back into the free-slot pool, and slot 0 has no usable id.</strong>
+  The last statement of the shared path is <code>proxyPool.Push(allocator)</code> for whatever slot it was given, so a
+  deregistration of id 0 pushes slot 0 — and slot 0 is the one proxy whose <code>id</code> field was never written, because the
+  constructor's seeding loop starts at <code>i = 1</code> (<a href="constructors.html">the constructor</a>,
+  <a href="register-system-allocator.html">RegisterSystemAllocator</a>). A subsequent
+  <a href="register-allocator.html">RegisterAllocator</a> would pop that slot, read <code>id</code> as
+  <code>InvalidAllocatorID</code>, trip <code>Assert(id != InvalidAllocatorID)</code> in Debug and Dev, and in Release return
+  <code>-1</code> to its caller having written the registration into slot 0. During static destruction, when a late allocator may
+  still try to register, that is the shape of the failure — nothing in the tree exercises it, and no source states an intended
+  behaviour. Recorded as a named omission in <a href="index.html#coverage">Coverage</a>.
+</div>
+
+<div class="note">
+  <strong>What stops working the moment it returns.</strong>
+  Slot 0's function pointers are null, so <a href="sys-allocate.html">SysAllocate</a> logs <code>FatalError</code> and returns
+  null, <a href="sys-deallocate.html">SysDeallocate</a> logs and <em>drops the release</em>, and any
+  <a href="allocate.html">Allocate</a> that arrives for an out-of-range id — every one of which is redirected to 0 — lands on the
+  same null pointer, where the guard is an <code>Assert</code> that Release removes. Anything that frees after
+  <code>Engine</code>'s members are gone is in this window, which is why late destructors that release memory through
+  <a href="get-instance.html">GetInstance</a> are the module's most fragile code.
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<p>None. The id is the constant <a href="index.html#properties">SystemAllocatorID</a>, not an argument.</p>
+
+<h2 id="return">Return value</h2>
+
+<p><code>void</code>. Success, refusal and the loss of a registration slot are all indistinguishable to the destructor that calls it.</p>
+
+<h2 id="example">Examples</h2>
+
+<pre><code>MemoryManager::~MemoryManager()
+{
+	if (mmgrInstance == nullptr)
+	{
+		return;
+	}
+
+	DeregisterSystemAllocator();
+	mmgrInstance = nullptr;
+}</code></pre>
+
+<p class="meta">From Engine/Memory/MemoryManager.cpp, MemoryManager::~MemoryManager()</p>
+
+<p>
+The single call site. It runs while every other <code>Engine</code> member has already been destroyed — the manager is declared
+first in <code>Engine/Engine/Engine.h</code> and so dies last — which is exactly the ordering that makes this call safe, and the
+ordering that leaves any allocator which failed to deregister itself pointing into a manager that is on its way out.
+</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; MemoryManager</a></span>
+  <span><a href="index.html#methods">All MemoryManager methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

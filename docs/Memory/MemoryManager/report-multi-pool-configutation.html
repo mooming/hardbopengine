@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MemoryManager::ReportMultiPoolConfigutation — Memory module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a class="current" href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Memory</a> /
+  <a href="index.html">MemoryManager</a> / ReportMultiPoolConfigutation
+</p>
+
+<h1><span class="fn">ReportMultiPoolConfigutation</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::MemoryManager</span>
+  <span class="tag">Engine/Memory/MemoryManager.h</span>
+  Append one pool's geometry to this run's log — PROFILE_ENABLED only, and the name's odd spelling is the header's.
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>void ReportMultiPoolConfigutation(StaticStringID uniqueName, TPoolConfigs&amp;&amp; poolConfigs)</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+Defined in <code>Engine/Memory/MemoryManager.cpp</code> as <code>MemoryManager::ReportMultiPoolConfigutation()</code>, declared
+inside <code>#if PROFILE_ENABLED</code> and therefore absent from every configuration this repository builds. The spelling of the
+name — <code>Configutation</code>, not <code>Configuration</code> — is the source's own
+(<code>Engine/Memory/MemoryManager.h</code>), and the reference follows the header rather than correcting it, because a page title a
+reader cannot grep is a page they will never find.
+</p>
+
+<p>The body is a single statement:</p>
+
+<pre><code>auto&amp; data = multiPoolConfigLog.GetData();
+data.emplace_back(uniqueName, std::move(poolConfigs));</code></pre>
+
+<p class="meta">From Engine/Memory/MemoryManager.cpp, MemoryManager::ReportMultiPoolConfigutation()</p>
+
+<p>
+That is all it does: append one <code>MultiPoolAllocatorConfig</code> — a name plus a <code>TPoolConfigs</code>
+(<code>std::vector&lt;PoolConfig&gt;</code>, the <code>(blockSize, numberOfBlocks)</code> pairs) — to this run's log, the table
+<a href="save-multi-pool-configs.html">SaveMultiPoolConfigs</a> writes out at shutdown. It validates nothing, never searches for an
+existing entry with the same name, and does not touch the cache that <a href="load-multi-pool-configs.html">the loader</a> filled and
+that <a href="look-up-multi-pool-config.html">LookUpMultiPoolConfig</a> reads. Reports for the current run and configuration for the
+next boot are deliberately separate tables, and only a save operation moves one into the file.
+</p>
+
+<div class="note">
+  <strong>Repeated reports for one name are merged — later, somewhere else.</strong>
+  Every call appends unconditionally, so a pool that reports twice leaves two entries. The reconciliation happens in
+  <code>MultiPoolConfigCache::Normalize()</code> (<code>Engine/Memory/MultiPoolConfigCache.cpp</code>), which
+  <code>Serialize</code> calls before writing: entries are sorted by <code>uniqueName</code>, runs with the same name are merged by
+  <code>PoolConfigUtil::MergeMax</code> taking the larger block count per size, and entries whose configuration is empty are dropped.
+  A caller may therefore report as often as it likes — but the merge is a <code>max</code>, so reporting a shrunken geometry does not
+  shrink the saved one.
+</div>
+
+<div class="gap">
+  <strong>The argument is moved from, and the ordering decides whether it survives to the file.</strong>
+  <code>std::move(poolConfigs)</code> leaves the caller's vector in a moved-from state, so a caller that reuses it must rebuild it.
+  And because the only writer of the file runs from <a href="pre-engine-shutdown.html">PreEngineShutdown</a>, a report made later than
+  that — which is what a report from a destructor is, and both call sites are
+  <code>MultiPoolAllocator::ReportConfiguration()</code> and <code>ThreadSafeMultiPoolAllocator::ReportConfiguration()</code>, reached
+  from their destructors — appends to a table that is about to be destroyed with the manager. In this tree the whole path is compiled
+  out, so the cache file is never rewritten by a run at all.
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<table>
+  <tr><th>Parameter</th><th>Type</th><th>Requirement</th></tr>
+  <tr><td><code>uniqueName</code></td><td><code>StaticStringID</code></td><td>The multi-pool's interned name — the same id <a href="look-up-multi-pool-config.html">LookUpMultiPoolConfig</a> will one day search for. Nothing checks that a pool reports under the name it was loaded under.</td></tr>
+  <tr><td><code>poolConfigs</code></td><td><code>TPoolConfigs&amp;&amp;</code></td><td>The <code>(blockSize, numberOfBlocks)</code> pairs to record, taken by move. An empty vector is legal here and is discarded only later, by <code>Normalize()</code>.</td></tr>
+</table>
+
+<h2 id="return">Return value</h2>
+
+<p><code>void</code>. Nothing is reported back: not whether a name was already present, and not whether a later save will run before the manager dies.</p>
+
+<h2 id="example">Examples</h2>
+
+<pre><code>	Assert(reportedBlocks == peakBlocks, "ReportConfiguration: the reported block count ", reportedBlocks,
+		   " does not match the summed bank peak ", peakBlocks);
+
+	auto&amp; mmgr = MemoryManager::GetInstance();
+	auto uniqueName = GetName();
+	mmgr.ReportMultiPoolConfigutation(uniqueName.GetID(), std::move(configs));</code></pre>
+
+<p class="meta">From Engine/Memory/MultiPoolAllocator.cpp, MultiPoolAllocator::ReportConfiguration()</p>
+
+<p>
+The only producer, and it is guarded by an assertion first: a multi-pool sums its banks' peak block usage and refuses to report a
+total that does not match, because a wrong number here becomes next run's starting geometry. <code>GetName()</code> is interned on the
+way in, so the name reported is the same id the pool would be looked up by — with the caveat on
+<a href="pre-engine-shutdown.html">PreEngineShutdown</a> about which pools get to report before the file is written.
+</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; MemoryManager</a></span>
+  <span><a href="index.html#methods">All MemoryManager methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

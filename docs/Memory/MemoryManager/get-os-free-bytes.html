@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MemoryManager::GetOSFreeBytes — Memory module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a class="current" href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Memory</a> /
+  <a href="index.html">MemoryManager</a> / GetOSFreeBytes
+</p>
+
+<h1><span class="fn">GetOSFreeBytes</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::MemoryManager</span>
+  <span class="tag">Engine/Memory/MemoryManager.h</span>
+  Bytes released by OS-image callers — bucketed by who frees, not by who allocated.
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>[[nodiscard]] static size_t GetOSFreeBytes() noexcept</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+Defined in <code>Engine/Memory/GlobalAllocation.cpp</code> as <code>MemoryManager::GetOSFreeBytes()</code>: one relaxed
+load of the <code>globalOSFreeBytes</code> atomic. Bytes released through the replacement
+<code>operator delete</code> by a caller whose return address lies inside the macOS shared cache.
+</p>
+
+<pre><code>void RecordDeallocation(size_t size, void* caller) noexcept
+{
+	hbe::MemoryManager::RecordGlobalFree(size);
+
+	if (IsOSImageCaller(caller))
+	{
+		globalOSFreeBytes.fetch_add(size, std::memory_order_relaxed);
+		globalOSFreeCount.fetch_add(1, std::memory_order_relaxed);
+	}
+}</code></pre>
+
+<p class="meta">From Engine/Memory/GlobalAllocation.cpp, RecordDeallocation()</p>
+
+<div class="gap">
+  <strong>A block is bucketed by who frees it, not by who allocated it.</strong>
+  The release path tests the return address of the code calling <code>operator delete</code>, exactly as the
+  allocation path tests its own caller, and nothing anywhere pairs a pointer with its original bucket. So a
+  <code>std::string</code> allocated inside the shared cache and destroyed by engine code adds to
+  <a href="get-global-free-bytes.html">GetGlobalFreeBytes</a> and not here, and the pair
+  <a href="get-os-allocation-bytes.html">GetOSAllocationBytes</a>/<code>GetOSFreeBytes</code> is not a live OS-heap
+  figure. Read the two release counters only as "how much releasing this kind of caller did".
+</div>
+
+<div class="note">
+  <strong>The size recorded here is the block, not the request.</strong>
+  An unsized <code>operator delete(void*)</code> carries no size, so <code>Deallocate()</code> substitutes
+  <code>OS::GetAllocSize(ptr)</code>. The block can be larger than the original request, which is the mechanism behind
+  the release-side overshoot described on <a href="get-global-free-bytes.html">GetGlobalFreeBytes</a> — and it applies
+  to this bucket identically, since the same value is what gets added.
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<p>None.</p>
+
+<h2 id="return">Return value</h2>
+
+<table>
+  <tr><th>Type</th><th>What you get</th></tr>
+  <tr><td><code>size_t</code></td><td>Cumulative bytes released by callers inside the OS shared cache; a subset of <a href="get-global-free-bytes.html">GetGlobalFreeBytes</a>, always <code>0</code> off Apple platforms.</td></tr>
+</table>
+
+<h2 id="example">Examples</h2>
+
+<pre><code>const auto osFreedBytesOverBody = MemoryManager::GetOSFreeBytes() - osFreedBytesBefore;
+
+const auto engineFreedBytesOverBody =
+		globalFreedBytesOverBody &gt; osFreedBytesOverBody ? globalFreedBytesOverBody - osFreedBytesOverBody : 0;</code></pre>
+
+<p class="meta">From Engine/Test/TestCollection.cpp, TestCollection::RunTestAt()</p>
+
+<p>
+The engine-owned release total, obtained by removing the OS bucket from the global one with an unsigned-safe clamp.
+Together with the allocation-side subtraction this is what makes the harness's retained-bytes figure an
+engine-only measure.
+</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; MemoryManager</a></span>
+  <span><a href="index.html#methods">All MemoryManager methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

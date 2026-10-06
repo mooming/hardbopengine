@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>InlinePoolAllocator::deallocate — Memory module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a class="current" href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Memory</a> /
+  <a href="index.html">InlinePoolAllocator</a> / deallocate
+</p>
+
+<h1><span class="fn">deallocate</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::InlinePoolAllocator</span>
+  <span class="tag">Engine/Memory/InlinePoolAllocator.h</span>
+  The standard-library release entry point - and it forwards the element count where allocate forwarded a byte count.
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>void deallocate(T* ptr, std::size_t n) noexcept</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+Defined inline in the class body of <code>Engine/Memory/InlinePoolAllocator.h</code>; the body is one call,
+<code>return DeallocateBytes(ptr, n);</code>. Like <a href="allocate.html">allocate</a>, the name is the standard library's requirement
+and not the engine's choice — the header marks it <code>// This function name is enforced by STL</code> — so that
+<code>std::vector</code> and <code>std::basic_string</code> can hand a block back, which is what the inline containers in
+<code>Engine/HSTL/</code> rely on. It destroys nothing: the container has already run the destructors.
+</p>
+
+<div class="gap">
+  <strong>It forwards the element count where <a href="allocate.html">allocate</a> forwarded a byte count.</strong>
+  <code>allocate</code> computes <code>n * sizeof(T)</code> before calling the helper; this function passes <code>n</code> through
+  unchanged. Inside <a href="deallocate-bytes.html">DeallocateBytes</a> that argument is used as the byte size for three decisions — the
+  threshold that lets a block into the <code>immediateBlock</code> cache, the threshold that lets a block back into the free list, and the
+  size reported to the profiler under <code>PROFILE_ENABLED</code>. For <code>T = char</code> (every
+  <a href="../../HSTL/index.html"><code>HInlineString</code></a>) the two units coincide and the asymmetry is invisible; for
+  <code>HInlineVector&lt;int&gt;</code> a release of <code>n</code> elements is tested against the block size as if it were
+  <code>n</code> bytes, so the release path admits requests four times larger than the allocation path would have served from the pool.
+  The reported figure is under-stated by the same factor. What actually routes a block is the pointer's identity, not this size, so the
+  asymmetry is a reporting and threshold defect rather than a corruption — and no testlet asserts on it.
+</div>
+
+<div class="note">
+  <strong>Where the block goes is decided by <a href="is-valid-pointer.html">IsValidPointer</a>, not by the caller's intent.</strong>
+  A pointer inside this object's <code>block</code> array returns to the free list; anything else is forwarded to
+  <code>MemoryManager::Deallocate(parentID, ...)</code>. Releasing a block to a pool other than the one it came from is therefore not an
+  error the pool detects — it is a forwarding decision, and a moved container is the realistic way to make it (see the class page).
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<table>
+  <tr><th>Parameter</th><th>Type</th><th>Meaning</th></tr>
+  <tr><td><code>ptr</code></td><td><code>T*</code></td><td>Storage from <a href="allocate.html">allocate</a>. A null pointer is not tested
+      for: it takes whichever branch its size and the state of <code>immediateBlock</code> select — see the gap below.</td></tr>
+  <tr><td><code>n</code></td><td><code>std::size_t</code></td><td>Number of objects, passed to the helper unchanged, where the helper
+      treats it as bytes.</td></tr>
+</table>
+
+<h2 id="return">Return value</h2>
+
+<p>None. The function cannot report failure, and it has no failure to report: both branches end in a pointer write or a manager call.</p>
+
+<h2 id="example">Examples</h2>
+
+<pre><code>auto ptr = allocator.allocate(0);
+allocator.deallocate(ptr, 0);</code></pre>
+
+<p class="meta">From Engine/Memory/InlinePoolAllocator.cpp, InlinePoolAllocatorTest::Prepare()</p>
+
+<p>
+The <code>Zero-sized Allocation &amp; Deallocation</code> testlet is the pair in its plainest form: <a href="allocate.html">allocate(0)</a>
+pops a whole block off the free list, and this call parks that block in <code>immediateBlock</code> rather than putting it back, so the
+pool dies holding one block that never returned. A second zero-size release while the cache is occupied is the case that surprises: the
+cache test fails, so <a href="deallocate-bytes.html">DeallocateBytes</a> proceeds to <a href="is-valid-pointer.html">IsValidPointer</a>,
+which a null pointer fails, and the null is forwarded to <code>MemoryManager::Deallocate</code>. No testlet covers that, and the manager's
+answer to a null release is not documented here.
+</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; InlinePoolAllocator</a></span>
+  <span><a href="index.html#methods">All InlinePoolAllocator methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

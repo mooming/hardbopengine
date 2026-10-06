@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MemoryManager::RegisterSystemAllocator — Memory module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a class="current" href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Memory</a> /
+  <a href="index.html">MemoryManager</a> / RegisterSystemAllocator
+</p>
+
+<h1><span class="fn">RegisterSystemAllocator</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::MemoryManager</span>
+  <span class="tag">Engine/Memory/MemoryManager.h</span>
+  Fills slot 0 by hand, seeds the capacity total and points this thread at it — constructor only, and once.
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>void RegisterSystemAllocator()</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+Defined in <code>Engine/Memory/MemoryManager.cpp</code> as <code>MemoryManager::RegisterSystemAllocator()</code>, declared
+<code>private</code> with one caller: <a href="constructors.html">the constructor</a>. It is the only writer of slot 0, and it
+does not go through <a href="register-allocator.html">RegisterAllocator</a> — the slot is filled in place, which is why slot 0
+never appears in <code>proxyPool</code> and why no registration can ever receive
+<a href="index.html#properties">SystemAllocatorID</a>.
+</p>
+
+<pre><code>using TSysAlloc = SystemAllocator&lt;uint8_t&gt;;
+static TSysAlloc systemAllocator;
+
+auto allocFunc = [](void*, size_t nBytes) -&gt; void* { return systemAllocator.allocate(nBytes); };
+auto deallocFunc = [](void*, void* ptr, size_t nBytes)
+{ systemAllocator.deallocate(static_cast&lt;uint8_t*&gt;(ptr), nBytes); };
+
+auto&amp; allocator = allocators[SystemAllocatorID];
+allocator.allocate = allocFunc;
+allocator.deallocate = deallocFunc;
+
+Assert(usage.totalCapacity == 0);
+Assert(usage.maxCapacity == 0);
+usage.totalCapacity = Config::MemCapacity;
+usage.maxCapacity = Config::MemCapacity;
+Assert(systemAllocator.GetID() == SystemAllocatorID);
+SetScopedAllocatorID(SystemAllocatorID);</code></pre>
+
+<p class="meta">From Engine/Memory/MemoryManager.cpp, MemoryManager::RegisterSystemAllocator()</p>
+
+<p>
+Both function pointers are captureless lambdas that convert to the proxy's calling convention while closing over the
+function-local <code>static SystemAllocator&lt;uint8_t&gt;</code>; their first parameter — the userData the manager would pass —
+is ignored, which is what makes <a href="sys-allocate.html">SysAllocate</a>'s habit of passing
+<code>&amp;allocators[0]</code> as userData harmless. The object itself owns no state: <code>SystemAllocator</code>
+(<code>Engine/Memory/SystemAllocator.h</code>) has no data members and both its special members are defaulted, so its lifetime as
+a function-local static is inert. The asserted identity is a tautology — <code>SystemAllocator::GetID()</code> is a
+<code>constexpr</code> that returns <code>MemoryManager::SystemAllocatorID</code> — so it documents intent rather than testing
+anything.
+</p>
+
+<div class="gap">
+  <strong>In a profiled build the system capacity is counted twice.</strong>
+  The unconditional <code>usage.totalCapacity = Config::MemCapacity;</code> above is then added to again inside the
+  <code>PROFILE_ENABLED</code> block (<code>rec.totalCapacity += Config::MemCapacity;</code>), so
+  <a href="get-usage.html">GetUsage</a> reports 10 GiB of capacity against a 5 GiB <code>Config::MemCapacity</code>, and
+  <a href="report-allocation.html">ReportAllocation</a>'s engine-wide overflow check is measuring usage against double the real
+  ceiling. Unremarkable in this tree, where the guard removes the second addition — and the reason the two figures quoted on
+  <a href="get-usage.html">GetUsage</a> are stated per configuration rather than as one number.
+</div>
+
+<div class="note">
+  <strong>It also sets the constructing thread's scope.</strong>
+  The final statement is <a href="set-scoped-allocator-id.html">SetScopedAllocatorID</a>(<code>SystemAllocatorID</code>), which
+  is why an allocation with no scope open anywhere answers from the system allocator rather than failing. It applies to this
+  thread only: any other thread starts at the <code>thread_local</code> initialiser's <code>0</code> and coincidentally agrees
+  (<a href="get-current-allocator-id.html">GetCurrentAllocatorID</a>).
+</div>
+
+<div class="note">
+  <strong>Slot 0 keeps a proxy <code>id</code> of <code>InvalidAllocatorID</code>.</strong>
+  The constructor's seeding loop writes <code>proxy.id</code> for slots 1…255 only, and this method never touches the field, so
+  <a href="get-allocator-proxy.html">GetAllocatorProxy</a>(0) hands back a proxy whose own <code>id</code> reads
+  <code>-1</code> while every other slot reports its index. Nothing in the tree reads it; see
+  <a href="constructors.html">the constructor</a> for the shape of the loop that leaves it that way.
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<p>None. Everything it uses is a constant: <code>Config::MemCapacity</code> (5 GiB) and the type
+<code>SystemAllocator&lt;uint8_t&gt;</code>.</p>
+
+<h2 id="return">Return value</h2>
+
+<p><code>void</code>. It cannot fail — there is no slot to run out of — and it reports nothing.</p>
+
+<h2 id="example">Examples</h2>
+
+<pre><code>MemoryManager::MemoryManager(Engine&amp; engine)
+	: allocCount(0)
+	, deallocCount(0)
+{
+	…
+	RegisterSystemAllocator();
+	LoadMultiPoolConfigs();
+
+	engine.SetMemoryManagerReady();
+}</code></pre>
+
+<p class="meta">From Engine/Memory/MemoryManager.cpp, MemoryManager::MemoryManager()</p>
+
+<p>
+The single call site, placed before the configuration load so that anything the loader allocates already has somewhere to go. Its
+partner <a href="deregister-system-allocator.html">DeregisterSystemAllocator</a> runs in the destructor, and unlike this method it
+is an ordinary deregistration — which means it can refuse.
+</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; MemoryManager</a></span>
+  <span><a href="index.html#methods">All MemoryManager methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>InlinePoolAllocator::Constructors — Memory module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a class="current" href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Memory</a> /
+  <a href="index.html">InlinePoolAllocator</a> / Constructors
+</p>
+
+<h1><span class="fn">Constructors</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::InlinePoolAllocator</span>
+  <span class="tag">Engine/Memory/InlinePoolAllocator.h</span>
+  Builds and registers the inline pool - and the copy form asserts and registers an empty one instead of copying anything.
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>InlinePoolAllocator()
+		: id(InvalidAllocatorID)
+		, parentID(InvalidAllocatorID)
+		, availableBlock(&amp;block[0][0])
+		, immediateBlock(nullptr)
+
+InlinePoolAllocator(const InlinePoolAllocator&amp;)
+		: InlinePoolAllocator()</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+Both are defined inline in the class body of <code>Engine/Memory/InlinePoolAllocator.h</code>. The default constructor initialises
+<code>id</code> and <code>parentID</code> to <code>InvalidAllocatorID</code>, points <code>availableBlock</code> at
+<code>&amp;block[0][0]</code>, leaves <code>immediateBlock</code> null, and then, in the body: asserts the first block is aligned with
+<code>Assert(OS::CheckAligned(block[0]))</code>, records the allocator that is current at that moment as <code>parentID</code> from
+<code>MemoryManager::GetCurrentAllocatorID()</code>, links every block of the array into the free list with
+<a href="write-pointer-to-next.html">WritePointerToNext</a> and terminates the list with a null next-pointer, and finishes with
+<a href="register-allocator.html">RegisterAllocator</a>. Construction is therefore <code>O(ActualNumBlocks)</code> writes and one
+manager call, and it requires a live <code>MemoryManager</code> — a pool that exists during static initialisation would be constructing
+against one that does not.
+</p>
+
+<div class="gap">
+  <strong>The copy constructor is a failure path, not a copy.</strong>
+  <code>InlinePoolAllocator(const InlinePoolAllocator&amp; rhs) : InlinePoolAllocator() { Assert(false); }</code> — it delegates to the
+  default constructor and then asserts. So the object it builds is a brand-new empty pool (its own registration id, its own full free
+  list, its own <code>parentID</code> taken from whatever scope is open at the copy), and it copies nothing: not the free list, not the
+  blocks already handed out, not the caller's idea of what the pool holds. The assertion fires in a build where
+  <code>Assert</code> is live (<code>Engine/Core/Debug.h</code> defines the reporting form and an inert form; which one is in force is a
+  configuration decision), and where it is inert the copy completes silently. Nothing in the engine tests either outcome — the
+  testlets in <code>Engine/Memory/InlinePoolAllocator.cpp</code> never copy a pool.
+</div>
+
+<div class="gap">
+  <strong>There is no move constructor, so "moving" a pool is copying one.</strong>
+  The class declares a copy constructor and a virtual destructor and declares no move operation, and a class that declares either of
+  those gets no implicit move constructor. <code>std::is_move_constructible_v</code> is still true for the type — an rvalue binds to the
+  copy constructor — which is exactly the trap: the standard library's move paths accept the allocator happily and land on
+  <code>Assert(false)</code>. For an <a href="../../HSTL/index.html"><code>HInlineVector</code></a> or
+  <a href="../../HSTL/index.html"><code>HInlineString</code></a> this is the reason a container that owns an inline pool should be
+  built in place and left where it was built rather than stored in a <code>std::vector</code> that reshuffles it. The chain of
+  consequences for a moved container is on the <a href="index.html">class page</a>.
+</div>
+
+<p>
+No assignment operator is declared, so the class carries the implicitly defined copy-assignment operator: it copies every member
+including the array, and it therefore overwrites the destination's <code>id</code> with the source's while the destination's own
+registration is still live in the manager. The two objects then hold the same registration id and both hand it to
+<a href="deregister-allocator.html">DeregisterAllocator</a> when they die. This page does not document assignment as supported:
+nothing in <code>Engine/</code> assigns a pool, no testlet exercises it, and the <a href="destructor.html">destructor</a> has no guard
+against a stolen id beyond the <code>InvalidAllocatorID</code> test.
+</p>
+
+<h2 id="parameters">Parameters</h2>
+
+<table>
+  <tr><th>Parameter</th><th>Applies to</th><th>Meaning</th></tr>
+  <tr><td>None</td><td><code>InlinePoolAllocator()</code></td><td>The pool's geometry comes entirely from the template arguments.</td></tr>
+  <tr><td><code>const InlinePoolAllocator&amp; rhs</code></td><td><code>InlinePoolAllocator(const InlinePoolAllocator&amp;)</code></td><td>Named by the declaration and never read: the body only delegates and asserts.</td></tr>
+</table>
+
+<h2 id="return">Return value</h2>
+
+<p>Constructors. An object of the instantiated type, holding <code>ActualNumBlocks * BlockSizeInBytes</code> bytes of inline storage.</p>
+
+<h2 id="example">Examples</h2>
+
+<pre><code>InlinePoolAllocator&lt;int, 16, 2&gt; allocator;
+
+auto ptr = allocator.allocate(0);
+allocator.deallocate(ptr, 0);</code></pre>
+
+<p class="meta">From Engine/Memory/InlinePoolAllocator.cpp, InlinePoolAllocatorTest::Prepare()</p>
+
+<p>
+The <code>Zero-sized Allocation &amp; Deallocation</code> testlet is the tree's only construction of a pool written as a statement of
+intent rather than as a timing harness: the eight <code>Perf. &amp; Stress</code> testlets each construct one pool with
+<code>NumBlocks = 32</code> and measure it against <code>std::allocator</code>. Both <code>HInlineString</code> and
+<code>HInlineVector</code> construct their pool as part of the container, which is the case with no testlet of its own.
+</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; InlinePoolAllocator</a></span>
+  <span><a href="index.html#methods">All InlinePoolAllocator methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

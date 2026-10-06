@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>InlinePoolAllocator — Memory module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a class="current" href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This class</h3>
+  <ul>
+    <li><a href="#description">Class description</a></li>
+    <li><a href="#template">Template parameters</a></li>
+    <li><a href="#properties">Class properties</a></li>
+    <li><a href="#methods">Class methods</a></li>
+    <li><a href="#non-member">Non-member helper functions</a></li>
+    <li><a href="#coverage">Coverage</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Memory</a> /
+  InlinePoolAllocator
+</p>
+
+<h1>InlinePoolAllocator</h1>
+<p class="subtitle">
+  <span class="tag">Engine/Memory/InlinePoolAllocator.h</span>
+  <span class="tag">template &lt;class T, size_t BlockSize, size_t NumBlocks&gt;</span>
+  A block allocator whose storage is a member array: two blocks of a compile-time size, a free list, the parent allocator behind it, and a copy constructor that asserts.
+</p>
+
+<h2 id="description">Class description</h2>
+
+<p>
+<code>template &lt;class T, size_t BlockSize, size_t NumBlocks&gt; class InlinePoolAllocator</code> at
+<code>Engine/Memory/InlinePoolAllocator.h</code> is a block allocator whose storage is <em>inside the allocator object</em>.
+The bytes are a member array, not a pointer to a separate allocation:
+<code>alignas(AlignUnit) uint8_t block[ActualNumBlocks][BlockSizeInBytes]</code>. An allocator of
+<code>InlinePoolAllocator&lt;char, 128, 2&gt;</code> therefore measures about 256 bytes plus its bookkeeping, and every object
+that owns one pays that in full. This is what separates it from
+<a href="../PoolAllocator/index.html"><code>PoolAllocator</code></a>, which asks a parent allocator for one buffer and keeps only a
+pointer to it: a <code>PoolAllocator</code> is cheap to place and expensive to size at runtime, an
+<code>InlinePoolAllocator</code> is free to place (no parent allocation at construction time) and expensive at compile time,
+because the size is three template arguments and it cannot change.
+</p>
+
+<p>
+The repository's users are the two inline containers in <code>Engine/HSTL/</code>, and both pass <code>NumBlocks = 2</code>.
+<code>Engine/HSTL/HString.h</code> spells <code>HInlineString</code> as
+<code>std::basic_string&lt;char, std::char_traits&lt;char&gt;, hbe::InlinePoolAllocator&lt;char, PoolSize, 2&gt;&gt;</code> behind
+<code>template &lt;size_t PoolSize = 128&gt;</code>, so a use site may re-pick the pool size, while <code>HInlinePathString</code> is the
+same alias with the pool size fixed at <code>hbe::Config::MaxPathLength</code>.
+</p>
+
+<p>
+<code>Engine/HSTL/HVector.h</code> is the same shape:
+<code>HInlineVector&lt;T, PoolSize = 16&gt;</code> is <code>std::vector&lt;T, InlinePoolAllocator&lt;T, PoolSize, 2&gt;&gt;</code>. Two
+blocks is the whole point of the pairing — the container gets one request served from its own object and one spare block for the
+growth step that follows it, and the object carrying the container carries its memory with it.
+</p>
+
+<div class="gap">
+  <strong>An object holding one of these pools cannot be copied or moved the way its other members can.</strong>
+  The class declares a copy constructor and a virtual destructor and declares no move operation, so C++ gives it no move
+  constructor: an attempt to move a pool selects <a href="constructors.html">the copy constructor</a>, and that constructor's body
+  is <code>Assert(false)</code>. It delegates to the default constructor, so what it produces is a <em>fresh, empty pool of the same
+  shape</em> — a new registration id, a full free list, none of the source's contents and none of its allocated blocks. In a
+  <code>Dev</code> or <code>Debug</code> build the assertion fires first; otherwise the copy succeeds quietly and the destination
+  starts with nothing. For a <code>HInlineVector</code> the consequence is concrete: moving the vector transfers its element buffer
+  to the destination while the destination's allocator is this newly built empty pool, so a later release of that buffer is not
+  recognised by <a href="is-valid-pointer.html">IsValidPointer</a> (which tests the destination's own array) and travels to
+  <code>MemoryManager::Deallocate</code> under the destination's <code>parentID</code> instead of returning to the source pool. That
+  last step depends on the standard library's move constructor move-constructing the allocator, which the engine does not control;
+  what the engine guarantees is only the empty-pool behaviour above.
+</div>
+
+<div class="note">
+  <strong><code>BlockSize</code> counts objects, not bytes.</strong>
+  The header's own comment block calls it "the desired size of the object allocated in bytes", and the code multiplies it by
+  <code>sizeof(T)</code>: <code>BlockSizeInBytes = sizeof(T) * ActualBlockSize</code>. The users agree with the code —
+  <code>HInlineVector&lt;T, 16&gt;</code> means sixteen elements, and a caller who read the comment and passed 16 bytes of a 4-byte
+  type would get four elements' worth of block and send every later request to the parent. The two figures a caller must actually
+  compare against are <a href="get-block-size.html">GetBlockSize</a> (elements) and
+  <a href="allocate-bytes.html">the byte threshold</a> they multiply out to.
+</div>
+
+<p>
+Serving order is fixed and never fails: <a href="allocate-bytes.html">AllocateBytes</a> takes the one-slot
+<code>immediateBlock</code> cache if it holds a block, then pops the free list, and if neither can serve the request it calls
+<code>MemoryManager::FallbackAllocate(GetID(), parentID, nBytes)</code>, which allocates from <code>parentID</code> — the allocator
+that was current when this pool was constructed. A pool therefore never returns <code>nullptr</code> and never reports exhaustion:
+an over-large request is simply served by the parent, silently. Released blocks go back to the free list, unless the pointer did not
+come from this pool, in which case <a href="deallocate-bytes.html">DeallocateBytes</a> forwards it to the same recorded parent. The
+recorded parent is the whole reason the two paths agree: as with
+<a href="../PoolAllocator/index.html"><code>PoolAllocator</code></a>, a pool hands everything it cannot serve to the allocator
+recorded at construction, not to whatever scope happens to be open at the time.
+</p>
+
+<p>
+Construction does three things beyond linking the free list: it records <code>MemoryManager::GetCurrentAllocatorID()</code> as
+<code>parentID</code>, it registers the pool with the manager under the name <code>"InlinePoolAllocator"</code> and a capacity of
+<code>ActualBlockSize * ActualNumBlocks * sizeof(T)</code>, and it asserts the array is aligned. Deregistration happens in
+<a href="destructor.html">the destructor</a>. The registration is a real per-object cost — see the row on
+<a href="register-allocator.html">RegisterAllocator</a>.
+</p>
+
+<div class="gap">
+  <strong>The conversion operator cannot be used, and its body would not compile if it were.</strong>
+  The class declares <code>template &lt;typename TOther&gt; explicit operator InlinePoolAllocator&lt;TOther, ActualBlockSize,
+  ActualNumBlocks&gt;() noexcept</code>. Its body returns <code>TCastedAlloc(parentID)</code> when <code>parentID</code> is valid and
+  <code>TCastedAlloc(GetID())</code> otherwise, but the class has no constructor taking a <code>TAllocatorID</code> — only the default
+  and the copy constructor — so the expression <code>TCastedAlloc(parentID)</code> is ill-formed. Nothing in <code>Engine/</code> or
+  <code>Applications/</code> converts a pool to another element type (a search of both trees for the conversion finds only the
+  declaration), and a template member function is instantiated only when used, so the defect has never been compiled. A container that
+  needs the pool over another element type uses <a href="#properties"><code>rebind</code></a>, which hands it
+  <code>InlinePoolAllocator&lt;TOther, BlockSize, NumBlocks&gt;</code> — the arguments as written, not the clamped
+  <code>ActualBlockSize</code> and <code>ActualNumBlocks</code> this conversion would have carried. This entry is documented here rather
+  than on a page of its own for a tooling reason named in Coverage.
+</div>
+
+<div class="gap">
+  <strong>Nothing here is synchronised, and one pool is one thread's at a time.</strong>
+  The class reads and writes no atomic and takes no lock: <code>availableBlock</code>, <code>immediateBlock</code> and
+  <code>id</code> are plain members mutated by both allocation and release. Two threads allocating through one pool — including two
+  threads inside one <code>HInlineVector</code> — race on the free list. The engine's shareable shape is
+  <a href="../ThreadSafeMultiPoolAllocator/index.html"><code>ThreadSafeMultiPoolAllocator</code></a>; an inline pool embedded in a
+  container that two threads touch is not it.
+</div>
+
+<h2 id="template">Template parameters</h2>
+
+<table>
+  <tr><th>Parameter</th><th>What it constrains</th><th>What getting it wrong costs</th></tr>
+  <tr>
+    <td><code>class T</code></td>
+    <td>The element type. <code>sizeof(T)</code> scales every block, <a href="allocate.html">allocate</a> casts its result to
+        <code>T*</code>, and <code>AlignUnit</code> is at least <code>sizeof(T)</code>.</td>
+    <td>Nothing checks that a request's element count belongs to <code>T</code>; the type is only a unit of arithmetic and a cast
+        target.</td>
+  </tr>
+  <tr>
+    <td><code>size_t BlockSize</code></td>
+    <td>How many objects of type <code>T</code> one block holds. Raised to <code>sizeof(void*)</code> as a byte count by
+        <code>ActualBlockSize</code>, because a free block must be wide enough to carry the next-pointer of the free list.</td>
+    <td>Too small is silent: a request larger than <code>BlockSizeInBytes</code> bypasses the pool entirely and is served by the
+        parent allocator, so the inline storage is never used and nothing reports the miss except the profile's fallback counter. Too
+        large is not silent: <code>ActualNumBlocks * sizeof(T) * BlockSize</code> bytes are added to the size of every object that
+        owns the pool, and the constructor walks all of them to link the free list.</td>
+  </tr>
+  <tr>
+    <td><code>size_t NumBlocks</code></td>
+    <td>How many such blocks the array holds — the pool's depth. <code>ActualNumBlocks</code> clamps it to a minimum of 1, so
+        <code>NumBlocks = 0</code> yields one block rather than none.</td>
+    <td>Same trade in the other direction: more blocks means more simultaneous small allocations before the parent is needed, and
+        more bytes in every owning object. Both <code>HInlineString</code> and <code>HInlineVector</code> chose 2.</td>
+  </tr>
+</table>
+
+<h2 id="properties">Class properties</h2>
+
+<table>
+  <tr><th>Type + Name</th><th>Default Value</th><th>Description</th></tr>
+  <tr><td><code>using TIndex = size_t;</code> <span class="badge">public</span> <span class="badge">alias</span> <span class="badge">member type</span></td><td><span class="muted">not applicable</span></td><td>Index type the header declares; no member or method of the class uses it.</td></tr>
+  <tr><td><code>using value_type = T;</code> <span class="badge">public</span> <span class="badge">alias</span> <span class="badge">member type</span></td><td><span class="muted">not applicable</span></td><td>The allocator concept's element alias, satisfied for <code>std::vector</code> and <code>std::basic_string</code>.</td></tr>
+  <tr><td><code>template &lt;class TOther&gt; struct rebind</code> <span class="badge">public</span> <span class="badge">member type</span></td><td><span class="muted">not applicable</span></td><td>A container's way of asking for this pool over another element type; <code>other</code> is <code>InlinePoolAllocator&lt;TOther, BlockSize, NumBlocks&gt;</code> — the arguments as written, not the clamped ones.</td></tr>
+  <tr><td><code>using other = InlinePoolAllocator&lt;TOther, BlockSize, NumBlocks&gt;;</code> <span class="badge">public</span> <span class="badge">alias</span> <span class="badge">member type</span></td><td><span class="muted">not applicable</span></td><td>Rebound type. A container that rebinds gets a pool of the same element count and depth, with no trace of the <code>sizeof(void*)</code> floor the original may already have hit.</td></tr>
+  <tr><td><code>static constexpr size_t ActualBlockSize = std::max(BlockSize, sizeof(void*));</code> <span class="badge">public</span></td><td><code>std::max(BlockSize, sizeof(void*))</code></td><td>A <code>BlockSize</code> below one pointer is raised to one pointer, because a free block stores the address of the next free block in its first bytes. <a href="get-block-size.html">GetBlockSize</a> returns it.</td></tr>
+  <tr><td><code>static constexpr size_t ActualNumBlocks = std::max(NumBlocks, static_cast&lt;size_t&gt;(1));</code> <span class="badge">public</span></td><td><code>std::max(NumBlocks, static_cast&lt;size_t&gt;(1))</code></td><td>A pool of zero blocks becomes a pool of one, which is what keeps <code>block[ActualNumBlocks - 1]</code> in the constructor's free-list setup inside the array. <a href="get-num-blocks.html">GetNumBlocks</a> returns it.</td></tr>
+  <tr><td><code>static constexpr size_t BlockSizeInBytes = sizeof(T) * ActualBlockSize;</code> <span class="badge">public</span></td><td><code>sizeof(T) * ActualBlockSize</code></td><td>The stride between blocks, and the only size threshold in the class: a request larger than this is served by the parent, never from the array.</td></tr>
+  <tr><td><code>static constexpr auto AlignUnit = std::max(sizeof(T), Config::DefaultAlign);</code> <span class="badge">public</span></td><td><code>std::max(sizeof(T), Config::DefaultAlign)</code></td><td>The alignment demanded of the array. <code>Config::DefaultAlign</code> is 16 bytes (<code>Engine/Config/EngineConfig.h</code>).</td></tr>
+  <tr><td><code>TAllocatorID id;</code> <span class="badge">private</span></td><td><span class="muted">none in the header</span></td><td>This pool's registration id. <code>InvalidAllocatorID</code> until <a href="register-allocator.html">RegisterAllocator</a> runs, and again after <a href="deregister-allocator.html">DeregisterAllocator</a>.</td></tr>
+  <tr><td><code>TAllocatorID parentID;</code> <span class="badge">private</span></td><td><span class="muted">none in the header</span></td><td>The allocator that was current at construction: where an over-large request goes and where a foreign pointer is returned.</td></tr>
+  <tr><td><code>void* availableBlock;</code> <span class="badge">private</span></td><td><span class="muted">none in the header</span></td><td>Head of the singly-linked free list; <code>nullptr</code> once every block has been handed out. The constructor points it at <code>&amp;block[0][0]</code>.</td></tr>
+  <tr><td><code>void* immediateBlock;</code> <span class="badge">private</span></td><td><span class="muted">none in the header</span></td><td>A one-block cache. The first release while it is empty parks the pointer here instead of the free list, and the next allocation takes it back from here.</td></tr>
+  <tr><td><code>alignas(AlignUnit) uint8_t block[ActualNumBlocks][BlockSizeInBytes];</code> <span class="badge">private</span></td><td><span class="muted">none in the header</span></td><td>The pool itself: an array of raw bytes that is a member, not a pointer, so it is part of the allocator's own size and lives and dies with the object that owns it.</td></tr>
+</table>
+
+<h2 id="methods">Class methods</h2>
+
+<table class="methods">
+  <tr><th>Name</th><th>Signature</th><th>What a caller depends on</th></tr>
+  <tr><td><a href="constructors.html"><code>InlinePoolAllocator</code></a><span class="badge">2 overloads</span></td><td class="sig">InlinePoolAllocator()<br>InlinePoolAllocator(const InlinePoolAllocator&amp;)</td><td>Construction links the free list and registers the pool; the copy form asserts and builds an empty pool instead of copying anything.</td></tr>
+  <tr><td><a href="destructor.html"><code>~InlinePoolAllocator</code></a></td><td class="sig">virtual ~InlinePoolAllocator()</td><td>Deregisters the id and leaves the array to the object that owns it; virtual, so the allocator carries a vtable pointer.</td></tr>
+  <tr><td><code>operator InlinePoolAllocator</code></td><td class="sig">template &lt;typename TOther&gt; explicit operator InlinePoolAllocator&lt;TOther, ActualBlockSize, ActualNumBlocks&gt;() noexcept</td><td>A conversion to the same pool over another element type. No page: see the note below and the Coverage row.</td></tr>
+  <tr><td><a href="get-name.html"><code>GetName</code></a></td><td class="sig">[[nodiscard]] static StaticString GetName()</td><td>A fixed string naming the class, shared by every pool of every instantiation.</td></tr>
+  <tr><td><a href="allocate.html"><code>allocate</code></a></td><td class="sig">[[nodiscard]] T* allocate(std::size_t n) noexcept</td><td>The allocator name the standard library insists on: converts elements to bytes and never returns <code>nullptr</code>.</td></tr>
+  <tr><td><a href="deallocate.html"><code>deallocate</code></a></td><td class="sig">void deallocate(T* ptr, std::size_t n) noexcept</td><td>The paired standard-library name — and it hands the element count on, where <code>allocate</code> handed bytes.</td></tr>
+  <tr><td><a href="get-id.html"><code>GetID</code></a></td><td class="sig">[[nodiscard]] auto GetID() const</td><td>The registration id, or <code>InvalidAllocatorID</code> once the pool has been deregistered.</td></tr>
+  <tr><td><a href="get-block-size.html"><code>GetBlockSize</code></a></td><td class="sig">[[nodiscard]] static auto GetBlockSize()</td><td>Elements per block after the pointer-size floor — the clamped answer, not the template argument.</td></tr>
+  <tr><td><a href="get-num-blocks.html"><code>GetNumBlocks</code></a></td><td class="sig">[[nodiscard]] static auto GetNumBlocks()</td><td>Blocks in the array after the minimum-one clamp.</td></tr>
+  <tr><td><a href="operator-equal.html"><code>operator==</code></a></td><td class="sig">bool operator==(const InlinePoolAllocator&amp;) const</td><td>Returns <code>false</code>, including for an object compared with itself.</td></tr>
+  <tr><td><a href="operator-not-equal.html"><code>operator!=</code></a></td><td class="sig">bool operator!=(const InlinePoolAllocator&amp;) const</td><td>Returns <code>true</code>, including for an object compared with itself.</td></tr>
+  <tr><td><a href="allocate-bytes.html"><code>AllocateBytes</code></a></td><td class="sig">void* AllocateBytes(size_t nBytes) noexcept</td><td>Private: the cache, then the free list, then the parent — the only path that can serve a request.</td></tr>
+  <tr><td><a href="deallocate-bytes.html"><code>DeallocateBytes</code></a></td><td class="sig">void DeallocateBytes(void* ptr, size_t nBytes) noexcept</td><td>Private: caches, returns to the free list, or forwards a foreign pointer to the parent.</td></tr>
+  <tr><td><a href="register-allocator.html"><code>RegisterAllocator</code></a></td><td class="sig">void RegisterAllocator() noexcept</td><td>Private: takes one registration slot out of the manager's fixed 256 and fails fatally when none is left.</td></tr>
+  <tr><td><a href="deregister-allocator.html"><code>DeregisterAllocator</code></a></td><td class="sig">void DeregisterAllocator() noexcept</td><td>Private: returns that slot and clears the id, so a second pass is a no-op.</td></tr>
+  <tr><td><a href="is-valid-pointer.html"><code>IsValidPointer</code></a></td><td class="sig">[[nodiscard]] bool IsValidPointer(void* ptr) const</td><td>Private: a byte-range test over the array — the pool's one way of telling its own memory from the parent's.</td></tr>
+  <tr><td><a href="write-pointer-to-next.html"><code>WritePointerToNext</code></a></td><td class="sig">static void WritePointerToNext(void* ptr, void* nextPtr)</td><td>Private: writes a block's next-pointer into the block's own bytes.</td></tr>
+  <tr><td><a href="get-pointer-to-next.html"><code>GetPointerToNext</code></a></td><td class="sig">static void* GetPointerToNext(void* ptr)</td><td>Private: reads that link back, and so is a read of memory the caller may be about to hand to a constructor.</td></tr>
+</table>
+
+<h2 id="non-member">Non-member helper functions</h2>
+
+<p>
+None. A pool is reached through its own object or through the <a href="../index.html#memorymanager"><code>MemoryManager</code></a>
+registration <a href="register-allocator.html">RegisterAllocator</a> created. The two names the standard library requires —
+<a href="allocate.html">allocate</a> and <a href="deallocate.html">deallocate</a> — are members for that reason and for no other.
+</p>
+
+<h2 id="coverage">Coverage</h2>
+
+<table>
+  <tr><th>Not documented here</th><th>Why</th></tr>
+  <tr>
+    <td>The conversion operator has a note above but no page of its own, and what it <em>would</em> promise is undocumented.</td>
+    <td>Two reasons, both stated so the gap can be closed deliberately. First, the code cannot answer it: the body's
+        <code>TCastedAlloc(parentID)</code> needs a constructor the class does not declare, so there is no observable behaviour to
+        describe — see the note in the class description. Second, <code>docs_pass.py signatures</code> cannot build a Signature block
+        for it: that script names a declaration by the identifier immediately before its opening parenthesis, and a conversion
+        operator's "identifier" is a type carrying template arguments, so the declaration is collected under no name at all and the page
+        would be reported <code>NOT IN HEADER</code> forever. <code>docs_methods.py</code> asks for no page either (its run over
+        <code>Memory</code> filtered to this class lists 17 names and the conversion is not one of them). A future author who fixes the
+        constructor, or teaches the script to name a conversion operator, owes that page.
+    </td>
+  </tr>
+  <tr>
+    <td>The behaviour of the <code>#if MEMORY_VERIFICATION_ENABLED</code> zero-fill in the constructor.</td>
+    <td>Named here as a gap, not guessed at: that branch calls <code>std::memset(buffer, 0, length)</code> and the class declares no
+        member named <code>buffer</code> (the array is <code>block</code>), so the branch cannot compile as written. It is inert in this
+        tree — <code>Engine/Config/BuildConfig.h</code> defines <code>MEMORY_VERIFICATION_ENABLED</code> to 0 — and the mismatch is open
+        code work, not documented behaviour. The zero-fill is <a href="constructors.html">the constructor page</a>'s to describe once
+        the name is fixed.</td>
+  </tr>
+  <tr>
+    <td>Whether a given <code>HInlineString</code> or <code>HInlineVector</code> call reaches <a href="allocate.html">allocate</a> at
+        all.</td>
+    <td><code>std::basic_string</code> keeps short strings in its own buffer and <code>std::vector</code> decides growth factors
+        itself; both are standard-library decisions this engine does not make. The page documents what the pool promises a container
+        that does call it, and names the SSO threshold and the growth schedule as outside its scope.</td>
+  </tr>
+  <tr>
+    <td>What copying a pool does to a standard container's invariants.</td>
+    <td>The allocator-side half is documented (<a href="constructors.html">copy construction</a> and the class description above).
+        The container-side half — which buffer ends up where after a <code>std::vector</code> move, and whether a given library
+        re-allocates on the way — depends on the standard library's implementation and is not claimed anywhere in these pages.</td>
+  </tr>
+  <tr>
+    <td>Every path behind <code>#if PROFILE_ENABLED</code>.</td>
+    <td>The profiling configuration of this tree does not compile, recorded in <code>JOURNAL.md</code> on 2026-10-05. The
+        <code>ReportAllocation</code> and <code>ReportDeallocation</code> calls inside <a href="allocate-bytes.html">AllocateBytes</a>
+        and <a href="deallocate-bytes.html">DeallocateBytes</a>, and the capacity the registration passes along, are described from the
+        source and have never run.</td>
+  </tr>
+  <tr>
+    <td><code>MemoryManager</code> contracts this class leans on: <code>RegisterAllocator</code>, <code>DeregisterAllocator</code>,
+        <code>GetCurrentAllocatorID</code>, <code>FallbackAllocate</code>, the nesting of <code>AllocatorScope</code>.</td>
+    <td>Owned by <a href="../MemoryManager/index.html">the MemoryManager pages</a> and the
+        <a href="../index.html#allocatorscope">module page</a>. These pages state what a pool does with them, not what they
+        promise.</td>
+  </tr>
+  <tr>
+    <td>Whether <code>std::max</code> is available to an includer of this header alone.</td>
+    <td>The header includes <code>&lt;cstddef&gt;</code> and <code>&lt;cstring&gt;</code> and no <code>&lt;algorithm&gt;</code>, so
+        <code>ActualBlockSize</code>, <code>ActualNumBlocks</code> and <code>AlignUnit</code> rely on a transitive include. Recorded as
+        an include-hygiene gap; the three-configuration build is the proof that it currently works, and this wave does not change
+        headers.</td>
+  </tr>
+  <tr>
+    <td><code>InlinePoolAllocatorTest</code>.</td>
+    <td>Test-only: declared in <code>Engine/Memory/InlinePoolAllocator.h</code> inside <code>#ifdef __UNIT_TEST__</code> and defined in
+        <code>Engine/Memory/InlinePoolAllocator.cpp</code> as eight performance-and-stress testlets plus three vector-growth testlets.
+        It reports timings and warns when the rate exceeds one; it asserts almost nothing, so none of its numbers is a contract, and it
+        owns no page of its own.</td>
+  </tr>
+</table>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; InlinePoolAllocator</a></span>
+  <span><a href="index.html#methods">All InlinePoolAllocator methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

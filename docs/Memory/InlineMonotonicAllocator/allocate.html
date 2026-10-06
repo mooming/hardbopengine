@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>InlineMonotonicAllocator::Allocate — Memory module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a class="current" href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Memory</a> /
+  <a href="index.html">InlineMonotonicAllocator</a> / Allocate
+</p>
+
+<h1><span class="fn">Allocate</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::InlineMonotonicAllocator</span>
+  <span class="tag">Engine/Memory/InlineMonotonicAllocator.h</span>
+  Bumps the cursor inside the member array, or warns and forwards to the recorded parent when the request does not fit.
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>[[nodiscard]] TPointer Allocate(size_t requested)</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  Defined inline in <code>Engine/Memory/InlineMonotonicAllocator.h</code> as
+  <code>InlineMonotonicAllocator::Allocate(size_t requested)</code>. This is the bump: one comparison, one pointer, one addition —
+  and the comparison is the whole policy, because a request the arena cannot hold is not a failure but a forwarding.
+</p>
+
+<pre><code>auto size = OS::GetAligned(requested, Config::DefaultAlign);
+
+const auto freeSize = GetAvailable();
+if (unlikely(size &gt; freeSize))
+{
+	auto&amp; mmgr = MemoryManager::GetInstance();
+	mmgr.LogWarning([size, freeSize](auto&amp; ls)
+	{ ls &lt;&lt; "The requested size " &lt;&lt; size &lt;&lt; " is exceeding its limit, " &lt;&lt; freeSize &lt;&lt; '.'; });
+
+	auto ptr = mmgr.Allocate(parentID, requested);
+
+	return ptr;
+}
+
+auto ptr = reinterpret_cast&lt;void*&gt;(buffer + cursor);
+cursor += size;</code></pre>
+
+<p class="meta">From Engine/Memory/InlineMonotonicAllocator.h, InlineMonotonicAllocator::Allocate(size_t requested)</p>
+
+<p>
+  Three consequences follow from those lines, and every caller depends on all three. The cursor advances by the <em>aligned</em>
+  size, so a 1-byte request spends 16 of the 16-byte <a href="../../Config/index.html"><code>Config::DefaultAlign</code></a> granularity
+  and every address handed out of the arena is 16-aligned for that reason. The availability test is <a href="getavailable.html">
+  GetAvailable</a> — the same figure the caller can read — so the arena never over-subscribes itself: a request that fits is served
+  from <code>buffer</code>, and one that does not never touches the cursor. And the overflow path asks the recorded
+  <code>parentID</code> for the <em>unaligned</em> <code>requested</code> bytes, which is the allocator that was current when this
+  object was constructed, not whatever scope is open now.
+</p>
+
+<div class="note">
+  <strong>Exhaustion is a warning, never a failure — and it is invisible in this tree.</strong>
+  An overflow calls <code>MemoryManager::LogWarning</code> and then <code>MemoryManager::Allocate(parentID, requested)</code>. With
+  <code>MEMORY_LOGGING_ENABLED</code> at 0, as <code>Engine/Config/BuildConfig.h</code> sets it, <code>MemoryManager::Log</code> is an
+  empty function: the closure is still built at the call site and the call is still made, but the message never runs. So an arena
+  sized too small becomes a forwarding layer that spends one manager dispatch per request and reports nothing — there is no error
+  code, no null return and no counter that distinguishes a served request from an overflowed one.
+</div>
+
+<div class="gap">
+  <strong>An overflowed block belongs to the parent, is not counted here, and is not released by this object.</strong>
+  The pointer returned on the overflow path came from another allocator, so <a href="ismine.html">IsMine</a> reports false for it and
+  <a href="deallocate.html">Deallocate</a> forwards it back to <code>parentID</code> — the pairing is correct, and it stays correct
+  only while the same object and the same recorded parent are used. What is lost is the accounting: <a href="getusage.html">GetUsage</a>
+  counts <code>cursor</code> alone, so the usage figure understates the memory this object is responsible for, and the
+  <a href="destructor.html">destructor</a> releases none of those blocks. A long-lived arena with a small capacity is a permanent
+  client of its parent.
+</div>
+
+<p>
+  Null is not possible from the arena path — the address is <code>buffer + cursor</code>. It is possible from the parent path, and this
+  function does not test it: <code>MemoryManager::Allocate</code> ends with <code>Assert(ptr != nullptr, "Allocation Failed")</code>,
+  which aborts in Debug and Dev and does nothing in Release, where the null arrives back here and is returned to the caller.
+</p>
+
+<p>
+  A request of 0 is worth naming, because it behaves differently from the manager's: <code>OS::GetAligned(0, 16)</code> is 0, so the
+  guard passes, the cursor does not move, and the call returns <code>buffer + cursor</code> — a non-null address that a second
+  zero-sized request will receive again. <code>MemoryManager::Allocate</code> returns <code>nullptr</code> for 0 bytes; this arena does
+  not, and nothing here is required to hand out distinct addresses.
+</p>
+
+<p>
+  Nothing is synchronised. <code>cursor</code> is a plain <code>size_t</code> incremented without a lock or an atomic, so two threads
+  bumping one arena hand out the same block. The function is not reentrant either: the overflow path reaches the manager, and the
+  <code>#if MEMORY_LOGGING_ENABLED</code> report reaches the logger. Both switches that would notice (<code>MEMORY_VERIFICATION_ENABLED</code>
+  and <code>MEMORY_LOGGING_ENABLED</code>) are 0 in this tree. The <code>#ifdef __MEMOR_STATISTICS__</code> report of every successful
+  allocation to <code>MemoryManager::ReportAllocation</code> is dead code here — that macro is defined nowhere in the repository — so in
+  no configuration does the manager learn what this arena handed out.
+</p>
+
+<h2 id="parameters">Parameters</h2>
+
+<table>
+  <tr><th>Parameter</th><th>Type</th><th>Requirement</th></tr>
+  <tr><td><code>requested</code></td><td><code>size_t</code></td><td>Bytes wanted. Rounded up to a multiple of <code>Config::DefaultAlign</code> (16) before it is compared against <a href="getavailable.html">GetAvailable</a>, and that rounded figure — not this argument — is what the arena spends. 0 is accepted and returns the current cursor address without moving it.</td></tr>
+</table>
+
+<h2 id="return">Return value</h2>
+
+<table>
+  <tr><th>Type</th><th>What you get</th></tr>
+  <tr><td><code>TPointer</code> (<code>void*</code>)</td><td>16-aligned memory. Either an address inside <code>buffer</code> that belongs to this object and is reclaimed by nothing until the object is destroyed, or — when the arena could not hold the request — a block owned by <code>parentID</code>. Never null from the arena; null only if the parent's own allocator answered null.</td></tr>
+</table>
+
+<h2 id="example">Examples</h2>
+
+<pre><code>using Allocator = InlineMonotonicAllocator&lt;2048&gt;;
+
+Allocator alloc("InlineMonotonicAllocator");
+{
+	AllocatorScope scope(alloc.GetID());
+
+	HVector&lt;int&gt; a;
+	a.push_back(0);
+}</code></pre>
+
+<p class="meta">From Engine/Memory/InlineMonotonicAllocator.cpp, InlineMonotonicAllocatorTest::Prepare(), testlet "Vector Allocation"</p>
+
+<p>
+  No code in the repository calls this function directly. The only path in is through the registration the
+  <a href="constructors.html">constructor</a> made: <code>AllocatorScope</code> installs the id,
+  <code>MemoryManager::AllocateByType&lt;T&gt;</code> reads the scoped id, and <code>MemoryManager::Allocate</code> calls the
+  <code>allocFunc</code> lambda the constructor registered, which casts its first argument back to
+  <code>InlineMonotonicAllocator*</code> and calls this. So the growth of an <a href="../../HSTL/index.html#hvector"><code>HVector</code></a>
+  is what reaches it here, and one <code>push_back</code> on an empty vector is one 4-byte request rounded to 16.
+</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; InlineMonotonicAllocator</a></span>
+  <span><a href="index.html#methods">All InlineMonotonicAllocator methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

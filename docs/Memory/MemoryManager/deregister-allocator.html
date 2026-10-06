@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MemoryManager::DeregisterAllocator — Memory module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a class="current" href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Memory</a> /
+  <a href="index.html">MemoryManager</a> / DeregisterAllocator
+</p>
+
+<h1><span class="fn">DeregisterAllocator</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::MemoryManager</span>
+  <span class="tag">Engine/Memory/MemoryManager.h</span>
+  Clears the slot and returns it to the pool — what happens to a live block, and what a refusal costs, differ by build flag.
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>void DeregisterAllocator(TId id)
+
+void DeregisterAllocator(TId id, const hbe::source_location&amp; srcLocation)</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+Both are defined in <code>Engine/Memory/MemoryManager.cpp</code> as overloads of
+<code>MemoryManager::DeregisterAllocator()</code>; the second is inside <code>#if PROFILE_ENABLED</code> and therefore
+does not exist in a build of this repository. Deregistration is the inverse of
+<a href="register-allocator.html">RegisterAllocator</a>: it clears the slot's two function pointers and returns the slot
+to <code>proxyPool</code>, making its id available to the next registration.
+</p>
+
+<p>The one-argument body runs these steps in this order, and the order is the contract:</p>
+
+<table>
+  <tr><th>#</th><th>Step</th><th>Compiled in</th></tr>
+  <tr><td>1</td><td><a href="is-valid.html">IsValid</a> fails → <code>Error</code> log, return. The slot is untouched.</td><td>always</td></tr>
+  <tr><td>2</td><td><code>Info</code> log — the allocator's name under <code>PROFILE_ENABLED</code>, otherwise <code>ID(n)</code></td><td>always</td></tr>
+  <tr><td>3</td><td><code>allocator.allocate = nullptr; allocator.deallocate = nullptr;</code></td><td>always</td></tr>
+  <tr><td>4</td><td>Thread-id mismatch → <code>Error</code> log, <code>debugBreak()</code> outside Release, <strong>return without returning the slot</strong></td><td><code>MEMORY_VERIFICATION_ENABLED</code></td></tr>
+  <tr><td>5</td><td><code>stats.usage &gt; 0</code> → leak <code>Warning</code>, <code>debugBreak()</code> outside Release, <strong>return without returning the slot</strong></td><td><code>PROFILE_ENABLED</code></td></tr>
+  <tr><td>6</td><td>Under <code>statsLock</code>: subtract usage from the record, subtract capacity from <code>maxCapacity</code>, <code>stats.Reset()</code></td><td><code>PROFILE_ENABLED</code></td></tr>
+  <tr><td>7</td><td><code>proxyPool.Push(allocator)</code> — the id becomes reusable</td><td>always</td></tr>
+</table>
+
+<div class="gap">
+  <strong>A live block is checked only where the numbers exist, and this tree has no numbers.</strong>
+  The leak detection at step 5 compares <code>stats.usage</code>, which is only ever non-zero because allocators called
+  <a href="report-allocation.html">ReportAllocation</a> and <a href="report-deallocation.html">ReportDeallocation</a> —
+  both of whose bodies are <code>PROFILE_ENABLED</code>. <code>Engine/Config/BuildConfig.h</code> sets that to
+  <code>0</code>, along with <code>MEMORY_VERIFICATION_ENABLED</code>, so in every build of this repository steps 4, 5
+  and 6 do not exist: an allocator is deregistered with bytes still handed out, the slot returns to the pool, and
+  <em>nothing anywhere detects it</em>. The block itself is untouched — deregistration never walks live allocations,
+  because the manager keeps no record of what it gave out — and releasing it later dispatches to whoever holds the slot.
+</div>
+
+<div class="gap">
+  <strong>Identity is a slot index and slots are reused, so a stale id names someone else's allocator.</strong>
+  <code>allocators[i].id</code> is written once, in the constructor's seeding loop, and is never cleared; step 7 puts the
+  number back into circulation. An id held past the lifetime of its registrant is therefore not dangling in the usual
+  sense — it is valid, in range, and points at the next allocator that got the slot. The manager's only defence is the
+  <code>Assert(allocProxy.allocate != nullptr)</code> inside <a href="allocate.html">Allocate</a>, which catches a slot
+  that was deregistered but not yet re-taken, and which compiles away in Release. What a caller holding a live block
+  <em>must</em> do is not answered by any source, comment or test: named as an omission in
+  <a href="index.html#coverage">Coverage</a>, and there is no testlet for the case.
+</div>
+
+<div class="gap">
+  <strong>A refused deregistration costs a registration slot for the life of the process.</strong>
+  Step 3 has already nulled the function pointers by the time the checks at steps 4 and 5 run, and both of them
+  <code>return</code> without reaching step 7. So a leak at <code>PROFILE_ENABLED</code> leaves a slot that is neither
+  usable (no allocate function) nor available (never pushed back), and the manager is one of its 255 registrations
+  poorer. It also leaves the caller believing it deregistered something: the method returns <code>void</code>, so refusal
+  is visible only in the log. <a href="deregister-system-allocator.html">DeregisterSystemAllocator</a> inherits the same
+  shape at shutdown, where <a href="destructor.html">~MemoryManager</a> clears the global handle regardless.
+</div>
+
+<div class="note">
+  <strong>The second overload's extra argument is never read.</strong>
+  Its body validates the id, takes <code>statsLock</code>, calls <code>stats.Report()</code>, releases the lock and then
+  delegates to the one-argument form — so everything the <code>srcLocation</code> parameter could have contributed is
+  discarded, and the only observable difference is that <code>AllocStats::Report()</code> pushes one record to
+  <code>SystemStatistics</code> before teardown. Note also that the type itself, <code>hbe::source_location</code>, is
+  forward-declared in <code>Engine/Memory/MemoryManager.h</code> as <code>struct source_location;</code> and has no
+  definition anywhere under <code>Engine/</code>; every use of it in the module — <code>PoolAllocator</code>'s
+  <code>srcLocation</code> member, <code>StackAllocator::TSrcLoc</code>, the call in
+  <code>StackAllocator::~StackAllocator()</code> — is likewise behind <code>PROFILE_ENABLED</code>, which no
+  configuration here enables.
+</div>
+
+<div class="note">
+  <strong>One of the two leak checks can never run.</strong>
+  The <code>PROFILE_ENABLED</code> block contains two identical <code>if (unlikely(stats.usage &gt; 0))</code> tests; the
+  second prints a shorter message and returns, and is unreachable because the first one returns first. It is a leftover
+  of an earlier shape of this function rather than a second condition, and it is the reason a reader who checks only for
+  "a leak warning" may look at the wrong log line.
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<table>
+  <tr><th>Parameter</th><th>Type</th><th>Requirement</th></tr>
+  <tr><td><code>id</code></td><td><code>TId</code> (<code>TAllocatorID</code>)</td><td>The id from <a href="register-allocator.html">RegisterAllocator</a>. An out-of-range value is logged and ignored; slot 0 is a legal argument, which is how <a href="deregister-system-allocator.html">DeregisterSystemAllocator</a> works.</td></tr>
+  <tr><td><code>srcLocation</code></td><td><code>const hbe::source_location&amp;</code></td><td>Second overload only, and unused by the body — see the note above. Call sites obtain it from their own member (<code>StackAllocator::~StackAllocator()</code>), which is captured at construction, not at destruction.</td></tr>
+</table>
+
+<h2 id="return">Return value</h2>
+
+<p><code>void</code>. There is no way for a caller to learn that the deregistration was refused, which is the design's most consequential omission on this page.</p>
+
+<h2 id="example">Examples</h2>
+
+<pre><code>#if PROFILE_ENABLED
+	mmgr.DeregisterAllocator(GetID(), srcLocation);
+#else // PROFILE_ENABLED
+	mmgr.DeregisterAllocator(GetID());
+#endif // PROFILE_ENABLED</code></pre>
+
+<p class="meta">From Engine/Memory/StackAllocator.cpp, StackAllocator::~StackAllocator()</p>
+
+<p>
+Every allocator in the module calls one overload or the other from its destructor; the branch above is the only place the
+pair is chosen. The two that matter for ordering are <code>MultiPoolAllocator::~MultiPoolAllocator()</code>, which calls
+it <em>after</em> <code>banks.clear()</code> has released the banks, and <code>PoolAllocator::~PoolAllocator()</code>,
+which releases its buffer first for the same reason — because after step 3, a release routed through this id has nowhere
+to go.
+</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; MemoryManager</a></span>
+  <span><a href="index.html#methods">All MemoryManager methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

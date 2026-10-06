@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MemoryManager::SysAllocate — Memory module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a class="current" href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Memory</a> /
+  <a href="index.html">MemoryManager</a> / SysAllocate
+</p>
+
+<h1><span class="fn">SysAllocate</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::MemoryManager</span>
+  <span class="tag">Engine/Memory/MemoryManager.h</span>
+  Slot 0 directly, bypassing the scoped id — for a block a pool should not be made to hold.
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>void* SysAllocate(size_t nBytes)</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+Defined in <code>Engine/Memory/MemoryManager.cpp</code> as <code>MemoryManager::SysAllocate()</code>. It reaches slot 0 by
+name — <code>auto&amp; allocator = allocators[SystemAllocatorID];</code> — and calls through it, so it bypasses three things
+that <a href="allocate.html">Allocate</a> performs: the range check, the thread's scoped allocator, and the
+<code>FORCE_USE_SYSTEM_MALLOC</code> substitution (which would be a no-op here anyway).
+</p>
+
+<pre><code>auto&amp; allocator = allocators[SystemAllocatorID];
+if (unlikely(allocator.allocate == nullptr))
+{
+	Log(ELogLevel::FatalError, ...);
+
+	return nullptr;
+}
+
+return allocator.allocate(&amp;allocator, nBytes);</code></pre>
+
+<p class="meta">From Engine/Memory/MemoryManager.cpp, MemoryManager::SysAllocate()</p>
+
+<p>
+The userData handed to the function pointer is <code>&amp;allocator</code> — the proxy slot itself, not the proxy's
+<code>allocator</code> field. That is safe only because the two lambdas installed by
+<a href="register-system-allocator.html">RegisterSystemAllocator</a> ignore their first parameter and close over a
+function-local <code>SystemAllocator&lt;uint8_t&gt;</code> instead; a registration that used its userData would be handed
+the wrong object on this path.
+</p>
+
+<div class="note">
+  <strong>What "system" means at the bottom of the stack.</strong>
+  Slot 0's allocate function ends in <code>SystemAllocator&lt;uint8_t&gt;::AllocateBytes()</code>
+  (<code>Engine/Memory/SystemAllocator.h</code>): <code>malloc(nBytes)</code> in this tree, or page-granular
+  <code>OS::VirtualAlloc</code> with the block placed at the tail of the reservation when
+  <code>MEMORY_INVESTIGATION_ENABLED</code> is on. Under <code>PROFILE_ENABLED</code> it reports the capacity
+  <code>OS::GetAllocSize(ptr)</code> obtained — that is the traffic behind
+  <code>SystemStatistics::ReportSysMemAlloc</code> (<a href="report-allocation.html">ReportAllocation</a>). These bytes never
+  appear in the global counters, because they go through <code>malloc</code> and not through
+  <a href="record-global-allocation.html">the replaced <code>operator new</code></a>.
+</div>
+
+<div class="gap">
+  <strong>Zero is not normalised, and a null result is a log rather than a stop.</strong>
+  <a href="allocate.html">Allocate</a> answers <code>size == 0</code> with <code>nullptr</code> before doing anything else;
+  this method passes <code>0</code> straight through to <code>malloc</code>, whose answer for a zero-byte request is
+  implementation-defined. Nor is the result checked: where <code>Allocate</code> carries
+  <code>Assert(ptr != nullptr, "Allocation Failed")</code>, this returns whatever came back. The only internal guard is the
+  null <em>function pointer</em> test above, which logs at <code>FatalError</code> and returns null — after
+  <a href="deregister-allocator.html">a deregistration</a> or before the constructor has reached
+  <a href="register-system-allocator.html">slot 0</a>. Callers here do not check either:
+  <code>LogLine::LogLine()</code> copies into the returned pointer immediately.
+</div>
+
+<div class="note">
+  <strong>Use it for what a pool should not hold.</strong>
+  The unsized <a href="allocate.html">Allocate</a>(size_t) goes to this thread's scoped allocator, which is usually somebody's
+  pool — a pool that cannot return a block until it is destroyed, and that dies with its owner. A block that must outlive
+  scopes, or that is too big to belong to one, is what this entry point is for; its partner
+  <a href="sys-deallocate.html">SysDeallocate</a> is the only correct release, because
+  <a href="deallocate.html">Deallocate</a>(ptr, n) would route by the ambient scope.
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<table>
+  <tr><th>Parameter</th><th>Type</th><th>Requirement</th></tr>
+  <tr><td><code>nBytes</code></td><td><code>size_t</code></td><td>Byte count, passed unchanged to the system allocator. Unlike <a href="allocate.html">Allocate</a>, no zero-size special case and no alignment guarantee beyond <code>malloc</code>'s.</td></tr>
+</table>
+
+<h2 id="return">Return value</h2>
+
+<table>
+  <tr><th>Type</th><th>What you get</th></tr>
+  <tr><td><code>void*</code></td><td>Raw storage from the system heap; <code>nullptr</code> if slot 0 has no allocate function, and possibly for a zero-byte request. Must be released with <a href="sys-deallocate.html">SysDeallocate</a> and the same size.</td></tr>
+</table>
+
+<h2 id="example">Examples</h2>
+
+<pre><code>auto&amp; mmgr = engine.GetMemoryManager();
+longTextSize = size + 1;
+longText = (char*) mmgr.SysAllocate(longTextSize);
+std::copy(&amp;inText[0], &amp;inText[longTextSize], longText);</code></pre>
+
+<p class="meta">From Engine/Log/LogLine.cpp, LogLine::LogLine()</p>
+
+<p>
+A log line longer than the inline buffer: its lifetime is the log record's, not the emitting thread's scope, so it cannot
+live in whatever pool happens to be current — and at shutdown the matching release,
+<code>LogLine::~LogLine()</code>'s <code>mmgr.SysDeallocate(longText, longTextSize);</code>, runs long after those scopes
+are gone. It is the only call site of this pair outside the module.
+</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; MemoryManager</a></span>
+  <span><a href="index.html#methods">All MemoryManager methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

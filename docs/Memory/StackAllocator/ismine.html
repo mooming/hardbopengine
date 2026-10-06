@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>StackAllocator::IsMine — Memory module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a class="current" href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Memory</a> /
+  <a href="index.html">StackAllocator</a> / IsMine
+</p>
+
+<h1><span class="fn">IsMine</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::StackAllocator</span>
+  <span class="tag">Engine/Memory/StackAllocator.h</span>
+  <span class="tag">private</span>
+  Private range test on the buffer, and the single switch that decides whether a release rewinds the cursor or goes to the parent.
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>bool IsMine(Pointer ptr) const</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  Defined in <code>Engine/Memory/StackAllocator.cpp</code> as <code>StackAllocator::IsMine(Pointer ptr) const</code>, declared
+  <code>private</code>. A range test against the backing buffer, and nothing more: it never consults <code>cursor</code>, so it cannot
+  say whether an address was ever handed out.
+</p>
+
+<pre><code>if (ptr &lt; static_cast&lt;void*&gt;(buffer))
+{
+	return false;
+}
+
+if (ptr &gt;= static_cast&lt;void*&gt;(buffer + capacity))
+{
+	return false;
+}
+
+return true;</code></pre>
+
+<p class="meta">From Engine/Memory/StackAllocator.cpp, StackAllocator::IsMine(Pointer ptr) const</p>
+
+<p>
+  Its one job is routing. <a href="deallocate.html">Deallocate</a> asks it first and splits on the answer: true means "rewind the
+  cursor if this is the top block", false means "forward the release to <code>parentID</code>". Because that is the only consumer, the
+  question it answers is "should the buffer or the parent be asked", not "is this pointer valid".
+</p>
+
+<div class="gap">
+  <strong>True means "inside my buffer", not "a block I handed out".</strong>
+  The test is arithmetic on one address range, so it answers true for the middle of a block, for a block already released, for the
+  gap between two blocks, and for the unwritten tail of a block whose charge was rounded up. The class has no record that could tell
+  those apart — no header, no free list, no generation counter — and this is the reason a wrong-order release in
+  <a href="deallocate.html">Deallocate</a> can pass the ownership test and then fail the top-of-stack test rather than being caught as
+  a foreign pointer.
+</div>
+
+<div class="note">
+  <strong>The range is fixed for the object's whole life, so the answer never changes.</strong>
+  <code>buffer</code> and <code>capacity</code> are written once by the constructor and never again, so two calls with the same pointer
+  agree however much allocation happened between them. The interval is half-open: an address exactly one past the end is not yours. The
+  flip side is that <a href="deallocate.html">Deallocate</a> judges a rewind against <code>cursor</code>, which does move, so this
+  predicate being true says nothing about whether a release will succeed.
+</div>
+
+<div class="note">
+  <strong>A null pointer is answered "not mine", which is a dispatch, not a rejection.</strong>
+  <code>nullptr</code> compares below a live buffer, so <a href="deallocate.html">Deallocate</a> forwards
+  <code>(nullptr, size)</code> to <code>parentID</code>; the manager's release entry then asserts
+  <code>Assert(nBytes == 0)</code> on a null pointer, so releasing null with a non-zero count aborts in
+  <code>Debug</code> and <code>Dev</code>. With a failed construction the buffer is null and the second comparison
+  (<code>ptr &gt;= buffer + capacity</code>) is what rejects every input, including null. See
+  <a href="index.html#coverage">Coverage</a> for the untested construction paths.
+</div>
+
+<div class="note">
+  <strong>It is private, and it is not marked <code>[[nodiscard]]</code>.</strong>
+  No caller outside the class can reach it, so the only observable behaviour is
+  <a href="deallocate.html">Deallocate</a>'s choice of destination. Note the inconsistency with the sibling class:
+  <a href="../MonotonicAllocator/index.html"><code>MonotonicAllocator::IsMine</code></a> declares the same private predicate
+  <code>[[nodiscard]]</code>. Both are used in a condition, so the difference changes nothing today.
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<table>
+  <tr><th>Parameter</th><th>Type</th></tr>
+  <tr><td><code>ptr</code></td><td><code>Pointer</code></td></tr>
+</table>
+
+<p>
+  An address to test; no precondition, every value is answerable. A null pointer is outside a live buffer and is therefore answered
+  "not mine".
+</p>
+
+<h2 id="return">Return value</h2>
+
+<table>
+  <tr><th>Type</th><th>What you get</th></tr>
+  <tr><td><code>bool</code></td><td>Whether <code>ptr</code> lies in <code>[buffer, buffer + capacity)</code>. True does not imply the address is a live allocation; false does not imply the address is invalid, only that this buffer does not contain it.</td></tr>
+</table>
+
+<h2 id="example">Examples</h2>
+
+<pre><code>if (unlikely(!IsMine(ptr)))
+{
+	mmgr.Deallocate(parentID, ptr, requested);
+
+	return;
+}</code></pre>
+
+<p class="meta">From Engine/Memory/StackAllocator.cpp, StackAllocator::Deallocate(Pointer ptr, const SizeType requested) noexcept</p>
+
+<p>
+  The whole of the function's use, and the shape every allocator in this module repeats: ownership is decided by address range, and a
+  pointer the range does not claim is sent to the parent rather than rejected. A caller who wants certainty that an address belongs to
+  this stack must compare it against the pointer <a href="allocate.html">Allocate</a> returned, because nothing inside this class
+  remembers that pointer.
+</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; StackAllocator</a></span>
+  <span><a href="index.html#methods">All StackAllocator methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

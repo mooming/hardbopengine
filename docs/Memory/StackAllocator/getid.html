@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>StackAllocator::GetID — Memory module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a class="current" href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Memory</a> /
+  <a href="index.html">StackAllocator</a> / GetID
+</p>
+
+<h1><span class="fn">GetID</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::StackAllocator</span>
+  <span class="tag">Engine/Memory/StackAllocator.h</span>
+  <span class="tag">nodiscard</span>
+  The registration id the manager keys this stack by, and the handle an AllocatorScope is opened with.
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>[[nodiscard]] auto GetID() const</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  Declared and defined in the class body of <code>Engine/Memory/StackAllocator.h</code>: it returns <code>id</code>, so the deduced
+  return type is <code>TAllocatorID</code> (<code>int</code>, <code>Engine/Memory/AllocatorID.h</code>) by value. Because the body
+  lives in the header it inlines into every includer; the rest of the class is in
+  <code>Engine/Memory/StackAllocator.cpp</code>. The value is whatever
+  <code>MemoryManager::RegisterAllocator()</code> returned to the constructor — a slot index in the manager's allocator table, in the
+  range <code>0</code> to <code>MaxNumAllocators - 1</code> (256).
+</p>
+
+<div class="note">
+  <strong>This is the handle a caller needs to make the stack the current allocator.</strong>
+  Every use the repository makes of it opens an <a href="../index.html#allocatorscope"><code>AllocatorScope</code></a> over the value:
+  <code>AllocatorScope scope(stack.GetID());</code>, after which containers built in that scope allocate and release through this
+  object without naming it. The class also uses it on itself — <a href="allocate.html">Allocate</a> passes it as the first argument of
+  <code>MemoryManager::FallbackAllocate(GetID(), parentID, requested)</code>, and <a href="destructor.html">the destructor</a> hands
+  it to <code>MemoryManager::DeregisterAllocator</code>.
+</div>
+
+<div class="gap">
+  <strong>The number is recycled the moment the object dies, so an id you keep has a shelf life.</strong>
+  <code>MemoryManager::DeregisterAllocator()</code> (<code>Engine/Memory/MemoryManager.cpp</code>) clears the proxy's function
+  pointers and ends <code>proxyPool.Push(allocator);</code>, which makes the same index available to the next allocator registered.
+  A value held past this object's destruction addresses whoever received that slot next, and the manager's only guard on the
+  allocation and release paths is the range check <code>IsValid(id)</code>. In this configuration the leak-checking early return that
+  would have withheld the id sits inside <code>#if PROFILE_ENABLED</code>, which is 0, so recycling is unconditional here.
+</div>
+
+<div class="note">
+  <strong><code>InvalidAllocatorID</code> is a state that can persist, and it does not mean the stack owns nothing.</strong>
+  The constructor initialises <code>id</code> to <code>InvalidAllocatorID</code> (<code>-1</code>) before the registration call, and a
+  registration failure leaves it there: <code>MemoryManager::RegisterAllocator()</code> logs a <code>FatalError</code> and returns
+  <code>InvalidAllocatorID</code> when its proxy pool is empty (<code>MaxNumAllocators</code> registrations already live). Unlike a
+  pool, this class has no early return on that path — the buffer was already taken and is still held, so an invalid id here means
+  "unregistered but holding memory", and <a href="destructor.html">the destructor</a> will still return that buffer and then ask the
+  manager to deregister an id the manager will reject with an <code>Error</code> log. No testlet drives either allocator to that
+  state; see <a href="index.html#coverage">Coverage</a>.
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<p>None.</p>
+
+<h2 id="return">Return value</h2>
+
+<table>
+  <tr><th>Type</th><th>What you get</th></tr>
+  <tr><td><code>auto</code>, deduced as <code>TAllocatorID</code> (<code>int</code>)</td><td>The registration id, or <code>InvalidAllocatorID</code> (<code>-1</code>) when registration failed. Valid values are <code>0 &lt;= id &lt; MaxNumAllocators</code> per <code>hbe::IsValid</code>. The attribute is <code>[[nodiscard]]</code>.</td></tr>
+</table>
+
+<h2 id="example">Examples</h2>
+
+<pre><code>StackAllocator stack("Test::StackAllocator", 1024 * 1024);
+{
+	AllocatorScope scope(stack.GetID());
+
+	HVector&lt;int&gt; a;
+	a.push_back(0);
+}</code></pre>
+
+<p class="meta">From Engine/Memory/StackAllocator.cpp, StackAllocatorTest::Prepare()</p>
+
+<p>
+  The whole of the engine's usage in one line: the id turns an ordinary allocator object into the thread's current one for the
+  lifetime of a scope. Note the declaration order the <a href="destructor.html">destructor</a> depends on — <code>stack</code> is
+  declared before <code>scope</code>, so the scope closes first and the buffer is returned while the allocator that supplied it is
+  still current.
+</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; StackAllocator</a></span>
+  <span><a href="index.html#methods">All StackAllocator methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

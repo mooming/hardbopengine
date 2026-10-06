@@ -1,0 +1,121 @@
+<h2 id="signature">Signature</h2>
+
+<pre><code>void Deallocate(const TPointer ptr, TSize size) noexcept</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  Defined in <code>Engine/Memory/MonotonicAllocator.cpp</code> as
+  <code>MonotonicAllocator::Deallocate(Pointer ptr, TSize requested) noexcept</code> — the source names the pointer parameter's type
+  <code>Pointer</code> and drops the top-level <code>const</code> the header writes; neither changes the signature's type. This is the
+  function that decides what this class is: for a pointer the buffer contains, it does nothing at all.
+</p>
+
+<pre><code>auto&amp; mmgr = MemoryManager::GetInstance();
+
+if (unlikely(!IsMine(ptr)))
+{
+	mmgr.Deallocate(parentID, ptr, requested);
+
+	return;
+}
+
+#if MEMORY_LOGGING_ENABLED
+mmgr.Log(ELogLevel::Verbose, /* "&lt;name&gt;[&lt;id&gt;] Deallocate call shall be ignored. ptr = ..., requested size = ..." */);
+#endif // MEMORY_LOGGING_ENABLED
+
+#if PROFILE_ENABLED
+mmgr.ReportDeallocation(id, ptr, requested, 0);
+#endif // PROFILE_ENABLED</code></pre>
+
+<p class="meta">From Engine/Memory/MonotonicAllocator.cpp, MonotonicAllocator::Deallocate(Pointer ptr, TSize requested) noexcept</p>
+
+<div class="gap">
+  <strong>An individual deallocation is legal, and for this allocator's own bytes it is inert.</strong>
+  The function is not deleted, not asserting and not empty, so a caller gets no signal of any kind: no return value, no error log, no
+  assertion, and <code>cursor</code> is untouched. <a href="getusage.html">GetUsage</a>() is unchanged afterwards, and the bytes cannot
+  be handed to anybody again. The header states it plainly — "Individual deallocations are ignored" — and the class's own testlets in
+  <code>Engine/Memory/MonotonicAllocator.cpp</code> turn that into an assertion, requiring usage to remain non-zero after the scope
+  that allocated has closed, with the message <code>"Monotonic Allocator doesn't provide deallocation."</code>.
+</div>
+
+<div class="gap">
+  <strong>In this configuration even the log line does not exist, so the silence is total.</strong>
+  The <code>Verbose</code> message that says the call "shall be ignored" sits inside <code>#if MEMORY_LOGGING_ENABLED</code>, and
+  <code>Engine/Config/BuildConfig.h</code> defines that as 0; <code>MemoryManager::Log</code> keeps its entire body inside the same
+  guard and <code>IsLogEnabled</code> returns <code>false</code> unconditionally underneath it. The <code>PROFILE_ENABLED</code> report
+  is likewise compiled out, and when it is present it records <code>ReportDeallocation(id, ptr, requested, 0)</code> — the requested
+  size passed through with a released amount of zero, which is the accounting code saying "nothing was freed". So a caller cannot
+  distinguish "this block is still mine" from "my release was heard" by observation; only this page says so.
+</div>
+
+<div class="gap">
+  <strong>A pointer the buffer does not contain is genuinely released — including one that should never have arrived here.</strong>
+  The first branch forwards anything <a href="ismine.html">IsMine</a> rejects to <code>mmgr.Deallocate(parentID, ptr, requested)</code>,
+  and that is a real release from the parent. It is the correct route for a block that came from the parent through
+  <a href="allocate.html">Allocate</a>'s overflow path. It is also, by construction, the only release this object ever carries out — and
+  it is unconditional: a pointer that belongs to neither this buffer nor the parent (a stack address, a block owned by a sibling
+  allocator, a pointer already given back) is forwarded anyway, and the manager's release path checks id validity and a non-null
+  function pointer and nothing else (<code>MemoryManager::Deallocate(TId id, void* ptr, size_t nBytes)</code>), so the result is a
+  release into the wrong allocator. The <a href="../StackAllocator/deallocate.html">stack's</a> release path has the same shape and the
+  same blind forward, but it asserts first for pointers that are inside the buffer; here there is no assert anywhere.
+</div>
+
+<div class="note">
+  <strong>This inertness is what makes the destructor's dispatch dangerous.</strong>
+  <a href="destructor.html">~MonotonicAllocator</a> returns the buffer with <code>mmgr.Deallocate(bufferPtr, capacity)</code>, which the
+  manager redirects to whichever scope is current. If that scope is this allocator itself, the buffer release arrives here,
+  <a href="ismine.html">IsMine</a> recognises the address as belonging to the buffer, and the release is ignored — the buffer is never
+  given back to the allocator that lent it, and no diagnostic exists to say so. See
+  <a href="index.html#coverage">Coverage</a>.
+</div>
+
+<div class="note">
+  <strong>A null pointer is dispatched, not discarded.</strong>
+  <a href="ismine.html">IsMine</a> answers false for <code>nullptr</code> against a live buffer, so a null release reaches
+  <code>MemoryManager::Deallocate(TId id, void* ptr, size_t nBytes)</code>, whose first act is
+  <code>if (unlikely(ptr == nullptr)) { Assert(nBytes == 0); return; }</code>. Releasing null with a non-zero byte count therefore
+  asserts in <code>Debug</code> and <code>Dev</code> and is a clean no-op with <code>0</code>. Contrast
+  <a href="../PoolAllocator/deallocate.html"><code>PoolAllocator::Deallocate</code></a>, which discards null silently before dispatching.
+</div>
+
+<div class="note">
+  <strong>What this makes the class good for, in one sentence.</strong>
+  An allocator whose entire body of allocations is released at one point — a frame, an import, a parse, a scope whose every object is
+  known to die before the allocator does. Anything that frees individual objects early, or whose containers outlive the scope that
+  filled them, has to use <a href="../StackAllocator/index.html">the stack</a> (last-in-first-out release, honestly reported) or a
+  <a href="../PoolAllocator/index.html">pool</a> (any-order release into a free list) instead.
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<table>
+  <tr><th>Parameter</th><th>Type</th><th>Requirement</th></tr>
+  <tr><td><code>ptr</code></td><td><code>const TPointer</code></td><td>Any address. The only distinction the function makes is whether it falls inside this buffer; nothing checks that it was ever returned by <a href="allocate.html">Allocate</a>.</td></tr>
+  <tr><td><code>size</code></td><td><code>TSize</code></td><td>The block's byte count. Unused for a buffer block; passed through unchanged to <code>parentID</code> for anything outside it, which is why a caller must keep the number it gave the overflow path.</td></tr>
+</table>
+
+<h2 id="return">Return value</h2>
+
+<p>
+  Nothing. The function is <code>noexcept</code> and reports nothing back: the difference between a release that freed memory and one
+  that was ignored is not observable through this interface. <a href="getusage.html">GetUsage</a>() is the only way to check from
+  outside, and it will tell you the release did not happen for every block that came from the buffer.
+</p>
+
+<h2 id="example">Examples</h2>
+
+<pre><code>auto deallocFunc = [](void* allocatorPtr, void* ptr, size_t size)
+{
+	auto allocator = static_cast&lt;MonotonicAllocator*&gt;(allocatorPtr);
+	allocator-&gt;Deallocate(ptr, size);
+};</code></pre>
+
+<p class="meta">From Engine/Memory/MonotonicAllocator.cpp, MonotonicAllocator::MonotonicAllocator(const char* name, TSize inCapacity)</p>
+
+<p>
+  No engine or application source calls <code>Deallocate</code> on a monotonic allocator by name; this lambda, handed to
+  <code>MemoryManager::RegisterAllocator</code>, is the call site — which means every destructor of every container built under an
+  <a href="../index.html#allocatorscope"><code>AllocatorScope</code></a> over <a href="getid.html">GetID</a>() arrives here and is
+  dropped. The testlets make that explicit rather than leaving it as a surprise.
+</p>

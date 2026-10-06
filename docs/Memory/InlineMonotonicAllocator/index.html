@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>InlineMonotonicAllocator — Memory module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a class="current" href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This class</h3>
+  <ul>
+    <li><a href="#description">Class description</a></li>
+    <li><a href="#template">Template parameters</a></li>
+    <li><a href="#properties">Class properties</a></li>
+    <li><a href="#methods">Class methods</a></li>
+    <li><a href="#non-member">Non-member helper functions</a></li>
+    <li><a href="#coverage">Coverage</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Memory</a> /
+  InlineMonotonicAllocator
+</p>
+
+<h1>InlineMonotonicAllocator</h1>
+<p class="subtitle">
+  <span class="tag">Engine/Memory/InlineMonotonicAllocator.h</span>
+  <span class="tag">namespace hbe</span>
+  <span class="tag">template &lt;size_t Capacity&gt;</span>
+  <span class="tag">final</span>
+  Bump allocation inside a member array of Capacity bytes: the arena is the object, an overflow forwards to the parent, and a copy (which is also what a move becomes) duplicates the whole arena under one registration id.
+</p>
+
+<h2 id="description">Class description</h2>
+
+<p>
+  <code>template &lt;size_t Capacity&gt; class InlineMonotonicAllocator final</code> at
+  <code>Engine/Memory/InlineMonotonicAllocator.h</code> is a bump allocator whose arena is a member array. The storage is
+  declared inside the object — <code>HE_ALIGN uint8_t buffer[Capacity];</code>, where <code>HE_ALIGN</code> is
+  <code>alignas(hbe::Config::DefaultAlign)</code> from <code>Engine/OSAL/OSMemory.h</code> — so there is no backing
+  allocation from any other allocator, the object's size <em>is</em> the arena, and where the object lives is where the memory
+  lives. Confirmed against a struct carrying the same four members with <code>c++ -std=c++2b -fsyntax-only</code>:
+  <code>sizeof(InlineMonotonicAllocator&lt;2048&gt;)</code> is 2064, <code>alignof</code> is 16, and <code>buffer</code> sits at
+  offset 16 — the three preceding members (<code>id</code>, <code>parentID</code>, <code>cursor</code>) occupy exactly the
+  alignment padding, which is what makes the constructor's alignment assert hold.
+</p>
+
+<p>
+  The constructor does three things: it records the allocator that is current on this thread as <code>parentID</code>
+  (<code>MemoryManager::GetCurrentAllocatorID()</code>), registers <code>this</code> with the
+  <a href="../index.html#memorymanager"><code>MemoryManager</code></a> as an inline allocator of capacity
+  <code>Capacity</code>, and stores the returned id in <code>id</code>. Registration is what lets code that never sees the object
+  allocate from it: an <a href="../index.html#allocatorscope"><code>AllocatorScope</code></a> opened on
+  <a href="getid.html">GetID</a> routes every later default-allocator allocation through
+  <a href="allocate.html">Allocate</a>. That is exactly how the only call sites in the repository use it — the
+  <code>Vector Allocation</code> testlet of <code>InlineMonotonicAllocatorTest::Prepare()</code> in
+  <code>Engine/Memory/InlineMonotonicAllocator.cpp</code> aliases <code>using Allocator =
+  InlineMonotonicAllocator&lt;2048&gt;;</code>, constructs the object from a name alone
+  (<code>Allocator alloc("InlineMonotonicAllocator");</code> — the arena is the template argument, never a constructor
+  argument), opens an <a href="../index.html#allocatorscope"><code>AllocatorScope</code></a> on
+  <code>alloc.GetID()</code> inside a nested block, and lets an <code>HVector&lt;int&gt;</code> fill it; the vector is destroyed
+  inside that block, which is where the ignored <a href="deallocate.html">Deallocate</a> happens.
+</p>
+
+<p>
+  Monotonic means the cursor only moves forward. <a href="allocate.html">Allocate</a> rounds the request up to
+  <code>Config::DefaultAlign</code> (16) and hands back <code>buffer + cursor</code>;
+  <a href="deallocate.html">Deallocate</a> of a pointer inside the arena does nothing but log and report. Individual frees are
+  therefore free but worthless — the memory comes back only when the whole object is destroyed, which is the entire bargain of a
+  bump allocator and the reason a scope is normally opened around a bounded phase rather than a long-lived container.
+</p>
+
+<div class="gap">
+  <strong>An object holding one must not be copied, and moving it is a copy.</strong>
+  The class declares only a constructor and a destructor, so the compiler still gives it a copy constructor and copy assignment
+  (implicitly defined — the standard marks the implicit copy deprecated because a destructor is user-declared) and gives it no move
+  constructor and no move assignment. An rvalue therefore binds to the copy constructor. Verified twice with
+  <code>c++ -std=c++2b -Wall -Wextra</code>: <code>std::is_copy_constructible_v</code>, <code>std::is_copy_assignable_v</code>,
+  <code>std::is_move_constructible_v</code> and <code>std::is_move_assignable_v</code> are all true for the same declaration shape,
+  and a type with that same shape plus one member whose copy is observable leaves <em>both</em> objects holding their data after
+  <code>auto b = std::move(a);</code> — the copy constructor ran. Replacing that observable member with one that cannot be copied
+  makes the compiler say so directly: <i>call to implicitly-deleted copy constructor</i> on the line that wrote
+  <code>auto b = std::move(a);</code>.
+</div>
+
+<div class="gap">
+  <strong>A copy does not duplicate the registration — and it invalidates every pointer already handed out.</strong>
+  Copying copies <code>id</code>, so both objects claim the same registration; the registration table keeps the <code>this</code>
+  pointer the constructor passed to <code>RegisterAllocator</code>, so routed allocations
+  (<code>MemoryManager::Allocate(id, n)</code>, anything inside an <code>AllocatorScope</code>) keep mutating the
+  <em>original's</em> cursor while <code>copy.Allocate()</code> mutates the copy's. Each object owns its own array and its own
+  cursor, so every pointer the original handed out still points into the original's arena — a copied allocator does not own the
+  memory its <a href="getusage.html">GetUsage</a> figure claims it owns. Then both destructors call
+  <code>DeregisterAllocator(GetID())</code> on the same id, and <code>MemoryManager::DeregisterAllocator</code> ends with
+  <code>proxyPool.Push(allocator)</code>: the same proxy slot returns to the free pool twice and can be handed to two later
+  registrations as two different allocators. Nothing here is detectable at runtime in this tree's configuration.
+</div>
+
+<div class="note">
+  <strong>Sizing <code>Capacity</code> wrong fails softly in one direction and expensively in the other.</strong>
+  Too small never fails: <a href="allocate.html">Allocate</a> logs a warning through
+  <code>MemoryManager::LogWarning</code> and forwards the request to <code>parentID</code>, so the allocator quietly becomes a
+  forwarding layer — one warning log and one parent round trip per overflowed request, with no error anywhere. Too large costs the
+  bytes: <code>Capacity</code> is added to the size of whatever holds the object (a stack frame, one member of an owning object, a
+  static), every copy duplicates all of it, and because <code>Capacity</code> is a template parameter each size is a separate type —
+  it cannot be chosen per instance at runtime, and a class that exposes it in its own template list propagates the decision to its
+  users.
+</div>
+
+<div class="note">
+  <strong>Nothing here is synchronised, and nothing here is measured in the configurations this tree builds.</strong>
+  <code>cursor</code>, <code>id</code> and <code>parentID</code> are plain members and the class takes no lock. The
+  <code>MemoryManager</code> registration it relies on does record the owning thread id, but only under
+  <code>MEMORY_VERIFICATION_ENABLED</code>, which <code>Engine/Config/BuildConfig.h</code> sets to 0, so in this tree neither the
+  allocator nor the registration notices a second thread. One instance belongs to one thread, and the leak warning that
+  deregistration would log (<code>stats.usage &gt; 0</code> in <code>MemoryManager::DeregisterAllocator</code>) is
+  <code>PROFILE_ENABLED</code> code that also does not exist here — an over-full or leaking
+  arena is silent.
+</div>
+
+<p>
+  Two of its statistics calls sit behind <code>#ifdef __MEMOR_STATISTICS__</code>, and that macro is defined nowhere in the
+  repository (no header, no <code>CMakeLists.txt</code> definition — the Debug and Dev flag sets add only
+  <code>__TEST__</code> and <code>__UNIT_TEST__</code>). In this tree the destructor's arena release report and
+  <a href="allocate.html">Allocate</a>'s allocation report are dead code in all three configurations, while
+  <a href="deallocate.html">Deallocate</a>'s report is <code>PROFILE_ENABLED</code> code and equally absent. See
+  <a href="#coverage">Coverage</a>.
+</p>
+
+<h2 id="template">Template parameters</h2>
+
+<table>
+  <tr><th>Parameter</th><th>Kind</th><th>What it constrains</th></tr>
+  <tr><td><code>Capacity</code></td><td><code>size_t</code> non-type</td><td>Bytes of inline arena. It is the array bound of <code>buffer</code>, the capacity handed to <code>RegisterAllocator</code>, the ceiling <a href="getavailable.html">GetAvailable</a> counts down from and the end of the range <a href="ismine.html">IsMine</a> tests. It must be at least 1: the constructor writes <code>buffer[0] = 0;</code> before anything else, unconditionally.</td></tr>
+</table>
+
+<p>
+  There is one parameter and it is not a type the allocator serves — the class allocates raw bytes and takes no element type, so
+  the caller does the element arithmetic (<code>n * sizeof(T)</code>) exactly as the callers of
+  <code>InlinePoolAllocator</code> in <a href="../index.html#allocators">the allocator catalogue</a> do. Because the bound is a compile-time
+  constant, <code>InlineMonotonicAllocator&lt;1024&gt;</code> and <code>InlineMonotonicAllocator&lt;2048&gt;</code> are unrelated
+  types: no resize, no runtime sizing, and a template that takes the capacity propagates it to everyone who includes it.
+</p>
+
+<h2 id="properties">Class properties</h2>
+
+<table>
+  <tr><th>Type + Name</th><th>Default Value</th><th>Description</th></tr>
+  <tr><td><code>using TSize = size_t;</code> <span class="badge">member type</span></td><td><span class="muted">not applicable</span></td><td>Cursor and size type of the arena; also the size type of a release call.</td></tr>
+  <tr><td><code>using TPointer = void*;</code> <span class="badge">member type</span></td><td><span class="muted">not applicable</span></td><td>What <a href="allocate.html">Allocate</a> hands back — untyped, because the class serves bytes, not objects.</td></tr>
+  <tr><td><code>TAllocatorID id;</code> <span class="badge">private</span></td><td><span class="muted">none in the header</span></td><td>This arena's registration id; <code>InvalidAllocatorID</code> if the registration failed, which the constructor does not check.</td></tr>
+  <tr><td><code>TAllocatorID parentID;</code> <span class="badge">private</span></td><td><span class="muted">none in the header</span></td><td>The allocator current on this thread at construction: where every request the arena cannot hold goes, and where foreign pointers are returned.</td></tr>
+  <tr><td><code>TSize cursor;</code> <span class="badge">private</span></td><td><span class="muted">none in the header</span></td><td>Bytes already bumped, and the only counter the class has. Forward-only, and duplicated wholesale by a copy.</td></tr>
+  <tr><td><code>HE_ALIGN uint8_t buffer[Capacity];</code> <span class="badge">private</span></td><td><span class="muted">none in the header</span></td><td>The arena itself — <code>alignas(Config::DefaultAlign)</code>, a member array rather than a pointer, so the object's size is <code>Capacity</code> plus 16 bytes.</td></tr>
+</table>
+
+<h2 id="methods">Class methods</h2>
+
+<table class="methods">
+  <tr><th>Name</th><th>Signature</th><th>What a caller depends on</th></tr>
+  <tr><td><a href="constructors.html"><code>InlineMonotonicAllocator</code></a></td><td class="sig">explicit InlineMonotonicAllocator(const char* name)</td><td>Requires a live <code>MemoryManager</code>, records the current allocator as the parent, and registers <code>this</code> — so the registered object can never be replaced by a copy.</td></tr>
+  <tr><td><a href="destructor.html"><code>~InlineMonotonicAllocator</code></a></td><td class="sig">~InlineMonotonicAllocator()</td><td>Deregisters <code>id</code> and ends every allocation the arena ever handed out; running twice for one id pushes the same proxy slot back twice.</td></tr>
+  <tr><td><a href="allocate.html"><code>Allocate</code></a></td><td class="sig">[[nodiscard]] TPointer Allocate(size_t requested)</td><td>Rounds up to 16, never returns null on exhaustion — it warns and asks the parent instead.</td></tr>
+  <tr><td><a href="deallocate.html"><code>Deallocate</code></a></td><td class="sig">void Deallocate(TPointer ptr, TSize requested) noexcept</td><td>A pointer inside the arena is ignored on purpose; anything else is forwarded to the parent unchanged.</td></tr>
+  <tr><td><a href="getavailable.html"><code>GetAvailable</code></a></td><td class="sig">[[nodiscard]] size_t GetAvailable() const</td><td><code>Capacity - cursor</code>; the figure <a href="allocate.html">Allocate</a> itself compares against, so it is exact.</td></tr>
+  <tr><td><a href="getusage.html"><code>GetUsage</code></a></td><td class="sig">[[nodiscard]] size_t GetUsage() const</td><td>Bytes bumped, rounded — and it aborts in Debug and Dev on the one legal state where the arena is exactly full.</td></tr>
+  <tr><td><a href="getid.html"><code>GetID</code></a></td><td class="sig">[[nodiscard]] auto GetID() const</td><td>The registration id an <a href="../index.html#allocatorscope"><code>AllocatorScope</code></a> takes; a copy carries the original's.</td></tr>
+  <tr><td><a href="ismine.html"><code>IsMine</code></a></td><td class="sig">[[nodiscard]] bool IsMine(TPointer ptr) const</td><td>Private: an address-range test on the arena, so it decides which allocator a release reaches.</td></tr>
+</table>
+
+<h2 id="non-member">Non-member helper functions</h2>
+
+<p>
+  None. The arena is reached through the object itself or through the <a href="../index.html#memorymanager"><code>MemoryManager</code></a>
+  registration the constructor created; the module's free functions in <code>Engine/Memory/Memory.h</code> work on any allocator and
+  belong to the <a href="../index.html#functions">module page</a>.
+</p>
+
+<h2 id="coverage">Coverage</h2>
+
+<table>
+  <tr><th>Not documented here</th><th>Why</th></tr>
+  <tr>
+    <td>Whether <code>InlineMonotonicAllocator&lt;0&gt;</code> is rejected at compile time</td>
+    <td>A claim about what compiles needs a compiler and this wave does not build. What is established by reading is enough to size
+        safely: the constructor writes <code>buffer[0] = 0;</code> with no guard, so <code>Capacity</code> 0 would write past the
+        array whatever the compiler decides about a zero-size member. Recorded here rather than guessed at on
+        <a href="constructors.html">the constructor page</a>.</td>
+  </tr>
+  <tr>
+    <td>Every path behind <code>#ifdef __MEMOR_STATISTICS__</code> and <code>#if PROFILE_ENABLED</code></td>
+    <td><code>__MEMOR_STATISTICS__</code> is defined nowhere in the repository, and <code>Engine/Config/BuildConfig.h</code> sets
+        <code>PROFILE_ENABLED</code> to 0, so the destructor's <code>ReportDeallocation</code> of the whole arena,
+        <a href="allocate.html">Allocate</a>'s <code>ReportAllocation</code> and
+        <a href="deallocate.html">Deallocate</a>'s <code>ReportDeallocation</code> are described from source and have never run in
+        Debug, Dev or Release. The <code>isInline</code> and <code>capacity</code> arguments of the registration are only read by the
+        <code>inlineUsage</code> accounting that is itself <code>PROFILE_ENABLED</code> code.</td>
+  </tr>
+  <tr>
+    <td>What a copy does to the accounting inside <code>MemoryManager</code></td>
+    <td>The class-level consequence is documented (one id, two objects, a proxy slot pushed twice). The manager's own bookkeeping —
+        <code>inlineUsage</code>, <code>usage</code>, the <code>AtomicStackView</code> that owns proxy slots — is owned by
+        <a href="../index.html#memorymanager">the Memory module page</a>, which this wave has not finished either.</td>
+  </tr>
+  <tr>
+    <td>Serving a type whose alignment exceeds <code>Config::DefaultAlign</code> (16)</td>
+    <td>No such interface exists: the class takes no alignment argument and rounds requests, not addresses. Every pointer it hands out
+        from the arena is 16-aligned because every cursor step is a multiple of 16, and an over-aligned type would be served at the
+        same 16-byte alignment — a known gap in the interface, the same one recorded for
+        <a href="../PoolAllocator/getblocksize.html">PoolAllocator</a>, not intended design.</td>
+  </tr>
+  <tr>
+    <td>What happens to a release of an address that belongs to neither this arena nor its parent</td>
+    <td><a href="ismine.html">IsMine</a> can answer only "inside my array" or "not inside it", so an address in the untaken tail is
+        treated as owned and silently ignored, and every other address is forwarded to <code>parentID</code> untouched. What the parent
+        then does with a pointer it never returned is the parent's contract: with <code>MemoryManager::SystemAllocatorID</code> as parent
+        the release ends in <code>free</code> through <code>SystemAllocator::DeallocateBytes</code> in
+        <code>Engine/Memory/SystemAllocator.h</code>, on an address <code>malloc</code> never handed back. No testlet covers it, and this
+        class cannot answer it — recorded on <a href="deallocate.html">Deallocate</a> as the consequence, not resolved.</td>
+  </tr>
+  <tr>
+    <td>Thread-safety of a shared instance</td>
+    <td>Stated as a fact that nothing in the class or in this configuration's registration path is synchronised or checked. Whether any
+        design intends one arena to be shared across threads is not answered anywhere in the repository, so it is not asserted here. The
+        mechanism that would answer it — <code>MEMORY_VERIFICATION_ENABLED</code>'s registering-thread check in
+        <code>MemoryManager::DeregisterAllocator</code> — is switched off in <code>Engine/Config/BuildConfig.h</code>.</td>
+  </tr>
+  <tr>
+    <td>Whether the parent is a stack or scope-limited allocator</td>
+    <td>The class stores the parent's id and nothing else, so it cannot know. That question belongs to
+        <a href="../index.html#allocators">the allocator catalogue</a> and to <code>DefaultAllocator</code>, whose own contract is the
+        engine's case of a recorded allocator id outliving a short-lived allocator. Same shape of hazard, different class — this one records
+        the parent in a constructor that also owns the arena, so it is the narrower case.</td>
+  </tr>
+  <tr>
+    <td><code>InlineMonotonicAllocatorTest</code></td>
+    <td>Test-only: declared in <code>Engine/Memory/InlineMonotonicAllocator.h</code> inside <code>#ifdef __UNIT_TEST__</code>, with the four
+        testlets <code>Vector Allocation</code>, <code>Allocation (2)</code>, <code>Deallocation</code> and
+        <code>Deallocation (2)</code> defined in <code>Engine/Memory/InlineMonotonicAllocator.cpp</code>. All four assert the same
+        thing — that <a href="getusage.html">GetUsage</a> is non-zero after a scope that allocated and destroyed — which is the test suite
+        stating that a monotonic arena does not reclaim. It owns no page of its own.</td>
+  </tr>
+</table>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; InlineMonotonicAllocator</a></span>
+  <span><a href="index.html#methods">All InlineMonotonicAllocator methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

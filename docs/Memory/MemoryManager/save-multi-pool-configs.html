@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MemoryManager::SaveMultiPoolConfigs — Memory module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a class="current" href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Memory</a> /
+  <a href="index.html">MemoryManager</a> / SaveMultiPoolConfigs
+</p>
+
+<h1><span class="fn">SaveMultiPoolConfigs</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::MemoryManager</span>
+  <span class="tag">Engine/Memory/MemoryManager.h</span>
+  The write half of the cache, entirely inside PROFILE_ENABLED — it saves this run's reports, not the loaded table.
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>void SaveMultiPoolConfigs()</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+Defined in <code>Engine/Memory/MemoryManager.cpp</code> as <code>MemoryManager::SaveMultiPoolConfigs()</code>, declared
+<code>private</code>, and the <em>entire</em> body — from the first declaration to the last log line — sits inside
+<code>#if PROFILE_ENABLED</code>. In every configuration this repository builds, where that macro is <code>0</code>, the method is
+an empty function with no effect.
+</p>
+
+<p>What it does where profiling is on:</p>
+
+<pre><code>const size_t size = GetOutputSize();
+auto pathStrID = GetMultiPoolConfigCacheFilePath();
+StaticString path(pathStrID);
+
+…
+
+auto buffer = BufferUtil::GetWriteOnlyFileBuffer(path, size);
+auto result = multiPoolConfigLog.Serialize(buffer);
+
+if (result != size)
+{
+	Log(ELogLevel::Error, [path](auto& ls) { ls &lt;&lt; '[' &lt;&lt; func &lt;&lt; "] Failed to deserialize the file " &lt;&lt; path; });
+
+	return;
+}</code></pre>
+
+<p class="meta">From Engine/Memory/MemoryManager.cpp, MemoryManager::SaveMultiPoolConfigs()</p>
+
+<table>
+  <tr><th>Step</th><th>Detail</th></tr>
+  <tr><td>Size the payload</td><td><code>GetOutputSize()</code> serialises <code>multiPoolConfigLog</code> into
+  <code>BufferUtil::GenerateDummyBuffer()</code> purely to learn the byte count, then the real buffer is allocated to that size</td></tr>
+  <tr><td>Normalise and sort</td><td>Inside <code>Serialize</code>: <code>Normalize()</code> sorts entries by
+  <code>uniqueName</code> and each item's block-size runs — the invariant
+  <a href="look-up-multi-pool-config.html">the binary search</a> depends on and that
+  <a href="load-multi-pool-configs.html">the loader</a> never re-establishes</td></tr>
+  <tr><td>Write the file</td><td><a href="get-multi-pool-config-cache-file-path.html">The same path</a> the loader reads, overwritten, not appended</td></tr>
+  <tr><td>Verify the count</td><td>A second serialisation into the real buffer; a mismatch is logged and returns</td></tr>
+</table>
+
+<div class="gap">
+  <strong>The source of what gets written is a different table from the one that is read.</strong>
+  This serialises <code>multiPoolConfigLog</code> — this run's reports, appended by
+  <a href="report-multi-pool-configutation.html">ReportMultiPoolConfigutation</a> — not <code>multiPoolConfigCache</code>, the
+  table loaded at start-up. Entries are only appended, never merged with what was loaded, so a pool that reports nothing in a run
+  contributes nothing to the file even if last year's cache contained it. Combined with the single call site in
+  <a href="pre-engine-shutdown.html">PreEngineShutdown</a>, that is the whole reason most pools' geometry never reaches the file:
+  a multi-pool reports from its own destructor, which runs after this method.
+</div>
+
+<div class="note">
+  <strong>Two quirks a reader should not spend an hour on.</strong>
+  The failure message for a serialisation that wrote the wrong number of bytes reads <code>"Failed to deserialize the file"</code>
+  — the wrong verb, copied from the loader, and a real dead end if trusted. And the size is computed by serialising twice: once
+  into a dummy buffer to measure, once into the real one to write, so the payload is generated twice per shutdown.
+</div>
+
+<div class="note">
+  <strong>Successive runs are not cumulative in the file, but they are in the log.</strong>
+  Because <code>multiPoolConfigLog</code> is a member of the manager, it dies with the manager; the file is overwritten wholesale.
+  A run that produces no reports therefore empties the cache file for the next run rather than preserving the previous one — the
+  file is a snapshot of one run's reports, not an accumulation across runs.
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<p>None.</p>
+
+<h2 id="return">Return value</h2>
+
+<p><code>void</code>. A failed write leaves the previous file in place, or partially written — the method checks the byte count, not the file's integrity afterwards.</p>
+
+<h2 id="example">Examples</h2>
+
+<pre><code>void MemoryManager::PreEngineShutdown() noexcept
+{
+#if PROFILE_ENABLED
+	SaveMultiPoolConfigs();
+#endif // PROFILE_ENABLED
+}</code></pre>
+
+<p class="meta">From Engine/Memory/MemoryManager.cpp, MemoryManager::PreEngineShutdown()</p>
+
+<p>
+The single call site, reached from <code>Engine::PreShutdown()</code> after
+<code>logger.ReportMemoryConfiguration()</code> has fed the logger's own pool into the table. That two-line ordering is the entire
+contract about which allocators' geometry survives a run — see <a href="pre-engine-shutdown.html">PreEngineShutdown</a>.
+</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; MemoryManager</a></span>
+  <span><a href="index.html#methods">All MemoryManager methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

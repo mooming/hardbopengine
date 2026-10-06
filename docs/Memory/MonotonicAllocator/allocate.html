@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MonotonicAllocator::Allocate — Memory module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a class="current" href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Memory</a> /
+  <a href="index.html">MonotonicAllocator</a> / Allocate
+</p>
+
+<h1><span class="fn">Allocate</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::MonotonicAllocator</span>
+  <span class="tag">Engine/Memory/MonotonicAllocator.h</span>
+  <span class="tag">nodiscard</span>
+  Round the request, bump the cursor, and ask the parent instead of failing when the buffer cannot cover the rounded size.
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>[[nodiscard]] TPointer Allocate(size_t size)</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  Defined in <code>Engine/Memory/MonotonicAllocator.cpp</code> as <code>MonotonicAllocator::Allocate(const size_t requested)</code>.
+  Round the request, compare it against what the buffer holds, then either advance the cursor or ask the parent. The cursor never
+  moves backwards after this returns, which is the property the class is named for.
+</p>
+
+<pre><code>size_t size = requested;
+{
+	constexpr auto AlignUnit = Config::DefaultAlign;
+	const auto multiplier = (size + AlignUnit - 1) / AlignUnit;
+	size = multiplier * AlignUnit;
+}
+
+const auto freeSize = GetAvailable();
+if (unlikely(size &gt; freeSize))
+{
+	auto&amp; mmgr = MemoryManager::GetInstance();
+	mmgr.LogWarning([size, freeSize](auto&amp; ls)
+	{ ls &lt;&lt; "The requested size " &lt;&lt; size &lt;&lt; " is exceeding its limit, " &lt;&lt; freeSize &lt;&lt; '.'; });
+
+	auto ptr = mmgr.Allocate(parentID, requested);
+
+	return ptr;
+}
+
+auto ptr = reinterpret_cast&lt;void*&gt;(buffer + cursor);
+cursor += size;</code></pre>
+
+<p class="meta">From Engine/Memory/MonotonicAllocator.cpp, MonotonicAllocator::Allocate(const size_t requested)</p>
+
+<p>
+  A block is <code>size</code> bytes at <code>buffer + cursor</code>, charged at the rounded size, and the cursor is the only
+  bookkeeping: no header, no footer, no per-block record. Under <code>PROFILE_ENABLED</code> the call reports
+  <code>ReportAllocation(id, ptr, requested, size)</code> — requested and charged kept apart, where the
+  <a href="../StackAllocator/allocate.html">stack</a> reports the rounded size in both slots.
+</p>
+
+<div class="gap">
+  <strong>Exhaustion does not fail — it silently changes which allocator owns the answer.</strong>
+  When the rounded request exceeds <a href="getavailable.html">GetAvailable</a>(), the call becomes
+  <code>mmgr.Allocate(parentID, requested)</code> and the memory arrives from the parent. Three consequences: the pointer is outside
+  this buffer, so <a href="ismine.html">IsMine</a> says no and a later <a href="deallocate.html">Deallocate</a> of it is forwarded to
+  <code>parentID</code> and <em>genuinely released</em> — the only release this object ever honours; the count the parent was charged is
+  <code>requested</code>, not the rounded <code>size</code>, so that is the number that must come back; and the block is not freed by
+  <a href="destructor.html">this object's destructor</a>, so it leaks past the allocator unless someone releases it.
+</div>
+
+<div class="note">
+  <strong>The overflow path differs from the stack's in one call, and that call is the accounting.</strong>
+  The stack routes its overflow through <code>MemoryManager::FallbackAllocate(GetID(), parentID, requested)</code>, which records a
+  fallback against the child's registration. This path calls <code>MemoryManager::Allocate(parentID, requested)</code> directly, so
+  under <code>PROFILE_ENABLED</code> the same event appears as an ordinary allocation of the parent and is never attributed to this
+  allocator. The warning the stack omits is present here — <code>LogWarning</code> with the rounded size and the free size — and is
+  dead code in this tree: <code>MemoryManager::LogWarning</code> forwards to <code>MemoryManager::Log</code>, whose body is inside
+  <code>#if MEMORY_LOGGING_ENABLED</code>, and <code>Engine/Config/BuildConfig.h</code> defines that as 0. So an overflow here is
+  invisible in both the log and the profile.
+</div>
+
+<div class="note">
+  <strong>The comparison uses the rounded size, and a zero-byte request is degenerate.</strong>
+  With 10 bytes left, a request of 10 rounds to 16, 16 is greater than 10, and the request goes to the parent — the last partial
+  <code><a href="../../Config/index.html">Config::DefaultAlign</a></code> of the buffer is unreachable for anything but a request that
+  already fits it. A request of 0 rounds to 0 and the comparison never favours the parent, so the call returns
+  <code>buffer + cursor</code> without moving the cursor: two zero-sized requests answer with the same address, neither owns anything,
+  and when the buffer happens to be exactly full that answer is <code>buffer + capacity</code> — an address one past the end that
+  <a href="ismine.html">IsMine</a> disowns. Derived from the quoted code; no testlet allocates zero bytes.
+</div>
+
+<div class="note">
+  <strong>Alignment is a stride, not a promise.</strong>
+  Every charge is a multiple of 16, so consecutive blocks are exactly 16 bytes apart and no block starts misaligned relative to the
+  buffer itself. What the class cannot promise is that the buffer is 16-byte aligned: that is inherited from whichever allocator answered
+  the constructor, whose default path is <code>SystemAllocator</code>'s <code>malloc</code>
+  (<code>Engine/Memory/SystemAllocator.h</code>), and nothing checks or forces it. There is no aligned-allocation entry point on this
+  class. See <a href="index.html#coverage">Coverage</a>.
+</div>
+
+<div class="note">
+  <strong>A null answer means the parent failed, and only a checked build says so before the caller does.</strong>
+  <code>MemoryManager::Allocate(TId id, size_t nBytes)</code> ends with <code>Assert(ptr != nullptr, "Allocation Failed")</code>: in
+  <code>Debug</code> and <code>Dev</code> that aborts; in <code>Release</code> the assertion is an empty inline function
+  (<code>Engine/Core/Debug.h</code>) and the null travels back to a caller holding a <code>[[nodiscard]]</code> pointer. The same
+  function returns <code>nullptr</code> for a zero-byte request before it reaches that assertion, so a parent-side call carrying a
+  rounded-up non-zero size is the only way this returns null silently.
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<table>
+  <tr><th>Parameter</th><th>Type</th><th>Requirement</th></tr>
+  <tr><td><code>size</code></td><td><code>size_t</code></td><td>Bytes wanted. Rounded up to a multiple of <code>Config::DefaultAlign</code> (16) before anything is compared or charged. The count matters only on the overflow path, where the parent is given the unrounded value — and since no release of a buffer block does anything, keeping the number is useful only for releases of blocks that went to the parent.</td></tr>
+</table>
+
+<h2 id="return">Return value</h2>
+
+<table>
+  <tr><th>Type</th><th>What you get</th></tr>
+  <tr><td><code>TPointer</code> (<code>void*</code>)</td><td>Useful bytes, or <code>nullptr</code> if the parent's answer was <code>nullptr</code>. Which allocator owns the block depends on whether the buffer could cover it: inside the buffer nothing can free it but this object's destructor; from the parent, a release through this object or the parent frees it. The attribute is <code>[[nodiscard]]</code> — a discarded pointer cannot be recovered, because the allocator keeps no record of what it handed out.</td></tr>
+</table>
+
+<h2 id="example">Examples</h2>
+
+<pre><code>auto allocFunc = [](void* allocatorPtr, size_t n) -&gt; void*
+{
+	auto allocator = static_cast&lt;MonotonicAllocator*&gt;(allocatorPtr);
+
+	return allocator-&gt;Allocate(n);
+};</code></pre>
+
+<p class="meta">From Engine/Memory/MonotonicAllocator.cpp, MonotonicAllocator::MonotonicAllocator(const char* name, TSize inCapacity)</p>
+
+<p>
+  No engine or application source calls <code>Allocate</code> on a monotonic allocator by name; this lambda, handed to
+  <code>MemoryManager::RegisterAllocator</code>, is the call site. Anything allocating under an
+  <a href="../index.html#allocatorscope"><code>AllocatorScope</code></a> over <a href="getid.html">GetID</a>() reaches the function
+  through the manager's proxy dispatch — which is how the testlets in <code>Engine/Memory/MonotonicAllocator.cpp</code> fill a
+  1 MiB buffer with an <code>HVector&lt;int&gt;</code> and a <code>String</code> without naming the allocator once. No testlet asks for
+  more bytes than the buffer holds, so the overflow branch above is the least exercised code in this file.
+</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; MonotonicAllocator</a></span>
+  <span><a href="index.html#methods">All MonotonicAllocator methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

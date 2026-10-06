@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MemoryManager::GetScopedAllocatorID — Memory module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a class="current" href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Memory</a> /
+  <a href="index.html">MemoryManager</a> / GetScopedAllocatorID
+</p>
+
+<h1><span class="fn">GetScopedAllocatorID</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::MemoryManager</span>
+  <span class="tag">Engine/Memory/MemoryManager.h</span>
+  The private twin of GetCurrentAllocatorID — the id the dispatch path and AllocatorScope actually use.
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>[[nodiscard]] static TId GetScopedAllocatorID()</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+Defined in the class body of <code>Engine/Memory/MemoryManager.h</code>: <code>return scopedAllocatorID;</code>, reading the
+<code>static thread_local</code> id this thread's unnamed allocations go to. The body is byte-for-byte what
+<a href="get-current-allocator-id.html">GetCurrentAllocatorID</a> does — the difference between the two is who may call them,
+and that difference is what the allocator scope mechanism is built on.
+</p>
+
+<table>
+  <tr><th></th><th><a href="get-current-allocator-id.html">GetCurrentAllocatorID</a></th><th>GetScopedAllocatorID</th></tr>
+  <tr><td>Access</td><td><code>public static</code></td><td><code>private static</code></td></tr>
+  <tr><td>Body</td><td>returns <code>scopedAllocatorID</code></td><td>returns <code>scopedAllocatorID</code></td></tr>
+  <tr><td>Who uses it</td><td>allocators adopting a parent id in their constructors</td><td>this class's own dispatch and the <code>AllocatorScope</code> friend</td></tr>
+</table>
+
+<p>
+The private one is what the machinery reads: the unsized <a href="allocate.html">Allocate</a> and
+<a href="deallocate.html">Deallocate</a> overloads each call it, as do
+<a href="allocate-by-type.html">AllocateByType</a> and <a href="deallocate-types.html">DeallocateTypes</a> and therefore
+<a href="new.html">New</a>, <a href="new-array.html">NewArray</a>, <a href="delete.html">Delete</a> and
+<a href="delete-array.html">DeleteArray</a>. <code>AllocatorScope</code> reaches it as a declared
+<code>friend class</code> — the reason the friendship exists at all, together with
+<a href="set-scoped-allocator-id.html">SetScopedAllocatorID</a>.
+</p>
+
+<div class="note">
+  <strong>Why two getters for one field.</strong>
+  Keeping the dispatch path on the private one means the pair can diverge — a future validity check, a debug counter or a
+  trace would land on the internal reader without changing what an allocator sees when it adopts a parent. Today they are
+  identical, and the pairing is the cheapest way to say "this value has two roles": one as public information, one as the
+  routing decision. Both read the field directly and validate nothing.
+</div>
+
+<div class="gap">
+  <strong>Per thread, and never inherited.</strong>
+  The field is <code>static thread_local</code> and initialised to <code>0</code> in
+  <code>Engine/Memory/MemoryManager.cpp</code>, so a worker thread started by the task system reads
+  <a href="index.html#properties">SystemAllocatorID</a> even while the thread that queued its work sits inside an
+  <code>AllocatorScope</code>. Nothing in <code>Engine/</code> propagates a scope across a thread boundary; the module's answer
+  is to record a parent id instead (<a href="get-current-allocator-id.html">GetCurrentAllocatorID</a>) and name it explicitly at
+  release time. A value read here is a snapshot: the two halves of a typed
+  <a href="allocate-by-type.html">allocate</a>/<a href="deallocate-types.html">release</a> pair each re-read it, so a scope that
+  moves in between sends the block to a stranger.
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<p>None.</p>
+
+<h2 id="return">Return value</h2>
+
+<table>
+  <tr><th>Type</th><th>What you get</th></tr>
+  <tr><td><code>TId</code> (<code>TAllocatorID</code>)</td><td>This thread's current id, unvalidated — 0 before any scope opens, the id the innermost open <code>AllocatorScope</code> installed, or whatever a caller wrote straight into the public field. See <a href="get-current-allocator-id.html">GetCurrentAllocatorID</a> for the case where it is legitimately <code>InvalidAllocatorID</code>.</td></tr>
+</table>
+
+<h2 id="example">Examples</h2>
+
+<pre><code>AllocatorScope::AllocatorScope(TAllocatorID id) noexcept
+{
+	auto&amp; mmgr = MemoryManager::GetInstance();
+	previous = mmgr.GetScopedAllocatorID();
+	current = id;
+
+	mmgr.SetScopedAllocatorID(current);
+}</code></pre>
+
+<p class="meta">From Engine/Memory/AllocatorScope.cpp, AllocatorScope::AllocatorScope()</p>
+
+<p>
+The friend that exists for this getter and its setter: read the current id, install a new one, restore the saved value in the
+destructor. No code outside this class and <code>AllocatorScope</code> can call it — the allocators that need the same value all
+use the public twin.
+</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; MemoryManager</a></span>
+  <span><a href="index.html#methods">All MemoryManager methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

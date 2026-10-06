@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DefaultAllocator::DefaultAllocator — Memory module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a class="current" href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Memory</a> /
+  <a href="index.html">DefaultAllocator</a> / DefaultAllocator
+</p>
+
+<h1><span class="fn">DefaultAllocator</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::DefaultAllocator</span>
+  <span class="tag">Engine/Memory/DefaultAllocator.h</span>
+  Records a registration id once: the thread's current allocator, or another instantiation's. Every later call is a dispatch on that snapshot.
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>DefaultAllocator()
+		: allocatorID(MemoryManager::GetCurrentAllocatorID())
+
+template &lt;class TOther&gt;
+	explicit DefaultAllocator(const DefaultAllocator&lt;TOther&gt;&amp; rhs) noexcept
+		: allocatorID(rhs.GetSourceAllocatorID())</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  Both are defined inline in <code>Engine/Memory/DefaultAllocator.h</code>. They have one job, and it is the whole contract of the
+  class: choose a registration id once, at construction, and never look at the allocator scope again. The default form records whatever
+  is current on this thread; the template form copies the id out of an allocator of another element type. There is no constructor that
+  takes a <code>TAllocatorID</code>, no constructor that takes an allocator object, and no way to point one of these at a pool except by
+  opening an <a href="../index.html#allocatorscope"><code>AllocatorScope</code></a> first or by copying one from something already built.
+</p>
+
+<div class="note">
+  <strong>A <code>DefaultAllocator</code> is a photograph of the scope that was open when it was built.</strong>
+  <code>MemoryManager::GetCurrentAllocatorID()</code> is a read of the thread-local <code>scopedAllocatorID</code> and needs no manager
+  instance, so construction is legal before an <code>Engine</code> exists — and what it captures there is 0, because that is the value
+  <code>MemoryManager::scopedAllocatorID</code> is initialised to in <code>Engine/Memory/MemoryManager.cpp</code>. Since
+  <code>MemoryManager::SystemAllocatorID</code> is also 0, an allocator built outside every scope is the allocator whose
+  <a href="allocate.html">allocate</a> goes straight to <code>malloc</code>. Inside a scope it captures that scope's id and keeps it for
+  the object's whole life: two identical containers built in two different scopes are not the same allocator, and everything that follows
+  — which pool serves them, whether they can swap (<a href="operator-not-equal.html">operator!=</a>) — follows from where each one was
+  constructed.
+</div>
+
+<div class="gap">
+  <strong>Copying and moving the allocator is free; the registration behind it is the thing with a lifetime.</strong>
+  The class declares no copy constructor, no move constructor, no assignment operators and no destructor, so all four special members are
+  implicit and the object is a plain <code>int</code>: a probe of the declaration shape with
+  <code>c++ -std=c++2b -Wall -Wextra -fsyntax-only</code> reports <code>is_trivially_copyable_v</code> true and
+  <code>sizeof(A) == sizeof(int)</code>. Nothing about a copy is dangerous in itself — unlike
+  <a href="../InlineMonotonicAllocator/index.html"><code>InlineMonotonicAllocator</code></a>, where a copy duplicates a whole arena and
+  keeps one registration. The danger is the referent: <code>MemoryManager::DeregisterAllocator</code> clears a proxy's function pointers
+  and returns its slot to <code>proxyPool</code>, and <code>MemoryManager::RegisterAllocator</code> hands those slots out again, so a
+  container that outlives the allocator it recorded holds an id that either names nothing usable or, worse, names something else
+  entirely. That is the hazard the header's own warning states — this adapter is the one allocator in the module whose value can outlive
+  what it refers to, and it is most likely to happen with the short-lived allocators, a stack allocator opened for a frame or a pool
+  opened for one load phase, whose registrations come and go. The rule that keeps it safe is not to release through stale ids but to keep
+  the container inside the scope that supplied the id.
+</div>
+
+<p>
+  The template form exists for the type-changing copies the standard library performs when it rebinds an allocator: a node-based
+  container builds <code>DefaultAllocator&lt;Node&gt;</code> from the user's <code>DefaultAllocator&lt;T&gt;</code>, and reading
+  <a href="getsourceallocatorid.html">GetSourceAllocatorID</a> rather than the ambient scope is what keeps every node of a container in
+  the same arena as its elements. It is <code>explicit</code>, and the probe confirms the consequence —
+  <code>is_convertible_v&lt;DefaultAllocator&lt;int&gt;, DefaultAllocator&lt;double&gt;&gt;</code> is false — so the library's explicit
+  construction works while an implicit conversion between two instantiations does not exist; hand-written code must name the target type.
+</p>
+
+<h2 id="parameters">Parameters</h2>
+
+<table>
+  <tr><th>Parameter</th><th>Type</th><th>Requirement</th></tr>
+  <tr><td><em>(<code>DefaultAllocator()</code>)</em></td><td>—</td><td>No arguments. The id comes from the calling thread's current scope, and 0 (the system allocator) is a legitimate answer — it is the common one.</td></tr>
+  <tr><td><code>TOther</code></td><td><em>template parameter</em></td><td>The source allocator's element type, deduced from the argument.</td></tr>
+  <tr><td><code>rhs</code></td><td><code>const DefaultAllocator&lt;TOther&gt;&amp;</code></td><td>The allocator to inherit an id from. Only <a href="getsourceallocatorid.html">GetSourceAllocatorID</a> is read; the source needs no live registration to be copied.</td></tr>
+</table>
+
+<h2 id="return">Return value</h2>
+
+<p>None — these are constructors.</p>
+
+<h2 id="example">Examples</h2>
+
+<pre><code>AddTest("Multiple Allocations", [](auto&amp;)
+{
+	for (int j = 0; j &lt; 100; ++j)
+	{
+		std::vector&lt;int, DefaultAllocator&lt;int&gt;&gt; v;
+		for (int i = 0; i &lt; 2048; ++i)
+		{
+			v.push_back(i);
+		}
+	}
+});</code></pre>
+
+<p class="meta">From Engine/Memory/DefaultAllocator.cpp, BaseAllocatorTest::Prepare(), testlet "Multiple Allocations"</p>
+
+<p>
+  No <a href="../index.html#allocatorscope"><code>AllocatorScope</code></a> is open here, so every one of those hundred vectors captures
+  0 and every growth step takes the <code>malloc</code> path — a hundred vectors and roughly a thousand reallocations that never touch the
+  <a href="../index.html#memorymanager"><code>MemoryManager</code></a> at all. The testlet in the same file that <em>does</em> open a
+  scope, "Basic Usage", is the counter-example quoted on <a href="allocate.html">allocate</a>: one <code>reserve</code> inside a pool's
+  scope and the pool's usage figure moves. Between those two testlets sits the entire behaviour of this class, and it is decided in the
+  constructor.
+</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; DefaultAllocator</a></span>
+  <span><a href="index.html#methods">All DefaultAllocator methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

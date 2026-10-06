@@ -1,5 +1,107 @@
 # Journal
 
+## 2026-10-07 05:30 — the half-finished Memory strip is closed: 7 orphan blanks repaired, every claim re-measured
+
+**What was actually left broken.** The previous agent's `comments.py --strip` deletions were complete and correct (0 violations
+on all seven headers), but its blank-line pass never ran. `blank_lines.py` reported 6 findings in `InlinePoolAllocator.h` and
+1 in `Shareable.h`, and both files were **0 findings at HEAD**, so all seven were the strip's own residue: three deleted
+comments left a blank where the prose had stood (`:55` A16 double blank, `:185` A4 blank after `{`, `:192` A11 double blank),
+one deletion also removed a blank that A11 requires (`:210`), the `/// @brief` at the test class left a blank after the
+`__UNIT_TEST__` namespace brace (`:265` A4), and both files had lost A3's second preamble blank. Repaired by the table, not by
+the formatter, and no `clang-format` run followed — a later `--apply` re-collapses A3 and re-opens this layer.
+
+**Proofs, each measured with a redirect and its own exit code.** `comments.py` 0, `blank_lines.py` 0 (0 across every
+`Engine/Memory` header), `includes.py` 0, `layout.py` 16 `MEMBER-LAYOUT` + 2 `ACCESS-REDUNDANT` advice. The layout number is
+not taken on trust: HEAD's seven headers were swapped in, measured, and restored byte-identical (`cmp` per file), and the
+symbol-keyed finding sets are identical — same 16, no data member moved. `comments.py code_tokens` against HEAD is identical
+for both repaired files (1161 and 600 tokens), which proves the whole session moved comments and whitespace only.
+`htmlcheck.py` 740 pages 0 problems (it takes page paths, not a directory — `htmlcheck.py docs` dies with `IsADirectoryError`).
+`docs_methods.py Memory` 0 missing. `docs_coverage.py check-file` passes all seven. Build `EXIT=0` on a forced recompile
+(403 steps, zero `no work to do`); Dev/Debug/Release each 60 collections `SUCCESS`, 0 `FAILURE`, 391 testlets, `EXIT=0`,
+M1-M4 `Result [PASS]`. In one Release run the closing line read as missing only because the async logger interleaved a banner
+between `EngineTest: all ` and `60 collections passed` at 3999-4000 — output interleaving on one fd, not a failure.
+
+**Re-verified rather than trusted.** `docs/Memory/index.html` was already correct: all seven catalogue links present in wave 1's
+shape, and Coverage reads "Eight of the nine allocators" naming `SystemAllocator` as the sole undocumented one — the true count
+against the ten class folders on disk. No `.cpp` lost a comment (`comments.py` count identical to HEAD for all 18);
+`git diff --stat` shows only the two defect-fix/benchmark files. `AllocatorScope.h` holds only its member-order move; the
+`ReportMultiPoolConfigutation` misspelling is unrename and the docs say so out loud. Nothing committed, nothing pushed.
+
+## 2026-10-06 16:33 — the monotonic destructor leak is reproduced, guarded and fixed; the slot-0 shutdown claim is refuted
+
+**Hazard one, proven.** `MonotonicAllocator::~MonotonicAllocator` released its backing buffer through
+`MemoryManager::Deallocate(void*, size_t)` — the ambient scope — while the constructor had recorded the true owner in
+`parentID`. Destroying the allocator while its own `AllocatorScope` is open therefore routes the release into the
+allocator's own inert `Deallocate` (`IsMine` is true, individual releases are ignored) before `DeregisterAllocator`
+clears the slot, so nothing asserts and the buffer never returns to its parent. Reproduced in the suite by a new
+testlet `Destroy In Own Scope` in `Engine/Memory/MonotonicAllocator.cpp`: a fixture parent allocator registered over
+`::operator new`/`::operator delete` backs a 131072-byte monotonic buffer, and destroying it inside its own scope
+retained exactly 131072 bytes against the 65536-byte ceiling (`retained 130728 bytes of engine-owned global heap`,
+collection `FAILED`, exit 1 — measured pre-fix and again with the fix reverted). The repair is one line, symmetric
+with the constructor: `mmgr.Deallocate(parentID, bufferPtr, capacity)`. After the fix both new testlets pass in
+Debug, Dev and Release; the suite reports all 60 collections passed, 391 testlets (389 before, +2), exit 0.
+
+**Hazard one, refuted half.** `InlineMonotonicAllocator` was named in the same claim but its destructor releases no
+buffer at all — the buffer is an inline member with no owner, and the destructor only calls `DeregisterAllocator`.
+Refuted by observation: a second `Destroy In Own Scope` testlet in `Engine/Memory/InlineMonotonicAllocator.cpp`
+measures global bytes across construct-and-destroy-inside-own-scope and sees the retained direction stay at zero.
+`StackAllocator` was confirmed to behave as claimed — the assert is `StackAllocator::Deallocate`'s `Assert(cursor >=
+size)` (cursor 0 versus size = capacity) in Debug/Dev; in Release that assert is empty and the release is dropped the
+same silent way, which the owner has not been asked to change here.
+
+**Hazard two, refuted.** The claim: after shutdown `proxyPool` holds slot 0, whose `id` is never written, so a
+re-registration hands out an identity built on uninitialised or stale state. Verdict: unreachable, and the
+uninitialised half is factually wrong. `AllocatorProxy::AllocatorProxy()` writes `id = InvalidAllocatorID` for every
+element of `allocators[MaxNumAllocators]` including slot 0 — the seeding loop skipping slot 0 leaves it `-1`, not
+uninitialised. The slot-0 push happens inside `~MemoryManager`, whose `proxyPool` is a per-instance
+`AtomicStackView` (a single `std::atomic<T*> top` member, no global node backing), so the pushed entry dies with the
+destroyed instance. A `RegisterAllocator` reached after shutdown cannot exist: `MemoryManager::GetInstance()` opens
+with `FatalAssert(mmgrInstance != nullptr)` and `FatalAssert` is defined outside the `RELEASE_BUILD` guard in
+`Engine/Core/Debug.h`, so it aborts in all three configurations before any id is handed out. A second `MemoryManager`
+(second Engine in one process) seeds its own fresh free list with slots 1…255 only, and during any live instance's
+lifetime nothing pushes slot 0 — `DeregisterAllocator(SystemAllocatorID)` has exactly one caller, the destructor.
+Nothing in a normal run, and no testlet in this suite, is close to that path: `EngineTest` shuts the engine down after
+the last testlet, and `Engine`'s member order (`memoryManager` before `taskSystem`) joins the worker streams before
+`~MemoryManager` begins. Recorded as refuted so nobody re-files it; no guard added, no `MemoryManager` change.
+
+**Verification.** Models first under `/tmp/hbe_hazard_models/` (`monotonic_allocator_dtor_model.cpp`,
+`memory_manager_slot0_model.cpp`) reproduced both behaviours before any engine edit. Then: testlet added first,
+failure captured against unfixed code, fix applied, pass captured, fix reverted, failure captured again, fix
+restored. `./build.sh Applications/EngineTest -dev -debug -release -test` then all three binaries: exit 0 each, 60
+`Collection Result: [SUCCESS]` each, 391 testlets each, `M1`…`M4` benchmark lines present and `PASS` in every log.
+Style gates on the two touched files unchanged from baseline: `blank_lines.py` 0, `includes.py` 0, `comments.py` 0
+violations, `layout.py` 0 findings. `clang-format --dry-run` on `MonotonicAllocator.cpp` reports one residual
+violation, the pre-existing A3 double blank after the include preamble that clang-format deletes and rule A3 demands
+— identical to HEAD; my added lines are formatter-clean.
+
+**Left to the owner.** `StackAllocator::~StackAllocator` keeps the same ambient-scope release
+(`mmgr.Deallocate(bufferPtr, capacity)`); Debug/Dev assert their way out of the silent leak, Release drops the
+release, and the one-line parent-naming fix used here would apply identically — deliberately not widened to it, the
+claim named only the monotonic pair. Not committed, not pushed, nothing under `docs/` touched.
+
+## 2026-10-06 15:09 — `StackAllocator` and `MonotonicAllocator` own their pages; the Memory tree is `htmlcheck` clean
+
+**What landed.** Two class folders under `docs/Memory/`, 19 pages: `StackAllocator` 10 (its class page predated this run),
+`MonotonicAllocator` 9. Both headers now carry their one `/// API reference:` line; no other `Engine/` edit, no comment deleted,
+no build, no commit.
+
+**Gates.** `docs_pass.py signatures` 9 and 8 pages verbatim, 0 problems; `docs_coverage.py check-file` reports each header
+`1 entry documented, addressed from the header, method pages complete`; `docs_methods.py Memory` 0 methods without a page;
+`docs_page.py check Memory` 145 pages, 0 with problems — the StackAllocator dead-link red item is closed.
+
+**What the pages assert that no one had written down.** Neither class declares a reset, so destruction is the only mass release and it
+invalidates every pointer still held; the stack's release is last-in-first-out and a mismatch leaks silently in `Release`
+(`Assert` empty, `MEMORY_LOGGING_ENABLED` 0); a stale handle to a reused offset can rewind a live block; the monotonic class ignores
+releases of its own bytes entirely. New finding recorded on the monotonic destructor page: both destructors release the buffer through
+the *ambient* scope, so destroying one while its own `AllocatorScope` is open routes the release back into its own `Deallocate` — the
+stack asserts, the monotonic allocator ignores it and loses the buffer with no diagnostic at all. Nine named omissions per class page
+(thread-safety, implicit copy or move, returned alignment, every `PROFILE_ENABLED` path, zero-capacity and failed construction,
+Release-build leak size, undetectable stale handles, `AllocatorID.h` surface, `MemoryManager` contracts, the test collections).
+
+**For the integrator.** `docs/Memory/index.html`'s catalogue row still reads `MonotonicAllocator` … "No — reset only"; no reset
+method exists. The catalogue also hides that these two destructors dispatch through the ambient scope while
+`PoolAllocator`'s dispatches through its recorded parent.
+
 ## 2026-10-06 06:40 — wave 1 of the Memory comment migration closed: three headers hold no comments, three refuse the gate
 
 **What landed.** Three class folders under `docs/Memory/`, 53 pages: `PoolAllocator` 23, `MultiPoolAllocator` 15,

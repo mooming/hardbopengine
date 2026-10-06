@@ -1,0 +1,225 @@
+<h2 id="description">Class description</h2>
+
+<p>
+  <code>class MonotonicAllocator final</code> at <code>Engine/Memory/MonotonicAllocator.h</code> hands out bytes from one fixed
+  buffer by moving a cursor forward and never backward. The constructor rounds the requested capacity up to a multiple of
+  <a href="../../Config/index.html"><code>Config::DefaultAlign</code></a> (16 bytes), records the allocator that is current at
+  that moment as <code>parentID</code>, takes the buffer from the
+  <a href="../index.html#memorymanager"><code>MemoryManager</code></a>, and registers the object under an id of its own — the same
+  three steps <a href="../StackAllocator/index.html"><code>StackAllocator</code></a> performs, with one difference that decides
+  everything else about this class: the cursor has no way back.
+</p>
+
+<p>
+  The header states the contract in one sentence — "Memory is released all at once on destruction. Individual deallocations are
+  ignored." — and the source honours it literally.
+  <a href="deallocate.html">Deallocate</a> accepts a pointer that came from this buffer, logs a <code>Verbose</code> line saying
+  the call "shall be ignored", and returns without touching <code>cursor</code>. The shape the repository actually uses is in
+  <code>Engine/Memory/MonotonicAllocator.cpp</code>, <code>MonotonicAllocatorTest::Prepare()</code>: construct the allocator, open
+  an <a href="../index.html#allocatorscope"><code>AllocatorScope</code></a> over its id, and let the containers built inside that
+  scope allocate through it — nothing in the engine calls <a href="allocate.html">Allocate</a> on a monotonic allocator directly.
+</p>
+
+<pre><code>MonotonicAllocator alloc("Test::MonotonicAllocator", 1024 * 1024);
+{
+	AllocatorScope scope(alloc.GetID());
+
+	HVector&lt;int&gt; a;
+	a.push_back(0);
+}</code></pre>
+
+<p class="meta">From Engine/Memory/MonotonicAllocator.cpp, MonotonicAllocatorTest::Prepare()</p>
+
+<p>
+  That test asserts the consequence rather than the mechanism. After the scope closes and the string and vectors are destroyed, it
+  demands <code>alloc.GetUsage() != 0</code> and reads the failure message
+  <code>"Monotonic Allocator doesn't provide deallocation."</code>. A caller who expects a container's destructor to give memory
+  back to this allocator is writing the wrong program; the bytes are gone until the object itself dies.
+</p>
+
+<div class="gap">
+  <strong>Every pointer this allocator handed out dies at the destructor, and nothing short of the destructor frees anything.</strong>
+  There is no reset: the header declares no <code>Reset</code>, <code>Rewind</code>, <code>ReleaseAll</code> or per-block release
+  that does anything, so the object's destruction is the only moment bytes return.
+  <a href="destructor.html">~MonotonicAllocator</a> calls <code>mmgr.Deallocate(bufferPtr, capacity)</code>, which releases the
+  whole backing allocation in one step — so a pointer into the buffer is invalid after that call whether or not the block behind
+  it was ever "released", and the addresses of sibling blocks do not survive either. The one thing that does outlive this object
+  is a block that arrived through the overflow path, because that block belongs to <code>parentID</code> and the destructor does
+  not touch it. See the <a href="deallocate.html">Deallocate</a> page for what a release attempt actually costs, which is nothing.
+</div>
+
+<div class="gap">
+  <strong>A release attempt is legal, silent and inert for this allocator's own bytes.</strong>
+  <a href="deallocate.html">Deallocate</a> is not deleted, not asserting and not empty: it dispatches on
+  <a href="ismine.html">IsMine</a>(). A pointer inside the buffer produces a <code>Verbose</code> log and, under
+  <code>PROFILE_ENABLED</code>, a <code>ReportDeallocation</code> whose released amount is <code>0</code> — and no other effect.
+  Because <code>MEMORY_LOGGING_ENABLED</code> is 0 in <code>Engine/Config/BuildConfig.h</code>, in this configuration a release of
+  one of this allocator's own blocks does literally nothing observable: <a href="getusage.html">GetUsage</a>() is unchanged, and the
+  only hint the code ever gave is a line no build prints. A caller cannot distinguish "this block is still mine" from "my release
+  was heard" without reading this page.
+</div>
+
+<div class="note">
+  <strong>Exhaustion is not a failure, and the block that survives it belongs to the parent.</strong>
+  When the aligned request exceeds <a href="getavailable.html">GetAvailable</a>(), <a href="allocate.html">Allocate</a> asks the
+  parent instead of returning null — <code>auto ptr = mmgr.Allocate(parentID, requested);</code>, preceded by a
+  <code>LogWarning</code> that this configuration cannot print. Two consequences a caller has to hold: the pointer is outside this
+  buffer, so <a href="ismine.html">IsMine</a>() says no and a later <a href="deallocate.html">Deallocate</a> of it is forwarded to
+  <code>parentID</code> and genuinely released — unlike a release of a real block — and the block is <em>not</em> freed by this
+  object's destructor, so it must be released explicitly or it leaks past the allocator. Note also that this path calls
+  <code>MemoryManager::Allocate</code> directly, where <a href="../StackAllocator/allocate.html">the stack's</a> overflow path
+  calls <code>MemoryManager::FallbackAllocate</code>: under <code>PROFILE_ENABLED</code> the monotonic overflow is recorded as a
+  plain allocation of the parent and never counted as a fallback.
+</div>
+
+<div class="note">
+  <strong>Alignment is fixed at the engine default and cannot be asked for.</strong>
+  Every request is rounded up to <code>Config::DefaultAlign</code> (16) by the inline arithmetic in
+  <code>MonotonicAllocator::Allocate()</code> — <code>(size + AlignUnit - 1) / AlignUnit</code>, then multiplied back. Neither this
+  class nor its parent path takes an alignment argument, so a request for an over-aligned type gets 16-byte spacing at best, and
+  even that is inherited: a block's address is <code>buffer + cursor</code>, and the buffer is whatever the parent's answer
+  happened to be aligned to. See the <a href="#coverage">Coverage section</a> for what the code does not settle.
+</div>
+
+<p>
+  The class declares no copy constructor, no move constructor and no assignment operator, and it owns two resources: one buffer and
+  one registration id whose proxy record stores <code>this</code>
+  (<code>MemoryManager::RegisterAllocator()</code> in <code>Engine/Memory/MemoryManager.cpp</code>). Two live objects over one
+  buffer would each return that buffer to the manager and each deregister the same id, so one object per buffer is the only
+  supported use. Whether the implicit operations compile at all is a build question this page does not answer — the migration step
+  that owns these pages runs no compiler; see <a href="#coverage">Coverage</a>.
+</p>
+
+<h2 id="template">Template parameters</h2>
+
+<p>
+  None. <code>MonotonicAllocator</code> is <code>final</code> and not a template: capacity and name are constructor arguments, and
+  the allocator serves raw bytes, so no element type reaches the class.
+</p>
+
+<h2 id="properties">Class properties</h2>
+
+<table>
+  <tr><th>Type + Name</th><th>Default Value</th><th>Description</th></tr>
+  <tr><td><code>using TSize = size_t;</code> <span class="badge">member type</span></td><td><span class="muted">not applicable</span></td><td>Byte-count type of the buffer and of every size a caller passes in or reads back.</td></tr>
+  <tr><td><code>using TPointer = void*;</code> <span class="badge">member type</span></td><td><span class="muted">not applicable</span></td><td>Pointer type of every address this class takes or returns.</td></tr>
+  <tr><td><code>TAllocatorID id;</code> <span class="badge">private</span></td><td><span class="muted">none in the header</span></td><td>This allocator's registration id, set from <code>MemoryManager::RegisterAllocator()</code>; <code>InvalidAllocatorID</code> is what the constructor starts from and what a failed registration leaves behind.</td></tr>
+  <tr><td><code>TAllocatorID parentID;</code> <span class="badge">private</span></td><td><span class="muted">none in the header</span></td><td>The allocator current at construction, recorded once in the constructor body: where the buffer came from, where overflow requests go, and where foreign pointers are sent. Not named in the member initializer list.</td></tr>
+  <tr><td><code>TSize cursor;</code> <span class="badge">private</span></td><td><span class="muted">none in the header</span></td><td>Bytes handed out from the buffer, and the offset the next block starts at. The constructor sets it to 0 and only <a href="allocate.html">Allocate</a> ever adds to it — this is the member that makes the allocator monotonic.</td></tr>
+  <tr><td><code>TSize capacity;</code> <span class="badge">private</span></td><td><span class="muted">none in the header</span></td><td>Size of the backing allocation in bytes — the constructor argument already rounded up to a multiple of <code>Config::DefaultAlign</code>, so it is never smaller than what was asked for.</td></tr>
+  <tr><td><code>uint8_t* buffer;</code> <span class="badge">private</span></td><td><span class="muted">none in the header</span></td><td>Base of the backing allocation, as every allocation and range test reads it. One of two names for one member: it lives in an anonymous union beside <code>bufferPtr</code>.</td></tr>
+  <tr><td><code>TPointer bufferPtr;</code> <span class="badge">private</span></td><td><span class="muted">none in the header</span></td><td>The same storage as <code>buffer</code>, as a raw pointer — the name the constructor writes through when the manager hands the bytes over, and the name the destructor gives back.</td></tr>
+</table>
+
+<h2 id="methods">Class methods</h2>
+
+<table class="methods">
+  <tr><th>Name</th><th>Signature</th><th>What a caller depends on</th></tr>
+  <tr><td><a href="constructors.html"><code>MonotonicAllocator</code></a></td><td class="sig">MonotonicAllocator(const char* name, TSize capacity)</td><td>Rounds capacity up, takes the buffer from the allocator that is current, registers the object.</td></tr>
+  <tr><td><a href="destructor.html"><code>~MonotonicAllocator</code></a></td><td class="sig">~MonotonicAllocator()</td><td>The only release this class performs: the whole buffer goes back through whichever allocator is current at that moment, then the registration is deregistered.</td></tr>
+  <tr><td><a href="allocate.html"><code>Allocate</code></a></td><td class="sig">[[nodiscard]] TPointer Allocate(size_t size)</td><td>Rounds up, bumps the cursor, and asks the parent instead of failing when the buffer cannot cover the rounded size.</td></tr>
+  <tr><td><a href="deallocate.html"><code>Deallocate</code></a></td><td class="sig">void Deallocate(const TPointer ptr, TSize size) noexcept</td><td>Ignored for this allocator's own bytes; a foreign pointer is forwarded to the parent, where it really is released.</td></tr>
+  <tr><td><a href="getavailable.html"><code>GetAvailable</code></a></td><td class="sig">[[nodiscard]] size_t GetAvailable() const</td><td><code>capacity - cursor</code> — bytes left in the buffer, never counting the parent the overflow path can still reach.</td></tr>
+  <tr><td><a href="getusage.html"><code>GetUsage</code></a></td><td class="sig">[[nodiscard]] size_t GetUsage() const</td><td>Bytes charged against the buffer, at the rounded size — and the only figure here that can never go down before destruction.</td></tr>
+  <tr><td><a href="getid.html"><code>GetID</code></a></td><td class="sig">[[nodiscard]] auto GetID() const</td><td>The registration id every <code>AllocatorScope</code> over this allocator is opened with; the number is recycled once the object dies.</td></tr>
+  <tr><td><a href="ismine.html"><code>IsMine</code></a></td><td class="sig">[[nodiscard]] bool IsMine(const TPointer ptr) const</td><td>Private: a range test on the buffer, and the single switch that decides whether a release is ignored or forwarded.</td></tr>
+</table>
+
+<h2 id="non-member">Non-member helper functions</h2>
+
+<p>
+  None. A monotonic allocator is reached through its own object or through the
+  <a href="../index.html#memorymanager"><code>MemoryManager</code></a> registration its constructor created. The free functions in
+  <code>Engine/Memory/Memory.h</code> (<code>New</code>, <code>Delete</code>) and the
+  <a href="../index.html#allocatorscope"><code>AllocatorScope</code></a> and <code>ScopedAllocator</code> wrappers work on any
+  allocator and belong to the <a href="../index.html#functions">module page</a>. The similarly named
+  <a href="../InlineMonotonicAllocator/index.html"><code>InlineMonotonicAllocator</code></a> is a separate class and is not this
+  one's base or alias.
+</p>
+
+<h2 id="coverage">Coverage</h2>
+
+<table>
+  <tr><th>Not documented here</th><th>Why, and where it belongs</th></tr>
+  <tr>
+    <td>Thread-safety, and whether one allocator may be shared or moved between threads</td>
+    <td>The code does not answer it. <code>Engine/Memory/MonotonicAllocator.cpp</code> takes no lock and reads and writes no atomic:
+        <code>cursor</code>, <code>capacity</code> and the registration id are plain members, so two threads allocating at once race
+        on the cursor. Against that: the <a href="../index.html#memorymanager"><code>MemoryManager</code></a> it calls into holds its
+        own <code>statsLock</code> and a <code>thread_local</code> scoped-allocator id, and the engine's shareable shape is the
+        multi-pool allocator the <a href="../index.html#allocators">allocator catalogue</a> names. No testlet runs either allocator
+        from two threads, and no assertion binds an allocator to the thread that constructed it
+        (<code>MEMORY_VERIFICATION_ENABLED</code> is 0), so whether sharing is "merely" racy or already checked somewhere is not
+        established here. The manager's own rules are owned by the <a href="../index.html#memorymanager">Memory module page</a>.</td>
+  </tr>
+  <tr>
+    <td>Whether an implicit copy or move of <code>MonotonicAllocator</code> compiles</td>
+    <td>A build claim, and this migration step runs no compiler. What is stated instead is the consequence: the destructor frees the
+        buffer and deregisters the id, so a second live object over the same buffer is a double free of both. The class declares
+        nothing about the matter, which is itself the finding —
+        <a href="../PoolAllocator/index.html"><code>PoolAllocator</code></a> declares its move operations explicitly, this class does
+        not.</td>
+  </tr>
+  <tr>
+    <td>The alignment a returned pointer actually carries</td>
+    <td>Only that block starts are 16 bytes apart, because every charge is rounded to <code>Config::DefaultAlign</code>. Whether
+        <code>buffer</code> itself is 16-byte aligned depends on the allocator that served the constructor's request — in this
+        configuration that is <code>SystemAllocator</code>'s <code>malloc</code> path
+        (<code>Engine/Memory/SystemAllocator.h</code>), which the code does not check or force. No test asserts an address modulus, so
+        anything beyond "16 bytes apart inside one buffer" is unnamed.</td>
+  </tr>
+  <tr>
+    <td>Every path behind <code>#if PROFILE_ENABLED</code>: the <code>ReportAllocation</code> and <code>ReportDeallocation</code>
+        calls in <a href="allocate.html">Allocate</a>, <a href="deallocate.html">Deallocate</a> and
+        <a href="destructor.html">~MonotonicAllocator</a>, and the <code>stats</code> bookkeeping they drive</td>
+    <td><code>Engine/Config/BuildConfig.h</code> defines <code>PROFILE_ENABLED</code> as 0, and <code>JOURNAL.md</code> (2026-10-05)
+        records that flipping it breaks the build before any Memory file is reached. Those paths are described from the source and have
+        never executed, so their accounting claims — for instance that <a href="deallocate.html">Deallocate</a> reports a released
+        amount of <code>0</code> while passing the requested size through, or that the destructor reports the whole buffer as a single
+        deallocation of <code>cursor</code> bytes — are read, not observed.</td>
+  </tr>
+  <tr>
+    <td>Behaviour of a zero-capacity allocator, and of a failed construction</td>
+    <td>Read from the code, never exercised: no testlet constructs either of these allocators with a capacity of 0, and none makes
+        <code>MemoryManager::Allocate</code> fail. What the code says is that a capacity of 0 rounds to 0, that the manager returns
+        <code>nullptr</code> for a 0-byte request, and that a registration failure yields <code>InvalidAllocatorID</code> while the
+        object still holds a buffer — but the resulting state is untested, so it is named rather than documented as a contract.</td>
+  </tr>
+  <tr>
+    <td>What an ignored release costs a long-lived allocator in practice</td>
+    <td>The mechanism is documented on <a href="deallocate.html">Deallocate</a> — the cursor never moves — but no testlet allocates,
+        releases and re-allocates against a monotonic allocator, so the practical growth of <a href="getusage.html">GetUsage</a>()
+        under a workload that "frees" repeatedly is not measured here, only implied by the code.</td>
+  </tr>
+  <tr>
+    <td>The stale-pointer and double-release shapes that a block without a header cannot detect</td>
+    <td>Named for completeness: neither class keeps a block header, a footer or a generation counter, so no code in this class can
+        tell a live block from a stale handle to a reused offset. <a href="../StackAllocator/deallocate.html">The stack's release
+        path</a> can be talked into rewinding a block that is not the current top, which is the case where that
+        becomes a live-pointer problem; here the same ambiguity is harmless by construction, because no release moves anything. The
+        stack page owns that analysis; this page names it and does not extend it.</td>
+  </tr>
+  <tr>
+    <td><code>TAllocatorID</code>, <code>InvalidAllocatorID</code>, <code>MaxNumAllocators</code> and the other
+        <code>AllocatorID.h</code> surface these signatures mention</td>
+    <td>Owned by their own pages, which this wave does not write. Cited here by name and by file
+        (<code>Engine/Memory/AllocatorID.h</code>) only.</td>
+  </tr>
+  <tr>
+    <td>The <code>MemoryManager</code> contracts this class leans on: <code>RegisterAllocator</code>,
+        <code>DeregisterAllocator</code>, the <code>AllocatorProxy</code> dispatch, the thread-local scope stack</td>
+    <td>Owned by the <a href="../index.html#memorymanager">Memory module page</a>. This page states what a monotonic allocator does
+        with them, not what they promise.</td>
+  </tr>
+  <tr>
+    <td><code>MonotonicAllocatorTest</code></td>
+    <td>Test-only: declared in <code>Engine/Memory/MonotonicAllocator.h</code> inside <code>#ifdef __UNIT_TEST__</code>, with the four
+        testlets <code>Vector Allocation</code>, <code>Allocation (2)</code>, <code>Deallocation</code> and
+        <code>Deallocation (2)</code> defined in <code>Engine/Memory/MonotonicAllocator.cpp</code>. It owns no page; what each testlet
+        proves is quoted where the claim is made. All four reach the allocator through an
+        <a href="../index.html#allocatorscope"><code>AllocatorScope</code></a> and a container, so every <a href="allocate.html">Allocate</a>
+        and <a href="deallocate.html">Deallocate</a> call they generate arrives through the manager's proxy dispatch — none calls either
+        function on the object, and no testlet ever asks a monotonic allocator for more bytes than its buffer holds, so the overflow
+        path is the least exercised code in this file.</td>
+  </tr>
+</table>

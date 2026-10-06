@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>InlinePoolAllocator::Destructor — Memory module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a class="current" href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Memory</a> /
+  <a href="index.html">InlinePoolAllocator</a> / Destructor
+</p>
+
+<h1><span class="fn">Destructor</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::InlinePoolAllocator</span>
+  <span class="tag">Engine/Memory/InlinePoolAllocator.h</span>
+  Deregisters the pool and nothing else: outstanding blocks, the parent's fallback memory and the array itself are left to others.
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>virtual ~InlinePoolAllocator()</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+Defined inline in the class body of <code>Engine/Memory/InlinePoolAllocator.h</code>; the body is one call,
+<a href="deregister-allocator.html">DeregisterAllocator</a>. It returns this pool's registration slot to the
+<a href="../MemoryManager/index.html"><code>MemoryManager</code></a> and leaves <code>id</code> as
+<code>InvalidAllocatorID</code>, which makes a second pass a no-op. It does not walk the blocks, does not release anything to the
+parent, and does not test whether blocks are still outstanding.
+</p>
+
+<div class="gap">
+  <strong>Everything the pool handed out dies with it, silently.</strong>
+  The pool's storage is the member array <code>block</code> (see <a href="index.html#properties">Class properties</a>), so when this
+  object finishes, the bytes it lent are gone. A pointer obtained from <a href="allocate.html">allocate</a> and still live when the pool
+  is destroyed does not become invalid in any detectable way: the free list is simply no longer there, and neither is the memory. For
+  the users in <code>Engine/HSTL/</code> this is the lifetime rule that matters. A
+  <a href="../../HSTL/index.html"><code>HInlineString</code></a> owns its pool as its allocator, so a <code>c_str()</code> pointer into
+  pool memory cannot outlive the string — and, given that the copy constructor asserts, it cannot outlive a copy attempt either. What
+  the pool does <em>not</em> answer is what happens to a fallback allocation that is still outstanding at destruction:
+  <a href="allocate-bytes.html">AllocateBytes</a> obtained it from the parent allocator under <code>parentID</code>, the destructor
+  never mentions it, so the release has to come from someone else holding the pointer. The code does not say who.
+</div>
+
+<div class="note">
+  <strong>Virtual, and nothing derives from it.</strong>
+  The declaration is <code>virtual ~InlinePoolAllocator()</code>, so every instance carries a vtable pointer and the class is polymorphic.
+  A search of <code>Engine/</code> finds no class inheriting from <code>InlinePoolAllocator</code>, and the pool's own
+  <a href="register-allocator.html">registration</a> calls it through plain function pointers cast back from
+  <code>void*</code>, not through a base class — so the virtual destructor buys a vtable and nothing else. It also means the implicit
+  copy-assignment operator and the absence of a move operation (see <a href="constructors.html">constructors</a>) are permanent: adding a
+  move constructor later is a source-compatible change to the type's shape, not to its layout.
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<p>None.</p>
+
+<h2 id="return">Return value</h2>
+
+<p>Nothing. After it runs, the object's remaining members (including the pool array) are destroyed by the language, not by this function.</p>
+
+<h2 id="example">Examples</h2>
+
+<pre><code>InlinePoolAllocator&lt;int, inlineSize, NumBlocks&gt; inlineAlloc;
+
+	auto rate = AllocDeallocTestFunc(inlineAlloc, ls, lf, 1);
+	if (rate &gt; 1.0f)
+	{
+		ls &lt;&lt; "Performance is worse than system malloc. rate = " &lt;&lt; rate &lt;&lt; lfwarn;
+	}</code></pre>
+
+<p class="meta">From Engine/Memory/InlinePoolAllocator.cpp, InlinePoolAllocatorTest::Prepare()</p>
+
+<p>
+Every stress testlet is shaped like this: the pool is a local, so destruction is the ordinary end of a scope, and the testlet has
+already released what it allocated before the pool dies. That is the pattern this page recommends, not a pattern the destructor
+enforces — no testlet destroys a pool with allocations outstanding, so that path is unexercised.
+</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; InlinePoolAllocator</a></span>
+  <span><a href="index.html#methods">All InlinePoolAllocator methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MemoryManager::GetAllocatorProxy — Memory module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a class="current" href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Memory</a> /
+  <a href="index.html">MemoryManager</a> / GetAllocatorProxy
+</p>
+
+<h1><span class="fn">GetAllocatorProxy</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::MemoryManager</span>
+  <span class="tag">Engine/Memory/MemoryManager.h</span>
+  The registration slot itself, mutable — and an invalid id answers with a live-looking dummy instead of failing.
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>AllocatorProxy&amp; GetAllocatorProxy(TId id)</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+Defined in <code>Engine/Memory/MemoryManager.cpp</code> as <code>MemoryManager::GetAllocatorProxy()</code>. Given a valid
+id it returns <code>allocators[id]</code> — the registration slot itself, by mutable reference, so the caller can rewrite
+the two function pointers, the <code>allocator</code> userData pointer and (under <code>PROFILE_ENABLED</code>) the whole
+<code>AllocStats</code> record. Given an id that fails <a href="is-valid.html">IsValid</a> it logs an
+<code>Error</code> and returns a stand-in instead:
+</p>
+
+<pre><code>if (unlikely(!IsValid(id)))
+{
+	Log(ELogLevel::Error, [funcName = __func__, id](auto& ls)
+	{ ls << "[" << funcName << "] Invalid allocator id(" << id << ") is provided."; });
+
+	static AllocatorProxy dummy;
+	new (&dummy) AllocatorProxy();
+
+	return dummy;
+}</code></pre>
+
+<p class="meta">From Engine/Memory/MemoryManager.cpp, MemoryManager::GetAllocatorProxy()</p>
+
+<div class="gap">
+  <strong>An invalid id answers with a usable-looking dummy, and that is the whole error policy.</strong>
+  The intent is that a bad id cannot index <code>allocators</code> out of bounds. The consequence a caller must carry is
+  that the returned reference is a real <code>AllocatorProxy</code> that never fails: a default-constructed proxy has
+  null <code>allocator</code>, <code>allocate</code> and <code>deallocate</code>, so writes to it succeed, reads from it
+  look legitimate, and the mistake surfaces as a log line rather than at the call that made it. Two properties of the
+  dummy are decided nowhere: the <code>static</code> object is shared by every thread that asks with a bad id, and it is
+  placement-reconstructed on each call — while another thread may still hold a reference to it. Choosing between "fail
+  loudly" and "route the dummy to slot 0 so the work at least happens" is a policy decision, recorded as a named
+  omission in <a href="index.html#coverage">Coverage</a>.
+</div>
+
+<div class="note">
+  <strong>Allocation does not come through here, whatever the older design note said.</strong>
+  <a href="allocate.html">Allocate</a> reads <code>allocators[id]</code> directly after its own range check, so the
+  dispatch path never sees this function and the dummy never intercepts a bad allocation — an invalid id on that path is
+  redirected to slot 0 instead. What this getter owns is <em>inspection and mutation of a registration</em>, and that is
+  what its three call sites in the module use it for.
+</div>
+
+<div class="gap">
+  <strong>Mutable access to a slot is exactly as safe as the caller's discipline.</strong>
+  <code>PoolAllocator</code>'s move constructor is the instructive case
+  (<code>Engine/Memory/PoolAllocator.cpp</code>, <code>PoolAllocator::PoolAllocator(PoolAllocator&amp;&amp;)</code>): it
+  fetches the proxy for the id it just inherited and refreshes <code>allocate</code> and <code>deallocate</code> to
+  lambdas that cast their argument to <code>PoolAllocator*</code> — but it never touches
+  <code>allocProxy.allocator</code>, and dispatch is <code>allocProxy.allocate(allocProxy.allocator, nBytes)</code>. The
+  slot therefore keeps handing a moved-from pool to the new pool's own functions. Nothing in the manager can prevent
+  that; this getter is a pointer into the table, not an abstraction over it.
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<table>
+  <tr><th>Parameter</th><th>Type</th><th>Requirement</th></tr>
+  <tr><td><code>id</code></td><td><code>TId</code> (<code>TAllocatorID</code>)</td><td>The id returned by <a href="register-allocator.html">RegisterAllocator</a>. Never out of bounds — an out-of-range value is answered with the dummy, so this call cannot be used to detect a bad id by exception; compare the returned <code>id</code> field if the distinction matters.</td></tr>
+</table>
+
+<h2 id="return">Return value</h2>
+
+<table>
+  <tr><th>Type</th><th>What you get</th></tr>
+  <tr><td><code>AllocatorProxy&amp;</code></td><td>The live slot for a valid id — mutable, and invalidated only when the slot is deregistered and re-registered (<a href="deregister-allocator.html">DeregisterAllocator</a>). The function-local dummy for anything else. Never null; there is no way to distinguish the two by reference alone.</td></tr>
+</table>
+
+<h2 id="example">Examples</h2>
+
+<pre><code>#if PROFILE_ENABLED
+	const auto incCapacity = blockSize * numberOfBlocks;
+	auto&amp; mmgr = MemoryManager::GetInstance();
+	auto&amp; allocProxy = mmgr.GetAllocatorProxy(GetID());
+	allocProxy.stats.capacity += incCapacity;
+#endif // PROFILE_ENABLED</code></pre>
+
+<p class="meta">From Engine/Memory/MultiPoolAllocator.cpp, MultiPoolAllocator::GenerateBank()</p>
+
+<p>
+The representative use: a multi-pool growing a bank has to tell the manager that its capacity moved, and this getter is
+the only public door to the <code>AllocStats</code> record that holds it. The write is made without
+<a href="acquire-stats-lock.html">AcquireStatsLock</a>, which is the asymmetry that page documents. The other two sites
+are <code>PoolAllocator</code>'s move constructor (rewiring function pointers) and
+<code>MultiPoolAllocator::~MultiPoolAllocator()</code>, which re-stamps each bank's proxy thread id under
+<code>MEMORY_VERIFICATION_ENABLED</code>.
+</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; MemoryManager</a></span>
+  <span><a href="index.html#methods">All MemoryManager methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

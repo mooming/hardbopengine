@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>InlineMonotonicAllocator::GetUsage — Memory module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a class="current" href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Memory</a> /
+  <a href="index.html">InlineMonotonicAllocator</a> / GetUsage
+</p>
+
+<h1><span class="fn">GetUsage</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::InlineMonotonicAllocator</span>
+  <span class="tag">Engine/Memory/InlineMonotonicAllocator.h</span>
+  The cursor: rounded arena bytes bumped so far, and the one counter the class keeps.
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>[[nodiscard]] size_t GetUsage() const</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  Defined inline in <code>Engine/Memory/InlineMonotonicAllocator.h</code> as <code>InlineMonotonicAllocator::GetUsage()</code>. It
+  returns the cursor, and the cursor is the class's only counter: bytes bumped so far, in the rounded sizes the arena spent.
+</p>
+
+<pre><code>Assert(cursor &lt; Capacity);
+
+return cursor;</code></pre>
+
+<p class="meta">From Engine/Memory/InlineMonotonicAllocator.h, InlineMonotonicAllocator::GetUsage() const</p>
+
+<div class="gap">
+  <strong>A completely full arena aborts when you ask it how full it is.</strong>
+  The assertion is <code>cursor &lt; Capacity</code>, which is false in the state <code>cursor == Capacity</code> — and that state is
+  ordinary, not corrupt: a <code>Capacity</code> that is a multiple of <code>Config::DefaultAlign</code> (16) can be filled exactly, and
+  <a href="allocate.html">Allocate</a> is happy to do it, because its own guard is <a href="getavailable.html">GetAvailable</a>'s
+  <code>Capacity &gt;= cursor</code>, which tolerates zero remaining. So the two accessors disagree about one legal value: a full arena
+  answers <a href="getavailable.html">GetAvailable</a> with 0 and answers this function with an abort in Debug and Dev. In Release
+  <code>Assert</code> is an empty inline function in <code>Engine/Core/Debug.h</code> and the call simply returns
+  <code>Capacity</code>. Prefer <a href="getavailable.html">GetAvailable</a> as the "how much is left" question.
+</div>
+
+<p>
+  The figure counts the arena and nothing else, which makes it a floor rather than a total. Bytes handed out by
+  <a href="allocate.html">Allocate</a>'s overflow path belong to <code>parentID</code>, never move the cursor, and are not released by
+  the <a href="destructor.html">destructor</a>, yet this function is the only usage figure the class has. It also counts rounded bytes:
+  a caller who asked for 1 byte fourteen times reads 224 here, not 14, which is the honest number for "bytes of the array consumed"
+  and the wrong number for "bytes my objects need".
+</p>
+
+<p>
+  Nothing outside the object learns this number in the configurations the repository builds. The reporting calls that would push it
+  into <code>MemoryManager</code>'s <code>inlineUsage</code> record sit behind <code>#ifdef __MEMOR_STATISTICS__</code> — a macro
+  defined nowhere in the tree — and the record itself is <code>PROFILE_ENABLED</code> code, which
+  <code>Engine/Config/BuildConfig.h</code> sets to 0. Like every other member here it reads a plain <code>size_t</code> with no lock, so
+  concurrently with a bump it is a snapshot.
+</p>
+
+<h2 id="parameters">Parameters</h2>
+
+<p>None.</p>
+
+<h2 id="return">Return value</h2>
+
+<table>
+  <tr><th>Type</th><th>What you get</th></tr>
+  <tr><td><code>size_t</code></td><td><code>cursor</code>: bytes of the member array already bumped, at 16-byte granularity. Excludes anything the parent served. Aborts in Debug and Dev when it equals <code>Capacity</code>; never larger.</td></tr>
+</table>
+
+<h2 id="example">Examples</h2>
+
+<pre><code>AddTest("Vector Allocation", [this](auto&amp; ls)
+{
+	Allocator alloc("InlineMonotonicAllocator");
+	{
+		AllocatorScope scope(alloc.GetID());
+
+		HVector&lt;int&gt; a;
+		a.push_back(0);
+	}
+
+	if (alloc.GetUsage() == 0)
+	{
+		ls &lt;&lt; "Monotonic Allocator doesn't provide deallocation."
+		   &lt;&lt; " Usage should not be zero, but " &lt;&lt; alloc.GetUsage() &lt;&lt; lferr;
+	}
+});</code></pre>
+
+<p class="meta">From Engine/Memory/InlineMonotonicAllocator.cpp, InlineMonotonicAllocatorTest::Prepare(), testlet "Vector Allocation"</p>
+
+<p>
+  This is the only call site in the repository, and all four testlets are the same assertion with different numbers of containers:
+  everything allocated inside the scope has been destroyed, and the usage figure must still be non-zero. Read as documentation, the
+  suite is the engine stating that <a href="deallocate.html">Deallocate</a> reclaims nothing — the test passes precisely because the
+  counter never goes down.
+</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; InlineMonotonicAllocator</a></span>
+  <span><a href="index.html#methods">All InlineMonotonicAllocator methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

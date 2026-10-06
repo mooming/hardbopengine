@@ -1,0 +1,77 @@
+<h2 id="signature">Signature</h2>
+
+<pre><code>static size_t GetSize(Pointer)</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  Declared and defined entirely in the class body of <code>Engine/Memory/StackAllocator.h</code>. It names no parameter, ignores the
+  one it is given, and answers <code>0</code>. The header writes "Not Supported" above it — the only remaining trace of the
+  explanation this page exists to replace.
+</p>
+
+<pre><code>static size_t GetSize(Pointer)
+{
+	return 0;
+}</code></pre>
+
+<p class="meta">From Engine/Memory/StackAllocator.h, class StackAllocator</p>
+
+<p>
+  The answer is a consequence of the representation, not an oversight. A stack records nothing per block:
+  <a href="allocate.html">Allocate</a> moves <code>cursor</code> and stores no size, no header and no footer, so no information
+  recoverable from a bare <code>Pointer</code> exists to be reported. That is exactly why <a href="deallocate.html">Deallocate</a>
+  demands the byte count as a parameter — the caller is the only place that number survives.
+</p>
+
+<div class="gap">
+  <strong>The stub is indistinguishable from a real answer, and there is no way to tell it is a stub.</strong>
+  The return type is <code>size_t</code> and the failure value is <code>0</code>, the same value a caller would receive for a block
+  of zero bytes. A caller that treats <code>GetSize(ptr) == 0</code> as "this block is empty" or as "the allocator does not know"
+  has read a meaning into the number that the function never claimed to carry. Compare
+  <a href="../PoolAllocator/getsize.html"><code>PoolAllocator::GetSize</code></a>, which answers the real block size from the pool's
+  geometry and is <code>[[nodiscard]]</code>; this one is neither.
+</div>
+
+<div class="note">
+  <strong>It is <code>static</code>, so it answers the same for every stack and needs no object.</strong>
+  No instance is required to call it, which is a clue to its content: nothing here reads <code>buffer</code>, <code>capacity</code>,
+  <code>cursor</code> or the registration id. It is present because allocator-shaped classes in this module carry a
+  <code>GetSize</code>, not because a stack can answer the question.
+</div>
+
+<div class="note">
+  <strong>No caller in the tree.</strong>
+  The only allocator <code>GetSize</code> call site in the repository is
+  <code>PoolAllocatorTest::Prepare()</code> in <code>Engine/Memory/PoolAllocator.cpp</code>, asking a
+  <a href="../PoolAllocator/index.html"><code>PoolAllocator</code></a>. Whether this function exists to satisfy a future common
+  allocator interface or is simply inherited habit is not recorded anywhere in the source; see
+  <a href="index.html#coverage">Coverage</a>.
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<table>
+  <tr><th>Parameter</th><th>Type</th><th>Requirement</th></tr>
+  <tr><td><em>(unnamed)</em></td><td><code>Pointer</code></td><td>Ignored. Any value — including a null pointer or an address this allocator never returned — produces the same answer.</td></tr>
+</table>
+
+<h2 id="return">Return value</h2>
+
+<table>
+  <tr><th>Type</th><th>What you get</th></tr>
+  <tr><td><code>size_t</code></td><td><code>0</code>, always. Not the block's size, not a capacity, not an error code.</td></tr>
+</table>
+
+<h2 id="example">Examples</h2>
+
+<pre><code>auto size = pool.GetSize(ptr);</code></pre>
+
+<p class="meta">From Engine/Memory/PoolAllocator.cpp, PoolAllocatorTest::Prepare()</p>
+
+<p>
+  That is the whole record of <code>GetSize</code> being called on any allocator in this engine, and its receiver is a pool. No code
+  asks a <code>StackAllocator</code> — not the engine, not the applications, and not the class's own testlets in
+  <code>Engine/Memory/StackAllocator.cpp</code>. A caller who needs a block's size has to keep the number it passed to
+  <a href="allocate.html">Allocate</a>.
+</p>

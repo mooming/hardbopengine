@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MemoryManager::GetGlobalAllocationBytes — Memory module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a class="current" href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Memory</a> /
+  <a href="index.html">MemoryManager</a> / GetGlobalAllocationBytes
+</p>
+
+<h1><span class="fn">GetGlobalAllocationBytes</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::MemoryManager</span>
+  <span class="tag">Engine/Memory/MemoryManager.h</span>
+  Cumulative bytes requested through the global entry points — a delta measure, and it excludes SystemAllocator's own traffic.
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>[[nodiscard]] static size_t GetGlobalAllocationBytes() noexcept</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+Defined in <code>Engine/Memory/GlobalAllocation.cpp</code> as <code>MemoryManager::GetGlobalAllocationBytes()</code>:
+one relaxed load of the <code>globalAllocationBytes</code> atomic that
+<a href="record-global-allocation.html">RecordGlobalAllocation</a> grows. It is a
+<code>size_t</code> total of bytes <em>requested</em> through the replaced <code>operator new</code> over the whole
+life of the process.
+</p>
+
+<div class="gap">
+  <strong>Cumulative, not live — read it as a delta or not at all.</strong>
+  Freeing does not reduce it, so the absolute number says nothing about how much memory the process holds. The only
+  meaningful use is the difference across a region of interest, which is what the test harness does
+  (<code>Engine/Test/TestCollection.cpp</code>, <code>TestCollection::RunTestAt()</code>): snapshot, run the testlet,
+  snapshot, subtract, subtract the released bytes, clamp at zero. Subtracting two reads of this getter alone measures
+  "bytes requested in that window", not "bytes still held".
+</div>
+
+<div class="gap">
+  <strong>SystemAllocator's own traffic is absent, and that is load-bearing.</strong>
+  The counters sit in the replacement <code>operator new</code>, but <code>SystemAllocator::AllocateBytes()</code>
+  calls <code>malloc</code> directly (<code>Engine/Memory/SystemAllocator.h</code>) and is therefore never seen here.
+  Since every pool's backing buffer arrives through the system allocator — <code>PoolAllocator</code>,
+  <code>MonotonicAllocator</code> and <code>StackAllocator</code> each call
+  <a href="allocate.html">Allocate</a> with no id, which lands on slot 0 — the bytes a pool bank costs are not in this
+  total either. Attributing them here would charge a pool's bank to whichever testlet happened to trigger the
+  allocation. The two measures are kept apart on purpose: this one counts bytes requested through global entry
+  points, <a href="report-allocation.html">ReportAllocation</a> counts capacity obtained per registered allocator,
+  and <a href="../../design/MemoryManagerInternals_Design.html">the manager's design document</a> is where the
+  profiling side is described.
+</div>
+
+<div class="note">
+  <strong>The OS bucket is a subset, not a second total.</strong>
+  Requests whose return address lies inside the macOS shared cache are added to this total <em>and</em> to
+  <a href="get-os-allocation-bytes.html">GetOSAllocationBytes</a>. Engine-only traffic is this minus that, and the
+  harness computes exactly that difference with an unsigned-safe clamp.
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<p>None.</p>
+
+<h2 id="return">Return value</h2>
+
+<table>
+  <tr><th>Type</th><th>What you get</th></tr>
+  <tr><td><code>size_t</code></td><td>Cumulative bytes requested through the engine's global allocation entry points since process start. Zero before the first accounted allocation; never decremented; excludes <code>malloc</code> traffic that never passed through <code>operator new</code>.</td></tr>
+</table>
+
+<h2 id="example">Examples</h2>
+
+<pre><code>const auto globalBytesBefore = MemoryManager::GetGlobalAllocationBytes();
+
+testlet.Run(logStream);
+
+const auto globalBytesOverBody = MemoryManager::GetGlobalAllocationBytes() - globalBytesBefore;
+const auto osBytesOverBody = MemoryManager::GetOSAllocationBytes() - osBytesBefore;
+
+const auto engineBytesOverBody =
+		globalBytesOverBody &gt; osBytesOverBody ? globalBytesOverBody - osBytesOverBody : 0;</code></pre>
+
+<p class="meta">From Engine/Test/TestCollection.cpp, TestCollection::RunTestAt()</p>
+
+<p>
+The only reader in the tree. The clamp is not decoration: the two buckets are read as separate relaxed loads rather
+than sampled together, and <code>RecordAllocation()</code> increments the global total before the OS bucket, so a
+concurrent allocator can make the OS difference come out above the global difference. Unsigned arithmetic would turn
+that into a huge number; the clamp turns it into zero.
+</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; MemoryManager</a></span>
+  <span><a href="index.html#methods">All MemoryManager methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

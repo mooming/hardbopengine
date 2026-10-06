@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MemoryManager::ReportAllocation — Memory module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a class="current" href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Memory</a> /
+  <a href="index.html">MemoryManager</a> / ReportAllocation
+</p>
+
+<h1><span class="fn">ReportAllocation</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::MemoryManager</span>
+  <span class="tag">Engine/Memory/MemoryManager.h</span>
+  An allocator publishing what it handed out — allocated moves the counters, requested only feeds the request stats.
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>void ReportAllocation(TId id, void* ptr, size_t requested, size_t allocated)</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+Defined in <code>Engine/Memory/MemoryManager.cpp</code> as <code>MemoryManager::ReportAllocation()</code>, and called by
+<em>allocators</em>, never by code that wants memory: after a pool, a stack or the system allocator has produced a
+pointer it tells the manager about the event here. The whole body sits inside <code>#if PROFILE_ENABLED</code>, so in a
+build of this repository the method exists, links, and does nothing — every statistic this page describes is read from
+the source, not observed.
+</p>
+
+<p>
+The two size arguments are not the same number and the counters treat them differently:
+</p>
+
+<table>
+  <tr><th>Field moved</th><th>Moved by</th><th>Notes</th></tr>
+  <tr><td><code>stats.usage</code>, <code>maxUsage</code>, <code>allocCount</code></td><td><code>allocated</code></td><td>Capacity the allocator actually consumed, per allocator; <code>maxUsage</code> is the running high-water mark.</td></tr>
+  <tr><td><code>stats.totalRequested</code>, <code>maxRequested</code></td><td><code>requested</code></td><td>What the caller asked for; the pair is what an average-request/peak-request comparison needs.</td></tr>
+  <tr><td>the corresponding <code>UsageRecord</code>'s <code>allocCount</code>, <code>totalUsage</code>, <code>maxUsage</code></td><td><code>allocated</code></td><td>Engine-wide total, chosen by <code>stats.isInline</code> — <a href="get-inline-usage.html">inline</a> versus everything else.</td></tr>
+  <tr><td><code>allocCount</code> (the manager's own member)</td><td>one</td><td>Not reachable through any getter; it only appears in this method's log line (<a href="index.html#properties">allocCount</a>).</td></tr>
+</table>
+
+<p>
+All of that happens inside a lambda that holds <code>statsLock</code> and copies the resulting <code>AllocStats</code>
+and <code>UsageRecord</code> out by value. The two diagnostics that follow are evaluated against those <em>copies</em>,
+after the lock is released — so a concurrent allocation can move the live figures before the check runs, and the numbers
+a caller sees in the message are the snapshot's, not the current ones.
+</p>
+
+<div class="gap">
+  <strong>Over capacity is a fatal log plus a break, and the over-flowed value stays.</strong>
+  <code>stats.usage &gt; stats.capacity</code> logs at <code>FatalError</code> and, outside Release, calls
+  <code>debugBreak()</code> — then returns. Nothing rolls the increment back, so the record keeps the value that
+  triggered the warning, and the engine carries on running. The engine-wide comparison
+  (<code>rec.totalUsage &gt; rec.totalCapacity</code>) is a second, separate fatal log and does not return early, so an
+  allocator that is individually over its capacity can also be reported as breaking the total. Both halves are compiled
+  together — the <code>Log</code> call is unconditional within the block, only the <code>debugBreak()</code> is guarded by
+  <code>#if !RELEASE_BUILD</code> — which is the pattern described in
+  <a href="../../design/MemoryManagerInternals_Design.html">the manager's design document</a>.
+</div>
+
+<div class="note">
+  <strong>Slot 0 feeds the engine's system-memory figure from here and nowhere else.</strong>
+  The last statement is <code>if (id == SystemAllocatorID) { engine.GetStatistics().ReportSysMemAlloc(allocated); } </code>
+  — the pairing that makes <code>SystemStatistics</code>'s system heap number meaningful. Two consequences: a build with
+  <code>PROFILE_ENABLED</code> off has no system-memory figure at all, since <code>SystemAllocator::AllocateBytes()</code>
+  only calls this method inside that same guard; and the path calls <code>Engine::Get()</code>, which asserts the engine
+  instance exists (<code>Engine/Engine/Engine.cpp</code>), so a system allocation reported before
+  <code>Engine</code> is constructed is a failure on the <em>engine</em>'s readiness, not on this class's. What a
+  <code>SystemStatistics</code> report becomes is documented in the <a href="../../Core/index.html">Core module</a>.
+</div>
+
+<div class="note">
+  <strong>The <code>ptr</code> argument is diagnostic only.</strong>
+  It is never stored, never compared against a table of live blocks and never used to decide anything — the manager keeps
+  no per-pointer record, which is exactly why a deregistration cannot detect the bytes that are still out
+  (<a href="deregister-allocator.html">DeregisterAllocator</a>). Its value is that the fatal and info lines can be
+  matched to a debugger address.
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<table>
+  <tr><th>Parameter</th><th>Type</th><th>Requirement</th></tr>
+  <tr><td><code>id</code></td><td><code>TId</code></td><td>The reporting allocator's own registration id. Invalid → <code>Error</code> log, <code>debugBreak()</code> outside Release, and the report is dropped.</td></tr>
+  <tr><td><code>ptr</code></td><td><code>void*</code></td><td>The pointer that was handed out, for the log line.</td></tr>
+  <tr><td><code>requested</code></td><td><code>size_t</code></td><td>Bytes the caller asked for; feeds <code>totalRequested</code>/<code>maxRequested</code> only.</td></tr>
+  <tr><td><code>allocated</code></td><td><code>size_t</code></td><td>Capacity this allocator considers itself to have spent. Every usage figure moves by this, so it must be the same number <a href="report-deallocation.html">ReportDeallocation</a> will pass for the same block.</td></tr>
+</table>
+
+<h2 id="return">Return value</h2>
+
+<p><code>void</code>. Reports are never refused except on an invalid id, and there is no way to tell a dropped report from a recorded one.</p>
+
+<h2 id="example">Examples</h2>
+
+<pre><code>auto ptr = reinterpret_cast&lt;void*&gt;(buffer + cursor);
+cursor += size;
+
+#if PROFILE_ENABLED
+	{
+		auto&amp; mmgr = MemoryManager::GetInstance();
+		mmgr.ReportAllocation(id, ptr, requested, size);
+	}
+#endif // PROFILE_ENABLED</code></pre>
+
+<p class="meta">From Engine/Memory/MonotonicAllocator.cpp, MonotonicAllocator::Allocate()</p>
+
+<p>
+The pattern across the module: the allocator reports the space it consumed (<code>size</code>, its own aligned
+reservation) rather than the caller's <code>requested</code>. The other reporters are
+<code>InlinePoolAllocator::Allocate()</code>, which passes its constant <code>BlockSizeInBytes</code>,
+<code>MultiPoolAllocator::Allocate()</code>, which passes <code>bank.GetBlockSize()</code>,
+<code>InlineMonotonicAllocator::Allocate()</code>, and <code>SystemAllocator::AllocateBytes()</code> — the last of which
+passes <code>OS::GetAllocSize(ptr)</code>, the real block size <code>malloc</code> chose, so its usage figures are
+capacity rather than requests by construction.
+</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; MemoryManager</a></span>
+  <span><a href="index.html#methods">All MemoryManager methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

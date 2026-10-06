@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DefaultAllocator — Memory module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a class="current" href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This class</h3>
+  <ul>
+    <li><a href="#description">Class description</a></li>
+    <li><a href="#template">Template parameters</a></li>
+    <li><a href="#properties">Class properties</a></li>
+    <li><a href="#methods">Class methods</a></li>
+    <li><a href="#non-member">Non-member helper functions</a></li>
+    <li><a href="#coverage">Coverage</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Memory</a> /
+  DefaultAllocator
+</p>
+
+<h1>DefaultAllocator</h1>
+<p class="subtitle">
+  <span class="tag">Engine/Memory/DefaultAllocator.h</span>
+  <span class="tag">namespace hbe</span>
+  <span class="tag">template &lt;typename T&gt;</span>
+  <span class="tag">final</span>
+  STL allocator adapter holding one registration id: malloc when that id is the system allocator, a scoped MemoryManager dispatch otherwise, and the default allocator of every engine container.
+</p>
+
+<h2 id="description">Class description</h2>
+
+<p>
+  <code>template &lt;typename T&gt; class DefaultAllocator final</code> at <code>Engine/Memory/DefaultAllocator.h</code> is the
+  adapter between the C++ allocator interface and this engine's registration-based memory system. It holds one <code>TAllocatorID</code>
+  and nothing else. It is the default of every container in the tree — the
+  <a href="../../HSTL/index.html">HSTL</a> and <a href="../../Container/index.html">Container</a> aliases all name it as their allocator
+  parameter — and it is named "default" in the literal sense: an engine container written without an allocator argument is using this
+  class, and the allocator it will actually allocate from is decided by whatever <a href="../index.html#allocatorscope"><code>AllocatorScope</code></a>
+  happens to be open where the container is constructed.
+</p>
+
+<table>
+  <tr><th>Instantiated as</th><th>Where</th><th>What it allocates there</th></tr>
+  <tr><td><code>DefaultAllocator&lt;T&gt;</code></td><td><code>Engine/HSTL/HVector.h</code> (<code>HVector&lt;T&gt;</code>)</td><td>The vector's element buffer</td></tr>
+  <tr><td><code>DefaultAllocator&lt;char&gt;</code></td><td><code>Engine/HSTL/HString.h</code> (<code>HString</code>), <code>Engine/String/StringBuilder.h</code> (default <code>TAlloc</code>, explicitly instantiated for <code>char</code> in <code>StringBuilder.cpp</code>)</td><td>Character storage</td></tr>
+  <tr><td><code>DefaultAllocator&lt;std::pair&lt;const TKey, T&gt;&gt;</code></td><td><code>Engine/HSTL/HUnorderedMap.h</code></td><td>Map element storage</td></tr>
+  <tr><td><code>DefaultAllocator&lt;uint8_t&gt;</code></td><td><code>Engine/Container/HashMap.h</code>, <code>Engine/Container/Map.h</code></td><td>Raw entry storage, requested in bytes because <code>T</code> is a byte</td></tr>
+  <tr><td><code>DefaultAllocator&lt;LinkedListNode&lt;TType&gt;&gt;</code></td><td><code>Engine/Container/LinkedList.h</code></td><td>One call per node, through <code>hbe::New</code></td></tr>
+  <tr><td><code>DefaultAllocator&lt;TElement&gt;</code></td><td><code>Engine/Container/Array.h</code>, <code>Deque.h</code>, <code>Vector.h</code>, <code>RingQueue.h</code></td><td>The default of the containers' own allocator parameter</td></tr>
+</table>
+
+<p>
+  It reaches the engine in three ways and is registered nowhere. The standard library calls it through
+  <code>std::allocator_traits</code> whenever one of the aliases above grows. The engine's own containers hold it as a member and call it
+  directly — <code>Engine/Container/HashMap.h</code> and <code>Engine/Container/Map.h</code> keep a <code>TAllocator allocator;</code>
+  and call <code>allocator.allocate(allocSize)</code> for their entry arrays. And <code>hbe::New&lt;TType&gt;(allocator, args...)</code>
+  in <code>Engine/Memory/Memory.h</code> calls <code>allocator.allocate(1)</code> per object, with a
+  <code>static_assert(sizeof(typename TAllocator::value_type) == sizeof(TType))</code> beside it, which is one reason the class publishes
+  <code>value_type</code> at all. What all three reach is the same pair of paths: a direct <code>malloc</code> when the recorded id is
+  <code>MemoryManager::SystemAllocatorID</code>, and otherwise a per-call <code>AllocatorScope</code> plus
+  <code>MemoryManager::AllocateByType&lt;T&gt;</code>, described on <a href="allocate.html">allocate</a> and
+  <a href="deallocate.html">deallocate</a>.
+</p>
+
+<div class="gap">
+  <strong>It is the one allocator in the module whose value can outlive what it refers to.</strong>
+  <a href="constructors.html">Construction</a> photographs the thread's current scope; the id is then inert. Meanwhile
+  <code>MemoryManager::DeregisterAllocator</code> clears a proxy's function pointers and returns its slot to
+  <code>proxyPool</code>, and <code>MemoryManager::RegisterAllocator</code> deals those slots back out — so an id is re-used, and a
+  container that outlives the allocator it recorded will allocate and free through a dead slot, a stranger's arena, or an
+  <code>Assert</code>. The header states the same warning in its own words: this adapter is the one to be careful with when the current
+  allocator is a short-lived one, the stack-allocator-shaped registrations that open and close around a phase. The discipline is the one
+  the engine's own call sites follow: build the container inside the scope, and let it die inside it too.
+</div>
+
+<div class="note">
+  <strong>Copying a container is safe, cheap, and changes nothing about where its memory lives.</strong>
+  No special member is declared, so copy and move are implicit: a probe of the declaration shape with
+  <code>c++ -std=c++2b -Wall -Wextra -fsyntax-only</code> reports all four true, <code>is_trivially_copyable_v</code> true, and
+  <code>sizeof(A) == sizeof(int)</code>. The same probe records what the standard library synthesises from the absence of the rest of the
+  interface: <code>is_always_equal</code>, <code>propagate_on_container_copy_assignment</code>,
+  <code>propagate_on_container_move_assignment</code> and <code>propagate_on_container_swap</code> all false, because the class is not an
+  empty type. So containers copy the allocator by value, but they will not adopt one silently, they compare before stealing a buffer
+  (<a href="operator-equal.html">operator==</a>), and a rebound allocator inherits its source's id rather than the ambient scope
+  (<a href="getsourceallocatorid.html">GetSourceAllocatorID</a>) — which is what keeps a node-based container's nodes in the same arena as
+  its elements.
+</div>
+
+<p>
+  Three further consequences are worth holding before reading the method pages. <a href="allocate.html">Exhaustion</a> is not this
+  class's decision: <code>allocate</code> is <code>noexcept</code>, throws nothing and tests nothing, so a failing request comes back as
+  null (fast path) or as whatever <code>MemoryManager::Allocate</code>'s <code>Assert(ptr != nullptr, "Allocation Failed")</code> allows
+  — an abort in Debug and Dev, null in Release. <a href="allocate.html">Alignment</a> is likewise not offered: no argument, no aligned
+  form, no read of <code>alignof(T)</code>. Nothing here is synchronised, and the manager's dispatch reads
+  <code>allocators[id]</code> without a lock (its <code>statsLock</code> guards statistics only), so thread-safety is the named
+  allocator's property; the per-call scope mutates a thread-local, so it is per-thread by construction. And the fast path is an
+  accounting hole worth stating plainly: the replacement <code>operator new</code> in <code>Engine/Memory/GlobalAllocation.cpp</code>
+  records what it sees, and a path that calls <code>malloc</code> directly is visible to nothing.
+</p>
+
+<h2 id="template">Template parameters</h2>
+
+<table>
+  <tr><th>Parameter</th><th>Kind</th><th>What it constrains</th></tr>
+  <tr><td><code>T</code></td><td><code>typename</code></td><td>The element type the allocator is instantiated for — the type the standard library rebinds it to, never a type the allocator inspects beyond <code>sizeof(T)</code>. It sizes every request (<code>n * sizeof(T)</code>, recomputed identically in <a href="allocate.html">allocate</a> and <a href="deallocate.html">deallocate</a>), it is what <code>value_type</code> reports to <code>std::allocator_traits</code> and to <code>hbe::New</code>'s static assert, and it must be a complete type wherever either function is instantiated.</td></tr>
+</table>
+
+<p>
+  <code>T</code> appears nowhere in the id logic, and that is the point of the design: two instantiations holding the same id are the
+  same allocator, which is what makes <a href="operator-equal.html">operator==</a> meaningful across a rebind and what makes the
+  converting <a href="constructors.html">constructor</a> the mechanism that carries an id across a type change. The parameter is not a
+  capacity, a policy or an allocator — <a href="../index.html#allocators">the catalogue</a> records one non-type parameter for
+  <code>InlineMonotonicAllocator</code> and <code>InlinePoolAllocator</code>, and this class has neither: everything about where it
+  allocates comes from the ambient scope at construction time, at run time.
+</p>
+
+<h2 id="properties">Class properties</h2>
+
+<table>
+  <tr><th>Type + Name</th><th>Default Value</th><th>Description</th></tr>
+  <tr><td><code>using value_type = T;</code> <span class="badge">member type</span></td><td><span class="muted">not applicable</span></td><td>The element type, required by <code>std::allocator_traits</code> and read by <code>hbe::New</code>'s <code>static_assert</code> in <code>Engine/Memory/Memory.h</code>; nothing else in the class uses it.</td></tr>
+  <tr><td><code>template &lt;class TOther&gt; struct rebind { using other = DefaultAllocator&lt;TOther&gt;; };</code> <span class="badge">public nested</span></td><td><span class="muted">not applicable</span></td><td>The legacy rebind protocol. Modern <code>allocator_traits</code> synthesises <code>A&lt;U&gt;</code> instead — a probe confirms <code>rebind_alloc</code> is <code>DefaultAllocator&lt;U&gt;</code> without consulting this struct — and nothing in the repository names <code>rebind&lt;...&gt;::other</code>; see <a href="#coverage">Coverage</a>.</td></tr>
+  <tr><td><code>TAllocatorID allocatorID;</code> <span class="badge">private</span></td><td><span class="muted">none in the header</span></td><td>The whole object: one registration id, set once by whichever constructor ran and never rewritten. <code>MemoryManager::SystemAllocatorID</code> (0) when the object was built with no scope open.</td></tr>
+</table>
+
+<h2 id="methods">Class methods</h2>
+
+<table class="methods">
+  <tr><th>Name</th><th>Signature</th><th>What a caller depends on</th></tr>
+  <tr><td><a href="constructors.html"><code>DefaultAllocator</code></a><span class="badge">2 overloads</span></td><td class="sig">DefaultAllocator()<br>template &lt;class TOther&gt; explicit DefaultAllocator(const DefaultAllocator&lt;TOther&gt;&amp; rhs) noexcept</td><td>Photographs the thread's current scope, or copies another instantiation's id; there is no way to name an allocator directly, and copy and move are implicit 4-byte copies.</td></tr>
+  <tr><td><a href="allocate.html"><code>allocate</code></a></td><td class="sig">[[nodiscard]] T* allocate(std::size_t n) noexcept</td><td><code>malloc</code> when the id is the system allocator, a scoped manager dispatch otherwise; never throws, and returns null when the far end fails.</td></tr>
+  <tr><td><a href="deallocate.html"><code>deallocate</code></a></td><td class="sig">void deallocate(T* ptr, std::size_t n) noexcept</td><td>Routes by the receiving allocator's id and nothing else — a real release when the id names a pool, a no-op when it names a bump allocator.</td></tr>
+  <tr><td><a href="operator-equal.html"><code>operator==</code></a></td><td class="sig">template &lt;class TOther&gt; bool operator==(const DefaultAllocator&lt;TOther&gt;&amp; rhs) const noexcept</td><td>Equal means one registration id; the standard library relies on it because <code>is_always_equal</code> is synthesised as false for this type.</td></tr>
+  <tr><td><a href="operator-not-equal.html"><code>operator!=</code></a></td><td class="sig">template &lt;class TOther&gt; bool operator!=(const DefaultAllocator&lt;TOther&gt;&amp; rhs) const noexcept</td><td>The hand-written negation: it tells the containers a swap or buffer theft is not safe, and enforces nothing itself.</td></tr>
+  <tr><td><a href="getid.html"><code>GetID</code></a></td><td class="sig">[[nodiscard]] auto GetID() const</td><td>The borrowed id — a registration this object neither registered nor can validate.</td></tr>
+  <tr><td><a href="getsourceallocatorid.html"><code>GetSourceAllocatorID</code></a></td><td class="sig">[[nodiscard]] auto GetSourceAllocatorID() const</td><td>The same value under a second name, read by the converting constructor when a container rebinds.</td></tr>
+  <tr><td><a href="getfallbackcount.html"><code>GetFallbackCount</code></a></td><td class="sig">[[nodiscard]] static constexpr size_t GetFallbackCount()</td><td>A literal 0, static and per-class rather than per-allocator; the engine's real fallback counter is elsewhere and is <code>PROFILE_ENABLED</code> code.</td></tr>
+</table>
+
+<h2 id="non-member">Non-member helper functions</h2>
+
+<p>
+  None. <code>Engine/Memory/DefaultAllocator.h</code> declares this class and, under <code>#ifdef __UNIT_TEST__</code>, the test
+  collection named below; the free functions that build on an allocator — <code>hbe::New</code> and <code>hbe::Delete</code> in
+  <code>Engine/Memory/Memory.h</code>, which call <code>allocate(1)</code> and <code>deallocate(ptr, 1)</code> — work on any allocator and
+  belong to the <a href="../index.html#functions">module page</a>.
+</p>
+
+<h2 id="coverage">Coverage</h2>
+
+<table>
+  <tr><th>Not documented here</th><th>Why</th></tr>
+  <tr>
+    <td>What the allocator behind a given id does at exhaustion, at what alignment, and under what locking</td>
+    <td>This class decides none of those; it forwards. Every statement above is about the two paths through the adapter, and the
+        per-allocator guarantees belong to the pages of the named allocators in
+        <a href="../index.html#allocators">the catalogue</a> — of which <code>PoolAllocator</code>,
+        <a href="../PoolAllocator/allocate.html">documented here</a>, is the only one this author read directly. Several of those entries
+        are being written in this same wave, so the gaps are sequenced, not unknown.</td>
+  </tr>
+  <tr>
+    <td>Whether any engine container actually outlives the registration its id names</td>
+    <td>The mechanism is documented (deregistration clears the proxy, the proxy pool re-uses slots) and the hazard is stated, but no
+        call site in the repository provably survives a deregistration: the testlets in <code>Engine/Memory/DefaultAllocator.cpp</code>
+        build and destroy their vectors inside the scope, and the engine containers hold the allocator as a member that dies with them.
+        Whether such a container exists somewhere in engine code is a question about those containers, not about this class, and this wave
+        has not read them all.</td>
+  </tr>
+  <tr>
+    <td>Whether stale ids are meant to be detectable at all</td>
+    <td>Nothing in <code>MemoryManager</code> ages or generations a registration — the checks that exist are
+        <code>MEMORY_VERIFICATION_ENABLED</code>'s thread-id check and <code>PROFILE_ENABLED</code>'s leak report, both compiled out in
+        <code>Engine/Config/BuildConfig.h</code>. Whether a generation counter or an epoch is intended is a
+        <a href="../index.html#memorymanager"><code>MemoryManager</code></a> design question, answered nowhere in the repository, so it is
+        not asserted on any page here.</td>
+  </tr>
+  <tr>
+    <td>The per-call <code>AllocatorScope</code> and whether it can re-enter the allocator it names</td>
+    <td>The scope stays open across the whole dispatch, so anything the named allocator allocates from the ambient scope is charged to
+        the allocator being asked. <code>PoolAllocator</code>'s and <code>MonotonicAllocator</code>'s constructors do take their buffer
+        from the ambient scope (<code>Engine/Memory/PoolAllocator.cpp</code>, <code>Engine/Memory/MonotonicAllocator.cpp</code>), which is
+        a construction-time concern only, and <code>MultiPoolAllocator::GenerateBank</code> in
+        <code>Engine/Memory/MultiPoolAllocator.cpp</code> opens its own scope on its recorded parent, which is what shields bank generation
+        from this path. Whether every allocator's dispatch path is so shielded is not established here.</td>
+  </tr>
+  <tr>
+    <td>Platform behaviour of the <code>malloc</code> fast path</td>
+    <td>The page claims only that the path calls <code>malloc</code> and <code>free</code> and records nothing. What those return for a
+        zero-byte request, what alignment they guarantee, and how they behave under concurrency are platform answers, not engine ones, and
+        are deliberately not asserted.</td>
+  </tr>
+  <tr>
+    <td>Why <a href="getfallbackcount.html">GetFallbackCount</a> exists</td>
+    <td>Nothing reads it, no other allocator in the module declares a counterpart, and the engine's real counter is
+        <code>AllocStats::fallbackCount</code> behind <code>PROFILE_ENABLED</code>. The value is documented exactly — a constant 0 — and
+        the intent behind the accessor is not established anywhere in the repository.</td>
+  </tr>
+  <tr>
+    <td>Who, if anyone, reads the nested <code>rebind</code> struct</td>
+    <td><code>std::allocator_traits</code> synthesises <code>A&lt;U&gt;</code> and does not consult it (proved by probe), and a repository
+        search finds no use of <code>rebind&lt;...&gt;::other</code>. It is documented as present; a claim that nothing anywhere reads it
+        would extend to third-party templates instantiated with this allocator, and this wave cannot see them.</td>
+  </tr>
+  <tr>
+    <td><code>BaseAllocatorTest</code></td>
+    <td>Test-only: declared in <code>Engine/Memory/DefaultAllocator.h</code> inside <code>#ifdef __UNIT_TEST__</code>, defined in
+        <code>Engine/Memory/DefaultAllocator.cpp</code> with the three testlets <code>Basic Usage</code>, <code>Multiple Allocations</code>
+        and <code>Nested Allocations</code>. They are quoted as examples on the method pages, because they are the only call sites that
+        distinguish the two paths; the class itself owns no page of its own.</td>
+  </tr>
+</table>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; DefaultAllocator</a></span>
+  <span><a href="index.html#methods">All DefaultAllocator methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>
