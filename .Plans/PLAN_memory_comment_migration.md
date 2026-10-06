@@ -61,3 +61,14 @@ strip and the three-configuration build are one agent per wave, after that wave'
 | `docs/design/MemoryManagerInternals_Design.html` is not reachable from the Memory module card in `docs/index.html`, so it sits on disk invisible to a reader | Unfixed. One link, deliberately left for the wave 2 owner, who revises that document anyway |
 | Two `MEMBER-LAYOUT` findings in each of `ThreadSafeMultiPoolAllocator.h:27` and `:70` and the same two in `MultiPoolAllocator.h` | Unfixed. Neither involves data-member sequencing so both are mechanically fixable, but they belong to the standards-migration task and not to a documentation wave |
 | The `Memory` module's reference tree does not exist, so **no comment in it is currently strippable** | This plan is the response |
+
+## Concurrency limit, learned the expensive way
+
+The LLM backend sustains **two** concurrent subagents. Five were launched at once and all five died of connection errors with
+nothing written to disk, losing roughly ten million tokens of reading; they are not resumable after that kind of death, because
+the context is collected along with the run. Two rules follow, and both are binding on every later wave:
+
+| Rule | Reason |
+|---|---|
+| Never more than two subagents in flight | Three or more die. A wave that finishes late is worth infinitely more than a wave that dies at call 60 |
+| Every author writes each page to disk the moment it is drafted, and writes a handover file when stopped | The failure mode is losing everything read, not losing the run. A handover under `.Plans/` converts a death into a fifteen-minute restart |

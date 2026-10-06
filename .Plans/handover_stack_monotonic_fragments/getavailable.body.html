@@ -1,0 +1,76 @@
+<h2 id="signature">Signature</h2>
+
+<pre><code>[[nodiscard]] size_t GetAvailable() const</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  Defined in <code>Engine/Memory/StackAllocator.cpp</code> as <code>StackAllocator::GetAvailable() const</code>. Two lines: an
+  assertion that the cursor never ran past the buffer, then the subtraction.
+</p>
+
+<pre><code>Assert(capacity &gt;= cursor);
+
+return capacity - cursor;</code></pre>
+
+<p class="meta">From Engine/Memory/StackAllocator.cpp, StackAllocator::GetAvailable() const</p>
+
+<p>
+  Both operands are buffer properties, so this is the space left in <em>this</em> buffer and nothing else:
+  <code>capacity</code> is the constructor argument already rounded up to a multiple of
+  <a href="../../Config/index.html"><code>Config::DefaultAlign</code></a>, and <code>cursor</code> is the bytes charged against it by
+  <a href="allocate.html">Allocate</a>. The same pair of lines is what <a href="allocate.html">Allocate</a> itself consults before
+  deciding whether to serve a request or hand it to the parent.
+</p>
+
+<div class="gap">
+  <strong>Zero available does not mean allocation fails, so this is not a capacity-to-allocate figure.</strong>
+  <a href="allocate.html">Allocate</a> answers a request this number cannot cover by calling
+  <code>MemoryManager::FallbackAllocate(GetID(), parentID, requested)</code>. An allocator reporting 0 available will still hand out
+  memory — from the parent, outside this buffer, and invisible to both this function and <a href="getusage.html">GetUsage</a>(). Use
+  this number to reason about <em>where</em> the next block will come from, not about <em>whether</em> one will.
+</div>
+
+<div class="note">
+  <strong>The last partial alignment unit of a buffer is not reachable through this number.</strong>
+  The comparison in <a href="allocate.html">Allocate</a> is <code>size &gt; freeSize</code> where <code>size</code> is the
+  <em>rounded</em> request and <code>freeSize</code> is exactly what this function returns. With 10 bytes available, a request of 10
+  rounds to 16, and 16 is greater than 10, so the request goes to the parent. A partially-consumed buffer therefore reports a small
+  non-zero availability that no caller can ever use up.
+</div>
+
+<div class="note">
+  <strong>The assertion is the only place a cursor overrun would be caught.</strong>
+  <code>Assert(capacity &gt;= cursor)</code> is the reason a corrupted cursor is visible at all in a checked build; in
+  <code>Release</code>, <code>hbe::Assert</code> (<code>Engine/Core/Debug.h</code>) is an empty inline function and the subtraction
+  simply wraps to a huge value that <a href="allocate.html">Allocate</a> would read as "plenty of space left". See
+  <a href="index.html#coverage">Coverage</a> for the zero-capacity case, which the strict form of the sibling assertion makes
+  interesting.
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<p>None.</p>
+
+<h2 id="return">Return value</h2>
+
+<table>
+  <tr><th>Type</th><th>What you get</th></tr>
+  <tr><td><code>size_t</code></td><td><code>capacity - cursor</code>: bytes still unbilled in the backing buffer. Never negative; never counts the parent's capacity, which the overflow path can still reach. The attribute is <code>[[nodiscard]]</code>.</td></tr>
+</table>
+
+<h2 id="example">Examples</h2>
+
+<pre><code>ScopedAllocator&lt;TAlloc&gt; scope0("NestedStack0", 1024);
+
+const auto depth = depthSeed++;
+ls &lt;&lt; "Neted Level " &lt;&lt; depth &lt;&lt; ", free size = " &lt;&lt; scope0.GetAllocator().GetAvailable() &lt;&lt; lf;</code></pre>
+
+<p class="meta">From Engine/Memory/StackAllocator.cpp, StackAllocatorTest::Prepare(), Nested Usage testlet</p>
+
+<p>
+  The engine's only real use of this function is the nested-scope testlet, which prints the availability of every open stack at each
+  level of a six-deep <code>ScopedAllocator</code> nesting to show a <code>New&lt;long double&gt;</code> at the innermost level
+  charging only the innermost stack. It is a diagnostic reading, which is what this function is good for: it answers a question about
+  one buffer, and no question about anything else.
+</p>

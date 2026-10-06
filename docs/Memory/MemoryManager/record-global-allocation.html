@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MemoryManager::RecordGlobalAllocation — Memory module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a class="current" href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Memory</a> /
+  <a href="index.html">MemoryManager</a> / RecordGlobalAllocation
+</p>
+
+<h1><span class="fn">RecordGlobalAllocation</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::MemoryManager</span>
+  <span class="tag">Engine/Memory/MemoryManager.h</span>
+  What the replaced operator new reports: cumulative bytes and requests, safe in the earliest static initialiser.
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>static void RecordGlobalAllocation(size_t nBytes) noexcept</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+Defined in <code>Engine/Memory/GlobalAllocation.cpp</code> as <code>MemoryManager::RecordGlobalAllocation()</code>, and
+the body is two relaxed <code>fetch_add</code>: <code>nBytes</code> into <code>globalAllocationBytes</code> and
+<code>1</code> into <code>globalAllocationCount</code>. Both counters are namespace-scope
+<code>std::atomic</code> objects value-initialised to zero in that translation unit, so they are constant-initialised
+before any dynamic initialiser runs and the earliest static initialiser in the process is already accounted for.
+</p>
+
+<p>
+Its caller is not engine code but the replaced allocation functions in the same file: every
+<code>operator new</code> overload funnels through <code>RecordAllocation()</code>, which calls this and then decides
+whether the caller's return address falls inside the macOS shared cache
+(<a href="get-os-allocation-count.html">GetOSAllocationCount</a>). <code>RecordAllocation</code> is handed the
+caller's requested size, not the size passed to <code>malloc</code>: the zero-size normalisation
+(<code>const size_t requestSize = size == 0 ? 1 : size;</code>) is applied to the allocation only, so a zero-byte
+request increments the count and adds nothing to the byte total.
+</p>
+
+<div class="note">
+  <strong>Why these counters exist alongside the allocator statistics at all.</strong>
+  A <code>std::vector</code>, a <code>std::string</code> and every other standard container reach the heap through
+  <code>operator new</code>, which no <code>AllocatorScope</code> can intercept — so without this entry point that
+  traffic is invisible to <a href="report-allocation.html">ReportAllocation</a> and to every allocator's own figures.
+  The two measures are not interchangeable: this one counts bytes <em>requested</em> by the caller,
+  <a href="report-allocation.html">ReportAllocation</a> counts capacity <em>obtained</em> from an allocator, and
+  <code>SystemAllocator</code>'s own traffic is deliberately counted only on that second path
+  (<a href="get-global-allocation-bytes.html">GetGlobalAllocationBytes</a> states the consequence).
+</div>
+
+<div class="note">
+  <strong>Never logs, never allocates, never fails.</strong>
+  An accounting path that allocated would re-enter the allocator it is measuring, and one that logged would allocate
+  a log line. The body touches nothing but the two atomics, which is what makes it callable from
+  <code>operator new</code> itself; it is <code>noexcept</code> for the same reason.
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<table>
+  <tr><th>Parameter</th><th>Type</th><th>Requirement</th></tr>
+  <tr><td><code>nBytes</code></td><td><code>size_t</code></td><td>The size the caller asked <code>operator new</code> for. Zero is legal and adds nothing to the byte total while still counting as a request.</td></tr>
+</table>
+
+<h2 id="return">Return value</h2>
+
+<p><code>void</code>. Nothing reports failure, and nothing can: the counters are cumulative and never decrement.</p>
+
+<h2 id="example">Examples</h2>
+
+<pre><code>const auto totalBefore = MemoryManager::GetGlobalAllocationCount();
+
+std::vector&lt;size_t&gt; values;
+
+for (size_t i = 0; i &lt; 64; ++i)
+{
+	values.push_back(i);
+}
+
+const auto totalAfter = MemoryManager::GetGlobalAllocationCount();
+
+if (totalAfter &lt;= totalBefore)
+{
+	ls &lt;&lt; "std::vector growth through operator new was not counted globally" &lt;&lt; lferr;
+}</code></pre>
+
+<p class="meta">From Engine/Memory/GlobalAllocation.cpp, GlobalAllocationTest::Prepare()</p>
+
+<p>
+The test that proves the wiring, and the only place in the tree a caller reads the figure it writes. Nothing in
+<code>Engine/</code> calls <code>RecordGlobalAllocation</code> directly; the replacement operators are the sole
+production caller, which is exactly the point — engine code allocates, and the accounting happens underneath it.
+</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; MemoryManager</a></span>
+  <span><a href="index.html#methods">All MemoryManager methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

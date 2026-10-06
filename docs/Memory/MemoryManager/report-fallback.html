@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MemoryManager::ReportFallback — Memory module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a class="current" href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Memory</a> /
+  <a href="index.html">MemoryManager</a> / ReportFallback
+</p>
+
+<h1><span class="fn">ReportFallback</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::MemoryManager</span>
+  <span class="tag">Engine/Memory/MemoryManager.h</span>
+  The only place fallback traffic is counted — it counts the request the child refused, not what the parent spent.
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>void ReportFallback(TId id, void* ptr, size_t requested)</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+Defined in <code>Engine/Memory/MemoryManager.cpp</code> as <code>MemoryManager::ReportFallback()</code>, declared
+<code>private</code> and called from exactly one place: <a href="fallback-allocate.html">FallbackAllocate</a>, under
+<code>PROFILE_ENABLED</code>. It is where fallback traffic is counted, and nowhere else counts it.
+</p>
+
+<pre><code>std::lock_guard lockScope(statsLock);
+
+auto&amp; allocator = allocators[id];
+auto&amp; stats = allocator.stats;
+
+++stats.fallbackCount;
+stats.totalFallback += requested;
+stats.maxFallback = std::max(requested, stats.maxFallback);</code></pre>
+
+<p class="meta">From Engine/Memory/MemoryManager.cpp, MemoryManager::ReportFallback()</p>
+
+<p>
+The counters belong to <code>id</code>, the allocator that declined, even though the bytes came from the parent
+(<a href="fallback-allocate.html">FallbackAllocate</a>). That is what makes
+<code>AllocStats::fallbackCount</code> a useful diagnostic: a non-zero value on an allocator means "requests arrived that this
+allocator could not serve", which is the signal for a block size or bank geometry that needs adjusting, and
+<a href="get-allocator-stat.html">GetAllocatorStat</a> is how a caller reads it.
+</p>
+
+<div class="gap">
+  <strong>It counts the request, not the answer.</strong>
+  <code>totalFallback</code> and <code>maxFallback</code> move by <code>requested</code>, which is what the original caller asked
+  the declining allocator for. The parent may have spent more than that — a multi-pool rounds up to its bank's block size, the
+  system allocator rounds to whatever <code>malloc</code> chose — and the excess is recorded nowhere in this record. So
+  <code>totalFallback</code> is not "bytes obtained by fallback"; it is "bytes that fell back", and dividing it by
+  <code>fallbackCount</code> gives an average request, not an average cost.
+</div>
+
+<div class="note">
+  <strong>A failed fallback is counted the same as a successful one.</strong>
+  The body never inspects <code>ptr</code> except to print it in the <code>Verbose</code> line, so a fallback where the parent
+  also failed still increments the count. The pointer is diagnostic only — nothing here records which block was involved, so a
+  fallback cannot later be traced from these numbers.
+</div>
+
+<div class="note">
+  <strong>Invisible in every build of this repository, by two routes.</strong>
+  The whole body is inside <code>#if PROFILE_ENABLED</code>, which <code>Engine/Config/BuildConfig.h</code> sets to
+  <code>0</code>, so the counters never move; and its log line is at <code>Verbose</code>, the one level the default
+  <code>"Log.Memory"</code> threshold suppresses even when
+  <a href="is-log-enabled.html">logging is compiled in</a>. The multi-pool testlet that asserts
+  <code>stat.fallbackCount != 2</code> is itself guarded by the same macro, which is why it does not currently prove anything
+  about this method.
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<table>
+  <tr><th>Parameter</th><th>Type</th><th>Requirement</th></tr>
+  <tr><td><code>id</code></td><td><code>TId</code></td><td>The declining allocator's own id. Invalid → <code>Error</code> log, <code>debugBreak()</code> outside Release, and the event is not recorded.</td></tr>
+  <tr><td><code>ptr</code></td><td><code>void*</code></td><td>Whatever the parent returned, possibly null. Printed, never examined.</td></tr>
+  <tr><td><code>requested</code></td><td><code>size_t</code></td><td>The original request size — the amount the three counters move by.</td></tr>
+</table>
+
+<h2 id="return">Return value</h2>
+
+<p><code>void</code>. Nothing about a fallback is reported back to <a href="fallback-allocate.html">FallbackAllocate</a>, which has already returned by the time this runs.</p>
+
+<h2 id="example">Examples</h2>
+
+<pre><code>void* MemoryManager::FallbackAllocate(TId id, TId parentId, size_t requestedSize)
+{
+	auto ptr = Allocate(parentId, requestedSize);
+
+#if PROFILE_ENABLED
+	ReportFallback(id, ptr, requestedSize);
+#endif // PROFILE_ENABLED
+
+	return ptr;
+}</code></pre>
+
+<p class="meta">From Engine/Memory/MemoryManager.cpp, MemoryManager::FallbackAllocate()</p>
+
+<p>
+The only call site, and the reason the method is private: fallback accounting is not something an allocator may report by
+hand, so the numbers can only come from a request that genuinely went to a parent. Code that wants to fall back calls
+<a href="fallback-allocate.html">FallbackAllocate</a> and is counted automatically.
+</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; MemoryManager</a></span>
+  <span><a href="index.html#methods">All MemoryManager methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

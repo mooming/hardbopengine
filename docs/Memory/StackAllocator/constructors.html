@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>StackAllocator::StackAllocator — Memory module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a class="current" href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Memory</a> /
+  <a href="index.html">StackAllocator</a> / StackAllocator
+</p>
+
+<h1><span class="fn">StackAllocator</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::StackAllocator</span>
+  <span class="tag">Engine/Memory/StackAllocator.h</span>
+  <span class="tag">2 overloads</span>
+  Rounds the capacity up, takes the buffer from the allocator that is current, and registers this object with the manager.
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>#if PROFILE_ENABLED
+	StackAllocator(const char* name, SizeType capacity, const TSrcLoc&amp; location = TSrcLoc::current())
+
+#else
+	StackAllocator(const char* name, SizeType capacity)</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  Defined in <code>Engine/Memory/StackAllocator.cpp</code> as <code>StackAllocator::StackAllocator()</code>. Construction is four
+  steps: round the capacity up, record the current allocator as the parent, take the buffer, register the object. Each is a
+  request to the <a href="../index.html#memorymanager"><code>MemoryManager</code></a>, and the first two decide where the bytes
+  come from and where everything this stack cannot serve will later go.
+</p>
+
+<pre><code>{
+	constexpr auto AlignUnit = Config::DefaultAlign;
+	const auto multiplier = (capacity + AlignUnit - 1) / AlignUnit;
+	capacity = multiplier * AlignUnit;
+}
+
+auto&amp; mmgr = MemoryManager::GetInstance();
+parentID = hbe::MemoryManager::GetCurrentAllocatorID();
+bufferPtr = mmgr.Allocate(capacity);</code></pre>
+
+<p class="meta">From Engine/Memory/StackAllocator.cpp, StackAllocator::StackAllocator()</p>
+
+<pre><code>id = mmgr.RegisterAllocator(this, name, false, capacity, allocFunc, deallocFunc);</code></pre>
+
+<p class="meta">From Engine/Memory/StackAllocator.cpp, StackAllocator::StackAllocator()</p>
+
+<div class="gap">
+  <strong>Which allocator owns the buffer is decided by the scope that is open right here.</strong>
+  <code>parentID</code> is read from <code>MemoryManager::GetCurrentAllocatorID()</code>, which returns the thread-local
+  <code>scopedAllocatorID</code>, and the buffer is then taken through <code>mmgr.Allocate(capacity)</code> — the overload that
+  allocates against that same thread-local id. Open an <a href="../index.html#allocatorscope"><code>AllocatorScope</code></a> over
+  another allocator and construct inside it, and that allocator supplies the backing bytes; construct with no scope open and
+  <code>scopedAllocatorID</code> is <code>0</code>, the system allocator, which is the state of a thread that has never opened one.
+  The pairing is worth holding because <a href="destructor.html">the destructor</a> releases the buffer through the scope that is
+  open <em>then</em>, not through this recorded <code>parentID</code>: the <code>PoolAllocator</code> destructor in
+  <code>Engine/Memory/PoolAllocator.cpp</code> releases through its recorded parent, this one does not.
+</div>
+
+<div class="note">
+  <strong>The name is the manager's, not the object's.</strong>
+  The constructor stores no copy of <code>name</code> — the class has no name member and no <code>GetName()</code> — and passes it
+  only to <code>MemoryManager::RegisterAllocator()</code>, where a null pointer becomes <code>"None"</code>
+  (<code>Engine/Memory/MemoryManager.cpp</code>). Under <code>PROFILE_ENABLED</code> the registration copies it into the
+  allocator's statistics record; in the configuration this tree compiles the registration keeps the allocate and deallocate
+  function pointers and nothing else. Log lines that name the allocator — the leak warning in
+  <code>MemoryManager::DeregisterAllocator()</code>, for instance — are profile-build lines.
+</div>
+
+<div class="note">
+  <strong>The capacity you pass is not the capacity you get.</strong>
+  The rounding above rewrites <code>capacity</code> in place, so a request of 1000 bytes becomes a 1008-byte buffer and a request
+  of 1048576 stays 1048576, and it is the rounded figure that <a href="getavailable.html">GetAvailable</a> reports and that the
+  registration records. The same rounding is applied to every request by <a href="allocate.html">Allocate</a>, which is why a
+  request of 1 byte costs 16 and why <a href="deallocate.html">Deallocate</a> can be given any byte count that rounds to the same
+  number.
+</div>
+
+<div class="note">
+  <strong>Two things the constructor does not check.</strong>
+  <code>MemoryManager::GetInstance()</code> guards the singleton with <code>FatalAssert</code>, which aborts in every
+  configuration (<code>Engine/Core/Debug.h</code>), so constructing before the engine's memory manager exists is fatal rather than
+  undefined. A registration failure is the softer case: when the manager's proxy pool is empty — the id space is
+  <code>MaxNumAllocators</code>, 256 entries — <code>RegisterAllocator</code> logs a fatal-priority line and returns
+  <code>InvalidAllocatorID</code>, and the constructor stores that id and keeps the buffer it already took.
+  <a href="getid.html">GetID</a> then reports <code>-1</code>, <a href="allocate.html">Allocate</a> still serves from the buffer,
+  and the destructor logs an error from <code>DeregisterAllocator</code>. That state has no testlet — see
+  <a href="index.html#coverage">Coverage</a>.
+</div>
+
+<p>
+  The two signatures are one constructor behind <code>#if PROFILE_ENABLED</code>. <code>Engine/Config/BuildConfig.h</code> defines
+  that macro as 0, so the branch that is taken here is the two-argument form and the <code>location</code> parameter, the
+  <code>TSrcLoc</code> alias and the <code>srcLocation</code> member do not exist; <code>JOURNAL.md</code> (2026-10-05) records that
+  turning the macro on breaks the build for reasons unrelated to this class, so the profile branch has never been compiled.
+</p>
+
+<h2 id="parameters">Parameters</h2>
+
+<table>
+  <tr><th>Parameter</th><th>Type</th><th>Requirement</th></tr>
+  <tr><td><code>name</code></td><td><code>const char*</code></td><td>A label for the registration. Not stored by the object and not copied in the configuration this tree compiles; <code>nullptr</code> is accepted and becomes <code>"None"</code>.</td></tr>
+  <tr><td><code>capacity</code></td><td><code>SizeType</code></td><td>Bytes of backing store wanted. Rounded up to a multiple of <code>Config::DefaultAlign</code> (16) before the request is made. A capacity of 0 asks the manager for 0 bytes, and it returns <code>nullptr</code> for that — a state no testlet covers.</td></tr>
+  <tr><td><code>location</code></td><td><code>const TSrcLoc&amp;</code></td><td>Construction site handed to the two-argument <code>MemoryManager::DeregisterAllocator</code>. Exists only under <code>PROFILE_ENABLED</code>; defaults to <code>TSrcLoc::current()</code>.</td></tr>
+</table>
+
+<h2 id="return">Return value</h2>
+
+<p>
+  Constructors produce an object rather than a value. What a successful one guarantees: <code>capacity</code> bytes of buffer
+  owned by this object, <code>cursor</code> at 0, <a href="getavailable.html">GetAvailable</a> equal to the rounded capacity, and an
+  id that an <a href="../index.html#allocatorscope"><code>AllocatorScope</code></a> can be opened with. Nothing guarantees the
+  buffer is non-null.
+</p>
+
+<h2 id="example">Examples</h2>
+
+<pre><code>StackAllocator stack("Test::StackAllocator", 1024 * 1024);
+{
+	AllocatorScope scope(stack.GetID());
+
+	HVector&lt;int&gt; a;
+	a.push_back(0);
+}</code></pre>
+
+<p class="meta">From Engine/Memory/StackAllocator.cpp, StackAllocatorTest::Prepare()</p>
+
+<pre><code>using TAlloc = StackAllocator;
+
+ScopedAllocator&lt;TAlloc&gt; scope0("NestedStack0", 1024);
+{
+	ScopedAllocator&lt;TAlloc&gt; scope1("NestedStack1", 512);
+
+	auto ptr = New&lt;long double&gt;(0);
+	/* ... */
+	Delete(ptr);
+}</code></pre>
+
+<p class="meta">From Engine/Memory/StackAllocator.cpp, StackAllocatorTest::Prepare(), Nested Usage testlet</p>
+
+<p>
+  The second form is the nesting the class is built for: <code>ScopedAllocator&lt;TAlloc&gt;</code>
+  (<code>Engine/Memory/ScopedAllocator.h</code>) constructs the allocator and opens its scope together, so a nested stack's parent
+  is the stack one level out, and the scope is restored before the allocator is destroyed — which is the order that hands the
+  buffer back to the right allocator.
+</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; StackAllocator</a></span>
+  <span><a href="index.html#methods">All StackAllocator methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

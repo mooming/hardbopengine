@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Shareable::operator bool — Memory module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a class="current" href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Memory</a> /
+  <a href="index.html">Shareable</a> / operator bool
+</p>
+
+<h1><span class="fn">operator bool</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::Shareable</span>
+  <span class="tag">Engine/Memory/Shareable.h</span>
+  The handle's only liveness test: true unless a move or a Release emptied it - and an implicit conversion.
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>operator bool() const</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+Defined inline in the class body of <code>Engine/Memory/Shareable.h</code>; the body is <code>return body != nullptr;</code>. It is the only
+liveness test the class offers, and the internal one: the copy constructor and <a href="operator-assign.html">operator=</a> both consult it
+before dereferencing, and <a href="destructor.html">the destructor</a> uses the same pointer test directly.
+</p>
+
+<div class="note">
+  <strong>False means "moved from" or "released" — nothing else.</strong>
+  The class has no default constructor that yields an empty handle: the variadic constructor always allocates a <code>Body</code>
+  (<a href="constructors.html">constructors</a>), so a constructed handle is true. The only ways to reach false are a
+  <a href="constructors.html">move</a>, an <a href="operator-assign.html">assignment from an empty handle</a>, or
+  <a href="release.html">Release</a>. That is why the tests in <code>Engine/String/String.cpp</code> — for instance
+  <code>return buffer ? buffer.Get().data() : "";</code> — are guards against a moved-from <code>String</code> rather than an uninitialised
+  one, and why a false answer is worth branching on: the other accessors have no such check
+  (<a href="get.html">Get</a>, <a href="operator-multiply.html">operator*</a>, <a href="operator-member-access.html">operator-&gt;</a>).
+</div>
+
+<div class="gap">
+  <strong>The conversion is implicit, so a handle converts anywhere a <code>bool</code> will do.</strong>
+  The declaration is <code>operator bool() const</code> with no <code>explicit</code>, which is what makes <code>if (buffer)</code> and
+  <code>buffer ? x : y</code> read naturally — and also lets a handle convert without warning in an arithmetic or overloads-resolution context
+  where an integral value would be accepted. There is no <code>[[nodiscard]]</code> either, so calling it and discarding the answer is silent.
+  Neither is documented as intended by anything in the source.
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<p>None.</p>
+
+<h2 id="return">Return value</h2>
+
+<table>
+  <tr><th>Type</th><th>What you get</th></tr>
+  <tr><td><code>bool</code></td><td><code>true</code> when the handle names an object. It says nothing about the object's own state — an empty
+      <code>Vector</code> still answers true — nor about how many others share it, which is
+      <a href="get-reference-count.html">GetReferenceCount</a>.</td></tr>
+</table>
+
+<h2 id="example">Examples</h2>
+
+<pre><code>	return buffer ? buffer.Get().data() : "";</code></pre>
+
+<p class="meta">From Engine/String/String.cpp, String::ToCharArray</p>
+
+<p>
+The shape the tree uses this in most: test the handle, then reach the object. <code>Engine/String/String.h</code> combines it with a second
+condition where the empty case has two sources — <code>return static_cast&lt;bool&gt;(buffer) &amp;&amp; buffer-&gt;size() &gt; 0 ? buffer-&gt;size() - 1 : 0;</code>
+— the explicit cast there being the caller's way of naming the conversion rather than relying on it.
+</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; Shareable</a></span>
+  <span><a href="index.html#methods">All Shareable methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

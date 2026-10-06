@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>InlinePoolAllocator::GetBlockSize — Memory module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a class="current" href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Memory</a> /
+  <a href="index.html">InlinePoolAllocator</a> / GetBlockSize
+</p>
+
+<h1><span class="fn">GetBlockSize</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::InlinePoolAllocator</span>
+  <span class="tag">Engine/Memory/InlinePoolAllocator.h</span>
+  Objects of type T per block after the pointer-size floor - a compile-time constant, not a measurement.
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>[[nodiscard]] static auto GetBlockSize()</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+Defined inline in the class body of <code>Engine/Memory/InlinePoolAllocator.h</code>; the body returns <code>ActualBlockSize</code>, which
+is <code>std::max(BlockSize, sizeof(void*))</code>. The unit is <strong>objects of type <code>T</code></strong>, not bytes — the byte
+figure the pool actually strides by is <code>BlockSizeInBytes</code>, which is <code>sizeof(T) * ActualBlockSize</code> and is not exposed
+by any accessor. Static, so it is callable on the type with no object, and the answer is a compile-time constant: it reports the template
+arguments, not anything about the running pool.
+</p>
+
+<div class="note">
+  <strong>This is the number a caller must compare with the template argument.</strong>
+  A pool declared <code>InlinePoolAllocator&lt;void*, 4, 8&gt;</code> answers 8, not 4, because a free block has to be wide enough to hold
+  the next-pointer of the free list. Any calculation of capacity that uses the literal <code>BlockSize</code> instead of this answer
+  under-counts the pool. <a href="get-num-blocks.html">GetNumBlocks</a> is the same idea for the depth, and the two together are as much
+  capacity information as the class gives: see <a href="allocate-bytes.html">the gap on usage figures</a>.
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<p>None.</p>
+
+<h2 id="return">Return value</h2>
+
+<table>
+  <tr><th>Type</th><th>What you get</th></tr>
+  <tr><td><code>size_t</code></td><td><code>ActualBlockSize</code> — objects of type <code>T</code> that fit in one block, after the
+      <code>sizeof(void*)</code> floor.</td></tr>
+</table>
+
+<h2 id="example">Examples</h2>
+
+<pre><code>ls &lt;&lt; '[' &lt;&lt; allocator.GetBlockSize() &lt;&lt; "] Num Iterations = " &lt;&lt; testCount
+   &lt;&lt; ", maxAllocSize = " &lt;&lt; maxAllocSize &lt;&lt; lf;</code></pre>
+
+<p class="meta">From Engine/Memory/InlinePoolAllocator.cpp, InlinePoolAllocatorTest::Prepare()</p>
+
+<p>
+The stress harness prints it as the pool's identity, which is the honest use: it distinguishes the eight testlets from one another. It is
+not a measure of what a request may ask for — <a href="allocate.html">allocate</a> takes elements, and the request fails into the parent
+above <code>ActualBlockSize</code> elements without reporting anything.
+</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; InlinePoolAllocator</a></span>
+  <span><a href="index.html#methods">All InlinePoolAllocator methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

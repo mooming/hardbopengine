@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MemoryManager::GetOSAllocationBytes — Memory module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a class="current" href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Memory</a> /
+  <a href="index.html">MemoryManager</a> / GetOSAllocationBytes
+</p>
+
+<h1><span class="fn">GetOSAllocationBytes</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::MemoryManager</span>
+  <span class="tag">Engine/Memory/MemoryManager.h</span>
+  Global bytes whose caller sits inside the macOS shared cache — a bucket inside the global total, zero everywhere else.
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>[[nodiscard]] static size_t GetOSAllocationBytes() noexcept</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+Defined in <code>Engine/Memory/GlobalAllocation.cpp</code> as <code>MemoryManager::GetOSAllocationBytes()</code>: one
+relaxed load of the <code>globalOSAllocationBytes</code> atomic. Bytes requested through the global entry points
+<em>by a caller whose return address lies inside the macOS shared cache</em>.
+</p>
+
+<p>
+The bucket is filled by <code>RecordAllocation()</code> in that file, and nothing else:
+</p>
+
+<pre><code>void RecordAllocation(size_t size, void* caller) noexcept
+{
+	hbe::MemoryManager::RecordGlobalAllocation(size);
+
+	if (IsOSImageCaller(caller))
+	{
+		globalOSAllocationBytes.fetch_add(size, std::memory_order_relaxed);
+		globalOSAllocationCount.fetch_add(1, std::memory_order_relaxed);
+	}
+}</code></pre>
+
+<p class="meta">From Engine/Memory/GlobalAllocation.cpp, RecordAllocation()</p>
+
+<p>
+<code>caller</code> is <code>__builtin_return_address(0)</code> evaluated inside the replacement
+<code>operator new</code>, which is therefore the address of whatever called <code>operator new</code> — a libc++
+function growing a <code>std::string</code> or a <code>std::vector</code> on Apple platforms typically.
+<code>IsOSImageCaller()</code> resolves the shared cache range once, lazily, through
+<code>_dyld_get_shared_cache_range</code>, caches base and size in two atomics published by a
+<code>queried</code> flag, and then answers <code>address - base &lt; size</code>.
+</p>
+
+<div class="gap">
+  <strong>A bucket inside the global total, not a second total — and zero off Apple.</strong>
+  Every OS-bucket request is also in <a href="get-global-allocation-bytes.html">GetGlobalAllocationBytes</a>, because
+  the global call happens first and unconditionally. Engine-owned traffic is the global figure minus this one, and that
+  subtraction is the only reason the bucket exists: without it, a libc++ reallocation inside the shared cache is
+  charged to whichever testlet happened to trigger it. Off <code>__APPLE__</code> the macro hands the accounting a null
+  caller and <code>IsOSImageCaller</code> returns <code>false</code> unconditionally, so all four OS counters stay
+  <code>0</code> on Linux and Windows builds.
+</div>
+
+<div class="note">
+  <strong>The answer is "who called <code>operator new</code>", not "who needed the memory".</strong>
+  Attribution is a return-address range test only. Code that lives in the shared cache may be allocating on behalf of
+  the engine — a <code>std::string</code> member of an engine object is the plain case — and that traffic is in this
+  bucket all the same. What the page does not claim, because no source states it, is a rule for deciding which
+  OS-bucket bytes were "really" engine memory; see this class's
+  <a href="index.html#coverage">Coverage</a> table.
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<p>None.</p>
+
+<h2 id="return">Return value</h2>
+
+<table>
+  <tr><th>Type</th><th>What you get</th></tr>
+  <tr><td><code>size_t</code></td><td>Cumulative bytes requested by callers inside the OS shared cache; a subset of <a href="get-global-allocation-bytes.html">GetGlobalAllocationBytes</a>, and always <code>0</code> where <code>__APPLE__</code> is not defined.</td></tr>
+</table>
+
+<h2 id="example">Examples</h2>
+
+<pre><code>const auto osBytesBefore = MemoryManager::GetOSAllocationBytes();
+
+std::string grow;
+
+for (int i = 0; i &lt; 4096; ++i)
+{
+	grow.push_back('y');
+}
+
+const auto osBytesAfter = MemoryManager::GetOSAllocationBytes();
+
+if (osBytesAfter - osBytesBefore &lt; grow.size())
+{
+	ls &lt;&lt; "The OS bucket did not see the string growth bytes" &lt;&lt; lferr;
+}</code></pre>
+
+<p class="meta">From Engine/Memory/GlobalAllocation.cpp, GlobalAllocationTest::Prepare()</p>
+
+<p>
+The Apple-only testlet, which is also the only statement in the repository of what this counter is for: a
+<code>std::string</code> grown long enough to force libc++ reallocations must show up in the bucket, and must still
+show up in the global total beside it.
+</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; MemoryManager</a></span>
+  <span><a href="index.html#methods">All MemoryManager methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

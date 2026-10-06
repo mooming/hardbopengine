@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MemoryManager::GetUsage — Memory module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a class="current" href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Memory</a> /
+  <a href="index.html">MemoryManager</a> / GetUsage
+</p>
+
+<h1><span class="fn">GetUsage</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::MemoryManager</span>
+  <span class="tag">Engine/Memory/MemoryManager.h</span>
+  The non-inline engine total — zero usage counters over a capacity the constructor seeds outside every build flag.
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>[[nodiscard]] auto&amp; GetUsage() const</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+Defined in the class body of <code>Engine/Memory/MemoryManager.h</code>: <code>return usage;</code>. This is the
+<code>UsageRecord</code> for every allocator that is <em>not</em> inline — which in practice means all of them that allocate
+their own backing buffer, plus <code>SystemAllocator</code>, which registers with <code>isInline == false</code> from
+<a href="register-system-allocator.html">RegisterSystemAllocator</a>. The inline counterpart is
+<a href="get-inline-usage.html">GetInlineUsage</a>; the two are complementary halves of one total, and neither is a sum of the
+other.
+</p>
+
+<p>
+The declared <code>auto&amp;</code> in a <code>const</code> member deduces to <code>const UsageRecord&amp;</code>, so the six
+fields listed on the <a href="index.html#properties">class page</a> are readable and not writable, and the reference is to the
+live member rather than a copy.
+</p>
+
+<div class="note">
+  <strong>The one figure this record holds in every configuration is a capacity.</strong>
+  <a href="register-system-allocator.html">RegisterSystemAllocator</a> sets
+  <code>usage.totalCapacity = Config::MemCapacity;</code> and <code>usage.maxCapacity = Config::MemCapacity;</code> outside any
+  <code>PROFILE_ENABLED</code> guard, asserting first that both were zero. <code>Config::MemCapacity</code> is 5 GiB
+  (<code>Engine/Config/EngineConfig.h</code>). So a build of this repository — where every writer of
+  <code>allocCount</code>, <code>deallocCount</code>, <code>totalUsage</code> and <code>maxUsage</code> is compiled out — answers
+  <code>{0, 0, 0, 0, 5 GiB, 5 GiB}</code>: a real declared capacity over an all-zero usage history, which reads as "nothing has
+  been allocated" only because the accounting is not in the binary.
+</div>
+
+<div class="gap">
+  <strong>The capacity is a declaration, not a limit.</strong>
+  Nothing on the allocation path compares against it. What it does is give
+  <a href="report-allocation.html">ReportAllocation</a> a ceiling to test the running total against: exceed it and the manager
+  logs at <code>FatalError</code> and breaks outside Release, then continues with the over-shot figure recorded. A caller who
+  treats this record's <code>totalCapacity</code> as an enforceable budget will be disappointed in exactly the way the
+  <a href="index.html#properties">MaxBaseMemory</a> constant already is — that one is read by nothing at all.
+</div>
+
+<div class="gap">
+  <strong>No call site exists, and the reference is unsynchronised.</strong>
+  Nothing under <code>Engine/</code> or <code>Applications/</code> reads either usage getter; the engine's memory reporting goes
+  through per-allocator <a href="get-allocator-stat.html">GetAllocatorStat</a> copies instead. And where the writers do exist,
+  they hold <code>statsLock</code> while a reader of this getter takes nothing — so copy the record out before treating its
+  fields as one consistent moment. The wider question of what the mutex is required to cover is recorded in
+  <a href="index.html#coverage">Coverage</a>.
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<p>None.</p>
+
+<h2 id="return">Return value</h2>
+
+<table>
+  <tr><th>Type</th><th>What you get</th></tr>
+  <tr><td><code>const UsageRecord&amp;</code></td><td>The live non-inline total: usage and counts zero in this tree, capacity seeded to <code>Config::MemCapacity</code> in every tree by the constructor's call to <a href="register-system-allocator.html">RegisterSystemAllocator</a>.</td></tr>
+</table>
+
+<h2 id="example">Examples</h2>
+
+<p class="note">Illustrative — no call site for this exists in the repository.</p>
+
+<pre><code>const auto&amp; rec = mmgr.GetUsage();
+
+if (rec.totalUsage * 2 &gt; rec.totalCapacity)
+{
+	ls &lt;&lt; "Non-inline allocators are past half of their declared capacity";
+}</code></pre>
+
+<p>
+The comparison this record exists to support. Note the two caveats above while reading it: in a build of this repository the
+left side is always zero, and even elsewhere the capacity is a ceiling that produces a diagnostic rather than a refusal.
+</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; MemoryManager</a></span>
+  <span><a href="index.html#methods">All MemoryManager methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

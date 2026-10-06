@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Shareable::operator-&gt; — Memory module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a class="current" href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Memory</a> /
+  <a href="index.html">Shareable</a> / operator-&gt;
+</p>
+
+<h1><span class="fn">operator-&gt;</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::Shareable</span>
+  <span class="tag">Engine/Memory/Shareable.h</span>
+  The member-access route to the shared object - the door through which a shared buffer gets mutated without asking the count.
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>[[nodiscard]] TType* operator-&gt;()
+
+[[nodiscard]] const TType* operator-&gt;() const</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+Two overloads defined inline in the class body of <code>Engine/Memory/Shareable.h</code>, each returning
+<code>&amp;body-&gt;GetBody();</code> — the address of the <code>data</code> member of the shared <code>Body</code>, so that
+<code>handle-&gt;member</code> reaches the object. The <code>const</code> overload yields a pointer to <code>const TType</code>, which is how a
+handle you cannot modify hands out read-only access.
+</p>
+
+<div class="gap">
+  <strong>This is the copy-on-write breach, and the class will not prevent it.</strong>
+  The non-const overload hands out a mutable <code>TType*</code> to an object that other handles may share, with no reference-count test on the
+  way. <code>hbe::String</code> shows both sides of that in one function: its copy-assignment path first asks
+  <a href="get-reference-count.html">GetReferenceCount</a>, and only in the branch where the count is 1 does it write —
+  <code>buffer-&gt;resize(length)</code> — while reads of another handle go through the const overload
+  (<code>rhs.buffer-&gt;size()</code>). Any other caller that writes through this operator without asking the count first mutates a value its
+  copies are still reading. Nothing in <code>Engine/Memory/Shareable.h</code> asserts, copies or refuses.
+</div>
+
+<div class="note">
+  <strong>No null test, and the pointer is a member of the shared block.</strong>
+  Both overloads dereference <code>body</code> unconditionally, so on an empty handle — moved from or
+  <a href="release.html">released</a> — the call is undefined before it returns anything; guard with
+  <a href="operator-bool.html">the boolean test</a> as <code>Engine/String/String.cpp</code> does. The returned pointer points inside the
+  <code>Body</code>, which never relocates, so it stays put for the object's lifetime and becomes dangling exactly when the last handle is
+  destroyed (<a href="destructor.html">destructor</a>) — not when another handle is copied.
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<p>None.</p>
+
+<h2 id="return">Return value</h2>
+
+<table>
+  <tr><th>Overload</th><th>Returns</th></tr>
+  <tr><td><code>TType* operator-&gt;()</code></td><td>Address of the shared object; writable, and only rightfully so when this handle is the
+      only owner.</td></tr>
+  <tr><td><code>const TType* operator-&gt;() const</code></td><td>Same address, read-only view, selected when the handle is
+      <code>const</code>.</td></tr>
+</table>
+
+<h2 id="example">Examples</h2>
+
+<pre><code>	[[nodiscard]] Index Length() const noexcept
+	{
+		return static_cast&lt;bool&gt;(buffer) &amp;&amp; buffer-&gt;size() &gt; 0 ? buffer-&gt;size() - 1 : 0;
+	}</code></pre>
+
+<p class="meta">From Engine/String/String.h, String::Length</p>
+
+<p>
+The tree's ordinary read: test the handle with <a href="operator-bool.html">the boolean conversion</a>, then ask the object through this
+operator. The const overload is the one in play, because <code>Length</code> is a const member of a const-correct handle — and note that the
+guard and the access are two separate statements with nothing between them, which is only safe on one thread
+(<a href="index.html">class page</a>).
+</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; Shareable</a></span>
+  <span><a href="index.html#methods">All Shareable methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

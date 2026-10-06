@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MemoryManager::GetOSAllocationCount — Memory module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a class="current" href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Memory</a> /
+  <a href="index.html">MemoryManager</a> / GetOSAllocationCount
+</p>
+
+<h1><span class="fn">GetOSAllocationCount</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::MemoryManager</span>
+  <span class="tag">Engine/Memory/MemoryManager.h</span>
+  Request count for the OS-image bucket — it attributes libc++ growth to the OS instead of to the testlet that triggered it.
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>[[nodiscard]] static uint64_t GetOSAllocationCount() noexcept</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+Defined in <code>Engine/Memory/GlobalAllocation.cpp</code> as <code>MemoryManager::GetOSAllocationCount()</code>: one
+relaxed load of the <code>globalOSAllocationCount</code> atomic. The request count behind
+<a href="get-os-allocation-bytes.html">GetOSAllocationBytes</a>, incremented in the same
+<code>if (IsOSImageCaller(caller))</code> block, so the two OS allocation counters always move together.
+</p>
+
+<p>
+The mechanism — <code>__builtin_return_address(0)</code> taken inside the replacement <code>operator new</code>, the
+lazily-cached <code>_dyld_get_shared_cache_range</code> bounds, the Apple-only guard — is documented once on
+<a href="get-os-allocation-bytes.html">GetOSAllocationBytes</a> and is not repeated here. What this getter adds over the
+byte figure is the ability to tell "the OS asked once for a large block" from "the OS asked many times", which is the
+distinction that matters when a testlet's global request count is higher than its own allocations can explain.
+</p>
+
+<div class="note">
+  <strong>Its whole purpose is subtraction.</strong>
+  Nothing in the tree reads this counter in isolation. <code>Engine/Test/TestCollection.cpp</code>,
+  <code>TestCollection::RunTestAt()</code> takes the difference across a testlet body, prints it as
+  <code>of which OS-image N requests</code>, and subtracts the OS bytes from the global bytes to get the engine-owned
+  figure a per-testlet ceiling is compared against. A non-zero absolute value on a platform other than macOS means
+  something is wrong with the platform guard, because off <code>__APPLE__</code> the accounting receives a null caller
+  and the range test is compiled to <code>return false</code>.
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<p>None.</p>
+
+<h2 id="return">Return value</h2>
+
+<table>
+  <tr><th>Type</th><th>What you get</th></tr>
+  <tr><td><code>uint64_t</code></td><td>Cumulative requests attributed to callers inside the OS shared cache; a subset of <a href="get-global-allocation-count.html">GetGlobalAllocationCount</a>, always <code>0</code> off Apple platforms, and never decremented by a release (<a href="get-os-free-count.html">GetOSFreeCount</a> is the release side).</td></tr>
+</table>
+
+<h2 id="example">Examples</h2>
+
+<pre><code>const auto osRequestsBefore = MemoryManager::GetOSAllocationCount();
+
+grow.push_back('y');
+
+const auto osRequestsAfter = MemoryManager::GetOSAllocationCount();
+
+if (osRequestsAfter &lt;= osRequestsBefore)
+{
+	ls &lt;&lt; "A libc++ reallocation inside the shared cache was not bucketed as OS image traffic" &lt;&lt; lferr;
+}</code></pre>
+
+<p class="meta">From Engine/Memory/GlobalAllocation.cpp, GlobalAllocationTest::Prepare()</p>
+
+<p>
+The first assertion of the Apple-only testlet. It is the repository's only executable definition of this counter:
+growth performed by code inside the shared cache belongs to the OS bucket, not to the testlet that triggered it.
+</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; MemoryManager</a></span>
+  <span><a href="index.html#methods">All MemoryManager methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

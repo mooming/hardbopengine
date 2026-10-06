@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MemoryManager::DeleteArray — Memory module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a class="current" href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Memory</a> /
+  <a href="index.html">MemoryManager</a> / DeleteArray
+</p>
+
+<h1><span class="fn">DeleteArray</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::MemoryManager</span>
+  <span class="tag">Engine/Memory/MemoryManager.h</span>
+  n destructors, then one release — and only the caller knows whether n was right.
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>template &lt;typename Type&gt;
+	void DeleteArray(Type* ptr, size_t n)</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+Defined in the class body of <code>Engine/Memory/MemoryManager.h</code>: <code>n</code> explicit destructor calls in ascending
+order, then one <a href="deallocate-types.html">DeallocateTypes</a> with the same count.
+</p>
+
+<pre><code>for (size_t i = 0; i &lt; n; ++i)
+{
+	ptr[i].~Type();
+}
+
+DeallocateTypes&lt;Type&gt;(ptr, n);</code></pre>
+
+<p class="meta">From Engine/Memory/MemoryManager.h, MemoryManager::DeleteArray()</p>
+
+<p>
+The element count is an argument because the block cannot carry one: <a href="new-array.html">NewArray</a> takes a single
+allocation with no array-new cookie, so nothing in memory records how many objects were built in it. The release is one call for the
+whole block, not one per element — the reason the array pair is cheap and the reason a wrong <code>n</code> is silent.
+</p>
+
+<div class="gap">
+  <strong>A wrong count fails in three different silent ways.</strong>
+  Too small and the remaining objects are never destructed while their storage is returned — their resources leak and any destructor
+  with side effects simply does not happen. Too large and destructors run past the end of the block on memory the allocator may have
+  handed to someone else. Either way the byte count passed down is also wrong, which is the mismatch that corrupts a pool's free list
+  (<a href="deallocate.html">Deallocate</a>) and, under <code>PROFILE_ENABLED</code>, wraps the usage statistic
+  (<a href="report-deallocation.html">ReportDeallocation</a>).
+</div>
+
+<div class="gap">
+  <strong>Zero elements does not mean "release nothing" — it means "release this block with size zero".</strong>
+  With <code>n == 0</code> the loop is skipped and <a href="deallocate-types.html">DeallocateTypes</a> is still called with the real
+  pointer and a byte count of <code>0</code>. <a href="deallocate.html">Deallocate</a> only ignores a <em>null</em> pointer, so a
+  non-null block is dispatched with a size the allocator never handed out. Compare <a href="delete.html">Delete</a>, where a null
+  pointer is a crash and a zero count is not expressible.
+</div>
+
+<div class="note">
+  <strong>Destruction order is ascending, matching <a href="new-array.html">NewArray</a>'s construction order.</strong>
+  A standard container destroys in the reverse of construction; this pair destroys in the same order it built. For element types whose
+  destructors touch neighbours, that is a real difference, and it is a property of these two templates rather than of arrays.
+</div>
+
+<div class="note">
+  <strong>The count's type is not the type it came from.</strong>
+  <a href="new-array.html">NewArray</a> takes <code>Index size</code>; this takes <code>size_t n</code>. The conversion is silent in
+  both directions, which is how a signed count that was negative on the way in becomes an enormous unsigned one on the way out. Callers
+  that store the count in a <code>Buffer</code>-style byte size recover it by dividing: <code>size / sizeof(T)</code> in
+  <code>BufferUtil::GetMemoryBuffer()</code>, asserted before use.
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<table>
+  <tr><th>Parameter</th><th>Type</th><th>Requirement</th></tr>
+  <tr><td><code>Type</code></td><td><em>template parameter</em></td><td>The element type the array was created with. It selects the destructor and the byte count, exactly as in <a href="delete.html">Delete</a>.</td></tr>
+  <tr><td><code>ptr</code></td><td><code>Type*</code></td><td>A block from <a href="new-array.html">NewArray</a>. Null with a non-zero <code>n</code> is a null dereference on the first iteration.</td></tr>
+  <tr><td><code>n</code></td><td><code>size_t</code></td><td>Exactly the count the array was created with — the same value, not a recomputed one, and not the byte size.</td></tr>
+</table>
+
+<h2 id="return">Return value</h2>
+
+<p><code>void</code>. No report, no cleared pointer, and no way to discover after the fact that the count was wrong.</p>
+
+<h2 id="example">Examples</h2>
+
+<pre><code>auto releaser = [&amp;mmgr](TSize size, TBufferData data)
+{
+	const TSize numElements = size / sizeof(T);
+	Assert((numElements * sizeof(T)) == size);
+
+	auto ptr = reinterpret_cast&lt;T*&gt;(data);
+	mmgr.DeleteArray&lt;T&gt;(ptr, numElements);
+};</code></pre>
+
+<p class="meta">From Engine/Resource/BufferUtil.h, BufferUtil::GetMemoryBuffer()</p>
+
+<p>
+The count that <a href="new-array.html">NewArray</a> consumed is reconstructed here from the block's byte size and asserted before it
+is used — the honest acknowledgement that a pointer cannot carry its own length. The same pairing appears in
+<code>Engine/Resource/Buffer.cpp</code> and <code>Engine/Resource/BufferInputStream.cpp</code>, where the count is a test constant on
+both sides.
+</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; MemoryManager</a></span>
+  <span><a href="index.html#methods">All MemoryManager methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

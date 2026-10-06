@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MemoryManager::Deallocate — Memory module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a class="current" href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Memory</a> /
+  <a href="index.html">MemoryManager</a> / Deallocate
+</p>
+
+<h1><span class="fn">Deallocate</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::MemoryManager</span>
+  <span class="tag">Engine/Memory/MemoryManager.h</span>
+  The size must be the one the block arrived with, and nothing here can tell you it was not.
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>void Deallocate(TId id, void* ptr, size_t nBytes)
+
+void Deallocate(void* ptr, size_t nBytes)</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+Both are defined in <code>Engine/Memory/MemoryManager.cpp</code> as overloads of <code>MemoryManager::Deallocate()</code>,
+and the unsized form is again one line through the thread's scoped id
+(<a href="get-scoped-allocator-id.html">GetScopedAllocatorID</a>). The shape mirrors
+<a href="allocate.html">Allocate</a> with two differences that matter: the null test comes first and takes the size with it,
+and there is no result to check.
+</p>
+
+<table>
+  <tr><th>#</th><th>Step in <code>Deallocate(TId, void*, size_t)</code></th><th>Compiled in</th></tr>
+  <tr><td>1</td><td><code>ptr == nullptr</code> → <code>Assert(nBytes == 0);</code> then return — a null release with a non-zero size is a bug report, not a no-op</td><td>assert: non-Release</td></tr>
+  <tr><td>2</td><td><code>Assert(id != InvalidAllocatorID)</code></td><td>non-Release</td></tr>
+  <tr><td>3</td><td><code>FORCE_USE_SYSTEM_MALLOC</code> → <code>id = SystemAllocatorID;</code> before validation</td><td><code>FORCE_USE_SYSTEM_MALLOC</code></td></tr>
+  <tr><td>4</td><td><a href="is-valid.html">IsValid</a> fails → <code>Error</code> log, <code>id = 0;</code></td><td>always</td></tr>
+  <tr><td>5</td><td><code>Assert(allocProxy.deallocate != nullptr, "[MemoryManager::Allocate][Error] No allocate function, ID = ", id)</code></td><td>non-Release</td></tr>
+  <tr><td>6</td><td><code>allocProxy.deallocate(allocProxy.allocator, ptr, nBytes)</code></td><td>always</td></tr>
+</table>
+
+<div class="gap">
+  <strong>The size must be the size the block arrived with.</strong>
+  The manager does nothing with <code>nBytes</code> but pass it on, and the allocators do a great deal with it: a pool
+  releases a block back into its free list using the size to identify the block
+  (<a href="../PoolAllocator/deallocate.html">PoolAllocator::Deallocate</a>), a multi-pool resolves the bank the same way, and
+  <a href="report-deallocation.html">ReportDeallocation</a> subtracts exactly that number from the usage it was given. A
+  release with a different size than its allocation therefore corrupts an allocator's bookkeeping rather than failing —
+  and <code>ReportDeallocation</code>, which is the one thing that would notice, is compiled out of this tree.
+</div>
+
+<div class="gap">
+  <strong>Nothing detects a double release.</strong>
+  The manager keeps no record of live blocks — <a href="report-allocation.html">the reports it receives</a> are counters, not a
+  table — so a second release of the same pointer is indistinguishable from a first. The only defences are inside the
+  allocators: <code>PoolAllocator::Deallocate()</code> checks <code>IsMine(ptr)</code> and, for a block whose index falls
+  outside its own range, logs <code>"is not alloacted by this."</code> and drops it. Releasing a block through the wrong id is
+  answered the same way at best and by free-list corruption at worst.
+</div>
+
+<div class="note">
+  <strong>The unsized overload is scope-sensitive in both directions.</strong>
+  An allocation and its release each re-read the ambient id, so a block allocated inside an <code>AllocatorScope</code> and
+  released after that scope closes is dispatched to a different allocator. The module's own destructors are the example of
+  the fix: <code>MultiPoolAllocator::~MultiPoolAllocator()</code> opens <code>AllocatorScope scope(parentID);</code> as its
+  first statement before clearing its banks, and <code>PoolAllocator::~PoolAllocator()</code> avoids the problem by naming the
+  id explicitly — <code>mmgr.Deallocate(parentID, buffer, totalSize);</code>.
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<table>
+  <tr><th>Parameter</th><th>Type</th><th>Requirement</th></tr>
+  <tr><td><code>id</code></td><td><code>TId</code></td><td>The allocator that served the block. Out-of-range is logged and redirected to slot 0, exactly as on the allocation side.</td></tr>
+  <tr><td><code>ptr</code></td><td><code>void*</code></td><td>A live block from that allocator. Null is ignored, with an assertion that the size was zero as well.</td></tr>
+  <tr><td><code>nBytes</code></td><td><code>size_t</code></td><td>Must equal the count the block was allocated with — including any rounding the caller applied, which is why <a href="allocate-by-type.html">AllocateByType</a> and <a href="deallocate-types.html">DeallocateTypes</a> are a pair.</td></tr>
+</table>
+
+<h2 id="return">Return value</h2>
+
+<p><code>void</code>. The caller is never told whether the release reached the allocator it was aimed at; the pointer is not cleared and not marked, because nothing here knows about it.</p>
+
+<h2 id="example">Examples</h2>
+
+<pre><code>const size_t totalSize = blockSize * numberOfBlocks;
+Assert(buffer != nullptr);
+
+auto&amp; mmgr = MemoryManager::GetInstance();
+mmgr.Deallocate(parentID, buffer, totalSize);</code></pre>
+
+<p class="meta">From Engine/Memory/PoolAllocator.cpp, PoolAllocator::~PoolAllocator()</p>
+
+<p>
+The disciplined form: the id is named, the size is recomputed from the same factors used at allocation, and the release happens
+before <a href="deregister-allocator.html">deregistration</a> — after step 5 of that method, this id has no deallocate function
+left. The scope-relative form is the unit test in <code>Engine/Memory/AllocatorScope.cpp</code>, where a block requested from an
+open scope is released from inside it.
+</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; MemoryManager</a></span>
+  <span><a href="index.html#methods">All MemoryManager methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

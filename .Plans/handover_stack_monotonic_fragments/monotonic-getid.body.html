@@ -1,0 +1,78 @@
+<h2 id="signature">Signature</h2>
+
+<pre><code>[[nodiscard]] auto GetID() const</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  Declared and defined in the class body of <code>Engine/Memory/MonotonicAllocator.h</code>: it returns <code>id</code>, so the deduced
+  return type is <code>TAllocatorID</code> (<code>int</code>, <code>Engine/Memory/AllocatorID.h</code>) by value. Because the body lives
+  in the header it inlines into every includer; the rest of the class is in <code>Engine/Memory/MonotonicAllocator.cpp</code>. The value
+  is whatever <code>MemoryManager::RegisterAllocator()</code> returned to the constructor — a slot index in the manager's allocator
+  table, in the range <code>0</code> to <code>MaxNumAllocators - 1</code> (256).
+</p>
+
+<div class="note">
+  <strong>This is the handle a caller needs to make the allocator the current one.</strong>
+  Every use the repository makes of it opens an <a href="../index.html#allocatorscope"><code>AllocatorScope</code></a> over the value:
+  <code>AllocatorScope scope(alloc.GetID());</code>, after which containers built in that scope allocate and "release" through this
+  object without naming it. The class uses it on itself too — <a href="destructor.html">the destructor</a> hands it to
+  <code>ReportDeallocation</code> (under <code>PROFILE_ENABLED</code>) and to <code>MemoryManager::DeregisterAllocator</code>.
+</div>
+
+<div class="gap">
+  <strong>The number is recycled the moment the object dies, so an id you keep has a shelf life.</strong>
+  <code>MemoryManager::DeregisterAllocator(TId id)</code> (<code>Engine/Memory/MemoryManager.cpp</code>) clears the proxy's function
+  pointers and ends <code>proxyPool.Push(allocator);</code>, which makes the same index available to the next allocator registered. A
+  value held past this object's destruction addresses whoever received that slot next, and the manager's only guard on the allocation
+  and release paths is the range check <code>IsValid(id)</code>. The early return that would withhold an id whose registration still
+  shows usage sits inside <code>#if PROFILE_ENABLED</code>, which is 0 here, so recycling is unconditional in this configuration.
+</div>
+
+<div class="gap">
+  <strong>An id from a dead allocator is worse here than elsewhere: the new owner may ignore the release.</strong>
+  Because <a href="deallocate.html">Deallocate</a> routes on <a href="ismine.html">IsMine</a>() against the <em>current</em> holder's
+  buffer, a release carrying a stale id is dispatched into whatever object occupies the slot now. If that is another monotonic
+  allocator, the call is likely to be ignored and the memory leaked rather than freed; if it is not, the bytes go to an allocator that
+  never saw them. Nothing in the manager can detect either case.
+</div>
+
+<div class="note">
+  <strong><code>InvalidAllocatorID</code> is a state that can persist, and it does not mean the object owns nothing.</strong>
+  The constructor initialises <code>id</code> to <code>InvalidAllocatorID</code> (<code>-1</code>) before the registration call, and a
+  registration that finds the manager's proxy pool empty logs a <code>FatalError</code> and returns <code>InvalidAllocatorID</code>
+  (<code>MaxNumAllocators</code> is 256) — a check this constructor does not make, so the object keeps a buffer it is not registered to
+  serve. Then <a href="destructor.html">the destructor</a> still returns the buffer and asks the manager to deregister an id it will
+  reject with an <code>Error</code> log. No testlet drives that state; see <a href="index.html#coverage">Coverage</a>.
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<p>None.</p>
+
+<h2 id="return">Return value</h2>
+
+<table>
+  <tr><th>Type</th><th>What you get</th></tr>
+  <tr><td><code>auto</code>, deduced as <code>TAllocatorID</code> (<code>int</code>)</td><td>The registration id, or <code>InvalidAllocatorID</code> (<code>-1</code>) when registration failed. Valid values satisfy <code>0 &lt;= id &lt; MaxNumAllocators</code> per <code>hbe::IsValid</code>. The attribute is <code>[[nodiscard]]</code>.</td></tr>
+</table>
+
+<h2 id="example">Examples</h2>
+
+<pre><code>MonotonicAllocator alloc("Test::MonotonicAllocator", 1024 * 1024);
+{
+	AllocatorScope scope(alloc.GetID());
+
+	HVector&lt;int&gt; a;
+	a.push_back(0);
+}</code></pre>
+
+<p class="meta">From Engine/Memory/MonotonicAllocator.cpp, MonotonicAllocatorTest::Prepare()</p>
+
+<p>
+  The whole of the engine's usage in one line: the id turns an ordinary allocator object into the thread's current one for the lifetime
+  of a scope. Note the declaration order the <a href="destructor.html">destructor</a> depends on — the allocator is constructed outside
+  the scope, so the scope closes first and the buffer is returned while the allocator that lent it is current again.
+  <code>ScopedAllocator&lt;TAlloc&gt;</code> (<code>Engine/Memory/ScopedAllocator.h</code>) encodes the same ordering structurally by
+  declaring <code>allocator</code> before <code>scope</code>.
+</p>

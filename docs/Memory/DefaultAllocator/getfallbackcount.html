@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DefaultAllocator::GetFallbackCount — Memory module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a class="current" href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Memory</a> /
+  <a href="index.html">DefaultAllocator</a> / GetFallbackCount
+</p>
+
+<h1><span class="fn">GetFallbackCount</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::DefaultAllocator</span>
+  <span class="tag">Engine/Memory/DefaultAllocator.h</span>
+  A static constexpr literal 0: this adapter owns no storage so it performs no fallback, and the engine's real fallback counter is elsewhere.
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>[[nodiscard]] static constexpr size_t GetFallbackCount()</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  Defined inline in <code>Engine/Memory/DefaultAllocator.h</code> as
+  <code>DefaultAllocator::GetFallbackCount()</code>. Its body is <code>return 0;</code> — a literal. Nothing writes it, nothing stores
+  it, and because it is <code>static</code> and <code>constexpr</code> it does not even look at an object: it answers about the class
+  template, not about the allocator instance or the id it carries, and being <code>constexpr</code> it can be read in a constant
+  expression.
+</p>
+
+<p>
+  What the answer means follows from what a fallback is in this engine. A fallback happens when an allocator that owns storage cannot
+  serve a request and asks its parent: <code>MemoryManager::FallbackAllocate(id, parentId, requested)</code> in
+  <code>Engine/Memory/MemoryManager.cpp</code> does that, and the count of such events lives in
+  <code>AllocStats::fallbackCount</code>, incremented by <code>MemoryManager::ReportFallback</code> — the whole body of which sits
+  behind <code>#if PROFILE_ENABLED</code>, which <code>Engine/Config/BuildConfig.h</code> sets to 0.
+  <code>DefaultAllocator</code> owns no storage, has no capacity to exhaust and no parent of its own: it names an allocator and stands
+  in front of it. So 0 is a truthful statement about this adapter and nothing else — the allocator whose id it holds may be falling back
+  on every call, and the number returned here will not change.
+</p>
+
+<div class="gap">
+  <strong>The zero is not a measurement, and it is not the engine's fallback counter.</strong>
+  A caller who reads this as "no fallback has happened" reads the wrong thing twice over: the figure is constant, and the real counter
+  is per registration in <code>AllocStats::fallbackCount</code>, reachable through
+  <code>MemoryManager::GetAllocatorStat(id)</code> in a <code>PROFILE_ENABLED</code> build. No code in the repository calls this
+  function at all — <code>Engine/Memory/DefaultAllocator.h</code> is both its declaration and its only appearance — and no other
+  allocator in <a href="../index.html#allocators">the catalogue</a> declares a counterpart, so there is no family-wide interface it can
+  be said to be completing. See <a href="index.html#coverage">Coverage</a>.
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<p>
+  None. Being <code>static</code>, it is called as <code>DefaultAllocator&lt;T&gt;::GetFallbackCount()</code>; calling it through an
+  instance is permitted and reads nothing from it.
+</p>
+
+<h2 id="return">Return value</h2>
+
+<table>
+  <tr><th>Type</th><th>What you get</th></tr>
+  <tr><td><code>size_t</code></td><td>Always 0, for every instantiation of the class template and every state of the allocator. Not a count of anything that happened.</td></tr>
+</table>
+
+<h2 id="example">Examples</h2>
+
+<p class="note">Illustrative — no call site for this exists anywhere in the repository.</p>
+
+<pre><code>static_assert(DefaultAllocator&lt;int&gt;::GetFallbackCount() == 0);</code></pre>
+
+<p>
+  That is the only thing the function can be used for: a compile-time constant. To ask the runtime question — how often has the
+  allocator behind this id actually handed a request to its parent — there is no path through this class; it goes through
+  <a href="../index.html#memorymanager"><code>MemoryManager</code></a>'s statistics, and in this tree the statistics are compiled out.
+</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; DefaultAllocator</a></span>
+  <span><a href="index.html#methods">All DefaultAllocator methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Shareable::operator* — Memory module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a class="current" href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Memory</a> /
+  <a href="index.html">Shareable</a> / operator*
+</p>
+
+<h1><span class="fn">operator*</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::Shareable</span>
+  <span class="tag">Engine/Memory/Shareable.h</span>
+  The pointer-handle spelling of Get: the same shared object by reference, with the same two hazards.
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>[[nodiscard]] TType&amp; operator*()
+
+[[nodiscard]] const TType&amp; operator*() const</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+The pointer-handle spelling of <a href="get.html">Get</a>, and byte for byte the same function: two overloads defined inline in the class body
+of <code>Engine/Memory/Shareable.h</code>, each returning <code>body-&gt;GetBody();</code> — a reference to the <code>data</code> member of the
+shared <code>Body</code>. Whatever is true of <a href="get.html">Get</a> is true here, including the two that matter most: neither overload tests
+<code>body</code>, so an empty handle is undefined behaviour, and the non-const overload hands out a mutable reference to an object that other
+handles may share, with the copy-on-write policy left entirely to the caller
+(<a href="get-reference-count.html">GetReferenceCount</a> is the input that policy reads).
+</p>
+
+<div class="note">
+  <strong>Two spellings, one contract — and the tree uses both.</strong>
+  <code>hbe::String</code> reaches the same object through this operator where it wants an element
+  (<code>(*buffer)[0]</code>, <code>(*buffer)[i]</code>) and through <a href="get.html">Get</a> where it wants the container
+  (<code>buffer.Get().data()</code>). Neither is preferred by anything in the source; the difference is readability at the call site, not
+  behaviour.
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<p>None.</p>
+
+<h2 id="return">Return value</h2>
+
+<table>
+  <tr><th>Overload</th><th>Returns</th></tr>
+  <tr><td><code>TType&amp; operator*()</code></td><td>Mutable reference to the shared object; unsafe to write through unless this handle is the
+      only owner.</td></tr>
+  <tr><td><code>const TType&amp; operator*() const</code></td><td>Read-only reference, selected when the handle is <code>const</code>.</td></tr>
+</table>
+
+<h2 id="example">Examples</h2>
+
+<pre><code>	String str;
+	Assert(str.buffer);
+
+	*(str.buffer) = *buffer;
+
+	return str;</code></pre>
+
+<p class="meta">From Engine/String/String.cpp, String::Clone</p>
+
+<p>
+Both overloads at once, and the pattern this operator exists for: a brand-new <code>String</code> whose handle owns a fresh, unshared buffer,
+and a fresh assertion that the allocation succeeded. <code>*(str.buffer)</code> is the mutable overload and <code>*buffer</code> the const one, so
+the assignment copies the old value's characters into storage nobody else can see — the count is not consulted here precisely because
+<code>String str;</code> guarantees it is 1 (<a href="constructors.html">constructors</a>).
+</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; Shareable</a></span>
+  <span><a href="index.html#methods">All Shareable methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

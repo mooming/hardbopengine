@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>InlinePoolAllocator::AllocateBytes — Memory module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a class="current" href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Memory</a> /
+  <a href="index.html">InlinePoolAllocator</a> / AllocateBytes
+</p>
+
+<h1><span class="fn">AllocateBytes</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::InlinePoolAllocator</span>
+  <span class="tag">Engine/Memory/InlinePoolAllocator.h</span>
+  Release cache, then free list, then the parent allocator: the only path in the class that can produce a pointer.
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>void* AllocateBytes(size_t nBytes) noexcept</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+Private, defined inline in the class body of <code>Engine/Memory/InlinePoolAllocator.h</code>, and the only place in the class that
+produces a pointer. <a href="allocate.html">allocate</a> reaches it through the standard-library spelling; the pool's own
+<a href="register-allocator.html">registration</a> hands the manager a lambda that calls this same function, so a request arriving through
+<code>AllocatorScope</code> and a request arriving from a container take the same three steps in the same order:
+</p>
+
+<table>
+  <tr><th>Order</th><th>Source</th><th>Condition</th><th>What the caller cannot tell afterwards</th></tr>
+  <tr><td>1</td><td><code>immediateBlock</code> — the one-slot release cache</td><td><code>nBytes &lt;= BlockSizeInBytes</code> and the slot is
+      occupied</td><td>Whether the parked block came from this array or from the parent
+      (<a href="deallocate-bytes.html">DeallocateBytes</a> parks without asking).</td></tr>
+  <tr><td>2</td><td><code>availableBlock</code> — the free list</td><td><code>nBytes &lt;= BlockSizeInBytes</code> and the list is not
+      empty</td><td>Nothing: the pop reads the next-pointer out of the block's own bytes before handing the block over, so the caller may
+      overwrite those bytes immediately.</td></tr>
+  <tr><td>3</td><td>The parent allocator</td><td>Either the request is larger than one block, or the free list is empty</td>
+      <td>That the storage is not inside this object, and therefore that its size is not <code>BlockSizeInBytes</code>.</td></tr>
+</table>
+
+<pre><code>auto&amp; mmgr = MemoryManager::GetInstance();
+auto ptr = mmgr.FallbackAllocate(GetID(), parentID, nBytes);</code></pre>
+
+<p class="meta">From Engine/Memory/InlinePoolAllocator.h, hbe::InlinePoolAllocator::AllocateBytes()</p>
+
+<p>
+The third step is the whole of the pool's relationship with the rest of the memory system, and it behaves exactly as
+<a href="../PoolAllocator/index.html"><code>PoolAllocator</code></a>'s does: <code>MemoryManager::FallbackAllocate()</code> in
+<code>Engine/Memory/MemoryManager.cpp</code> forwards to <code>Allocate(parentID, requestedSize)</code>, so the bytes come from the
+allocator that was current when this pool was constructed — not from whatever scope is open now — and only the fallback count is charged
+to this pool's id, under <code>PROFILE_ENABLED</code>.
+</p>
+
+<div class="gap">
+  <strong>The pool keeps no count of what it has handed out, so it can neither report nor warn.</strong>
+  There is no counter of live blocks: <code>availableBlock</code> is the only state, and when it reaches <code>nullptr</code> the
+  allocation simply continues into the parent. Contrast <a href="../PoolAllocator/index.html"><code>PoolAllocator</code></a>, which answers
+  <code>GetAvailableBlocks</code>, <code>GetUsage</code> and <code>GetCapacity</code>. A caller of this class cannot ask how full the pool
+  is, cannot detect that the inline storage is being wasted, and cannot size a pool from evidence — <a href="get-block-size.html">GetBlockSize</a>
+  and <a href="get-num-blocks.html">GetNumBlocks</a> report the template arguments, not the traffic. The only observable signal is the
+  profile's fallback count, and that configuration does not compile in this tree.
+</div>
+
+<div class="note">
+  <strong>The size test is against <code>BlockSizeInBytes</code>, which is elements times <code>sizeof(T)</code>.</strong>
+  One comparison decides whether the array can serve the request at all: <code>nBytes &lt;= BlockSizeInBytes</code>. A request one byte
+  too large is not truncated, split or refused — it is served by the parent, and every later release of it is forwarded back to the
+  parent by <a href="deallocate-bytes.html">DeallocateBytes</a>. Nothing in either direction reports the miss.
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<table>
+  <tr><th>Parameter</th><th>Type</th><th>Meaning</th></tr>
+  <tr><td><code>nBytes</code></td><td><code>size_t</code></td><td>Byte count. Compared against <code>BlockSizeInBytes</code>; a value of 0
+      is "small enough" and so consumes a whole block — the case <a href="allocate.html">allocate(0)</a> reaches by arithmetic.</td></tr>
+</table>
+
+<h2 id="return">Return value</h2>
+
+<table>
+  <tr><th>Type</th><th>What you get</th></tr>
+  <tr><td><code>void*</code></td><td>Storage of at least <code>nBytes</code>, either inside this object's <code>block</code> array or from
+      the parent allocator, and never a null produced by this function itself. The alignment is that of the array
+      (<code>AlignUnit</code> = at least <code>Config::DefaultAlign</code>, 16 bytes) for array storage; for parent storage it is whatever
+      the parent guarantees.</td></tr>
+</table>
+
+<h2 id="example">Examples</h2>
+
+<pre><code>auto allocFunc = [](void* allocatorPtr, size_t nBytes) -&gt; void*
+{
+	auto allocator = static_cast&lt;InlinePoolAllocator*&gt;(allocatorPtr);
+
+	return static_cast&lt;void*&gt;(allocator-&gt;AllocateBytes(nBytes));
+};</code></pre>
+
+<p class="meta">From Engine/Memory/InlinePoolAllocator.h, hbe::InlinePoolAllocator::RegisterAllocator()</p>
+
+<p>
+This is why the function is private yet reaches the whole engine: the registration casts the owning object back from the
+<code>void*</code> the manager stored and calls it. Any allocation made inside an <a href="../index.html#allocatorscope">AllocatorScope</a>
+opened on this pool arrives here, including from code that has never seen the type — which also means the pool must outlive that scope.
+</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; InlinePoolAllocator</a></span>
+  <span><a href="index.html#methods">All InlinePoolAllocator methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>InlinePoolAllocator::operator== — Memory module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a class="current" href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Memory</a> /
+  <a href="index.html">InlinePoolAllocator</a> / operator==
+</p>
+
+<h1><span class="fn">operator==</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::InlinePoolAllocator</span>
+  <span class="tag">Engine/Memory/InlinePoolAllocator.h</span>
+  Always false, even for an object compared with itself - the allocator-completeness operator, not an identity test.
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>bool operator==(const InlinePoolAllocator&amp;) const</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+Defined inline in the class body of <code>Engine/Memory/InlinePoolAllocator.h</code>. The body is <code>return false;</code>. The parameter
+is unnamed and nothing is compared: not the registration id, not <code>parentID</code>, not the free-list pointers, not the array. An object
+compared with itself answers <code>false</code>.
+</p>
+
+<div class="gap">
+  <strong>The answer is a constant, so no caller may treat it as identity — and containers treat it as inequality.</strong>
+  Every other member of this class is instance state, and two pools of the same instantiation are separate objects with separate
+  registrations and separate arrays, so "never equal" is at least a true statement about the world. The consequence worth knowing is that
+  the standard library asks this question: a container move-assigning or swapping from another container of the same type may consult
+  allocator equality before adopting the other container's buffer, and an allocator that always answers unequal forces the element-by-element
+  route into freshly allocated storage. That route is a standard library's decision, not the engine's, and no page here claims which
+  libraries take it — what is documented is the input they get: always <code>false</code>.
+</div>
+
+<div class="note">
+  <strong>The inverse is <a href="operator-not-equal.html">operator!=</a>, and the pair is consistent.</strong>
+  Both are members, so each only accepts a pool of the identical instantiation: same <code>T</code>, same <code>BlockSize</code>, same
+  <code>NumBlocks</code>. Comparing two different instantiations is a compile error rather than a <code>false</code>.
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<table>
+  <tr><th>Parameter</th><th>Type</th><th>Meaning</th></tr>
+  <tr><td><code>const InlinePoolAllocator&amp;</code></td><td><code>const InlinePoolAllocator&amp;</code></td><td>Named by nothing and never
+      read. The declaration in <code>Engine/Memory/InlinePoolAllocator.h</code> gives it no name.</td></tr>
+</table>
+
+<h2 id="return">Return value</h2>
+
+<table>
+  <tr><th>Type</th><th>What you get</th></tr>
+  <tr><td><code>bool</code></td><td><code>false</code>, always.</td></tr>
+</table>
+
+<h2 id="example">Examples</h2>
+
+<p>
+Nothing in <code>Engine/</code> or <code>Applications/</code> compares two pools, and no testlet in
+<code>Engine/Memory/InlinePoolAllocator.cpp</code> does either. The only comparisons that reach it are the ones a standard container makes
+internally, which is the reason the operator exists at all.
+</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; InlinePoolAllocator</a></span>
+  <span><a href="index.html#methods">All InlinePoolAllocator methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

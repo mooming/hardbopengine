@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MemoryManager::AcquireStatsLock — Memory module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a class="current" href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Memory</a> /
+  <a href="index.html">MemoryManager</a> / AcquireStatsLock
+</p>
+
+<h1><span class="fn">AcquireStatsLock</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::MemoryManager</span>
+  <span class="tag">Engine/Memory/MemoryManager.h</span>
+  Hand the caller a locked guard on the statistics mutex — which the manager's own callers do not always take.
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>std::lock_guard&lt;std::mutex&gt; AcquireStatsLock()</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+Defined in the class body of <code>Engine/Memory/MemoryManager.h</code> — the header carries the whole definition, so the
+call inlines into every includer and there is no <code>.cpp</code> half to read. Its body is
+<code>return std::lock_guard(statsLock);</code>: it locks the manager's private <code>std::mutex</code> and hands the
+caller the RAII guard that unlocks it.
+</p>
+
+<p>
+Its reason for existing is that <a href="get-allocator-proxy.html">GetAllocatorProxy</a> hands out the registration slot
+itself, mutable, and under <code>PROFILE_ENABLED</code> that slot contains an <code>AllocStats</code> the manager is
+concurrently updating from <a href="report-allocation.html">ReportAllocation</a> and
+<a href="report-deallocation.html">ReportDeallocation</a>. An allocator that wants to add its own figures to that record
+is expected to take this guard while it does, so its write is serialised against the manager's.
+</p>
+
+<table>
+  <tr><th>What the manager itself guards with <code>statsLock</code></th><th>Compiled in</th></tr>
+  <tr><td>The <code>AllocStats::OnRegister</code> bookkeeping and the capacity totals in <a href="register-allocator.html">RegisterAllocator</a></td><td><code>PROFILE_ENABLED</code></td></tr>
+  <tr><td>The usage/capacity subtraction and <code>stats.Reset()</code> in <a href="deregister-allocator.html">DeregisterAllocator</a></td><td><code>PROFILE_ENABLED</code></td></tr>
+  <tr><td>The whole statistics update in <a href="report-allocation.html">ReportAllocation</a> and <a href="report-deallocation.html">ReportDeallocation</a>, and the counters in <a href="report-fallback.html">ReportFallback</a></td><td><code>PROFILE_ENABLED</code></td></tr>
+  <tr><td>The copy in <a href="get-allocator-stat.html">GetAllocatorStat</a> and the <code>stats.Report()</code> in the two-argument <a href="deregister-allocator.html">DeregisterAllocator</a></td><td><code>PROFILE_ENABLED</code></td></tr>
+  <tr><td>The dispatch path: <a href="allocate.html">Allocate</a>, <a href="deallocate.html">Deallocate</a>, <a href="sys-allocate.html">SysAllocate</a></td><td>never — no lock is taken on allocation</td></tr>
+</table>
+
+<div class="gap">
+  <strong>A discarded call is a lock you held for one statement.</strong>
+  The guard is a return value, so <code>mmgr.AcquireStatsLock();</code> locks and unlocks without protecting anything.
+  The name invites exactly that mistake; the correct form binds the temporary, as in
+  <code>auto lock = mmgr.AcquireStatsLock();</code>, and the guard's scope must cover the write it exists to protect.
+</div>
+
+<div class="gap">
+  <strong>Nothing in this repository calls it, and at least one writer ignores it.</strong>
+  There is no call site under <code>Engine/</code> or <code>Applications/</code> — the only in-module writer that
+  touches a proxy's statistics from outside the manager does so without the guard:
+  <code>allocProxy.stats.capacity += incCapacity;</code> in <code>MultiPoolAllocator::GenerateBank()</code>
+  (<code>Engine/Memory/MultiPoolAllocator.cpp</code>). Combined with the read in
+  <a href="get-allocator-name.html">GetAllocatorName</a>, which also runs unlocked, the honest statement is that
+  <code>statsLock</code> serialises <em>the manager's own</em> statistics writes and nothing else. Whether callers are
+  required to take it is a named omission, recorded in <a href="index.html#coverage">Coverage</a>, and in this tree the
+  guarded members do not exist at all because <code>PROFILE_ENABLED</code> is <code>0</code>.
+</div>
+
+<div class="note">
+  <strong>Do not hold it across a log call.</strong>
+  The manager's own diagnostics are emitted outside its lock scopes, with one exception: the two-argument
+  <a href="deregister-allocator.html">DeregisterAllocator</a> calls <code>stats.Report()</code> while holding the guard.
+  That shape — log while holding a lock, where the logger allocates from an allocator that will ask for that lock — is
+  the deadlock <code>JOURNAL.md</code> records for <a href="../ThreadSafeMultiPoolAllocator/index.html">
+  ThreadSafeMultiPoolAllocator</a>, and the protocol that avoids it is written down in
+  <a href="../../design/ThreadSafeMultiPoolLocking_Design.html">the thread-safe multi-pool locking design</a>.
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<p>None.</p>
+
+<h2 id="return">Return value</h2>
+
+<table>
+  <tr><th>Type</th><th>What you get</th></tr>
+  <tr><td><code>std::lock_guard&lt;std::mutex&gt;</code></td><td>An already-locked guard on <code>statsLock</code>, deduced by class template argument deduction. Move-only and non-copyable, so binding it to a named variable is the only way to keep the lock. The method is non-<code>const</code>, so it cannot be called through a <code>const MemoryManager&amp;</code>.</td></tr>
+</table>
+
+<h2 id="example">Examples</h2>
+
+<p class="note">Illustrative — no call site for this exists in the repository; the manager uses the same mutex internally with a local <code>std::lock_guard</code> instead.</p>
+
+<pre><code>auto&amp; proxy = mmgr.GetAllocatorProxy(GetID());
+{
+	auto lock = mmgr.AcquireStatsLock();
+	proxy.stats.capacity += incCapacity;
+}</code></pre>
+
+<p>
+This is the pairing the method was written for: a proxy reference obtained from
+<a href="get-allocator-proxy.html">GetAllocatorProxy</a>, then a write performed under the guard the manager uses for the
+same fields. The real code in <code>MultiPoolAllocator::GenerateBank()</code> does the first half and skips the second.
+</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; MemoryManager</a></span>
+  <span><a href="index.html#methods">All MemoryManager methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

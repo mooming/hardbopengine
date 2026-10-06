@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MonotonicAllocator::~MonotonicAllocator — Memory module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a class="current" href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Memory</a> /
+  <a href="index.html">MonotonicAllocator</a> / ~MonotonicAllocator
+</p>
+
+<h1><span class="fn">~MonotonicAllocator</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::MonotonicAllocator</span>
+  <span class="tag">Engine/Memory/MonotonicAllocator.h</span>
+  The only release this class performs: the whole buffer goes back through whichever allocator is current, then the registration.
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>~MonotonicAllocator()</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  Defined in <code>Engine/Memory/MonotonicAllocator.cpp</code> as <code>MonotonicAllocator::~MonotonicAllocator()</code>. This is the
+  only release the class performs. Three statements, in this order: a profile report, the whole buffer back to the manager, the
+  registration released.
+</p>
+
+<pre><code>auto&amp; mmgr = MemoryManager::GetInstance();
+
+#if PROFILE_ENABLED
+mmgr.ReportDeallocation(id, bufferPtr, 0, cursor);
+#endif // PROFILE_ENABLED
+
+mmgr.Deallocate(bufferPtr, capacity);
+mmgr.DeregisterAllocator(GetID());</code></pre>
+
+<p class="meta">From Engine/Memory/MonotonicAllocator.cpp, MonotonicAllocator::~MonotonicAllocator()</p>
+
+<div class="gap">
+  <strong>Everything this object ever handed out from its buffer dies on this line — pointers still held included.</strong>
+  <code>Deallocate(bufferPtr, capacity)</code> releases the backing allocation itself. There is no per-block record to unwind and no
+  partial release: every address this allocator returned from the buffer becomes invalid the instant the call is made, whether or not
+  the caller ever attempted to release it, and there was never a way to release it individually anyway
+  (<a href="deallocate.html">Deallocate</a> ignores those calls). The one thing that survives in the other direction is a block that
+  came from the overflow path — those belong to <code>parentID</code>, this destructor does not touch them, and they stay allocated
+  until someone releases them, through this object or through the parent directly.
+</div>
+
+<div class="gap">
+  <p>
+    <strong>Who is asked for the bytes back is whichever allocator is current at the moment of destruction, and for this class getting
+    that wrong loses the buffer without a sound.</strong>
+    <code>Deallocate(bufferPtr, capacity)</code> is the manager's two-argument overload, and it is a one-line redirect:
+  </p>
+
+<pre><code>void MemoryManager::Deallocate(void* ptr, size_t nBytes)
+{
+	Deallocate(GetScopedAllocatorID(), ptr, nBytes);
+}</code></pre>
+
+<p class="meta">From Engine/Memory/MemoryManager.cpp, MemoryManager::Deallocate(void* ptr, size_t nBytes)</p>
+
+  <p>
+    So the buffer release is dispatched through the thread's current scope, not through the <code>parentID</code> the constructor
+    recorded. <a href="../PoolAllocator/destructor.html"><code>PoolAllocator</code>'s</a> destructor releases through its recorded
+    parent instead; this one does not, which is the asymmetry a caller has to know about when moving an allocator object between
+    scopes. For a monotonic allocator the worst case is worse than the stack's: destroy the object while an
+    <a href="../index.html#allocatorscope"><code>AllocatorScope</code></a> over its own id is still open, and the redirect routes the
+    buffer release straight back into this object's <a href="deallocate.html">Deallocate</a> — which recognises the address as its own
+    and ignores it. The buffer is never returned to anyone, and nothing asserts, logs or reports: <code>IsMine</code> says true, the
+    call is "ignored" by design, and the leak is total. Derived from the two functions quoted above; no testlet constructs that
+    ordering, so it is named as a hazard and recorded in <a href="index.html#coverage">Coverage</a>.
+  </p>
+
+  <p>
+    Declaration order is therefore part of the contract, and the engine's own wrappers get it right.
+    <code>ScopedAllocator&lt;TAlloc&gt;</code> (<code>Engine/Memory/ScopedAllocator.h</code>) declares <code>allocator</code> before
+    <code>scope</code>, so the scope is destroyed first and the buffer returns to the allocator that supplied it. The testlets in
+    <code>Engine/Memory/MonotonicAllocator.cpp</code> declare the allocator outside the scope for the same effect.
+  </p>
+</div>
+
+<div class="note">
+  <strong>The profile report treats the whole buffer as one deallocation of what is still charged.</strong>
+  <code>ReportDeallocation(id, bufferPtr, 0, cursor)</code> names the buffer's base and the current <code>cursor</code>, with a
+  requested size of <code>0</code> — an accounting entry, not a release. It sits under <code>PROFILE_ENABLED</code>, which
+  <code>Engine/Config/BuildConfig.h</code> defines as 0, and <code>JOURNAL.md</code> (2026-10-05) records that enabling it breaks the
+  build before any Memory file is reached, so this line has never run.
+</div>
+
+<div class="note">
+  <strong>The id is recycled whether or not anything is still outstanding.</strong>
+  <code>MemoryManager::DeregisterAllocator(TId id)</code> clears the proxy's function pointers and ends
+  <code>proxyPool.Push(allocator);</code>. The early return that would withhold the id from reuse — a
+  <code>"Memory leak is detected!"</code> warning when the registration's usage is non-zero — sits inside
+  <code>#if PROFILE_ENABLED</code>, so in this configuration the slot is handed to the next allocator unconditionally. Keep a
+  <a href="getid.html">GetID</a>() value only as long as this object is alive.
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<p>None.</p>
+
+<h2 id="return">Return value</h2>
+
+<p>
+  Nothing. The destructor cannot report a failure, and the failures it can encounter — a buffer released into a scope that will not
+  take it, a registration id that was never valid — are handled (or not) by the manager, not surfaced to the caller. A release that
+  does not happen leaves the bytes owned by the process with no handle to them.
+</p>
+
+<h2 id="example">Examples</h2>
+
+<pre><code>MonotonicAllocator alloc("Test::MonotonicAllocator", 1024);
+AllocatorScope scope(alloc.GetID());
+{
+	String a = "0";
+}
+
+if (alloc.GetUsage() == 0)
+{
+	ls &lt;&lt; "Monotonic Allocator doesn't provide deallocation."
+	   &lt;&lt; " Usage should not be zero, but " &lt;&lt; alloc.GetUsage() &lt;&lt; lferr;
+}</code></pre>
+
+<p class="meta">From Engine/Memory/MonotonicAllocator.cpp, MonotonicAllocatorTest::Prepare(), Deallocation testlet</p>
+
+<p>
+  The test asserts that the destructor's work has <em>not</em> happened yet: after the string is destroyed the allocator must still
+  report non-zero usage, because only this destructor can lower it — and when it does, the object is gone and so is the figure. That
+  is the whole difference between this class and <a href="../StackAllocator/index.html">the stack</a>, whose version of the same test
+  demands the opposite.
+</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; MonotonicAllocator</a></span>
+  <span><a href="index.html#methods">All MonotonicAllocator methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

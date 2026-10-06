@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DefaultAllocator::allocate — Memory module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a class="current" href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Memory</a> /
+  <a href="index.html">DefaultAllocator</a> / allocate
+</p>
+
+<h1><span class="fn">allocate</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::DefaultAllocator</span>
+  <span class="tag">Engine/Memory/DefaultAllocator.h</span>
+  n elements of T: straight to malloc when the recorded id is the system allocator, otherwise through a per-call AllocatorScope into the named registration.
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>[[nodiscard]] T* allocate(std::size_t n) noexcept</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  Defined inline in <code>Engine/Memory/DefaultAllocator.h</code> as
+  <code>DefaultAllocator::allocate(std::size_t n) noexcept</code>: the allocator entry point the standard library and the engine's own
+  containers call, for <code>n</code> elements of <code>T</code>. It has two paths, and which one runs is decided by the four bytes the
+  object holds.
+</p>
+
+<pre><code>if (allocatorID == MemoryManager::SystemAllocatorID)
+{
+	return static_cast&lt;T*&gt;(malloc(n * sizeof(T)));
+}
+
+AllocatorScope scope(allocatorID);
+auto&amp; mmgr = MemoryManager::GetInstance();
+auto ptr = mmgr.AllocateByType&lt;T&gt;(n);
+
+return ptr;</code></pre>
+
+<p class="meta">From Engine/Memory/DefaultAllocator.h, DefaultAllocator::allocate(std::size_t n)</p>
+
+<p>
+  The first path is the one most engine allocations take, and the reason is arithmetic rather than intent:
+  <code>MemoryManager::SystemAllocatorID</code> is 0, <code>MemoryManager::scopedAllocatorID</code> is initialised to 0 in
+  <code>Engine/Memory/MemoryManager.cpp</code>, and a default-constructed allocator records whatever is current — so every
+  <a href="constructors.html">allocator built with no <code>AllocatorScope</code> open</a> matches the comparison and goes straight to
+  <code>malloc</code>. That is a deliberate fast path: no scope, no manager instance, no proxy dispatch. It is also an accounting hole —
+  the replacement <code>operator new</code> in <code>Engine/Memory/GlobalAllocation.cpp</code> is
+  <code>AllocateAccounted(...)</code>, so heap traffic that goes through <code>new</code> is counted and this path, calling
+  <code>malloc</code> directly, is not counted by anything.
+</p>
+
+<p>
+  The second path opens a scope on the recorded id and asks the manager to allocate by type, and the scope is what makes the recorded id
+  mean anything: <code>MemoryManager::AllocateByType&lt;T&gt;</code> reads the <em>scoped</em> id
+  (<code>GetScopedAllocatorID()</code>), so installing the recorded value for the duration of the call is how an allocator captured long
+  ago is still the one that answers. It costs an <code>AllocatorScope</code> per allocation — a manager lookup, a read of the previous id
+  and two writes of the thread-local, in both directions — which is exactly the indirection the fast path exists to avoid. The scope
+  requires a live manager: <code>AllocatorScope</code>'s constructor and <code>MemoryManager::GetInstance()</code> both go through
+  <code>FatalAssert(mmgrInstance != nullptr)</code>, which is live in every configuration.
+</p>
+
+<div class="gap">
+  <strong>At exhaustion it returns whatever it gets: <code>noexcept</code> means no <code>std::bad_alloc</code>.</strong>
+  Neither path tests the result. On the fast path a failing <code>malloc</code> returns null and this function returns null. On the slow
+  path the answer is the named allocator's own policy — a pool falls back to its parent, a multi-pool generates a bank — and if that
+  still fails, <code>MemoryManager::Allocate</code> ends with <code>Assert(ptr != nullptr, "Allocation Failed")</code>: an abort in Debug
+  and Dev, and in Release a null pointer returned here and handed to the caller. The allocator contract expects either memory or a
+  throw, so the container that receives null proceeds to write through it. A caller that must survive exhaustion cannot learn that from
+  this return value; the only signal the engine offers is the assert, and only outside Release.
+</div>
+
+<div class="gap">
+  <strong>A stale id is dispatched, not diagnosed.</strong>
+  <code>AllocatorScope</code>'s constructor routes through <code>MemoryManager::SetScopedAllocatorID</code>, which replaces an
+  out-of-range id that is not <code>InvalidAllocatorID</code> with 0 after an error log — and leaves <code>InvalidAllocatorID</code>
+  (-1) installed, which then trips <code>Assert(id != InvalidAllocatorID)</code> inside <code>MemoryManager::Allocate</code>. Any
+  <em>in-range</em> id, live or dead, indexes <code>allocators[id]</code> directly and calls
+  <code>allocProxy.allocate(allocProxy.allocator, nBytes)</code> behind
+  <code>Assert(allocProxy.allocate != nullptr)</code>. So an allocator that recorded a registration which has since been deregistered
+  either aborts, or calls through a null function pointer, or — once <code>MemoryManager::RegisterAllocator</code> has reused the slot —
+  quietly allocates from a different allocator than the one that was captured. This is the hazard the header's own warning is about, and
+  <a href="constructors.html">the constructor page</a> states the rule that avoids it.
+</div>
+
+<div class="note">
+  <strong>Alignment is whatever the far end happens to provide.</strong>
+  <code>allocate</code> never reads <code>alignof(T)</code>, takes no alignment argument and offers no aligned form, so the alignment of
+  the block is a property of the path rather than of the request: <code>malloc</code>'s fundamental alignment on the fast path, and on
+  the slow path whatever the named allocator guarantees — the engine allocators round by
+  <a href="../../Config/index.html"><code>Config::DefaultAlign</code></a> (16). A type whose alignment requirement exceeds that is served
+  at the alignment that was going to be handed out anyway, and the caller gets no diagnostic. Per-allocator alignment belongs to the
+  pages in <a href="../index.html#allocators">the allocator catalogue</a>.
+</div>
+
+<p>
+  The size handed downstream is <code>n * sizeof(T)</code>, computed here and again by
+  <code>MemoryManager::AllocateByType&lt;T&gt;</code>'s caller-visible arithmetic — the same expression, so the release in
+  <a href="deallocate.html">deallocate</a> recomputes it and agrees. There is no overflow check on that product, and a zero request is
+  not special-cased: on the slow path <code>MemoryManager::Allocate</code> returns <code>nullptr</code> for 0 bytes, while the fast path
+  asks <code>malloc</code> for 0 and returns whatever the platform returns. Two further costs are worth knowing for a hot container: the
+  per-allocation scope on the slow path, and the fact that nothing is synchronised here — the manager reads
+  <code>allocators[id]</code> without a lock (its <code>statsLock</code> guards statistics only), so thread-safety is the named
+  allocator's problem, exactly as it is for <a href="../PoolAllocator/allocate.html">PoolAllocator</a>.
+</p>
+
+<h2 id="parameters">Parameters</h2>
+
+<table>
+  <tr><th>Parameter</th><th>Type</th><th>Requirement</th></tr>
+  <tr><td><code>n</code></td><td><code>std::size_t</code></td><td>Element count, not bytes: the product <code>n * sizeof(T)</code> is what is requested downstream. No overflow check, no zero check, and no alignment input.</td></tr>
+</table>
+
+<h2 id="return">Return value</h2>
+
+<table>
+  <tr><th>Type</th><th>What you get</th></tr>
+  <tr><td><code>T*</code></td><td>Uninitialised storage for <code>n</code> elements. Memory from the system allocator when the recorded id is <code>MemoryManager::SystemAllocatorID</code>, memory from the named registration otherwise, and null when the far end failed — with no exception and no log in Release.</td></tr>
+</table>
+
+<h2 id="example">Examples</h2>
+
+<pre><code>PoolAllocator alloc("BaseAllocTestAlloc", 1024, 1024);
+{
+	AllocatorScope allocScope(alloc);
+	std::vector&lt;int, DefaultAllocator&lt;int&gt;&gt; v;
+
+	if (alloc.GetUsage() != 0)
+	{
+		ls &lt;&lt; "Invalid allocator usage = " &lt;&lt; alloc.GetUsage() &lt;&lt; ", 0 is expected." &lt;&lt; lferr;
+	}
+
+	v.reserve(1);
+
+	if (alloc.GetUsage() == 0)
+	{
+		ls &lt;&lt; "Invalid allocator usage = " &lt;&lt; alloc.GetUsage() &lt;&lt; ", non-zero value is expected." &lt;&lt; lferr;
+	}
+}</code></pre>
+
+<p class="meta">From Engine/Memory/DefaultAllocator.cpp, BaseAllocatorTest::Prepare(), testlet "Basic Usage"</p>
+
+<p>
+  Both assertions are about this function: constructing <code>v</code> must not touch the pool, because the vector holds no elements yet,
+  and the first <code>reserve</code> must land inside the pool's buffer. The second is true only because the allocator was constructed
+  while the scope was open, took the pool's id, and so reached the pool rather than <code>malloc</code>. Engine containers use the same
+  function without the standard library in between: <code>Engine/Container/HashMap.h</code> and <code>Engine/Container/Map.h</code> hold
+  a <code>DefaultAllocator&lt;uint8_t&gt;</code> member and call <code>allocator.allocate(allocSize)</code> for their entry storage, and
+  <code>Engine/Container/LinkedList.h</code> reaches it once per node through <code>hbe::New</code> in
+  <code>Engine/Memory/Memory.h</code>.
+</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; DefaultAllocator</a></span>
+  <span><a href="index.html#methods">All DefaultAllocator methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

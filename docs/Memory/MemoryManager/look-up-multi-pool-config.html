@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MemoryManager::LookUpMultiPoolConfig — Memory module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a class="current" href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Memory</a> /
+  <a href="index.html">MemoryManager</a> / LookUpMultiPoolConfig
+</p>
+
+<h1><span class="fn">LookUpMultiPoolConfig</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::MemoryManager</span>
+  <span class="tag">Engine/Memory/MemoryManager.h</span>
+  Binary search over the loaded cache — a miss returns a shared default whose name is not the one you asked for.
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>const MultiPoolAllocatorConfig&amp; LookUpMultiPoolConfig(StaticStringID uniqueName) const</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+Defined in <code>Engine/Memory/MemoryManager.cpp</code> as <code>MemoryManager::LookUpMultiPoolConfig()</code>: a binary
+search over <code>multiPoolConfigCache</code> — the table <a href="load-multi-pool-configs.html">LoadMultiPoolConfigs</a>
+read from <a href="get-multi-pool-config-cache-file-path.html">the cache file</a> at construction — keyed by a multi-pool's
+interned name. A hit also emits a <code>Warning</code> line listing every <code>(blockSize, numberOfBlocks)</code> pair it
+found; a miss returns a static default.
+</p>
+
+<pre><code>while (start &lt; end)
+{
+	auto mid = (start + end) / 2;
+	Assert(start &lt;= mid &amp;&amp; mid &lt; end);
+
+	auto&amp; item = data[mid];
+	if (uniqueName == item.uniqueName)
+	{
+		…
+		return item;
+	}
+
+	if (uniqueName &lt; item.uniqueName)
+	{
+		end = mid;
+		continue;
+	}
+
+	start = mid + 1;
+}</code></pre>
+
+<p class="meta">From Engine/Memory/MemoryManager.cpp, MemoryManager::LookUpMultiPoolConfig()</p>
+
+<div class="gap">
+  <strong>The ordering the search requires is a property of the file, not of this call.</strong>
+  <code>MultiPoolConfigCache::Deserialize</code> copies entries out of the buffer in the order it finds them and never sorts;
+  the sorted invariant comes from <code>MultiPoolConfigCache::Serialize</code>, which calls <code>Normalize()</code> —
+  <code>std::sort</code> on <code>MultiPoolAllocatorConfig::operator&lt;</code>, which compares
+  <code>uniqueName</code> alone. So the binary search is only as correct as the last write, and a cache file that was
+  hand-edited, concatenated or written by an older layout can produce a miss for an entry that is plainly present. Nothing
+  here validates the order — the ordering check that exists in the loader is over each item's block-size runs, and only
+  outside Release.
+</div>
+
+<div class="gap">
+  <p>
+  <strong>An empty cache and a miss answer identically.</strong>
+  Both return the same function-local <code>static const MultiPoolAllocatorConfig null;</code>: default-constructed, so
+  <code>uniqueName</code> is a default <code>StaticStringID</code> and <code>configs</code> is empty. The reference is always
+  valid, so a caller cannot detect the difference from the reference alone — the contract in use is to compare the returned
+  name against the one asked for:
+  </p>
+</div>
+
+<pre><code>auto&amp; cacheItem = mmgr.LookUpMultiPoolConfig(nameID);
+if (cacheItem.uniqueName != nameID)
+{
+	return false;
+}</code></pre>
+
+<p class="meta">From Engine/Memory/MultiPoolAllocator.cpp, MultiPoolAllocator::GenerateBanksByCache()</p>
+
+<p>
+which is the only reliable test, and is how both call sites
+(<code>MultiPoolAllocator::GenerateBanksByCache()</code> and
+<code>ThreadSafeMultiPoolAllocator::GenerateBanksByCache()</code>) decide whether to boot from cached geometry or from their
+own default configuration.
+</p>
+
+<div class="note">
+  <strong>The on-hit log line is at <code>Warning</code>.</strong>
+  Finding an entry is the expected outcome, yet the line is emitted at warning level, so with
+  <code>MEMORY_LOGGING_ENABLED</code> on, every successful cache hit is reported as if it were notable. It is a diagnostic of
+  convenience rather than a signal, and it is filtered by <a href="is-log-enabled.html">IsLogEnabled</a> like any other —
+  silent, in this tree.
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<table>
+  <tr><th>Parameter</th><th>Type</th><th>Requirement</th></tr>
+  <tr><td><code>uniqueName</code></td><td><code>StaticStringID</code></td><td>The multi-pool's interned name — <code>name.GetID()</code> at the call sites. Comparison is on the id, so two spellings that intern differently are two different pools.</td></tr>
+</table>
+
+<h2 id="return">Return value</h2>
+
+<table>
+  <tr><th>Type</th><th>What you get</th></tr>
+  <tr><td><code>const MultiPoolAllocatorConfig&amp;</code></td><td>The matching entry, or a shared static default on a miss. The reference is stable for the life of the process — the cache is loaded once, in the constructor, and never mutated afterwards — so it may be held, but read the miss rule above before trusting its contents.</td></tr>
+</table>
+
+<h2 id="example">Examples</h2>
+
+<pre><code>bool MultiPoolAllocator::GenerateBanksByCache(MemoryManager&amp; mmgr)
+{
+	auto nameID = name.GetID();
+	auto&amp; cacheItem = mmgr.LookUpMultiPoolConfig(nameID);
+	if (cacheItem.uniqueName != nameID)
+	{
+		return false;
+	}
+
+	auto&amp; configs = cacheItem.configs;
+	for (auto&amp; config : configs)
+	{
+		InlineStringBuilder&lt;1024&gt; str;
+		str &lt;&lt; name &lt;&lt; '_' &lt;&lt; config.blockSize &lt;&lt; '_' &lt;&lt; config.numberOfBlocks;
+
+		banks.emplace_back(str.c_str(), config.blockSize, config.numberOfBlocks);
+	}
+
+	return true;
+}</code></pre>
+
+<p class="meta">From Engine/Memory/MultiPoolAllocator.cpp, MultiPoolAllocator::GenerateBanksByCache()</p>
+
+<p>
+The whole consumer: a multi-pool rebuilds its banks straight from last run's peak geometry instead of starting from its
+static defaults. What each <code>PoolConfig</code> pair means, how the file is formatted and versioned, and how a run's peaks
+become a cached entry belong to those types, which own no pages yet — see <a href="index.html#coverage">Coverage</a>.
+</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; MemoryManager</a></span>
+  <span><a href="index.html#methods">All MemoryManager methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

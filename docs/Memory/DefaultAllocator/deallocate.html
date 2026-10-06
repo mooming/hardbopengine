@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DefaultAllocator::deallocate — Memory module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a class="current" href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Memory</a> /
+  <a href="index.html">DefaultAllocator</a> / deallocate
+</p>
+
+<h1><span class="fn">deallocate</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::DefaultAllocator</span>
+  <span class="tag">Engine/Memory/DefaultAllocator.h</span>
+  free on the system path, or a scoped release into the named registration: legal and real, and what it reclaims is that allocator's answer.
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>void deallocate(T* ptr, std::size_t n) noexcept</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  Defined inline in <code>Engine/Memory/DefaultAllocator.h</code> as
+  <code>DefaultAllocator::deallocate(T* ptr, std::size_t n) noexcept</code>. The mirror of
+  <a href="allocate.html">allocate</a>, down the same two paths, and — unlike the monotonic arenas of this module — an individual release
+  here is a real release. What it actually reclaims is decided by the allocator the recorded id names, not by anything in this function.
+</p>
+
+<pre><code>Assert(ptr != nullptr);
+
+if (allocatorID == MemoryManager::SystemAllocatorID)
+{
+	free(ptr);
+
+	return;
+}
+
+AllocatorScope scope(allocatorID);
+auto&amp; mmgr = MemoryManager::GetInstance();
+mmgr.DeallocateTypes(ptr, n);</code></pre>
+
+<p class="meta">From Engine/Memory/DefaultAllocator.h, DefaultAllocator::deallocate(T* ptr, std::size_t n)</p>
+
+<p>
+  The assert is the only provenance check anywhere in this class, and it checks only that a pointer was passed: a null release aborts in
+  Debug and Dev, and in Release <code>Assert</code> is an empty inline function in <code>Engine/Core/Debug.h</code> and the null simply
+  reaches <code>free</code>. Nothing asks where <code>ptr</code> came from. There is no
+  <a href="../InlineMonotonicAllocator/ismine.html">IsMine</a>-style range test, because the class owns no buffer to test a pointer
+  against, so the routing is by the <em>receiving</em> allocator's id alone: hand a block to a different
+  <code>DefaultAllocator</code> and the release is dispatched to that one's registration, whatever it thinks of a pointer it never
+  handed out. A pool forwards it to its parent, the system path calls <code>free</code> on an address <code>malloc</code> did not
+  return, and a double release is equally undetectable in both.
+</p>
+
+<p>
+  The size travels as a count again: <code>MemoryManager::DeallocateTypes&lt;T&gt;</code> deduces <code>T</code> from the pointer's
+  static type and recomputes <code>n * sizeof(T)</code>, which is why the <code>n</code> must be the same element count that
+  <a href="allocate.html">allocate</a> was given and not a byte count. Report the wrong count and nothing here complains — the checks that
+  could notice are <code>MemoryManager</code>'s and <code>SystemAllocator</code>'s, and both live behind
+  <code>MEMORY_VERIFICATION_ENABLED</code> and <code>PROFILE_ENABLED</code>, which <code>Engine/Config/BuildConfig.h</code> sets to 0.
+  The slow path costs the same per-call <code>AllocatorScope</code> as the allocation did, and requires a live manager for the same
+  reason: <code>MemoryManager::GetInstance()</code> is <code>FatalAssert</code>-guarded in every configuration.
+</p>
+
+<div class="note">
+  <strong>What a release reclaims is the named allocator's answer, not this one's.</strong>
+  This class is a proxy, so the semantics belong to whatever the id points at: a <a href="../PoolAllocator/deallocate.html">pool</a>
+  puts the block back on its free list and the bytes are genuinely reusable, a multi-pool returns the block to the bank that owns it,
+  and a monotonic or stack allocator — the case the header warns about — takes the release and returns nothing. Nothing in this function
+  reports which of those happened, and the fast path is the clearest case of the rule: <code>free</code> hands the block back to the
+  system heap and the engine records nothing, because the replacement <code>operator delete</code> in
+  <code>Engine/Memory/GlobalAllocation.cpp</code> is the accounting point and this call bypasses it exactly as
+  <a href="allocate.html">allocate</a> does.
+</div>
+
+<p>
+  The hazard that dominates this function is lifetime rather than arithmetic. A release is dispatched to a registration slot, so a
+  container that outlives the allocator its id names will release through a dead proxy —
+  <code>MemoryManager::Deallocate</code> asserts <code>allocProxy.deallocate != nullptr</code>, which is an abort in Debug and Dev and a
+  call through a null function pointer in Release — or through whatever allocator has since been registered under that number. Keeping
+  the container inside the scope that supplied the id is the whole remedy, and
+  <a href="constructors.html">the constructor page</a> names the containers for which that is easy and the ones for which it is not.
+</p>
+
+<h2 id="parameters">Parameters</h2>
+
+<table>
+  <tr><th>Parameter</th><th>Type</th><th>Requirement</th></tr>
+  <tr><td><code>ptr</code></td><td><code>T*</code></td><td>A block this allocator family returned, from the same registration. Null is asserted against; provenance is not checked at all.</td></tr>
+  <tr><td><code>n</code></td><td><code>std::size_t</code></td><td>The <em>element count</em> originally passed to <a href="allocate.html">allocate</a>. Multiplied by <code>sizeof(T)</code> downstream, so a count-and-bytes mix-up silently misreports the size to the allocator that owns the block.</td></tr>
+</table>
+
+<h2 id="return">Return value</h2>
+
+<p>
+  None, and nothing is returned that would tell the caller whether the block was reclaimed, ignored or forwarded. For an id naming a
+  monotonic arena the honest answer to "did that free my memory" is not available from here.
+</p>
+
+<h2 id="example">Examples</h2>
+
+<pre><code>PoolAllocator alloc2("BaseAllodTestAlloc2", 1024, 1024);
+AllocatorScope allocScope2(alloc2);
+
+v.reserve(1);
+…
+v.clear();
+v.shrink_to_fit();
+
+if (alloc2.GetUsage() != 0)
+{
+	ls &lt;&lt; "Invalid allocator 2 usage = " &lt;&lt; alloc2.GetUsage() &lt;&lt; ", 0 is expected." &lt;&lt; lferr;
+}</code></pre>
+
+<p class="meta">From Engine/Memory/DefaultAllocator.cpp, BaseAllocatorTest::Prepare(), testlet "Nested Allocations"</p>
+
+<p>
+  The testlet is a proof of the note above: the vector was built while the inner pool's scope was open, so its buffer belongs to that
+  pool, and <code>shrink_to_fit</code> drives one call here whose release the pool honours — a pool has a free list, so its usage returns
+  to zero. Substitute a bump allocator behind the same id and the same call would leave the usage figure where it was, with this function
+  returning the same nothing.
+</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; DefaultAllocator</a></span>
+  <span><a href="index.html#methods">All DefaultAllocator methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

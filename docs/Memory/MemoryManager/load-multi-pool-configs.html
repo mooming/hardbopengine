@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MemoryManager::LoadMultiPoolConfigs — Memory module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a class="current" href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Memory</a> /
+  <a href="index.html">MemoryManager</a> / LoadMultiPoolConfigs
+</p>
+
+<h1><span class="fn">LoadMultiPoolConfigs</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::MemoryManager</span>
+  <span class="tag">Engine/Memory/MemoryManager.h</span>
+  Reads the cache file in the constructor; a missing, unreadable or incompatible file is a log line and an empty table.
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>void LoadMultiPoolConfigs()</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+Defined in <code>Engine/Memory/MemoryManager.cpp</code> as <code>MemoryManager::LoadMultiPoolConfigs()</code>, declared
+<code>private</code>, called once from <a href="constructors.html">the constructor</a>. It fills
+<code>multiPoolConfigCache</code> — the table <a href="look-up-multi-pool-config.html">LookUpMultiPoolConfig</a> searches — from
+<a href="get-multi-pool-config-cache-file-path.html">one file</a>, and every failure mode it has is a log line plus an empty
+cache.
+</p>
+
+<table>
+  <tr><th>Condition</th><th>What happens</th><th>Level</th></tr>
+  <tr><td><code>!OS::Exist(path)</code></td><td>Return, cache empty — the normal first run</td><td><code>Significant</code></td></tr>
+  <tr><td><code>BufferUtil::GetReadOnlyFileBuffer(path)</code> yields no data</td><td>Return, cache empty</td><td><code>Error</code></td></tr>
+  <tr><td><code>multiPoolConfigCache.Deserialize(buffer)</code> returns false</td><td>Return, cache empty</td><td><code>Error</code></td></tr>
+  <tr><td>Deserialize succeeded and logging is on and not Release</td><td>Walk every <code>(blockSize, numberOfBlocks)</code> pair and print it</td><td><code>Verbose</code></td></tr>
+</table>
+
+<p>
+The third row is the interesting one, because <code>MultiPoolConfigCache::Deserialize</code>
+(<code>Engine/Memory/MultiPoolConfigCache.cpp</code>) rejects a file whose stored class name or version does not match its own —
+the version is <code>0</code> — so a cache written by a different build of the engine is not misread, it is refused, and every
+multi-pool then boots from its compiled-in default geometry.
+</p>
+
+<div class="gap">
+  <strong>The loader never sorts, and the search that reads this table requires order.</strong>
+  <code>Deserialize</code> appends entries in file order; the ordering guarantee belongs to
+  <a href="save-multi-pool-configs.html">the writer</a>, whose <code>Serialize</code> calls
+  <code>Normalize()</code> before emitting. So a file edited or concatenated by hand can hold an entry that
+  <a href="look-up-multi-pool-config.html">the binary search</a> will never find, with no diagnostic anywhere. The one ordering
+  check in the loader is over each item's block-size runs, is <code>#if !RELEASE_BUILD</code>, and logs a fatal error rather than
+  refusing the file.
+</div>
+
+<div class="gap">
+  <strong>It runs while the engine's logger does not exist yet.</strong>
+  The constructor calls this before <code>Engine::logger</code> is constructed
+  (<a href="constructors.html">the constructor</a>), and its lines go through <a href="log.html">Log</a> into
+  <code>Engine::Log</code>. In this tree <code>MEMORY_LOGGING_ENABLED</code> is <code>0</code> so the point is moot; where it is
+  on, "the cache file was missing" and "the cache file was corrupt" are precisely the two facts most likely to be lost, which is
+  the argument for making them visible another way.
+</div>
+
+<div class="note">
+  <strong>Relative path, read once, never re-read.</strong>
+  The file name is <code>".multiPoolConfig.dat"</code> with no directory, so the working directory at process start decides which
+  file is read — two applications launched from different directories have different caches. The cache is loaded once, in the
+  constructor, and never reloaded: an allocator created later sees the same table regardless of what happens to the file
+  afterwards.
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<p>None.</p>
+
+<h2 id="return">Return value</h2>
+
+<p><code>void</code>. Whether the cache is populated is observable only by calling <a href="look-up-multi-pool-config.html">LookUpMultiPoolConfig</a> and comparing the returned name against the one asked for.</p>
+
+<h2 id="example">Examples</h2>
+
+<pre><code>StaticString path(GetMultiPoolConfigCacheFilePath());
+if (!OS::Exist(path))
+{
+	Log(ELogLevel::Significant, [path](auto& ls) { ls << "Load MultiPoolConfig: Failed to find " << path; });
+
+	return;
+}
+
+Log(ELogLevel::Significant, [path](auto& ls) { ls << "Load MultiPoolConfig: " << path; });
+
+auto buffer = BufferUtil::GetReadOnlyFileBuffer(path);
+if (buffer.GetData() == nullptr)
+{
+	Log(ELogLevel::Error, [path](auto& ls) { ls << '[' << func << "] Failed to open the file " << path; });
+
+	return;
+}</code></pre>
+
+<p class="meta">From Engine/Memory/MemoryManager.cpp, MemoryManager::LoadMultiPoolConfigs()</p>
+
+<p>
+The consumer of whatever ends up in the cache is <code>MultiPoolAllocator::GenerateBanksByCache()</code>, which rebuilds a
+multi-pool's banks from last run's peak geometry and answers <code>false</code> when the name does not come back — at which point
+the pool uses its own defaults. Nothing in the engine treats a failed load as an error worth stopping for.
+</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; MemoryManager</a></span>
+  <span><a href="index.html#methods">All MemoryManager methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>InlinePoolAllocator::operator!= — Memory module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a class="current" href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Memory</a> /
+  <a href="index.html">InlinePoolAllocator</a> / operator!=
+</p>
+
+<h1><span class="fn">operator!=</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::InlinePoolAllocator</span>
+  <span class="tag">Engine/Memory/InlinePoolAllocator.h</span>
+  Always true, even for an object compared with itself - the counterpart of an operator that is always false.
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>bool operator!=(const InlinePoolAllocator&amp;) const</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+Defined inline in the class body of <code>Engine/Memory/InlinePoolAllocator.h</code>. The body is <code>return true;</code> and the
+parameter is unnamed: nothing is examined. It is the exact counterpart of <a href="operator-equal.html">operator==</a>, which always answers
+<code>false</code>, so the pair is internally consistent even though neither reports anything about the objects.
+</p>
+
+<div class="gap">
+  <strong>A pool is unequal to itself.</strong>
+  <code>pool != pool</code> is <code>true</code>. Code that uses inequality as a liveness or identity test — the shape many allocators
+  invite, because an allocator that compares equal is usually the same allocation source — will loop or branch wrongly here. The one honest
+  liveness question this class answers is whether <a href="get-id.html">GetID</a> still holds a real registration.
+</div>
+
+<div class="note">
+  <strong>Why both operators are here.</strong>
+  Because the class is used as a <code>std::vector</code> and <code>std::basic_string</code> allocator by
+  <a href="../../HSTL/index.html"><code>HInlineVector</code></a> and <a href="../../HSTL/index.html"><code>HInlineString</code></a>, and
+  allocator equality is a question the container side has historically been allowed to ask. The engine answers it with two constants rather
+  than implement a comparison it considers meaningless; the effect on container move and swap paths is recorded on
+  <a href="operator-equal.html">operator==</a>.
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<table>
+  <tr><th>Parameter</th><th>Type</th><th>Meaning</th></tr>
+  <tr><td><code>const InlinePoolAllocator&amp;</code></td><td><code>const InlinePoolAllocator&amp;</code></td><td>Never read.</td></tr>
+</table>
+
+<h2 id="return">Return value</h2>
+
+<table>
+  <tr><th>Type</th><th>What you get</th></tr>
+  <tr><td><code>bool</code></td><td><code>true</code>, always.</td></tr>
+</table>
+
+<h2 id="example">Examples</h2>
+
+<p>
+No caller in <code>Engine/</code> or <code>Applications/</code> compares pools, and the testlets in
+<code>Engine/Memory/InlinePoolAllocator.cpp</code> do not either.
+</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; InlinePoolAllocator</a></span>
+  <span><a href="index.html#methods">All InlinePoolAllocator methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

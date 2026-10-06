@@ -1,0 +1,406 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MemoryManager — Memory module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a class="current" href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This class</h3>
+  <ul>
+    <li><a href="#description">Class description</a></li>
+    <li><a href="#template">Template parameters</a></li>
+    <li><a href="#properties">Class properties</a></li>
+    <li><a href="#methods">Class methods</a></li>
+    <li><a href="#non-member">Non-member helper functions</a></li>
+    <li><a href="#coverage">Coverage</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Memory</a> /
+  MemoryManager
+</p>
+
+<h1>MemoryManager</h1>
+<p class="subtitle">
+  <span class="tag">Engine/Memory/MemoryManager.h</span>
+  <span class="tag">final</span>
+  <span class="tag">singleton</span>
+  The allocator registry every other allocator hangs off: 256 proxy slots, the thread-local current allocator, the typed New and Delete pair, and the two halves of the engine's allocation accounting.
+</p>
+
+<h2 id="description">Class description</h2>
+
+<p>
+<code>class MemoryManager final</code> at <code>Engine/Memory/MemoryManager.h</code> is the registry and dispatch
+table every allocator in the engine hangs off. It owns a fixed array of <code>MaxNumAllocators</code> (256)
+<code>AllocatorProxy</code> slots, and a registration is nothing but a slot: the allocator object as
+<code>void*</code>, its two function pointers, and — under <code>PROFILE_ENABLED</code> — an
+<code>AllocStats</code> record. Allocation is one indirect call through that slot
+(<code>MemoryManager::Allocate()</code> does <code>allocProxy.allocate(allocProxy.allocator, nBytes)</code>), so the
+manager knows nothing about any allocator's strategy. An allocator is <code>PoolAllocator</code>,
+<code>MultiPoolAllocator</code>, <code>StackAllocator</code>, <code>SystemAllocator</code> or anything else that can
+be reduced to the two calling conventions <code>TAllocBytes</code> and <code>TDeallocBytes</code>.
+</p>
+
+<p>
+There is exactly one instance, and it is a member of <code>Engine</code>
+(<code>Engine/Engine/Engine.h</code>, <code>Engine::memoryManager</code>), constructed as
+<code>memoryManager(*this)</code> before <code>Engine::logger</code> and <code>Engine::statistics</code>. The
+constructor publishes itself into the file-scope <code>mmgrInstance</code> and calls
+<code>engine.SetMemoryManagerReady()</code>, so <a href="get-instance.html"><code>GetInstance()</code></a> is a valid
+global handle from that moment — which is what lets an allocator constructed by a static initialiser register
+before <code>Engine::Initialize()</code> has run. The destructor clears <code>mmgrInstance</code>, and
+<code>GetInstance()</code> after that point is a <code>FatalAssert</code> and <code>std::abort()</code>, not a null
+return.
+</p>
+
+<p>
+The second axis is <em>which</em> allocator a call goes to. Every allocation that does not name an id uses this
+thread's <a href="#properties"><code>scopedAllocatorID</code></a>, and
+<code>AllocatorScope</code> — a friend class, because the two accessors it needs
+(<a href="get-scoped-allocator-id.html"><code>GetScopedAllocatorID</code></a> and
+<a href="set-scoped-allocator-id.html"><code>SetScopedAllocatorID</code></a>) are private — is the RAII way to nest a
+scope. That is the whole mechanism by which a <code>PoolAllocator</code> serves code that never mentions it:
+<code>LinkedListTest::Prepare()</code> in <code>Engine/Container/LinkedList.cpp</code> builds one pool and then opens
+<code>AllocatorScope allocScope(alloc);</code> over the pool object itself — the template constructor that forwards to that
+allocator's <code>GetID()</code> — and from that statement on, every allocation made inside the block reaches the pool without
+naming it. See the
+<a href="../PoolAllocator/index.html">PoolAllocator page</a> for the recording rules, and
+<a href="../index.html#allocatorscope"><code>AllocatorScope</code></a> for the three constructors.
+</p>
+
+<p>
+The third axis is accounting, and it is split in two because the two halves measure different things.
+<a href="report-allocation.html"><code>ReportAllocation</code></a> and
+<a href="report-deallocation.html"><code>ReportDeallocation</code></a> are called <em>by allocators</em> to publish
+bytes they have handed out — capacity, per allocator and per engine, all under <code>PROFILE_ENABLED</code>.
+<a href="record-global-allocation.html"><code>RecordGlobalAllocation</code></a> and
+<a href="record-global-free.html"><code>RecordGlobalFree</code></a> are called by the replacement global
+<code>operator new</code> and <code>operator delete</code> in <code>Engine/Memory/GlobalAllocation.cpp</code>, which
+catch what no allocator scope can intercept: a <code>std::vector</code> or <code>std::string</code> that reaches the
+heap directly. Those eight counters are the only part of this class that is unconditionally live, and the test suite
+reads them as deltas around a testlet (<code>Engine/Test/TestCollection.cpp</code>,
+<code>TestCollection::RunTestAt()</code>).
+</p>
+
+<div class="gap">
+  <strong>Most of this class is compiled out in the configurations this repository builds.</strong>
+  <code>Engine/Config/BuildConfig.h</code> sets <code>PROFILE_ENABLED</code>, <code>MEMORY_LOGGING_ENABLED</code>,
+  <code>MEMORY_VERIFICATION_ENABLED</code> and <code>FORCE_USE_SYSTEM_MALLOC</code> all to <code>0</code>, with no
+  per-configuration override. So the statistics members (<code>AllocStats</code> inside every proxy, the two
+  <code>UsageRecord</code>s, <code>allocCount</code>, <code>deallocCount</code>), every diagnostic log line, the
+  thread-ownership check, the leak warning at deregistration, <a href="get-allocator-stat.html">GetAllocatorStat</a>,
+  the two-argument <a href="deregister-allocator.html">DeregisterAllocator</a> overload and the body of
+  <a href="save-multi-pool-configs.html">SaveMultiPoolConfigs</a> do not exist in a build of this tree. Two
+  consequences that a caller cannot see from the header: <a href="log.html">Log</a> and
+  <a href="is-log-enabled.html">IsLogEnabled</a> return <code>false</code> and do nothing, so
+  <a href="get-allocator-name.html">GetAllocatorName</a> answers <code>"Unknown"</code> for every id; and an
+  allocation that leaks through a deregistered allocator is reported by nothing at all
+  (<a href="deregister-allocator.html">DeregisterAllocator</a>).
+</div>
+
+<div class="gap">
+  <strong>A live block does not pin the id it came from.</strong>
+  <a href="deregister-allocator.html">DeregisterAllocator</a> clears the slot's two function pointers and pushes the
+  slot back on <code>proxyPool</code>; nothing consults the callers that still hold bytes from it. So
+  <a href="allocate.html">Allocate</a> on a deregistered id either hits an <code>Assert</code> on the null function
+  pointer (Debug and Dev) or calls whatever the next <a href="register-allocator.html">RegisterAllocator</a> put in
+  that slot with a pointer belonging to a dead allocator (Release). See
+  <a href="deregister-allocator.html">DeregisterAllocator</a> for what is and is not detected, and the Coverage row
+  below for what no source answers.
+</div>
+
+<div class="note">
+  <strong>Identity is a slot number, and slots are reused.</strong>
+  <code>allocators[i].id</code> is written once, in the constructor's loop over <code>i = 1 … MaxNumAllocators-1</code>,
+  and is never cleared, so an id a caller once received names the same array element forever and is handed back out by
+  the next registration after a deregistration. <code>SystemAllocatorID</code> (0) is deliberately not in
+  <code>proxyPool</code>: the constructor pushes slots 1 and up, so
+  <a href="register-allocator.html">RegisterAllocator</a> can never return 0, and
+  <a href="register-system-allocator.html">RegisterSystemAllocator</a> is the only writer of slot 0. Every allocator
+  that registers asserts the consequence
+  (<code>Engine/Memory/InlinePoolAllocator.h</code>, <code>InlinePoolAllocator::RegisterAllocator()</code> asserts
+  <code>id != InvalidAllocatorID</code> and <code>id != 0</code>).
+</div>
+
+<div class="note">
+  <strong>The scoped allocator is per thread and is not inherited.</strong>
+  <a href="#properties"><code>scopedAllocatorID</code></a> is <code>static thread_local</code>, initialised to 0. A
+  thread that the task system starts therefore opens at <code>SystemAllocatorID</code> even when the thread that
+  spawned it sits inside an <code>AllocatorScope</code>: work handed to a worker silently leaves the scope. Nothing
+  in <code>Engine/</code> propagates a scope across a thread boundary, and the field is public, so any code can write
+  it without saving the previous value (<a href="set-scoped-allocator-id.html">SetScopedAllocatorID</a> is the path
+  that validates and logs).
+</div>
+
+<div class="note">
+  <strong>What the manager locks, and what it does not.</strong>
+  <code>statsLock</code> is taken only on the <code>PROFILE_ENABLED</code> statistics paths — registration,
+  deregistration, reporting, <a href="get-allocator-stat.html">GetAllocatorStat</a> — and
+  <a href="acquire-stats-lock.html">AcquireStatsLock</a> exists to let an allocator add its own figures the same way.
+  The dispatch path takes no lock at all: <a href="allocate.html">Allocate</a> reads a slot and calls through it,
+  which is safe because the slot table is fixed and a proxy's function pointers are only rewritten between a
+  registration and a deregistration. Registration itself is lock-free rather than mutex-guarded — the free-slot list
+  is an <code>AtomicStackView</code> — but the <code>std::mutex</code> in the same path is taken inside it, so
+  registration and logging are one nesting order and
+  <code>JOURNAL.md</code> records a deadlock in exactly that shape for the class that banks pools
+  (<a href="../ThreadSafeMultiPoolAllocator/index.html">ThreadSafeMultiPoolAllocator</a>).
+</div>
+
+<h2 id="template">Template parameters</h2>
+
+<p>
+None. <code>MemoryManager</code> is <code>final</code> and not a template. It carries one alias template
+(<a href="#properties"><code>TVector</code></a>) and eight member function templates
+(<a href="allocate-by-type.html">AllocateByType</a>, <a href="deallocate-types.html">DeallocateTypes</a>,
+<a href="new.html">New</a>, <a href="new-array.html">NewArray</a>, <a href="delete.html">Delete</a>,
+<a href="delete-array.html">DeleteArray</a>), and in every one of them the type parameter chooses a size and a
+constructor — never an allocator. Which allocator is used is a runtime decision made by the scoped id
+(<a href="get-scoped-allocator-id.html">GetScopedAllocatorID</a>), so a template argument cannot pin one.
+</p>
+
+<h2 id="properties">Class properties</h2>
+
+<table>
+  <tr><th>Type + Name</th><th>Default Value</th><th>Description</th></tr>
+  <tr><td><code>template &lt;typename T&gt; using TVector = std::vector&lt;T&gt;;</code> <span class="badge">alias template</span></td><td><span class="muted">not applicable</span></td><td>The engine's <code>std::vector</code> spelling; every container this class owns is one of these, so all of them allocate through the replaced global <code>operator new</code>, not through a registered allocator.</td></tr>
+  <tr><td><code>using TId = TAllocatorID;</code> <span class="badge">member type</span></td><td><span class="muted">not applicable</span></td><td>The allocator handle: <code>int</code>, with <code>InvalidAllocatorID</code> = <code>-1</code> and <code>MaxNumAllocators</code> = 256 (<code>Engine/Memory/AllocatorID.h</code>).</td></tr>
+  <tr><td><code>using TAllocBytes = AllocatorProxy::TAllocBytes;</code> <span class="badge">member type</span></td><td><span class="muted">not applicable</span></td><td><code>void* (*)(void* userData, size_t allocSize)</code> — the calling convention <a href="register-allocator.html">RegisterAllocator</a> stores and <a href="allocate.html">Allocate</a> calls.</td></tr>
+  <tr><td><code>using TDeallocBytes = AllocatorProxy::TDeallocBytes;</code> <span class="badge">member type</span></td><td><span class="muted">not applicable</span></td><td><code>void (*)(void* userData, void* pointer, size_t allocSize)</code> — the release half of the same convention; the size must match the one the block was allocated with.</td></tr>
+  <tr><td><code>using TLogFunc = std::function&lt;void(std::ostream&amp; out)&gt;;</code> <span class="badge">member type</span></td><td><span class="muted">not applicable</span></td><td>One log line as a lambda, so the formatting costs nothing when the level is filtered out (<a href="log.html">Log</a>).</td></tr>
+  <tr><td><code>using TPoolConfigs = TVector&lt;PoolConfig&gt;;</code> <span class="badge">member type</span></td><td><span class="muted">not applicable</span></td><td>A multi-pool's block-size table — the per-bank <code>(blockSize, numberOfBlocks)</code> pairs a run reports for the next boot (<a href="report-multi-pool-configutation.html">ReportMultiPoolConfigutation</a>).</td></tr>
+  <tr><td><code>static constexpr TId SystemAllocatorID = 0;</code> <span class="badge">public</span></td><td><code>0</code></td><td>Slot 0, filled by <a href="register-system-allocator.html">RegisterSystemAllocator</a> and never handed out by <a href="register-allocator.html">RegisterAllocator</a>; also where a new thread's scoped id starts and where an invalid id falls back to.</td></tr>
+  <tr><td><code>static constexpr size_t MaxBaseMemory = 8'000'000'000;</code> <span class="badge">public</span></td><td><code>8'000'000'000</code></td><td>Nothing reads it: a search of <code>Engine/</code> and <code>Applications/</code> finds only this declaration. The capacity the engine actually charges is <code>Config::MemCapacity</code>, 5 GiB (<code>Engine/Config/EngineConfig.h</code>).</td></tr>
+  <tr><td><code>static thread_local TId scopedAllocatorID;</code> <span class="badge">public</span></td><td><span class="muted">none in the header</span></td><td>Which allocator this thread's unnamed calls go to; defined as <code>= 0</code> in <code>Engine/Memory/MemoryManager.cpp</code>, public and writable by anyone, changed through <a href="set-scoped-allocator-id.html">SetScopedAllocatorID</a> in normal use.</td></tr>
+  <tr><td><code>struct UsageRecord final;</code> <span class="badge">public nested</span></td><td><span class="muted">not applicable</span></td><td>Six <code>size_t</code> counters, all default-initialised to <code>0</code>: <code>allocCount</code>, <code>deallocCount</code>, <code>totalUsage</code>, <code>maxUsage</code>, <code>totalCapacity</code>, <code>maxCapacity</code>. One record is the inline-allocator total, one is everything else; both are updated only under <code>PROFILE_ENABLED</code>.</td></tr>
+  <tr><td><code>AllocatorProxy allocators[MaxNumAllocators];</code> <span class="badge">private</span></td><td><span class="muted">none in the header</span></td><td>The registration table — index is the id, so an id can never dangle at an array bounds, only at a slot that has been recycled.</td></tr>
+  <tr><td><code>AtomicStackView&lt;AllocatorProxy&gt; proxyPool;</code> <span class="badge">private</span></td><td><span class="muted">none in the header</span></td><td>Free slots as a lock-free LIFO stack of pointers into <code>allocators</code>; seeded with slots 1…255 by the constructor, emptied when all 255 registrations are live.</td></tr>
+  <tr><td><code>std::mutex statsLock;</code> <span class="badge">private</span></td><td><span class="muted">none in the header</span></td><td>Serialises writes to the statistics that <code>PROFILE_ENABLED</code> compiles in; in this tree it guards a set of members that does not exist.</td></tr>
+  <tr><td><code>size_t allocCount;</code> <span class="badge">private</span></td><td><code>0</code> (constructor initialiser)</td><td>Engine-wide reported allocation count, incremented only by <a href="report-allocation.html">ReportAllocation</a> and read only by its own log line.</td></tr>
+  <tr><td><code>size_t deallocCount;</code> <span class="badge">private</span></td><td><code>0</code> (constructor initialiser)</td><td>The same for <a href="report-deallocation.html">ReportDeallocation</a>. Neither counter is reachable through any getter — <a href="get-usage.html">GetUsage</a> hands out the <code>UsageRecord</code> instead.</td></tr>
+  <tr><td><code>UsageRecord inlineUsage;</code> <span class="badge">private</span></td><td><span class="muted">none in the header</span></td><td>Totals across allocators registered with <code>isInline == true</code> — storage that lives inside the allocator object, which is why its capacity is accounted separately (<a href="get-inline-usage.html">GetInlineUsage</a>).</td></tr>
+  <tr><td><code>UsageRecord usage;</code> <span class="badge">private</span></td><td><span class="muted">none in the header</span></td><td>Totals for everything else, seeded at construction with the system allocator's <code>Config::MemCapacity</code> (<a href="register-system-allocator.html">RegisterSystemAllocator</a>).</td></tr>
+  <tr><td><code>MultiPoolConfigCache multiPoolConfigCache;</code> <span class="badge">private</span></td><td><span class="muted">none in the header</span></td><td>The previous run's multi-pool geometry, read from <code>.multiPoolConfig.dat</code> during construction; the only source <a href="look-up-multi-pool-config.html">LookUpMultiPoolConfig</a> searches.</td></tr>
+  <tr><td><code>MultiPoolConfigCache multiPoolConfigLog;</code> <span class="badge">private</span></td><td><span class="muted">none in the header</span></td><td>Exists only under <code>PROFILE_ENABLED</code>: this run's reported geometry, appended by <a href="report-multi-pool-configutation.html">ReportMultiPoolConfigutation</a> and written over the cache file at shutdown by <a href="save-multi-pool-configs.html">SaveMultiPoolConfigs</a>.</td></tr>
+</table>
+
+<h2 id="methods">Class methods</h2>
+
+<table class="methods">
+  <tr><th>Name</th><th>Signature</th><th>What a caller depends on</th></tr>
+  <tr><td><a href="get-multi-pool-config-cache-file-path.html"><code>GetMultiPoolConfigCacheFilePath</code></a></td><td class="sig">static StaticStringID GetMultiPoolConfigCacheFilePath()</td><td>The name of the one cache file — <code>.multiPoolConfig.dat</code>, a path relative to the working directory, shared by load and save.</td></tr>
+  <tr><td><a href="get-instance.html"><code>GetInstance</code></a></td><td class="sig">static MemoryManager&amp; GetInstance()</td><td>The one instance, valid from the moment <code>Engine</code>'s member is constructed; after its destruction the call aborts rather than returning null.</td></tr>
+  <tr><td><a href="get-current-allocator-id.html"><code>GetCurrentAllocatorID</code></a></td><td class="sig">static TId GetCurrentAllocatorID()</td><td>This thread's current id — the value every allocator records as its parent, and 0 on a thread that never opened a scope.</td></tr>
+  <tr><td><a href="record-global-allocation.html"><code>RecordGlobalAllocation</code></a></td><td class="sig">static void RecordGlobalAllocation(size_t nBytes) noexcept</td><td>Called by the replaced <code>operator new</code>; safe in the earliest static initialiser, never allocates, never logs.</td></tr>
+  <tr><td><a href="record-global-free.html"><code>RecordGlobalFree</code></a></td><td class="sig">static void RecordGlobalFree(size_t nBytes) noexcept</td><td>The release half, cumulative like the allocation side, so an unrecorded pointer cannot drive a figure negative.</td></tr>
+  <tr><td><a href="get-global-allocation-bytes.html"><code>GetGlobalAllocationBytes</code></a></td><td class="sig">[[nodiscard]] static size_t GetGlobalAllocationBytes() noexcept</td><td>Cumulative bytes requested through the global entry points — a delta, not a live figure, and it excludes <code>SystemAllocator</code>'s own capacity.</td></tr>
+  <tr><td><a href="get-global-allocation-count.html"><code>GetGlobalAllocationCount</code></a></td><td class="sig">[[nodiscard]] static uint64_t GetGlobalAllocationCount() noexcept</td><td>The request count behind that byte total; the figure a testlet compares before and after its body.</td></tr>
+  <tr><td><a href="get-global-free-bytes.html"><code>GetGlobalFreeBytes</code></a></td><td class="sig">[[nodiscard]] static size_t GetGlobalFreeBytes() noexcept</td><td>Cumulative bytes released; retention is this subtracted from the requested total, not a counter of its own.</td></tr>
+  <tr><td><a href="get-global-free-count.html"><code>GetGlobalFreeCount</code></a></td><td class="sig">[[nodiscard]] static uint64_t GetGlobalFreeCount() noexcept</td><td>Cumulative release count; a release of a block allocated before these counters existed still increments it.</td></tr>
+  <tr><td><a href="get-os-allocation-bytes.html"><code>GetOSAllocationBytes</code></a></td><td class="sig">[[nodiscard]] static size_t GetOSAllocationBytes() noexcept</td><td>The subset of global traffic whose caller sits inside the macOS shared cache — a bucket <em>inside</em> the global total, and always zero off Apple platforms.</td></tr>
+  <tr><td><a href="get-os-allocation-count.html"><code>GetOSAllocationCount</code></a></td><td class="sig">[[nodiscard]] static uint64_t GetOSAllocationCount() noexcept</td><td>Request count for that same bucket; it attributes libc++ growth to the OS rather than to the testlet that triggered it.</td></tr>
+  <tr><td><a href="get-os-free-bytes.html"><code>GetOSFreeBytes</code></a></td><td class="sig">[[nodiscard]] static size_t GetOSFreeBytes() noexcept</td><td>Bytes released by the same subset.</td></tr>
+  <tr><td><a href="get-os-free-count.html"><code>GetOSFreeCount</code></a></td><td class="sig">[[nodiscard]] static uint64_t GetOSFreeCount() noexcept</td><td>Release count for the same subset.</td></tr>
+  <tr><td><code>MemoryManager</code></td><td class="sig">MemoryManager(const MemoryManager&amp;) = delete</td><td>Copying is removed: two objects would publish the same <code>mmgrInstance</code> and deregister slot 0 twice.</td></tr>
+  <tr><td><a href="constructors.html"><code>MemoryManager</code></a></td><td class="sig">explicit MemoryManager(Engine&amp; engine)</td><td>Seeds the slot pool, registers the system allocator, loads the config cache, publishes the instance; one call per process, asserted.</td></tr>
+  <tr><td><a href="destructor.html"><code>~MemoryManager</code></a></td><td class="sig">~MemoryManager()</td><td>Deregisters slot 0 and clears the global handle; every allocator must already be gone, and nothing here can tell you if one is not.</td></tr>
+  <tr><td><code>operator=</code></td><td class="sig">MemoryManager&amp; operator=(const MemoryManager&amp;) = delete</td><td>Assignment is removed for the same reason the copy constructor is.</td></tr>
+  <tr><td><a href="post-engine-init.html"><code>PostEngineInit</code></a></td><td class="sig">void PostEngineInit() noexcept</td><td>Called from <code>Engine::PostInitialize()</code>; the body is empty, so today it is a scheduling seam and nothing more.</td></tr>
+  <tr><td><a href="pre-engine-shutdown.html"><code>PreEngineShutdown</code></a></td><td class="sig">void PreEngineShutdown() noexcept</td><td>Called from <code>Engine::PreShutdown()</code>; writes the config cache back, but only under <code>PROFILE_ENABLED</code>, so in this tree it does nothing.</td></tr>
+  <tr><td><a href="get-name.html"><code>GetName</code></a></td><td class="sig">static const char* GetName()</td><td>The literal <code>"MemoryManager"</code>, used to build assert and log prefixes — not a logger category.</td></tr>
+  <tr><td><a href="get-allocator-name.html"><code>GetAllocatorName</code></a></td><td class="sig">const char* GetAllocatorName(TAllocatorID id) const</td><td>Three different answers, only one of which is a name; <code>"Null"</code> and <code>"Unknown"</code> are different facts.</td></tr>
+  <tr><td><a href="acquire-stats-lock.html"><code>AcquireStatsLock</code></a></td><td class="sig">std::lock_guard&lt;std::mutex&gt; AcquireStatsLock()</td><td>Take it while writing an <code>AllocStats</code> you reached through <a href="get-allocator-proxy.html">GetAllocatorProxy</a>; it guards only statistics.</td></tr>
+  <tr><td><a href="get-allocator-proxy.html"><code>GetAllocatorProxy</code></a></td><td class="sig">AllocatorProxy&amp; GetAllocatorProxy(TId id)</td><td>The slot itself, mutable; an invalid id answers with a live-looking dummy rather than failing, which is where a bad id goes to hide.</td></tr>
+  <tr><td><a href="register-allocator.html"><code>RegisterAllocator</code></a></td><td class="sig">TId RegisterAllocator(void* allocator, const char* name, bool isInline, size_t capacity, TAllocBytes allocFunc, TDeallocBytes deallocFunc)</td><td>Pops a free slot and returns its id; <code>InvalidAllocatorID</code> when all 255 are taken, and the object must outlive the registration.</td></tr>
+  <tr><td><a href="deregister-allocator.html"><code>DeregisterAllocator</code></a><span class="badge">2 overloads</span></td><td class="sig">void DeregisterAllocator(TId id)<br>void DeregisterAllocator(TId id, const hbe::source_location&amp; srcLocation)</td><td>Clears the slot's function pointers and returns it to the pool; a block still alive on it is detected only under <code>PROFILE_ENABLED</code>.</td></tr>
+  <tr><td><a href="report-allocation.html"><code>ReportAllocation</code></a></td><td class="sig">void ReportAllocation(TId id, void* ptr, size_t requested, size_t allocated)</td><td>An allocator publishing bytes it handed out; <code>allocated</code> is what the counters move by, and an over-capacity report is a fatal log plus a break.</td></tr>
+  <tr><td><a href="report-deallocation.html"><code>ReportDeallocation</code></a></td><td class="sig">void ReportDeallocation(TId id, void* ptr, size_t requested, size_t allocated)</td><td>The mirror, and the only place a size mismatch between the two halves is caught.</td></tr>
+  <tr><td><a href="sys-allocate.html"><code>SysAllocate</code></a></td><td class="sig">void* SysAllocate(size_t nBytes)</td><td>Slot 0 directly, bypassing the scoped id — for oversized or long-lived blocks a pool should not hold.</td></tr>
+  <tr><td><a href="sys-deallocate.html"><code>SysDeallocate</code></a></td><td class="sig">void SysDeallocate(void* ptr, size_t nBytes)</td><td>The matching release; a null function pointer is a fatal log and a dropped release, not a crash.</td></tr>
+  <tr><td><a href="fallback-allocate.html"><code>FallbackAllocate</code></a></td><td class="sig">void* FallbackAllocate(TId id, TId parentId, size_t requested)</td><td>Allocate from the <em>parent</em> and attribute the event to <code>id</code> — the shape behind an allocator that degrades instead of failing.</td></tr>
+  <tr><td><a href="allocate.html"><code>Allocate</code></a><span class="badge">2 overloads</span></td><td class="sig">void* Allocate(TId id, size_t nBytes)<br>void* Allocate(size_t nBytes)</td><td>Zero bytes is <code>nullptr</code> before anything else runs; the unsized overload uses this thread's scoped id; an invalid id is silently redirected to slot 0.</td></tr>
+  <tr><td><a href="deallocate.html"><code>Deallocate</code></a><span class="badge">2 overloads</span></td><td class="sig">void Deallocate(TId id, void* ptr, size_t nBytes)<br>void Deallocate(void* ptr, size_t nBytes)</td><td>Null is ignored with an assert that the size was zero too; the size must be the one the block arrived with.</td></tr>
+  <tr><td><a href="is-log-enabled.html"><code>IsLogEnabled</code></a></td><td class="sig">bool IsLogEnabled(ELogLevel level) const</td><td>One config parameter, <code>Log.Memory</code>; <code>false</code> always in this tree, because <code>MEMORY_LOGGING_ENABLED</code> is 0.</td></tr>
+  <tr><td><a href="log.html"><code>Log</code></a></td><td class="sig">void Log(ELogLevel level, TLogFunc func) const</td><td>Every diagnostic in the module funnels through here, and it can be a no-op — a null return is never announced by the caller that logged about it.</td></tr>
+  <tr><td><a href="look-up-multi-pool-config.html"><code>LookUpMultiPoolConfig</code></a></td><td class="sig">const MultiPoolAllocatorConfig&amp; LookUpMultiPoolConfig(StaticStringID uniqueName) const</td><td>Binary search over the loaded cache; a miss returns a reference to a static default whose <code>uniqueName</code> is zero, which is how the caller tells the two apart.</td></tr>
+  <tr><td><a href="log-warning.html"><code>LogWarning</code></a></td><td class="sig">void LogWarning(const TLogFunc&amp; func) const</td><td><a href="log.html">Log</a> at <code>ELogLevel::Warning</code> — the level every allocator uses for the requests it had to send elsewhere.</td></tr>
+  <tr><td><a href="log-error.html"><code>LogError</code></a></td><td class="sig">void LogError(const TLogFunc&amp; func) const</td><td>The same at <code>ELogLevel::Error</code>.</td></tr>
+  <tr><td><a href="get-inline-usage.html"><code>GetInlineUsage</code></a></td><td class="sig">[[nodiscard]] auto&amp; GetInlineUsage() const</td><td>A live reference to the inline total, not a copy — the getter compiles in every configuration, but every writer of the record it returns is inside <code>PROFILE_ENABLED</code>.</td></tr>
+  <tr><td><a href="get-usage.html"><code>GetUsage</code></a></td><td class="sig">[[nodiscard]] auto&amp; GetUsage() const</td><td>The same reference for the non-inline total: its capacity is seeded by the constructor in every configuration, its usage figures only under <code>PROFILE_ENABLED</code>.</td></tr>
+  <tr><td><a href="get-allocator-stat.html"><code>GetAllocatorStat</code></a></td><td class="sig">AllocStats GetAllocatorStat(TAllocatorID id)</td><td>A copy of one allocator's statistics under <code>PROFILE_ENABLED</code>; a snapshot, so it needs no lock held by the reader.</td></tr>
+  <tr><td><a href="allocate-by-type.html"><code>AllocateByType</code></a></td><td class="sig">template &lt;typename T&gt; T* AllocateByType(size_t n)</td><td><code>n * sizeof(T)</code> bytes from the scoped allocator — the multiply is unchecked, so <code>n</code> is a count, not a byte total.</td></tr>
+  <tr><td><a href="deallocate-types.html"><code>DeallocateTypes</code></a></td><td class="sig">template &lt;typename T&gt; void DeallocateTypes(T* ptr, size_t n)</td><td>The matching release; both halves re-read the scoped id, so a scope that moved in between sends the block to the wrong allocator.</td></tr>
+  <tr><td><a href="new.html"><code>New</code></a></td><td class="sig">template &lt;typename Type, typename... Types&gt; Type* New(Types&amp;&amp;... args)</td><td>Allocate one element then placement-construct; the return is never checked before the constructor runs.</td></tr>
+  <tr><td><a href="new-array.html"><code>NewArray</code></a></td><td class="sig">template &lt;typename Type, typename... Types&gt; Type* NewArray(Index size, Types&amp;&amp;... args)</td><td>One block, then <code>size</code> constructions in address order; a constructor that throws leaves the earlier ones constructed and unreclaimable.</td></tr>
+  <tr><td><a href="delete.html"><code>Delete</code></a></td><td class="sig">template &lt;typename Type&gt; void Delete(Type* ptr)</td><td>Destruct then release; a null pointer is a null dereference here, not a no-op.</td></tr>
+  <tr><td><a href="delete-array.html"><code>DeleteArray</code></a></td><td class="sig">template &lt;typename Type&gt; void DeleteArray(Type* ptr, size_t n)</td><td>The element count is a caller argument because a pointer cannot carry it; get it wrong and you skip or overrun destructors.</td></tr>
+  <tr><td><a href="is-valid.html"><code>IsValid</code></a></td><td class="sig">[[nodiscard]] static bool IsValid(TAllocatorID id)</td><td>Private range test, identical to the free <code>hbe::IsValid</code> in <code>AllocatorID.h</code>; every public entry that takes an id runs it first.</td></tr>
+  <tr><td><a href="get-scoped-allocator-id.html"><code>GetScopedAllocatorID</code></a></td><td class="sig">[[nodiscard]] static TId GetScopedAllocatorID()</td><td>The private twin of <a href="get-current-allocator-id.html">GetCurrentAllocatorID</a>, reachable by <code>AllocatorScope</code> (friend) and by the typed templates only.</td></tr>
+  <tr><td><a href="report-fallback.html"><code>ReportFallback</code></a></td><td class="sig">void ReportFallback(TId id, void* ptr, size_t requested)</td><td>Private: the only place fallback traffic is counted, and it counts the request, not the bytes the parent actually gave.</td></tr>
+  <tr><td><a href="register-system-allocator.html"><code>RegisterSystemAllocator</code></a></td><td class="sig">void RegisterSystemAllocator()</td><td>Private: fills slot 0 from a function-local <code>SystemAllocator</code>, seeds the totals and sets this thread's scope — constructor-only.</td></tr>
+  <tr><td><a href="deregister-system-allocator.html"><code>DeregisterSystemAllocator</code></a></td><td class="sig">void DeregisterSystemAllocator()</td><td>Private: one call, from the destructor; it is an ordinary <a href="deregister-allocator.html">DeregisterAllocator</a> on id 0 and can therefore refuse.</td></tr>
+  <tr><td><a href="load-multi-pool-configs.html"><code>LoadMultiPoolConfigs</code></a></td><td class="sig">void LoadMultiPoolConfigs()</td><td>Private: reads the cache file in the constructor; a missing or corrupt file is a log line and an empty cache.</td></tr>
+  <tr><td><a href="save-multi-pool-configs.html"><code>SaveMultiPoolConfigs</code></a></td><td class="sig">void SaveMultiPoolConfigs()</td><td>Private: the write half, entirely inside <code>PROFILE_ENABLED</code>, overwriting the file the loader reads.</td></tr>
+  <tr><td><a href="set-scoped-allocator-id.html"><code>SetScopedAllocatorID</code></a></td><td class="sig">void SetScopedAllocatorID(TId id)</td><td>Private: the only validating write of the scoped id, and <code>AllocatorScope</code>'s entire mechanism — an out-of-range id is silently replaced with 0.</td></tr>
+</table>
+
+<h2 id="non-member">Non-member helper functions</h2>
+
+<p>
+None. The module's free functions live in <code>Engine/Memory/Memory.h</code> and are indexed by the
+<a href="../index.html#functions">module page</a>: the four overloads of <code>New</code> and <code>Delete</code>,
+of which the two that name no allocator are thin calls into
+<a href="new.html">MemoryManager::New</a> and <a href="delete.html">MemoryManager::Delete</a>. The id vocabulary —
+<code>TAllocatorID</code>, <code>MaxNumAllocators</code>, <code>InvalidAllocatorID</code>, the free
+<code>IsValid</code> — is declared in <code>Engine/Memory/AllocatorID.h</code>, and the private
+<a href="is-valid.html">IsValid</a> member is a second copy of it, so a change to the range must be made twice.
+</p>
+
+<h2 id="coverage">Coverage</h2>
+
+<table>
+  <tr><th>Not documented here</th><th>Why</th></tr>
+  <tr>
+    <td><strong>Whether reusing a deregistered id while a block from it is still live is intended.</strong></td>
+    <td>Named omission. The code answers the mechanical half — the slot is pushed back on <code>proxyPool</code> and
+    the next <a href="register-allocator.html">RegisterAllocator</a> hands out the same number — but no source, comment
+    or test states what a caller holding a live block must do, and there is no testlet for the case. What the pages
+    assert is only what the code does: see <a href="deregister-allocator.html">DeregisterAllocator</a>. The policy
+    belongs to whoever owns the module, not to this reference.</td>
+  </tr>
+  <tr>
+    <td><strong>Whether <code>GetAllocatorProxy</code>'s dummy proxy is meant to be usable, and what it should do
+    with a call.</strong></td>
+    <td>Named omission, and it was already recorded in
+    <a href="../../design/MemoryManagerInternals_Design.html">the manager's design document</a> before these pages
+    existed; that document now defers the three behaviours it owned to
+    <a href="get-allocator-name.html">GetAllocatorName</a>, <a href="register-allocator.html">RegisterAllocator</a>
+    and <a href="get-allocator-proxy.html">GetAllocatorProxy</a>, and leaves this one open. The dummy is a
+    function-local <code>static</code> shared by every thread and re-constructed on each call, and a default proxy
+    routes nowhere; choosing between "fail loudly" and "route the dummy to slot 0" is a decision, not a finding.</td>
+  </tr>
+  <tr>
+    <td><strong>Thread-safety of the statistics as a whole.</strong></td>
+    <td>Named omission. Every write path inside <code>MemoryManager</code> that touches an <code>AllocStats</code>
+    holds <code>statsLock</code>, but the engine's allocators write the proxy they were handed without it
+    (<code>Engine/Memory/MultiPoolAllocator.cpp</code>, <code>MultiPoolAllocator::GenerateBank()</code> adds to
+    <code>allocProxy.stats.capacity</code> after <a href="get-allocator-proxy.html">GetAllocatorProxy</a> and before
+    any <a href="acquire-stats-lock.html">AcquireStatsLock</a>). Whether the lock is a requirement on callers or only
+    a convenience is not stated anywhere, and this tree's <code>PROFILE_ENABLED</code> is 0, so nothing here has ever
+    run. The two-allocator lock order is documented for the one class that has a locking protocol, in
+    <a href="../../design/ThreadSafeMultiPoolLocking_Design.html">the thread-safe multi-pool locking design</a>.</td>
+  </tr>
+  <tr>
+    <td><strong>What a registration after shutdown is meant to do.</strong></td>
+    <td>Named omission. Slot 0 is the one proxy whose <code>id</code> field is never written — the constructor seeds slots
+    1…255 only, and <a href="register-system-allocator.html">RegisterSystemAllocator</a> fills slot 0's function pointers without
+    naming it — while <a href="deregister-system-allocator.html">DeregisterSystemAllocator</a> pushes that id-less slot back onto
+    <code>proxyPool</code>. A <a href="register-allocator.html">RegisterAllocator</a> reached after that pops slot 0, reads
+    <code>id</code> as <code>InvalidAllocatorID</code>, and either trips the assert on the way out or returns <code>-1</code> in
+    Release having written the registration there. No source, comment or test says what should happen to a late registrant, and the
+    same silence covers whether <code>allocators[0].id</code> is deliberately left <code>-1</code>. What the pages assert is the
+    mechanism: see <a href="deregister-system-allocator.html">DeregisterSystemAllocator</a> and
+    <a href="constructors.html">the constructor</a>.</td>
+  </tr>
+  <tr>
+    <td><strong>How long a registered allocator's interned name stays valid.</strong></td>
+    <td>Named omission. <a href="get-allocator-name.html">GetAllocatorName</a> returns a pointer into the
+    <code>StaticString</code> intern table (<code>Engine/String/StaticString.h</code>) rather than into the registration slot, so the
+    pointer does not die with the slot — but whether an interned entry is ever released is a question for the String module, and this
+    wave has not written its pages. The same module owns <code>StaticStringID</code> ordering, which is what
+    <a href="look-up-multi-pool-config.html">LookUpMultiPoolConfig</a>'s binary search and
+    <code>MultiPoolConfigCache::Normalize</code> both compare by.</td>
+  </tr>
+  <tr>
+    <td>Every path behind <code>#if PROFILE_ENABLED</code>, <code>#if MEMORY_LOGGING_ENABLED</code>,
+    <code>#if MEMORY_VERIFICATION_ENABLED</code> and <code>#if FORCE_USE_SYSTEM_MALLOC</code></td>
+    <td>All four are <code>0</code> in <code>Engine/Config/BuildConfig.h</code> with no per-configuration override, so
+    those paths have never compiled in this tree; the same limitation is recorded for
+    <a href="../PoolAllocator/index.html#coverage">PoolAllocator</a>. Every sentence about them on these pages is read
+    from the source and labelled as such, and <a href="get-allocator-stat.html">GetAllocatorStat</a>,
+    <a href="report-allocation.html">ReportAllocation</a>,
+    <a href="report-deallocation.html">ReportDeallocation</a>, <a href="log.html">Log</a> and
+    <a href="save-multi-pool-configs.html">SaveMultiPoolConfigs</a> name their own compiled-out halves.</td>
+  </tr>
+  <tr>
+    <td>What the replaced global <code>operator new</code> and <code>operator delete</code> do — the malloc
+    backing store, the <code>posix_memalign</code> path, the <code>new_handler</code> loop, the abort instead of
+    <code>std::bad_alloc</code>, and the OS-image caller bucket</td>
+    <td>That is <code>Engine/Memory/GlobalAllocation.cpp</code>, a translation unit with no header of its own, so it
+    is not an entry a module page can link. Its eight counters are <em>methods of this class</em> and own pages here
+    (<a href="record-global-allocation.html">RecordGlobalAllocation</a> and the seven getters); the replacement
+    operators themselves belong to a Memory design document under <code>docs/</code> that this wave has not written.</td>
+  </tr>
+  <tr>
+    <td>The multi-pool cache file's on-disk format, its versioning and the normalisation that keeps its entries
+    sorted</td>
+    <td>Belongs to <code>MultiPoolConfigCache</code>, <code>MultiPoolAllocatorConfig</code> and
+    <code>PoolConfig</code> — none of which owns a page yet, so
+    <a href="look-up-multi-pool-config.html">LookUpMultiPoolConfig</a> documents only what a caller of
+    <em>this</em> class can depend on: the ordering the binary search assumes and the shape of a miss.</td>
+  </tr>
+  <tr>
+    <td><code>Engine::Log</code>, <code>Engine::GetStatistics()</code> and <code>SystemStatistics</code>'s
+    <code>ReportSysMemAlloc</code> / <code>ReportSysMemDealloc</code> / <code>Report(const AllocStats&amp;)</code></td>
+    <td>Contracts of the <a href="../../Engine/index.html">Engine</a> and <a href="../../Core/index.html">Core</a>
+    modules. These pages say when the manager calls them and what the call means for a memory figure; the log
+    formatting, the level filters those calls then pass through, and what a <code>SystemStatistics</code> report
+    becomes are documented there. One fact here is unavoidable: the manager's constructor logs while
+    <code>Engine::logger</code> has not been constructed yet, because <code>memoryManager</code> precedes
+    <code>logger</code> in <code>Engine</code>'s member order.</td>
+  </tr>
+  <tr>
+    <td>What each registered allocator does with the registration it is given — parent-id recording, bank
+    ownership, the inline-versus-external capacity question</td>
+    <td>Owned by each allocator's own pages: <a href="../PoolAllocator/index.html">PoolAllocator</a>,
+    <a href="../MultiPoolAllocator/index.html">MultiPoolAllocator</a>,
+    <a href="../ThreadSafeMultiPoolAllocator/index.html">ThreadSafeMultiPoolAllocator</a>. The remaining allocators
+    (<code>SystemAllocator</code>, <code>DefaultAllocator</code>, <code>MonotonicAllocator</code>,
+    <code>StackAllocator</code>, <code>InlinePoolAllocator</code>, <code>InlineMonotonicAllocator</code>) do not own
+    pages yet, so their call sites are cited by file and symbol instead of linked.</td>
+  </tr>
+  <tr>
+    <td><code>GlobalAllocationTest</code></td>
+    <td>Test-only: declared in <code>Engine/Memory/MemoryManager.h</code> inside <code>#ifdef __UNIT_TEST__</code>,
+    defined in <code>Engine/Memory/GlobalAllocation.cpp</code> as the two testlets
+    <code>Engine traffic reaches the global counters</code> and (Apple only)
+    <code>OS image traffic reaches its own bucket</code>. It owns no page; what it proves is quoted on
+    <a href="get-global-allocation-count.html">GetGlobalAllocationCount</a> and
+    <a href="get-os-allocation-count.html">GetOSAllocationCount</a>.</td>
+  </tr>
+</table>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; MemoryManager</a></span>
+  <span><a href="index.html#methods">All MemoryManager methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MemoryManager::Delete — Memory module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a class="current" href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Memory</a> /
+  <a href="index.html">MemoryManager</a> / Delete
+</p>
+
+<h1><span class="fn">Delete</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::MemoryManager</span>
+  <span class="tag">Engine/Memory/MemoryManager.h</span>
+  Destruct then release one element — and a null pointer is a null dereference, not a no-op.
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>template &lt;typename Type&gt;
+	void Delete(Type* ptr)</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+Defined in the class body of <code>Engine/Memory/MemoryManager.h</code>, and the whole body is two statements in a fixed order:
+</p>
+
+<pre><code>ptr-&gt;~Type();
+DeallocateTypes&lt;Type&gt;(ptr, 1);</code></pre>
+
+<p class="meta">From Engine/Memory/MemoryManager.h, MemoryManager::Delete()</p>
+
+<p>
+Destruct first, then release, so the destructor still sees a live object in live memory. The release is
+<a href="deallocate-types.html">DeallocateTypes</a> with a count of one, which recomputes <code>sizeof(Type)</code> and re-reads
+this thread's scope — so both halves of the pairing (<a href="new.html">New</a> and <code>Delete</code>) must see the same
+allocator, and both must name the same type.
+</p>
+
+<div class="gap">
+  <strong>A null pointer is a null dereference here, not a no-op.</strong>
+  There is no test before <code>ptr-&gt;~Type();</code>, and an explicit destructor call through a null pointer is undefined
+  behaviour whatever the type. This is the opposite of <a href="deallocate.html">Deallocate</a>, which ignores a null block and
+  asserts its size was zero, and of <a href="sys-deallocate.html">SysDeallocate</a>, which lets the underlying
+  <code>free(nullptr)</code> absorb it. A caller that wants "delete if present" must write the test itself.
+</div>
+
+<div class="gap">
+  <strong>Deleting through a base pointer is wrong twice.</strong>
+  <code>Type</code> decides both statements independently: it picks which destructor runs (so a non-virtual base destructor is
+  undefined behaviour, as ever) and it picks the byte count handed to the allocator, because
+  <a href="deallocate-types.html">DeallocateTypes</a> computes <code>1 * sizeof(Type)</code>. An object created by
+  <a href="new.html">New</a>&lt;Derived&gt; took <code>sizeof(Derived)</code> bytes from the allocator, so
+  <code>Delete&lt;Base&gt;</code> releases a smaller count — and a size mismatch is precisely what corrupts a pool's bookkeeping
+  (<a href="deallocate.html">Deallocate</a>, <a href="report-deallocation.html">ReportDeallocation</a>). Pass the type you created.
+</div>
+
+<div class="note">
+  <strong>The destructor runs before the memory is handed back, and nothing protects it afterwards.</strong>
+  <a href="deallocate-types.html">DeallocateTypes</a> does not clear the caller's pointer, and the manager keeps no record of live
+  blocks (<a href="report-allocation.html">the reports</a> it receives are counters), so the pointer dangles in exactly the way an
+  ordinary <code>delete</code> leaves one. A destructor that throws is not caught: the block would already have been claimed by the
+  allocator, and the release never happens.
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<table>
+  <tr><th>Parameter</th><th>Type</th><th>Requirement</th></tr>
+  <tr><td><code>Type</code></td><td><em>template parameter</em></td><td>The type the object was created as by <a href="new.html">New</a>. It determines the destructor and the release size, so a base-class spelling breaks both.</td></tr>
+  <tr><td><code>ptr</code></td><td><code>Type*</code></td><td>A live object from <a href="new.html">New</a>, non-null, allocated from the allocator that is current now. Never a <code>new</code>-created object: the release would go to a pool that never saw it.</td></tr>
+</table>
+
+<h2 id="return">Return value</h2>
+
+<p><code>void</code>. Nothing is reported and nothing is cleared; the caller's pointer becomes dangling rather than null.</p>
+
+<h2 id="example">Examples</h2>
+
+<pre><code>auto newBody = mmgr.New&lt;Body&gt;(std::forward&lt;Types&gt;(args)...);
+
+…
+
+mmgr.Delete&lt;Body&gt;(this);</code></pre>
+
+<p class="meta">From Engine/Memory/Shareable.h, Shareable&lt;TType, RefCount&gt;::Body::Create() and ::Release()</p>
+
+<p>
+Create and destroy in the same class, with the same spelled type — the convention that keeps both halves of the size and the scope
+agreeing. The second route is <code>Engine/Memory/Memory.h</code>, where the free <code>Delete(TType* ptr)</code> fetches
+<a href="get-instance.html">GetInstance</a> and forwards, which is what engine code outside the memory module calls.
+</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; MemoryManager</a></span>
+  <span><a href="index.html#methods">All MemoryManager methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

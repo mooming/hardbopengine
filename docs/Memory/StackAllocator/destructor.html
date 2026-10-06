@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>StackAllocator::~StackAllocator — Memory module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a class="current" href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Memory</a> /
+  <a href="index.html">StackAllocator</a> / ~StackAllocator
+</p>
+
+<h1><span class="fn">~StackAllocator</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::StackAllocator</span>
+  <span class="tag">Engine/Memory/StackAllocator.h</span>
+  Returns the whole buffer through whichever allocator is current at that moment, then releases the registration id.
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>#endif
+
+	~StackAllocator()</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  Defined in <code>Engine/Memory/StackAllocator.cpp</code> as <code>StackAllocator::~StackAllocator()</code>. Two calls, in this
+  order: the whole buffer goes back to the manager, then the registration is released.
+</p>
+
+<pre><code>auto&amp; mmgr = MemoryManager::GetInstance();
+mmgr.Deallocate(bufferPtr, capacity);</code></pre>
+
+<p class="meta">From Engine/Memory/StackAllocator.cpp, StackAllocator::~StackAllocator()</p>
+
+<p>
+  Then <code>mmgr.DeregisterAllocator(GetID())</code> — the two-argument overload taking <code>srcLocation</code> is the
+  <code>PROFILE_ENABLED</code> branch, and that macro is 0 in this tree
+  (<code>Engine/Config/BuildConfig.h</code>).
+</p>
+
+<div class="gap">
+  <p>
+    <strong>Who is asked for the bytes back is whichever allocator is current at the moment of destruction.</strong>
+    <code>Deallocate(bufferPtr, capacity)</code> is the manager's two-argument overload, and it is a one-line redirect:
+  </p>
+
+<pre><code>void MemoryManager::Deallocate(void* ptr, size_t nBytes)
+{
+	Deallocate(GetScopedAllocatorID(), ptr, nBytes);
+}</code></pre>
+
+<p class="meta">From Engine/Memory/MemoryManager.cpp, MemoryManager::Deallocate(void* ptr, size_t nBytes)</p>
+
+  <p>
+    So the release is dispatched through the thread's current scope, not through the <code>parentID</code> the constructor recorded.
+    Destroy the allocator under an unrelated scope and that scope's allocator is asked to free bytes it never allocated; the proxy
+    record it goes through carries no owner, base address or range
+    (<code>Engine/Memory/AllocatorProxy.h</code>), so nothing detects the mismatch in a default build. The same object destroyed with
+    no scope open hands the bytes to the system allocator — which is right only if no scope was open at construction either. This is
+    the asymmetry the <code>PoolAllocator</code> destructor in <code>Engine/Memory/PoolAllocator.cpp</code> closes by releasing
+    through its recorded parent; this destructor does not.
+  </p>
+
+  <p>
+    The order of two declarations is therefore part of the contract. <code>ScopedAllocator&lt;TAlloc&gt;</code>
+    (<code>Engine/Memory/ScopedAllocator.h</code>) declares the allocator before the scope, so the scope is destroyed first and the
+    buffer is returned to the allocator that originally supplied it. The testlets in <code>Engine/Memory/StackAllocator.cpp</code>
+    declare <code>stack</code> before <code>scope</code> for the same reason. Reversing either pairing — destroying an allocator
+    while its own scope is still open — routes the buffer release into that allocator's own
+    <a href="deallocate.html">Deallocate</a>, which reports the pointer as mismatched. No testlet covers that ordering.
+  </p>
+</div>
+
+<div class="gap">
+  <strong>Everything still allocated dies here, quietly.</strong>
+  There is no per-block release and no leak report in this configuration: the buffer is freed in one call, so every pointer this
+  object handed out from the buffer stops being valid the instant the destructor returns, whether or not it was ever released, and
+  <a href="getusage.html">GetUsage</a> is meaningless on a destroyed object. Blocks that arrived through the overflow path are the
+  exception in the other direction — they belong to <code>parentID</code>, the destructor does not release them, and they stay
+  allocated until someone releases them, through this object's <a href="deallocate.html">Deallocate</a> or through the parent
+  directly. In a <code>PROFILE_ENABLED</code> build the manager warns on the way out
+  (<code>MemoryManager::DeregisterAllocator()</code> logs <code>"Memory leak is detected!"</code> when the registration's usage is
+  non-zero, and does not return the id to the pool in that case); that build does not exist in this tree.
+</div>
+
+<div class="note">
+  <strong>The id is recycled, so a saved id outlives its meaning.</strong>
+  <code>MemoryManager::DeregisterAllocator()</code> clears the proxy's function pointers and pushes the record back onto the
+  manager's free pool (<code>proxyPool.Push(allocator)</code>), which makes the same number available to the next allocator
+  registered. Keep an id only as long as the object is alive — a <a href="getid.html">GetID</a> value held past this destructor
+  addresses whoever got that slot next.
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<p>None.</p>
+
+<h2 id="return">Return value</h2>
+
+<p>
+  Nothing. The destructor cannot report a failure, and the two failures it can encounter — a buffer released to the wrong
+  allocator, a registration id that was never valid — are reported by the manager's log lines rather than to the caller.
+</p>
+
+<h2 id="example">Examples</h2>
+
+<pre><code>StackAllocator stack("Test::StackAllocator::Deallocation", 1024 * 1024);
+AllocatorScope scope(stack.GetID());
+{
+	String a = "0";
+}
+
+if (stack.GetUsage() != 0)
+{
+	ls &lt;&lt; "Deallocation Failed. Usage should be zero, but " &lt;&lt; stack.GetUsage() &lt;&lt; lferr;
+}</code></pre>
+
+<p class="meta">From Engine/Memory/StackAllocator.cpp, StackAllocatorTest::Prepare(), Deallocation testlet</p>
+
+<p>
+  The declaration order the destructor depends on, visible in the test's own layout: <code>stack</code> outlives
+  <code>scope</code>, so the scope closes — restoring the allocator that was current before it — and only then does the stack
+  destroy and return its buffer. The check beside it is the stack's distinguishing property: where a
+  <a href="../MonotonicAllocator/index.html">monotonic allocator</a> would still be reporting non-zero usage here, the stack's
+  cursor is back to zero because the string's release rewound it.
+</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; StackAllocator</a></span>
+  <span><a href="index.html#methods">All StackAllocator methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

@@ -66,17 +66,16 @@
 </p>
 
 <p>
-  The registration is what lets a pool serve code that never sees it. The shape the repository actually uses is in
-  <code>Engine/Container/LinkedList.cpp</code>: construct the pool, open <code>AllocatorScope allocScope(alloc);</code>,
-  and every node the list then builds arrives from the pool through the default allocator.
+  The registration is what lets a pool serve code that never sees it. The shape the repository actually uses is
+  <code>LinkedListTest::Prepare()</code> in <code>Engine/Container/LinkedList.cpp</code>: one pool named
+  <code>"LinkedListTest::Allocator"</code> built with a block size of <code>sizeof(LinkedList&lt;int&gt;::Node)</code> — the
+  node type is what the caller measures, since the pool knows nothing about it — and a block count of the list's element
+  count plus ten blocks of headroom, then an
+  <a href="../index.html#allocatorscope"><code>AllocatorScope</code></a> opened over the pool object itself
+  (<code>AllocatorScope allocScope(alloc);</code>, the template constructor that forwards to
+  <a href="getid.html"><code>GetID</code></a> — the linear allocators' users open their scopes on the id instead). Every node the
+  list then builds arrives from the pool through the default allocator.
 </p>
-
-<pre><code>const auto NodeSize = sizeof(LinkedList&lt;int&gt;::Node);
-
-PoolAllocator alloc("LinkedListTest::Allocator", NodeSize, COUNT + 10);
-AllocatorScope allocScope(alloc);</code></pre>
-
-<p class="meta">From Engine/Container/LinkedList.cpp, LinkedListTest::Prepare()</p>
 
 <div class="gap">
   <strong>A pool returns everything to the allocator recorded at construction, not to whichever one is current later.</strong>
@@ -192,7 +191,7 @@ AllocatorScope allocScope(alloc);</code></pre>
 <h2 id="coverage">Coverage</h2>
 
 <table>
-  <tr><th>Not documented here</th><th>Why, and where it belongs</th></tr>
+  <tr><th>Not documented here</th><th>Why</th></tr>
   <tr>
     <td>How the free list is encoded, and why that encoding forces the constructor's <code>sizeof(size_t)</code> floor</td>
     <td>Mechanism, so it belongs to a Memory design document under <code>docs/</code>, which this wave has not written. The

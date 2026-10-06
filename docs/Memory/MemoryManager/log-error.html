@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MemoryManager::LogError — Memory module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a class="current" href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Memory</a> /
+  <a href="index.html">MemoryManager</a> / LogError
+</p>
+
+<h1><span class="fn">LogError</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::MemoryManager</span>
+  <span class="tag">Engine/Memory/MemoryManager.h</span>
+  Log at Error — reporting a bad release is the caller's problem to follow up, not this wrapper's.
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>void LogError(const TLogFunc&amp; func) const</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+Defined in the class body of <code>Engine/Memory/MemoryManager.h</code> as <code>Log(ELogLevel::Error, func);</code> — an
+inline one-liner with no <code>.cpp</code> half, identical to <a href="log-warning.html">LogWarning</a> except for the level it
+picks.
+</p>
+
+<p>
+<code>ELogLevel::Error</code> is the fifth ordinal in <code>Engine/Log/LogLevel.h</code>, so it clears any threshold the
+<code>"Log.Memory"</code> parameter can hold short of <code>FatalError</code> and <code>MAX</code>
+(<a href="is-log-enabled.html">IsLogEnabled</a>). In practice the module uses it for one thing: a release that arrived for a
+block this allocator does not own, or a release whose arithmetic does not add up.
+</p>
+
+<div class="note">
+  <strong>Error is not fatal, and the call site decides what happens next.</strong>
+  Nothing in this wrapper stops anything: <code>PoolAllocator::Deallocate()</code> logs and returns, dropping the block;
+  <code>StackAllocator::Deallocate()</code> logs and then calls <code>Assert(false)</code>, which traps outside Release and
+  does nothing in it. That is the difference between a dropped release and a stopped process, and it lives entirely in the
+  caller — <code>ELogLevel::FatalError</code>, the level used for the manager's own undeliverable conditions, is a logger
+  distinction, not an execution one.
+</div>
+
+<div class="gap">
+  <strong>In this tree the line is dropped along with the block.</strong>
+  <code>MEMORY_LOGGING_ENABLED</code> is <code>0</code>, so <a href="log.html">Log</a> discards the callable and the caller
+  carries on as if it had reported something. The <code>LOG_BREAK_IF_ERROR</code> flag that would at least trap is also
+  <code>0</code> in <code>Engine/Config/BuildConfig.h</code>. A foreign pointer released into a pool therefore leaves no trace
+  at all here — which is why the pages for those two paths describe the outcome in terms of what the allocator does, not what
+  it says.
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<table>
+  <tr><th>Parameter</th><th>Type</th><th>Requirement</th></tr>
+  <tr><td><code>func</code></td><td><code>const TLogFunc&amp;</code></td><td>A <code>std::function&lt;void(std::ostream&amp;)&gt;</code>, normally a lambda. Built at the call site whether or not it will be called; invoked at most once.</td></tr>
+</table>
+
+<h2 id="return">Return value</h2>
+
+<p><code>void</code>. Returning normally tells the caller nothing about whether anything was reported.</p>
+
+<h2 id="example">Examples</h2>
+
+<pre><code>auto expected = buffer + cursor;
+auto provided = static_cast&lt;Byte*&gt;(ptr) + size;
+if (unlikely(expected != provided))
+{
+	mmgr.LogError([this, ptr, expected, provided](auto&amp; lout)
+	{
+		lout &lt;&lt; "StackAllocator[" &lt;&lt; static_cast&lt;int&gt;(GetID()) &lt;&lt; "]: Pointer mismatched! ptr = " &lt;&lt; ptr &lt;&lt; ", "
+			 &lt;&lt; static_cast&lt;void*&gt;(expected) &lt;&lt; " is expected. But " &lt;&lt; static_cast&lt;void*&gt;(provided)
+			 &lt;&lt; " is provided.";
+	});
+
+	Assert(false);</code></pre>
+
+<p class="meta">From Engine/Memory/StackAllocator.cpp, StackAllocator::Deallocate()</p>
+
+<p>
+The pair of shapes this wrapper gets: log the arithmetic, then either <code>Assert(false)</code> and hope a developer is
+attached (<code>StackAllocator</code>), or return quietly and lose the block (<code>PoolAllocator::Deallocate()</code>, whose
+message for a bad index is <code>"is not alloacted by this."</code> — misspelling in the source, quoted as written because a
+reader will grep for it).
+</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; MemoryManager</a></span>
+  <span><a href="index.html#methods">All MemoryManager methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

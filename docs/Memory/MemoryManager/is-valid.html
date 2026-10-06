@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MemoryManager::IsValid — Memory module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a class="current" href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Memory</a> /
+  <a href="index.html">MemoryManager</a> / IsValid
+</p>
+
+<h1><span class="fn">IsValid</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::MemoryManager</span>
+  <span class="tag">Engine/Memory/MemoryManager.h</span>
+  The private range test every public entry runs first — and the nine different things a negative answer causes.
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>#endif
+
+	[[nodiscard]] static bool IsValid(TAllocatorID id)</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+Defined in the class body of <code>Engine/Memory/MemoryManager.h</code> as
+<code>return id &gt;= 0 &amp;&amp; id &lt; MaxNumAllocators;</code>, and marked <code>private</code> — although
+<code>AllocatorScope</code> is a friend and every public entry point in the class calls it, so nothing outside needs to.
+<code>MaxNumAllocators</code> is <code>256</code> and <code>TAllocatorID</code> is <code>int</code>
+(<code>Engine/Memory/AllocatorID.h</code>), so the test is exactly "is this an index into <code>allocators</code>".
+</p>
+
+<div class="note">
+  <strong>It is a second copy of a predicate that already exists at namespace scope.</strong>
+  <code>Engine/Memory/AllocatorID.h</code> declares a free <code>hbe::IsValid(TAllocatorID) noexcept</code> with an
+  identical body. The two agree today because both read the same <code>MaxNumAllocators</code> constant, and they are still
+  two places a future change has to be made — the bound is shared, the test is not. The module page lists the free one among
+  the <a href="../index.html#functions">module functions</a>; this member is what the manager's own code uses.
+</div>
+
+<p>
+What the method does <em>not</em> decide is the interesting half. Every caller runs the same test and then does something
+different with a negative answer, so an out-of-range id produces nine different outcomes depending on which entry point was
+reached:
+</p>
+
+<table>
+  <tr><th>Caller</th><th>Answer to <code>false</code></th></tr>
+  <tr><td><a href="allocate.html">Allocate</a>, <a href="deallocate.html">Deallocate</a></td><td><code>Error</code> log, then <code>id = 0;</code> — the request goes to the system allocator and still succeeds</td></tr>
+  <tr><td><a href="get-allocator-name.html">GetAllocatorName</a></td><td>Returns <code>"Null"</code>, no log</td></tr>
+  <tr><td><a href="get-allocator-proxy.html">GetAllocatorProxy</a></td><td><code>Error</code> log, returns a function-local dummy proxy</td></tr>
+  <tr><td><a href="deregister-allocator.html">DeregisterAllocator</a> (both overloads)</td><td><code>Error</code> log, the slot is left untouched</td></tr>
+  <tr><td><a href="get-allocator-stat.html">GetAllocatorStat</a></td><td><code>Error</code> log, returns a zeroed <code>AllocStats</code></td></tr>
+  <tr><td><a href="report-allocation.html">ReportAllocation</a>, <a href="report-deallocation.html">ReportDeallocation</a>, <a href="report-fallback.html">ReportFallback</a></td><td><code>Error</code> log and, for two of the three, <code>debugBreak()</code> outside Release; the report is dropped</td></tr>
+  <tr><td><a href="set-scoped-allocator-id.html">SetScopedAllocatorID</a></td><td><code>Error</code> log and <code>id = 0;</code> — with one documented exemption, <code>InvalidAllocatorID</code> itself is allowed through</td></tr>
+</table>
+
+<div class="gap">
+  <strong>Being in range is not the same as being registered.</strong>
+  Every slot index from 0 to 255 passes this test, including the ones sitting unused in <code>proxyPool</code> with null
+  function pointers, and including a slot whose registration was <a href="deregister-allocator.html">refused</a> and left
+  nulled. That is why <a href="allocate.html">Allocate</a> follows the range check with
+  <code>Assert(allocProxy.allocate != nullptr, …)</code> rather than trusting it — and why, in Release, where
+  <code>Assert</code> compiles away, a valid-but-unregistered id becomes a call through a null function pointer.
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<table>
+  <tr><th>Parameter</th><th>Type</th><th>Requirement</th></tr>
+  <tr><td><code>id</code></td><td><code>TAllocatorID</code></td><td>Any value. Never throws, never logs, never allocates — a pure range test, safe to call from a diagnostic path.</td></tr>
+</table>
+
+<h2 id="return">Return value</h2>
+
+<table>
+  <tr><th>Type</th><th>What you get</th></tr>
+  <tr><td><code>bool</code></td><td><code>true</code> for <code>0 … 255</code>. <code>InvalidAllocatorID</code> (<code>-1</code>) and everything else negative or above 255 answer <code>false</code>.</td></tr>
+</table>
+
+<h2 id="example">Examples</h2>
+
+<pre><code>const char* MemoryManager::GetAllocatorName(TAllocatorID id) const
+{
+	if (unlikely(!IsValid(id)))
+	{
+		return "Null";
+	}
+	…</code></pre>
+
+<p class="meta">From Engine/Memory/MemoryManager.cpp, MemoryManager::GetAllocatorName()</p>
+
+<p>
+The shape every internal use takes: the check is wrapped in <code>unlikely()</code> (<code>Engine/OSAL/Intrinsic.h</code>), so
+the valid path stays the fall-through, and the branch itself is a policy decision made by the caller rather than by this
+method. The only caller that does not bail out on a negative answer is <a href="allocate.html">Allocate</a>, which substitutes
+<code>0</code> and proceeds — the difference between a guard and a guard that quietly changes the request.
+</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; MemoryManager</a></span>
+  <span><a href="index.html#methods">All MemoryManager methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

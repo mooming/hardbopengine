@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MemoryManager::DeallocateTypes — Memory module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a class="current" href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Memory</a> /
+  <a href="index.html">MemoryManager</a> / DeallocateTypes
+</p>
+
+<h1><span class="fn">DeallocateTypes</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::MemoryManager</span>
+  <span class="tag">Engine/Memory/MemoryManager.h</span>
+  Turns an element count back into the byte count and releases it — running no destructor on the way.
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>template &lt;typename T&gt;
+	void DeallocateTypes(T* ptr, size_t n)</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+Defined in the class body of <code>Engine/Memory/MemoryManager.h</code>, and the exact counterpart of
+<a href="allocate-by-type.html">AllocateByType</a>: it recomputes <code>n * sizeof(T)</code>, re-reads
+<a href="get-scoped-allocator-id.html">this thread's scoped id</a>, and hands both to
+<a href="deallocate.html">Deallocate</a>.
+</p>
+
+<pre><code>const auto nBytes = n * sizeof(T);
+Deallocate(GetScopedAllocatorID(), static_cast&lt;void*&gt;(ptr), nBytes);</code></pre>
+
+<p class="meta">From Engine/Memory/MemoryManager.h, MemoryManager::DeallocateTypes()</p>
+
+<p>
+It does not destruct anything. The name says <em>types</em>, but what the template argument does is turn an element count back into
+the byte count the block was taken with, so the release arrives with the size the allocator expects. Destructors are the job of
+<a href="delete.html">Delete</a> and <a href="delete-array.html">DeleteArray</a>, which call this after running them.
+</p>
+
+<div class="gap">
+  <p>
+  <strong>Both halves re-read the scope independently, so a moved scope misroutes the block.</strong>
+  <a href="allocate-by-type.html">AllocateByType</a> and <code>DeallocateTypes</code> each call
+  <a href="get-scoped-allocator-id.html">GetScopedAllocatorID</a> at the moment they run. Storage taken inside one
+  <code>AllocatorScope</code> and released outside it is dispatched to whatever allocator is current at release — which is not an
+  error the manager can detect (<a href="deallocate.html">Deallocate</a> has no record of who gave out what), and not one the
+  allocator is likely to survive quietly. The correct shape, used by the engine's STL adapter, is to open the scope around each
+  call so the pair cannot diverge:
+  </p>
+</div>
+
+<pre><code>AllocatorScope scope(allocatorID);
+auto&amp; mmgr = MemoryManager::GetInstance();
+mmgr.DeallocateTypes(ptr, n);</code></pre>
+
+<p class="meta">From Engine/Memory/DefaultAllocator.h, DefaultAllocator&lt;T&gt;::deallocate()</p>
+
+<div class="note">
+  <strong>The count must be the count it was allocated with.</strong>
+  A pool uses the size to identify the block being returned
+  (<a href="../PoolAllocator/deallocate.html">PoolAllocator::Deallocate</a>), and a mismatch corrupts its free list rather than
+  failing. Nothing here stores an element count with the block — a pointer cannot carry one — so <code>n</code> is pure caller
+  obligation, and that is why the array form takes its count as an argument at all
+  (<a href="delete-array.html">DeleteArray</a>).
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<table>
+  <tr><th>Parameter</th><th>Type</th><th>Requirement</th></tr>
+  <tr><td><code>T</code></td><td><em>template parameter</em></td><td>Element type; only <code>sizeof(T)</code> is used. It must be the type the block was taken with, or the byte count will not match.</td></tr>
+  <tr><td><code>ptr</code></td><td><code>T*</code></td><td>A block from <a href="allocate-by-type.html">AllocateByType</a>. A null pointer is ignored by <a href="deallocate.html">Deallocate</a>, with an assertion that the size was zero too.</td></tr>
+  <tr><td><code>n</code></td><td><code>size_t</code></td><td>Element count — the same value passed to the allocation, and subject to the same unchecked <code>n * sizeof(T)</code>.</td></tr>
+</table>
+
+<h2 id="return">Return value</h2>
+
+<p><code>void</code>. The pointer is not cleared; the caller's copy stays dangling, as it does on every release path in this class.</p>
+
+<h2 id="example">Examples</h2>
+
+<pre><code>void deallocate(T* ptr, std::size_t n) noexcept
+{
+	Assert(ptr != nullptr);
+
+	…
+
+	AllocatorScope scope(allocatorID);
+	auto&amp; mmgr = MemoryManager::GetInstance();
+	mmgr.DeallocateTypes(ptr, n);
+}</code></pre>
+
+<p class="meta">From Engine/Memory/DefaultAllocator.h, DefaultAllocator&lt;T&gt;::deallocate()</p>
+
+<p>
+The one production call site, and the shape worth copying: the id is remembered by the adapter (as a snapshot of
+<a href="get-current-allocator-id.html">the ambient allocator at construction</a>) and re-installed as a scope for both the
+allocation and the release, so a container that outlives the scope it was built in still returns its memory to the right place.
+Inside the class, <a href="delete.html">Delete</a> and <a href="delete-array.html">DeleteArray</a> are the only other callers.
+</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; MemoryManager</a></span>
+  <span><a href="index.html#methods">All MemoryManager methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

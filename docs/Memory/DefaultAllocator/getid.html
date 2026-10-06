@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DefaultAllocator::GetID — Memory module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a class="current" href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Memory</a> /
+  <a href="index.html">DefaultAllocator</a> / GetID
+</p>
+
+<h1><span class="fn">GetID</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::DefaultAllocator</span>
+  <span class="tag">Engine/Memory/DefaultAllocator.h</span>
+  The one member: a borrowed registration id, naming whoever was current on this thread when the object was constructed.
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>[[nodiscard]] auto GetID() const</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  Defined inline in <code>Engine/Memory/DefaultAllocator.h</code> as <code>DefaultAllocator::GetID() const</code>. <code>auto</code>
+  deduces <code>TAllocatorID</code> (<code>int</code>, from <code>Engine/Memory/AllocatorID.h</code>) and the value is the one member
+  the class has. This is the whole state of an allocator instance: no pointer, no capacity, no counter — a number naming somebody
+  else's registration.
+</p>
+
+<pre><code>[[nodiscard]] auto GetID() const
+{
+	return allocatorID;
+}
+
+[[nodiscard]] auto GetSourceAllocatorID() const
+{
+	return allocatorID;
+}</code></pre>
+
+<p class="meta">From Engine/Memory/DefaultAllocator.h, DefaultAllocator::GetID() const and DefaultAllocator::GetSourceAllocatorID() const</p>
+
+<p>
+  The value names whichever allocator was current on the constructing thread — see
+  <a href="constructors.html">the constructor</a> — and it never changes afterwards. The other allocator classes in this module answer
+  the same question about a registration they <em>own</em>: <a href="../PoolAllocator/getid.html"><code>PoolAllocator::GetID</code></a>
+  returns the id its constructor registered and its destructor deregisters. Here the id is borrowed: this object neither registered it,
+  nor can it tell whether the registration is still alive.
+</p>
+
+<div class="note">
+  <strong>What the number is worth after the allocator it names dies.</strong>
+  <code>MemoryManager::DeregisterAllocator</code> clears the proxy's function pointers and returns the slot to
+  <code>proxyPool</code>, so the integer this function returns keeps pointing at a slot rather than at the allocator that occupied it —
+  and <code>MemoryManager::RegisterAllocator</code> pops from that same pool, which means a later registration can occupy the number.
+  Nothing here detects that; <a href="operator-equal.html">operator==</a> will happily call two allocators equal because they hold the
+  same stale number.
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<p>None.</p>
+
+<h2 id="return">Return value</h2>
+
+<table>
+  <tr><th>Type</th><th>What you get</th></tr>
+  <tr><td><code>auto</code> → <code>TAllocatorID</code></td><td>The recorded registration id, by value — identical to <a href="getsourceallocatorid.html">GetSourceAllocatorID</a>. It is <code>MemoryManager::SystemAllocatorID</code> (0) whenever the object was constructed with no <a href="../index.html#allocatorscope"><code>AllocatorScope</code></a> open, which is what sends <a href="allocate.html">allocate</a> down its <code>malloc</code> fast path.</td></tr>
+</table>
+
+<h2 id="example">Examples</h2>
+
+<p class="note">Illustrative — no engine call site asks a <code>DefaultAllocator</code> for its id; the containers that hold one use it as an opaque member and the class's own <a href="allocate.html">allocate</a> reads the member directly rather than this function.</p>
+
+<pre><code>PoolAllocator alloc("MyPool", 64, 128);
+{
+	AllocatorScope scope(alloc);
+
+	std::vector&lt;int, DefaultAllocator&lt;int&gt;&gt; v;
+	// v.get_allocator().GetID() == alloc.GetID(): the scope that was open when v was built.
+}</code></pre>
+
+<p>
+  The reason the accessor exists at all is the template constructor in <code>Engine/Memory/AllocatorScope.h</code>, which accepts any
+  object exposing <code>GetID()</code> — the shape that lets one line, <code>AllocatorScope scope(allocator);</code>, work for a pool, an
+  arena, or an adapter holding a borrowed id.
+</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; DefaultAllocator</a></span>
+  <span><a href="index.html#methods">All DefaultAllocator methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

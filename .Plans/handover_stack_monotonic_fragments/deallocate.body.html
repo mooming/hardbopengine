@@ -1,0 +1,140 @@
+<h2 id="signature">Signature</h2>
+
+<pre><code>void Deallocate(Pointer ptr, SizeType size) noexcept</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  Defined in <code>Engine/Memory/StackAllocator.cpp</code> as
+  <code>StackAllocator::Deallocate(Pointer ptr, const SizeType requested) noexcept</code>. Individual deallocation is legal on this
+  allocator — that is the whole difference between it and a
+  <a href="../MonotonicAllocator/index.html">monotonic allocator</a> — but it is legal in exactly one shape: the block must be the
+  current top of the stack, and the byte count must round up to what the block was charged. Anything else is reported, not repaired.
+</p>
+
+<pre><code>if (unlikely(!IsMine(ptr)))
+{
+	mmgr.Deallocate(parentID, ptr, requested);
+
+	return;
+}
+
+SizeType size = requested;
+{
+	constexpr auto AlignUnit = Config::DefaultAlign;
+	const auto multiplier = (size + AlignUnit - 1) / AlignUnit;
+	size = multiplier * AlignUnit;
+}
+
+Assert(cursor &gt;= size);
+
+auto expected = buffer + cursor;
+auto provided = static_cast&lt;Byte*&gt;(ptr) + size;
+if (unlikely(expected != provided))
+{
+	mmgr.LogError(/* names ptr, the expected address and the provided one */);
+
+	Assert(false);
+
+	return;
+}
+
+cursor -= size;</code></pre>
+
+<p class="meta">From Engine/Memory/StackAllocator.cpp, StackAllocator::Deallocate(Pointer ptr, const SizeType requested) noexcept</p>
+
+<p>
+  The byte count is a parameter rather than a lookup because the stack stores nothing per block: no header, no footer, no record of
+  what <a href="allocate.html">Allocate</a> handed out. The size pairing is tolerant within one alignment unit — allocate 20 bytes
+  (charged 32), release with 17 (rounds to 32), and the comparison matches — because the same rounding is applied here that was
+  applied there.
+</p>
+
+<div class="gap">
+  <strong>Out-of-order release is a logged, asserted failure that leaks silently in a Release build.</strong>
+  On a mismatch the function logs an error naming the pointer it was given and the address it expected, calls
+  <code>Assert(false)</code>, and returns with the cursor exactly where it was — so those bytes stay charged and stay unreachable
+  until <a href="destructor.html">the destructor</a> drops the whole buffer. In <code>Debug</code> and <code>Dev</code> that assert
+  aborts the process (<code>hbe::Assert</code> in <code>Engine/Core/Debug.h</code> calls <code>std::abort()</code>). In
+  <code>Release</code> the same name resolves to an empty inline function, and the log line behind it is not printed either:
+  <code>MemoryManager::LogError</code> forwards to <code>MemoryManager::Log</code>, whose entire body sits inside
+  <code>#if MEMORY_LOGGING_ENABLED</code>, and <code>Engine/Config/BuildConfig.h</code> defines that as 0. A wrong-order release in a
+  shipped build therefore strands its bytes with no trace at all. See <a href="index.html#coverage">Coverage</a> for the one part of
+  that claim no test demonstrates.
+</div>
+
+<div class="gap">
+  <strong>A stale handle to a reused offset can rewind a block that is still in use.</strong>
+  Nothing in this class can detect a double release. Allocate a block, release it, allocate again — the next
+  <a href="allocate.html">Allocate</a> returns the very same address at the very same offset, because the cursor rewound. Now release
+  the stale handle a second time: <a href="ismine.html">IsMine</a> says true, <code>Assert(cursor &gt;= size)</code> holds, and
+  <code>buffer + cursor == stalePtr + size</code> matches, so the cursor rewinds again and the live block is handed back to the
+  allocator while its holder is still using it. There is no block header and no generation counter, so no check exists that could
+  catch this. Derived from the code above; no testlet in <code>Engine/Memory/StackAllocator.cpp</code> performs it, so it is named as
+  a hazard rather than documented as observed behaviour.
+</div>
+
+<div class="note">
+  <strong>A pointer that is not yours is forwarded — with the number you gave, not the rounded one.</strong>
+  The first branch sends a foreign pointer to <code>mmgr.Deallocate(parentID, ptr, requested)</code>. That is the correct route for a
+  block that came from the parent through <a href="allocate.html">Allocate</a>'s overflow path, and it is the reason a caller may
+  release every allocation it got from this object the same way regardless of which buffer it landed in. Note the asymmetry: the
+  parent is charged back the <em>requested</em> count, which is the count the parent was originally given — while a block that
+  really lives in this buffer is judged against the <em>rounded</em> count. A pointer that is not yours and was also not the parent's
+  is forwarded anyway, and nothing in the manager's release path detects that
+  (<code>MemoryManager::Deallocate(TId id, void* ptr, size_t nBytes)</code> checks id validity only).
+</div>
+
+<div class="note">
+  <strong>A null pointer is not "not mine" in a harmless way.</strong>
+  <a href="ismine.html">IsMine</a>() compares against the buffer, so <code>nullptr</code> is below it and is treated as foreign,
+  which lands in <code>MemoryManager::Deallocate(TId id, void* ptr, size_t nBytes)</code> — whose first act is
+  <code>if (unlikely(ptr == nullptr)) { Assert(nBytes == 0); return; }</code>. Releasing null with a non-zero byte count therefore
+  asserts in <code>Debug</code> and <code>Dev</code>; with <code>0</code> it is a clean no-op. Contrast
+  <a href="../PoolAllocator/deallocate.html"><code>PoolAllocator::Deallocate</code></a>, which discards null silently before any
+  dispatch.
+</div>
+
+<div class="note">
+  <strong>What a rewind does to the rest of the stack.</strong>
+  On a match the only effect is <code>cursor -= size</code>. Bytes below the released block keep their addresses and stay valid; the
+  released address becomes immediately reusable by the next <a href="allocate.html">Allocate</a>; and nothing clears or poisons the
+  released memory first, so a pointer into a block you have released still reads the old bytes. That last property is what makes the
+  stale-handle hazard above silent even in a checked build until someone writes through the wrong pointer.
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<table>
+  <tr><th>Parameter</th><th>Type</th><th>Requirement</th></tr>
+  <tr><td><code>ptr</code></td><td><code>Pointer</code></td><td>An address this allocator returned, or a foreign address that should reach <code>parentID</code>. For a rewind it must be the most recent block not yet released.</td></tr>
+  <tr><td><code>size</code></td><td><code>SizeType</code></td><td>The block's byte count. Rounded up to a multiple of <code>Config::DefaultAlign</code> (16) and then used both for the <code>cursor &gt;= size</code> check and for the top-of-stack comparison, so it must round to the value <a href="allocate.html">Allocate</a> charged.</td></tr>
+</table>
+
+<h2 id="return">Return value</h2>
+
+<p>
+  Nothing. The function is <code>noexcept</code> and has no result: the only signal a caller gets for a release that did not happen
+  is an assertion (checked builds) or a log line this configuration never prints. Whether the bytes actually returned is observable
+  from outside only through <a href="getusage.html">GetUsage</a>().
+</p>
+
+<h2 id="example">Examples</h2>
+
+<pre><code>auto deallocFunc = [](void* allocatorPtr, void* ptr, size_t size)
+{
+	auto allocator = static_cast&lt;StackAllocator*&gt;(allocatorPtr);
+	allocator-&gt;Deallocate(ptr, size);
+};</code></pre>
+
+<p class="meta">From Engine/Memory/StackAllocator.cpp, StackAllocator::StackAllocator()</p>
+
+<p>
+  No engine or application source calls <code>Deallocate</code> on a stack allocator by name; this lambda, handed to
+  <code>MemoryManager::RegisterAllocator</code>, is the call site. Anything releasing under an
+  <a href="../index.html#allocatorscope"><code>AllocatorScope</code></a> over <a href="getid.html">GetID</a>() reaches this function
+  through the manager's proxy dispatch — which is how the testlets in <code>Engine/Memory/StackAllocator.cpp</code> drive a
+  <code>String</code> destructor into a cursor rewind and then assert <code>stack.GetUsage() == 0</code>. Because every one of those
+  testlets allocates and releases in strictly nested order through one container at a time, the mismatch branch this page documents
+  most heavily is never executed by them.
+</p>

@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>StackAllocator::GetSize — Memory module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a class="current" href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Memory</a> /
+  <a href="index.html">StackAllocator</a> / GetSize
+</p>
+
+<h1><span class="fn">GetSize</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::StackAllocator</span>
+  <span class="tag">Engine/Memory/StackAllocator.h</span>
+  <span class="tag">static</span>
+  Always answers 0: a stack cannot recover a block's size from a bare pointer, and says so by returning zero.
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>#endif
+
+public:
+
+	static size_t GetSize(Pointer)</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  Declared and defined entirely in the class body of <code>Engine/Memory/StackAllocator.h</code>. It names no parameter, ignores the
+  one it is given, and answers <code>0</code>. The header writes "Not Supported" above it — the only remaining trace of the
+  explanation this page exists to replace.
+</p>
+
+<pre><code>static size_t GetSize(Pointer)
+{
+	return 0;
+}</code></pre>
+
+<p class="meta">From Engine/Memory/StackAllocator.h, class StackAllocator</p>
+
+<p>
+  The answer is a consequence of the representation, not an oversight. A stack records nothing per block:
+  <a href="allocate.html">Allocate</a> moves <code>cursor</code> and stores no size, no header and no footer, so no information
+  recoverable from a bare <code>Pointer</code> exists to be reported. That is exactly why <a href="deallocate.html">Deallocate</a>
+  demands the byte count as a parameter — the caller is the only place that number survives.
+</p>
+
+<div class="gap">
+  <strong>The stub is indistinguishable from a real answer, and there is no way to tell it is a stub.</strong>
+  The return type is <code>size_t</code> and the failure value is <code>0</code>, the same value a caller would receive for a block
+  of zero bytes. A caller that treats <code>GetSize(ptr) == 0</code> as "this block is empty" or as "the allocator does not know"
+  has read a meaning into the number that the function never claimed to carry. Compare
+  <a href="../PoolAllocator/getsize.html"><code>PoolAllocator::GetSize</code></a>, which answers the real block size from the pool's
+  geometry and is <code>[[nodiscard]]</code>; this one is neither.
+</div>
+
+<div class="note">
+  <strong>It is <code>static</code>, so it answers the same for every stack and needs no object.</strong>
+  No instance is required to call it, which is a clue to its content: nothing here reads <code>buffer</code>, <code>capacity</code>,
+  <code>cursor</code> or the registration id. It is present because allocator-shaped classes in this module carry a
+  <code>GetSize</code>, not because a stack can answer the question.
+</div>
+
+<div class="note">
+  <strong>No caller in the tree.</strong>
+  The only allocator <code>GetSize</code> call site in the repository is
+  <code>PoolAllocatorTest::Prepare()</code> in <code>Engine/Memory/PoolAllocator.cpp</code>, asking a
+  <a href="../PoolAllocator/index.html"><code>PoolAllocator</code></a>. Whether this function exists to satisfy a future common
+  allocator interface or is simply inherited habit is not recorded anywhere in the source; see
+  <a href="index.html#coverage">Coverage</a>.
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<table>
+  <tr><th>Parameter</th><th>Type</th><th>Requirement</th></tr>
+  <tr><td><em>(unnamed)</em></td><td><code>Pointer</code></td><td>Ignored. Any value — including a null pointer or an address this allocator never returned — produces the same answer.</td></tr>
+</table>
+
+<h2 id="return">Return value</h2>
+
+<table>
+  <tr><th>Type</th><th>What you get</th></tr>
+  <tr><td><code>size_t</code></td><td><code>0</code>, always. Not the block's size, not a capacity, not an error code.</td></tr>
+</table>
+
+<h2 id="example">Examples</h2>
+
+<pre><code>auto size = pool.GetSize(ptr);</code></pre>
+
+<p class="meta">From Engine/Memory/PoolAllocator.cpp, PoolAllocatorTest::Prepare()</p>
+
+<p>
+  That is the whole record of <code>GetSize</code> being called on any allocator in this engine, and its receiver is a pool. No code
+  asks a <code>StackAllocator</code> — not the engine, not the applications, and not the class's own testlets in
+  <code>Engine/Memory/StackAllocator.cpp</code>. A caller who needs a block's size has to keep the number it passed to
+  <a href="allocate.html">Allocate</a>.
+</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; StackAllocator</a></span>
+  <span><a href="index.html#methods">All StackAllocator methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

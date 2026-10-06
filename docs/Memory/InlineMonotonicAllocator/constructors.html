@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>InlineMonotonicAllocator::InlineMonotonicAllocator — Memory module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a class="current" href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Memory</a> /
+  <a href="index.html">InlineMonotonicAllocator</a> / InlineMonotonicAllocator
+</p>
+
+<h1><span class="fn">InlineMonotonicAllocator</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::InlineMonotonicAllocator</span>
+  <span class="tag">Engine/Memory/InlineMonotonicAllocator.h</span>
+  Aligns, touches the arena, records the parent allocator, and registers this address with the MemoryManager.
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>explicit InlineMonotonicAllocator(const char* name)
+		: id(InvalidAllocatorID)
+		, parentID(InvalidAllocatorID)
+		, cursor(0)
+		, buffer</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  Defined inline in <code>Engine/Memory/InlineMonotonicAllocator.h</code> as
+  <code>InlineMonotonicAllocator::InlineMonotonicAllocator(const char* name)</code>. It is the only constructor, and it is
+  <code>explicit</code>: there is no conversion from a name to an allocator.
+</p>
+
+<p>What it does, in the order the source writes it:</p>
+
+<pre><code>Assert(OS::CheckAligned(buffer));
+buffer[0] = 0;
+
+parentID = hbe::MemoryManager::GetCurrentAllocatorID();
+auto&amp; mmgr = MemoryManager::GetInstance();
+id = mmgr.RegisterAllocator(this, name, true, Capacity, allocFunc, deallocFunc);</code></pre>
+
+<p class="meta">From Engine/Memory/InlineMonotonicAllocator.h, InlineMonotonicAllocator::InlineMonotonicAllocator(const char* name)</p>
+
+<ol>
+  <li>
+    <p>
+      It asserts the arena is aligned to <code>Config::DefaultAlign</code>. The assert exists because the alignment is a layout
+      property the caller can break: <code>HE_ALIGN</code> makes the whole object 16-aligned, and the three members ahead of
+      <code>buffer</code> fill exactly 16 bytes, so a placement construction into an under-aligned address is the one way to arrive
+      here misaligned. In Debug and Dev that aborts; in Release <code>Assert</code> is an empty inline function
+      (<code>Engine/Core/Debug.h</code>) and the misalignment is simply kept.
+    </p>
+  </li>
+  <li>
+    <p>
+      It writes <code>buffer[0] = 0;</code> — unconditionally, before any size test. That single statement is why
+      <code>Capacity</code> must be at least 1, and it is also what first touches the arena: for a stack-resident object this is where
+      the pages are committed.
+    </p>
+  </li>
+  <li>
+    <p>
+      It records <code>parentID</code> as the allocator current on this thread
+      (<code>MemoryManager::GetCurrentAllocatorID()</code>, which reads the thread-local
+      <code>scopedAllocatorID</code> and needs no <code>MemoryManager</code> instance). Everything
+      <a href="allocate.html">Allocate</a> cannot hold and <a href="deallocate.html">Deallocate</a> does not own goes to this recorded
+      id, never to whatever scope happens to be open later.
+    </p>
+  </li>
+  <li>
+    <p>
+      It registers the object: <code>RegisterAllocator(this, name, true, Capacity, allocFunc, deallocFunc)</code>, where
+      <code>allocFunc</code> and <code>deallocFunc</code> are non-capturing lambdas converted to the plain function-pointer types
+      <a href="../index.html#allocatorproxy"><code>AllocatorProxy</code></a> holds, and the first argument those functions receive is the
+      stored <code>this</code>. The registration therefore names <em>this object's address</em>, not its id: a copy of a constructed
+      allocator is unreachable through the manager, and routed allocations keep mutating the original.
+    </p>
+  </li>
+</ol>
+
+<div class="gap">
+  <strong>A live <code>MemoryManager</code> is a hard precondition.</strong>
+  <code>MemoryManager::GetInstance()</code> is <code>FatalAssert(mmgrInstance != nullptr)</code> followed by a dereference, and
+  <code>FatalAssert</code> is live in every configuration, not only in Debug and Dev. An arena constructed before the manager exists —
+  a namespace-scope object, or any static initialised before <code>Engine</code> builds the manager — aborts the process in this line
+  rather than failing quietly.
+</div>
+
+<div class="gap">
+  <strong>A failed registration is not detected.</strong>
+  <code>RegisterAllocator</code> returns <code>InvalidAllocatorID</code> after a <code>FatalError</code> log when the proxy pool is
+  empty (the table holds <code>MaxNumAllocators</code> = 256 slots). The constructor stores that value in <code>id</code> without testing
+  it, so the object still works as a bump allocator through its members while every routed path
+  (<a href="getid.html">GetID</a> into an <a href="../index.html#allocatorscope"><code>AllocatorScope</code></a>, or
+  <code>MemoryManager::Allocate(id, n)</code>) reaches the manager's invalid-id branch. The same shape of unchecked failure is recorded
+  for <a href="../PoolAllocator/constructors.html">PoolAllocator</a>.
+</div>
+
+<div class="note">
+  <strong>The name is decoration in this tree.</strong> <code>RegisterAllocator</code> substitutes <code>"None"</code> for a null
+  <code>name</code> and stores the string in <code>AllocStats</code> only under <code>PROFILE_ENABLED</code>, which
+  <code>Engine/Config/BuildConfig.h</code> sets to 0. Pass a real name anyway: it is what the registration and deregistration log lines
+  print, and those lines exist only when <code>MEMORY_LOGGING_ENABLED</code> is raised from its 0 here.
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<table>
+  <tr><th>Parameter</th><th>Type</th><th>Requirement</th></tr>
+  <tr><td><code>name</code></td><td><code>const char*</code></td><td>A label for the registration. Not copied by this class; the manager keeps it only under <code>PROFILE_ENABLED</code>. Null is accepted and becomes <code>"None"</code>.</td></tr>
+</table>
+
+<h2 id="return">Return value</h2>
+
+<p>None — this is a constructor.</p>
+
+<h2 id="example">Examples</h2>
+
+<pre><code>using Allocator = InlineMonotonicAllocator&lt;2048&gt;;
+
+Allocator alloc("InlineMonotonicAllocator");
+{
+	AllocatorScope scope(alloc.GetID());
+	…
+}</code></pre>
+
+<p class="meta">From Engine/Memory/InlineMonotonicAllocator.cpp, InlineMonotonicAllocatorTest::Prepare()</p>
+
+<p>
+  The capacity is a compile-time constant of the call site, and the object is constructed as a local so the arena lives and dies with the
+  block. Those two facts are the whole safe usage: nothing in the repository stores an arena in a heap object or passes one across a
+  function by value, which is also why the copy behaviour described on
+  <a href="index.html">the class page</a> has never executed here.
+</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; InlineMonotonicAllocator</a></span>
+  <span><a href="index.html#methods">All InlineMonotonicAllocator methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

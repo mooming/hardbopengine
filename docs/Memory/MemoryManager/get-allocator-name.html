@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MemoryManager::GetAllocatorName — Memory module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a class="current" href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Memory</a> /
+  <a href="index.html">MemoryManager</a> / GetAllocatorName
+</p>
+
+<h1><span class="fn">GetAllocatorName</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::MemoryManager</span>
+  <span class="tag">Engine/Memory/MemoryManager.h</span>
+  Three different answers, only one of them a name — and in this tree every valid id answers "Unknown".
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>const char* GetAllocatorName(TAllocatorID id) const</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+Defined in <code>Engine/Memory/MemoryManager.cpp</code> as <code>MemoryManager::GetAllocatorName()</code>. It answers in
+three different ways and only one of them is a name, so the first thing a caller must know is which question the answer
+is responding to.
+</p>
+
+<table>
+  <tr><th>Condition</th><th>Answer</th><th>What it actually means</th></tr>
+  <tr><td><code>id</code> fails <a href="is-valid.html">IsValid</a> (the <code>unlikely</code> fast-out)</td><td><code>"Null"</code></td><td>The id was never registrable: <code>InvalidAllocatorID</code>, a negative value, or <code>&gt;= MaxNumAllocators</code>.</td></tr>
+  <tr><td><code>PROFILE_ENABLED</code> on</td><td><code>allocators[id].stats.name</code></td><td>The name that <a href="register-allocator.html">RegisterAllocator</a> was given, interned by <code>AllocStats::OnRegister</code>; <code>"None"</code> if a null name was passed.</td></tr>
+  <tr><td><code>PROFILE_ENABLED</code> off</td><td><code>"Unknown"</code></td><td>Names are not stored at all in this configuration — the <code>AllocStats</code> member that holds them is compiled out of <code>AllocatorProxy</code>.</td></tr>
+</table>
+
+<p>
+<code>"Null"</code> and <code>"Unknown"</code> are two different facts and must not be collapsed into one "no name" case
+by a caller: the first says the id is out of range, the second says the id may be perfectly good and this build simply
+does not record what it is called. <code>Engine/Config/BuildConfig.h</code> sets <code>PROFILE_ENABLED</code> to
+<code>0</code> with no per-configuration override, so <strong>every build of this repository answers
+<code>"Unknown"</code> for every valid id</strong> — including the log lines in
+<code>Engine/Memory/MonotonicAllocator.cpp</code>, <code>MonotonicAllocator::Deallocate()</code> and
+<code>Engine/Memory/InlineMonotonicAllocator.h</code>, <code>InlineMonotonicAllocator::Allocate()</code> that call this
+specifically to label themselves.
+</p>
+
+<div class="note">
+  <strong>The pointer comes from the intern table, not from the proxy.</strong>
+  <code>AllocStats::OnRegister</code> stores the name as <code>StaticString(name)</code>, and
+  <code>Engine/String/StaticString.h</code> documents that type as an interned string holding only a
+  <code>StaticStringID</code>; the implicit <code>operator const char*()</code> is what lets the body return
+  <code>stats.name</code> directly. So the returned text is not storage owned by the registration slot, and it does not
+  die the moment the slot is recycled. Whether an interned entry is ever released is a question for the String module,
+  recorded as an omission here rather than answered.
+</div>
+
+<div class="note">
+  <strong>This read is not covered by <code>statsLock</code>.</strong>
+  The body indexes <code>allocators[id].stats.name</code> with no lock held, while the paths that write a name —
+  <a href="register-allocator.html">RegisterAllocator</a> and the <code>stats.Reset()</code> inside
+  <a href="deregister-allocator.html">DeregisterAllocator</a> — take the lock. The page states both facts and draws no
+  conclusion; the class-wide question of what the lock is required to protect is named in
+  <a href="index.html#coverage">Coverage</a>, and the same asymmetry is catalogued for the writer side on
+  <a href="acquire-stats-lock.html">AcquireStatsLock</a>.
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<table>
+  <tr><th>Parameter</th><th>Type</th><th>Requirement</th></tr>
+  <tr><td><code>id</code></td><td><code>TAllocatorID</code></td><td>Any value at all — this getter never rejects one, it changes its answer instead. Pass the id from <a href="register-allocator.html">RegisterAllocator</a> or from an allocator's <code>GetID()</code>.</td></tr>
+</table>
+
+<h2 id="return">Return value</h2>
+
+<table>
+  <tr><th>Type</th><th>What you get</th></tr>
+  <tr><td><code>const char*</code></td><td>Either <code>"Null"</code>, <code>"Unknown"</code> or the registered name, per the table above. Never null, so a caller can print it unconditionally — but printing it in a build of this tree tells the reader nothing about which allocator produced a log line.</td></tr>
+</table>
+
+<h2 id="example">Examples</h2>
+
+<pre><code>#if MEMORY_LOGGING_ENABLED
+	mmgr.Log(ELogLevel::Verbose, [this, &amp;mmgr, ptr, requested](auto&amp; lout)
+	{
+		lout &lt;&lt; mmgr.GetAllocatorName(id) &lt;&lt; '[' &lt;&lt; static_cast&lt;int&gt;(GetID())
+			 &lt;&lt; "] Deallocate call shall be ignored. ptr = " &lt;&lt; static_cast&lt;void*&gt;(ptr)
+			 &lt;&lt; ", requested size = " &lt;&lt; requested;
+	});
+#endif // MEMORY_LOGGING_ENABLED</code></pre>
+
+<p class="meta">From Engine/Memory/MonotonicAllocator.cpp, MonotonicAllocator::Deallocate()</p>
+
+<p>
+The shape every call site uses: label a diagnostic with the allocator that was actually asked — here a buffer that
+does not belong to this pool, whose release is about to be dropped. Note what this makes dependent on a build flag:
+the message's identity, not its correctness. The whole call site sits behind
+<code>MEMORY_LOGGING_ENABLED</code>, and even where that is on,
+<a href="is-log-enabled.html">IsLogEnabled</a> decides whether the lambda runs.
+</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; MemoryManager</a></span>
+  <span><a href="index.html#methods">All MemoryManager methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

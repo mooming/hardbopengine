@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MemoryManager::SysDeallocate — Memory module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a class="current" href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Memory</a> /
+  <a href="index.html">MemoryManager</a> / SysDeallocate
+</p>
+
+<h1><span class="fn">SysDeallocate</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::MemoryManager</span>
+  <span class="tag">Engine/Memory/MemoryManager.h</span>
+  The matching release for SysAllocate — a null function pointer drops it silently, it does not crash.
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>void SysDeallocate(void* ptr, size_t nBytes)</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+Defined in <code>Engine/Memory/MemoryManager.cpp</code> as <code>MemoryManager::SysDeallocate()</code>, the release half of
+<a href="sys-allocate.html">SysAllocate</a>. It indexes slot 0 by name, checks the function pointer and calls through it with
+the proxy slot as userData — the same shape as the allocation side, and the same reason that is harmless here
+(<a href="register-system-allocator.html">RegisterSystemAllocator</a>'s lambdas ignore their first argument).
+</p>
+
+<pre><code>auto&amp; allocator = allocators[SystemAllocatorID];
+if (unlikely(allocator.deallocate == nullptr))
+{
+	Log(ELogLevel::FatalError, ...);
+
+	return;
+}
+
+allocator.deallocate(&amp;allocator, ptr, nBytes);</code></pre>
+
+<p class="meta">From Engine/Memory/MemoryManager.cpp, MemoryManager::SysDeallocate()</p>
+
+<div class="gap">
+  <strong>A null function pointer turns a release into a silent leak.</strong>
+  Where <a href="deallocate.html">Deallocate</a> asserts on a null deallocate function, this path logs at
+  <code>FatalError</code> and returns: the block is never freed and nothing else reports it. That is reachable exactly when
+  slot 0 has been cleared — after <a href="deregister-system-allocator.html">DeregisterSystemAllocator</a> at shutdown, or
+  after a <a href="deregister-allocator.html">refused deregistration</a> nulled the pointers — and it is the reason
+  <a href="destructor.html">~MemoryManager</a>'s teardown order matters for anything that frees late.
+</div>
+
+<div class="note">
+  <strong>The size argument is nearly advisory on this path.</strong>
+  It travels down to <code>SystemAllocator::deallocate()</code> (<code>Engine/Memory/SystemAllocator.h</code>), which under
+  <code>PROFILE_ENABLED</code> reports <code>OS::GetAllocSize(ptr)</code> instead of it, under
+  <code>MEMORY_VERIFICATION_ENABLED</code> asserts <code>nBytes &lt;= allocated</code>, and otherwise hands the pointer to
+  <code>free()</code>, which ignores size entirely. Contrast the pool paths, where the size is what makes a release
+  addressable at all (<a href="../PoolAllocator/deallocate.html">PoolAllocator::Deallocate</a>).
+</div>
+
+<div class="note">
+  <strong>A null pointer is not filtered here.</strong>
+  <a href="deallocate.html">Deallocate</a> returns early on a null block and asserts that its size was zero too; this method
+  passes it down, where <code>SystemAllocator::deallocate()</code> carries the <code>Assert(ptr != nullptr)</code> — a trap in
+  Debug and Dev, and a harmless <code>free(nullptr)</code> in Release, where <code>Assert</code> is compiled away
+  (<code>Engine/Core/Debug.h</code>).
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<table>
+  <tr><th>Parameter</th><th>Type</th><th>Requirement</th></tr>
+  <tr><td><code>ptr</code></td><td><code>void*</code></td><td>A pointer obtained from <a href="sys-allocate.html">SysAllocate</a>. A block from anywhere else — an <a href="allocate.html">Allocate</a>d buffer, a <code>new</code>ed object — must not be released here.</td></tr>
+  <tr><td><code>nBytes</code></td><td><code>size_t</code></td><td>The size the block was requested with. Used for verification and profiling, not for the release itself on the default path.</td></tr>
+</table>
+
+<h2 id="return">Return value</h2>
+
+<p><code>void</code>. A dropped release is reported in the log and nowhere else.</p>
+
+<h2 id="example">Examples</h2>
+
+<pre><code>LogLine::~LogLine() noexcept
+{
+	if (likely(!isLong))
+		return;
+
+	Assert(longText != nullptr);
+	auto&amp; mmgr = MemoryManager::GetInstance();
+	mmgr.SysDeallocate(longText, longTextSize);
+}</code></pre>
+
+<p class="meta">From Engine/Log/LogLine.cpp, LogLine::~LogLine()</p>
+
+<p>
+The matching release of the only external use of this pair. Note that it reaches the manager through
+<a href="get-instance.html">GetInstance</a> rather than the <code>Engine&amp;</code> the constructor used, so a log record
+destroyed after the engine's members are gone becomes an abort in the getter rather than a call into a dead manager.
+</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; MemoryManager</a></span>
+  <span><a href="index.html#methods">All MemoryManager methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

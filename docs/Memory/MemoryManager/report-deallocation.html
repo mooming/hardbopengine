@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MemoryManager::ReportDeallocation — Memory module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a class="current" href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Memory</a> /
+  <a href="index.html">MemoryManager</a> / ReportDeallocation
+</p>
+
+<h1><span class="fn">ReportDeallocation</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::MemoryManager</span>
+  <span class="tag">Engine/Memory/MemoryManager.h</span>
+  The mirror, and the only place a size mismatch between the two halves is caught — then subtracted anyway.
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>void ReportDeallocation(TId id, void* ptr, size_t requested, size_t allocated)</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+Defined in <code>Engine/Memory/MemoryManager.cpp</code> as <code>MemoryManager::ReportDeallocation()</code>, the mirror of
+<a href="report-allocation.html">ReportAllocation</a>: allocators call it after releasing a block, and it is the only place
+in the module where a mismatch between the two halves of a transaction is caught. The whole body is inside
+<code>#if PROFILE_ENABLED</code>, so a build of this repository links an empty function.
+</p>
+
+<p>
+Where the mirror is not exact, it matters:
+</p>
+
+<table>
+  <tr><th>Aspect</th><th><a href="report-allocation.html">ReportAllocation</a></th><th>ReportDeallocation</th></tr>
+  <tr><td>Invalid id</td><td><code>Error</code> log, <code>debugBreak()</code> outside Release, drop</td><td><code>Error</code> log, drop — <strong>no break</strong></td></tr>
+  <tr><td>Locking</td><td>One nested scope inside a lambda; the diagnostics and log run after it closes</td><td>One <code>std::lock_guard</code> for the entire body — the <code>SystemStatistics</code> call <em>and</em> the log line are emitted with <code>statsLock</code> held</td></tr>
+  <tr><td>Threshold check</td><td>usage over capacity → fatal log and <code>return</code></td><td>usage under the amount being released → error log, <strong>and then the subtraction runs anyway</strong></td></tr>
+</table>
+
+<div class="gap">
+  <strong>A size mismatch wraps the per-allocator figure while the engine total is protected.</strong>
+  The body tests <code>stats.usage &lt; allocated</code>, logs <code>"Incorrect Memory usage"</code> and breaks outside
+  Release — and then executes <code>stats.usage -= allocated;</code> regardless, on an unsigned type. The identical test
+  against the engine-wide record does <code>return</code> before subtracting. So one bad pair corrupts that allocator's
+  <code>usage</code> into a huge value, which then trips the capacity check on the next
+  <a href="report-allocation.html">ReportAllocation</a> for the same id. The rule a caller must take from this:
+  <code>allocated</code> has to be exactly the value passed for the same block, which is why the multi-pool passes
+  <code>bank.GetBlockSize()</code> on both sides rather than the caller's <code>size</code>.
+</div>
+
+<div class="gap">
+  <strong>It logs while holding the statistics lock.</strong>
+  Unlike its sibling, this method's <a href="log.html">Log</a> call and its
+  <code>statistics.ReportSysMemDealloc(allocated)</code> call both sit inside the lock scope opened at the top of the body.
+  Logging inside a held lock is the exact deadlock shape recorded in <code>JOURNAL.md</code> for
+  <a href="../ThreadSafeMultiPoolAllocator/index.html">ThreadSafeMultiPoolAllocator</a> — the logger allocates its buffer
+  from an allocator, and that allocation can ask for a lock this thread already owns. It is invisible in this tree, where
+  the guard removes the body and <a href="is-log-enabled.html">IsLogEnabled</a> is hard-coded false, and it is the reason
+  the registration path deliberately closes its scope before logging.
+</div>
+
+<div class="note">
+  <strong><code>deallocCount</code> moves before the record is checked.</strong>
+  <code>++stats.deallocCount;</code> runs immediately after the per-allocator subtraction, so an allocator's release count
+  includes releases that were later judged invalid at the record level and dropped. The two counts printed together in the
+  <code>Info</code> line are therefore not guaranteed to be a matched pair after a mismatch has been reported.
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<table>
+  <tr><th>Parameter</th><th>Type</th><th>Requirement</th></tr>
+  <tr><td><code>id</code></td><td><code>TId</code></td><td>The releasing allocator's registration id; invalid → <code>Error</code> log and the report is dropped.</td></tr>
+  <tr><td><code>ptr</code></td><td><code>void*</code></td><td>The block being released, for the log line only — never tracked, never validated.</td></tr>
+  <tr><td><code>requested</code></td><td><code>size_t</code></td><td>The caller's original request; appears in the messages, and is <em>not</em> used to update <code>totalRequested</code> (that field belongs to the allocation half alone).</td></tr>
+  <tr><td><code>allocated</code></td><td><code>size_t</code></td><td>Must equal the value reported at allocation. This is the number subtracted, so a mismatch is a corrupted statistic rather than a lost block.</td></tr>
+</table>
+
+<h2 id="return">Return value</h2>
+
+<p><code>void</code>. A detected mismatch is reported and broken on, never propagated to the caller — the release the allocator already performed is not undone.</p>
+
+<h2 id="example">Examples</h2>
+
+<pre><code>bank.Deallocate(ptr, size);
+
+#if PROFILE_ENABLED
+	{
+		auto&amp; mmgr = MemoryManager::GetInstance();
+		mmgr.ReportDeallocation(GetID(), ptr, size, bank.GetBlockSize());
+	}
+#endif // PROFILE_ENABLED</code></pre>
+
+<p class="meta">From Engine/Memory/MultiPoolAllocator.cpp, MultiPoolAllocator::Deallocate()</p>
+
+<p>
+The correct pairing: <code>size</code> is the caller's request and travels in <code>requested</code>, while the bank's
+fixed block size is what both halves report as <code>allocated</code>. The instructive variant is
+<code>MonotonicAllocator::Deallocate()</code>, which reports <code>mmgr.ReportDeallocation(id, ptr, requested, 0);</code>
+— a monotonic release returns no capacity, so <code>allocated</code> is zero and the usage figure deliberately keeps
+climbing until <code>MonotonicAllocator::~MonotonicAllocator()</code> releases the whole cursor in one report
+(<code>mmgr.ReportDeallocation(id, bufferPtr, 0, cursor);</code>). Any pairing that mixes the two conventions corrupts the
+statistics as described above.
+</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; MemoryManager</a></span>
+  <span><a href="index.html#methods">All MemoryManager methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>
