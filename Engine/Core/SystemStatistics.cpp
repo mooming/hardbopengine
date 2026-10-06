@@ -50,12 +50,12 @@ void SystemStatistics::UpdateCurrentTime() noexcept
 }
 
 #if PROFILE_ENABLED
-void SystemStatistics::Report(const AllocStats& stats)
+void SystemStatistics::Report(const AllocStats& stats) noexcept
 {
 	allocStats.emplace_back(stats);
 }
 
-void SystemStatistics::ReportSysMemAlloc(size_t usage)
+void SystemStatistics::ReportSysMemAlloc(size_t usage) noexcept
 {
 	size_t localTotalUsage = 0;
 	{
@@ -76,7 +76,7 @@ void SystemStatistics::ReportSysMemAlloc(size_t usage)
 	}
 }
 
-void SystemStatistics::ReportSysMemDealloc(size_t usage)
+void SystemStatistics::ReportSysMemDealloc(size_t usage) noexcept
 {
 	std::lock_guard lock(sysMemReportLock);
 	++deallocCount;

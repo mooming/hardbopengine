@@ -12,7 +12,7 @@ namespace hbe
 {
 #if PROFILE_ENABLED
 PoolAllocator::PoolAllocator(const char* inName, TSize inBlockSize, TSize inNumberOfBlocks,
-							 const hbe::source_location location)
+							 const SourceLocation location)
 #else // PROFILE_ENABLED
 PoolAllocator::PoolAllocator(const char* inName, TSize inBlockSize, TSize inNumberOfBlocks)
 #endif // PROFILE_ENABLED

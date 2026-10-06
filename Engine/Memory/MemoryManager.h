@@ -15,13 +15,13 @@
 #include "Core/Types.h"
 #include "Log/LogLevel.h"
 #include "MultiPoolConfigCache.h"
+#include "OSAL/SourceLocation.h"
 #include "PoolConfig.h"
 #include "String/StaticStringID.h"
 
 
 namespace hbe
 {
-struct source_location;
 class Engine;
 
 /// API reference: docs/Memory/MemoryManager/index.html
@@ -143,7 +143,7 @@ public:
 #if PROFILE_ENABLED
 	AllocStats GetAllocatorStat(TAllocatorID id);
 
-	void DeregisterAllocator(TId id, const hbe::source_location& srcLocation);
+	void DeregisterAllocator(TId id, const SourceLocation& srcLocation);
 	void ReportMultiPoolConfigutation(StaticStringID uniqueName, TPoolConfigs&& poolConfigs);
 #endif // PROFILE_ENABLED
 

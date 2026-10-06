@@ -284,7 +284,7 @@ AllocStats MemoryManager::GetAllocatorStat(TAllocatorID id)
 	return stats;
 }
 
-void MemoryManager::DeregisterAllocator(TId id, const hbe::source_location& srcLoc)
+void MemoryManager::DeregisterAllocator(TId id, const SourceLocation& srcLoc)
 {
 	if (unlikely(!IsValid(id)))
 	{

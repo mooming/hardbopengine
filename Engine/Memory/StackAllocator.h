@@ -18,7 +18,7 @@ public:
 	using SizeType = size_t;
 
 #if PROFILE_ENABLED
-	using TSrcLoc = hbe::source_location;
+	using TSrcLoc = SourceLocation;
 #endif // PROFILE_ENABLED
 
 private:

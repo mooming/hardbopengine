@@ -29,13 +29,13 @@ private:
 
 #if PROFILE_ENABLED
 	size_t maxUsedBlocks;
-	hbe::source_location srcLocation;
+	SourceLocation srcLocation;
 #endif // PROFILE_ENABLED
 
 public:
 #if PROFILE_ENABLED
 	PoolAllocator(const char* inName, TSize inBlockSize, TSize inNumberOfBlocks,
-				  hbe::source_location location = hbe::source_location::current());
+				  SourceLocation location = SourceLocation::current());
 #else // PROFILE_ENABLED
 	PoolAllocator(const char* inName, TSize inBlockSize, TSize inNumberOfBlocks);
 #endif // PROFILE_ENABLED

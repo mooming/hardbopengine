@@ -5,6 +5,7 @@
 #include "Config/BuildConfig.h"
 #include "Config/EngineConfig.h"
 #include "Log/Logger.h"
+#include "OSAL/SourceLocation.h"
 #include "String/StringUtil.h"
 #include "Time.h"
 
@@ -21,7 +22,7 @@ concept CLockable = requires(T t) {
 template <CLockable TLockable>
 class ScopedLock final
 {
-	using TSrcLoc = hbe::source_location;
+	using TSrcLoc = SourceLocation;
 
 private:
 	TLockable& lockable;

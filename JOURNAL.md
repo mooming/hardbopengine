@@ -1,5 +1,49 @@
 # Journal
 
+## 2026-10-07 07:30 — profiling compiles: the profiler names the source-location type that actually exists
+
+**What was broken.** `.Plans/PROFILE_ENABLED_triage.md` found the engine could not be built with `PROFILE_ENABLED` 1:
+117 `error:` lines, 52 of 133 translation units dead, 111 of them from one phantom type — `MemoryManager.h` forward-declared
+`struct source_location;` and nothing defined it, while `Engine/OSAL/SourceLocation.h` owns the real class `hbe::SourceLocation`.
+Naming an incomplete type in a reference parameter is legal, which is why the shipping build survived and the profiling build did
+not: the instant `PROFILE_ENABLED` declared `TSrcLoc srcLoc;` as a field, every unit reaching `ScopedLock.h` — all of the task
+system, and via `Logger.h` nearly everything — lost the build. Three further shapes sat behind it: three `SystemStatistics`
+reporters dropped the `noexcept` their header declares, and `InlinePoolAllocatorTest` named four members an earlier rename had
+removed.
+
+**The fix is the eight-file repair, now committed.** `MemoryManager.h`, `PoolAllocator.{h,cpp}`, `StackAllocator.h`,
+`ScopedLock.h` and `MemoryManager.cpp` spell the type `SourceLocation` (the two headers now include `OSAL/SourceLocation.h`, the
+phantom forward declaration goes); the three reporters gain `noexcept`; the testlet reports `inlineTimeDuration`,
+`stdTimeDuration`, `maxAllocSize`. 14 insertions, 13 deletions, no comment added to any `.h` or `.cpp` — the eight files carry the
+same 126 `//`-bearing lines before and after, and `comments.py` reports the identical 20-violation set.
+
+**Proofs, each measured with a redirect and its own exit code.** Shipping path untouched: `./build.sh Applications/EngineTest
+-dev -debug -release -test` then the three binaries — Dev, Debug, Release each exit 0, 60 collections `SUCCESS`, 391 testlets,
+13 `M1`-`M4` lines. Profiling on: the switch is `Engine/Config/BuildConfig.h:38`, a bare `#define PROFILE_ENABLED 0` — no CMake
+option, no `.project.config` `precompileDefinitions` entry, no `customCMake.txt` hook, and a `-DPROFILE_ENABLED=1` command line
+cannot win because the header redefines it afterwards and `-Wmacro-redefined` makes even that fatal under `-Werror`. So the probe
+ran outside the checkout: two `git archive HEAD` copies under `/tmp/hbe-probe/{before,after}`, the flag flipped there only, each
+with its own CMake binary directory — the shared `./build` never saw profiling on, and the checkout's `BuildConfig.h` stayed at 0.
+`before` (HEAD unrepaired, profiling on): 119 `error:` lines, build exit 1. `after` (HEAD + this repair, profiling on):
+**0 errors in Dev, Debug and Release**, only the pre-existing `ld: ignoring duplicate libraries` note. Gates on the eight files,
+HEAD against working tree: `comments.py` 20 → 20, `blank_lines.py` 0 → 0, `includes.py` 0 → 0, `layout.py` 10 `MEMBER-LAYOUT` +
+1 `ACCESS-REDUNDANT` advice → identical set, with `ScopedLock.h` moving `[SKIP]` (clang rejected the phantom type outright) to
+`[PASS]`.
+
+**Open item, and it is not this commit's to close.** The suite still cannot share a process with profiling: the profiling-on
+EngineTest traps — exit 133 `Trace/BPT trap: 5` at 0.64 s, 1 of 60 collections finished — inside `BaseAllocatorTest`, on
+`MemoryManager::DeregisterAllocator`'s leak branch, which logs a Warning and then `#if !RELEASE_BUILD` calls `debugBreak()` =
+`__builtin_trap()`. The warning is itself compiled away (`MemoryManager::Log`'s body is `#if MEMORY_LOGGING_ENABLED`), so the
+detector aborts in silence, and the accounting it aborts on is wrong rather than strict: `InlinePoolAllocator::DeallocateBytes`
+returns at its immediate-block fast path before `ReportDeallocation`, so usage ratchets up and never drains. Nothing here was
+weakened to buy a green run. Getting both profiling and the suite is a design decision — make the two profiling-only detectors
+report instead of trap, then fix the unpaired `ReportDeallocation` — and it belongs to the owner, not to a compile fix.
+
+**Consequence for every profiling number.** Until this commit no `PROFILE_ENABLED` statistic had ever been compiled, so every
+value that path produces is unexercised history: `AllocStats` usage and peaks, `MemoryManager::GetAllocatorStat`,
+`SystemStatistics::PrintAllocatorProfiles`, per-pool and per-bank peaks, the shutdown memory configuration, and the contended-lock
+hold-time report. They now compile; none of them has yet run green.
+
 ## 2026-10-07 05:30 — the half-finished Memory strip is closed: 7 orphan blanks repaired, every claim re-measured
 
 **What was actually left broken.** The previous agent's `comments.py --strip` deletions were complete and correct (0 violations

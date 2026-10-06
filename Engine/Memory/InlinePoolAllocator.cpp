@@ -142,8 +142,8 @@ void hbe::InlinePoolAllocatorTest::Prepare()
 		auto& mmgr = MemoryManager::GetInstance();
 		auto stat = mmgr.GetAllocatorStat(allocator.GetID());
 
-		ls << "Performance: " << inlineTimeAvg << " msec vs STL: " << stdTimeAvg << " msec, rate = [" << rate
-		   << "], fallback count = " << stat.fallbackCount << " / " << (testCount * loopLength) << lf;
+		ls << "Performance: " << inlineTimeDuration << " msec vs STL: " << stdTimeDuration << " msec, rate = [" << rate
+		   << "], fallback count = " << stat.fallbackCount << " / " << (testCount * maxAllocSize) << lf;
 #else // PROFILE_ENABLED
 		ls << "Performance: " << inlineTimeDuration << " msec vs STL: " << stdTimeDuration << " msec, rate = [" << rate
 		   << ']' << lf;
