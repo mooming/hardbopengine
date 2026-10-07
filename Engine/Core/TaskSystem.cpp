@@ -360,7 +360,7 @@ void TaskSystem::Enqueue(const TIndex streamIndex, const WorkItem& task, const S
 {
 	if (!streams.IsValidIndex(streamIndex))
 	{
-		Assert(false, "Invalid stream index %d", streamIndex);
+		Assert(false, "Invalid stream index ", streamIndex, ".");
 
 		return;
 	}

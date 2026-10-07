@@ -333,7 +333,9 @@ void* MultiPoolAllocator::NewBankAllocate(size_t size)
 	auto index = GetBankIndex(size);
 	if (unlikely(index >= banks.size()))
 	{
-		FatalAssert(false);
+		FatalAssert(false, "MultiPoolAllocator: bank generated for ", size, " bytes cannot be used: index ", index,
+				  " of ", banks.size(), ", proposed block ", blockSize, " by ", numBlocks, ", allocation unit ",
+				  bankSize);
 
 		return nullptr;
 	}
