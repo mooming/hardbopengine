@@ -1,5 +1,24 @@
 # Journal
 
+## 2026-10-07 22:24 — the sanitizer is the wrong instrument, and that narrows the sharded allocator's bug
+
+**Two scratch builds, both kept.** `build-asan/` and `build-tsan/` are configured and built and now ignored by Git, so
+the next reader rebuilds incrementally instead of paying two full compiles. AddressSanitizer reported nothing at all
+and ThreadSanitizer's 13 races contain no `Engine/Memory` frame, so the failing access is neither an overflow of an
+allocation nor a race on a shared variable that the sanitizer can see.
+
+**The number that changes the reading.** The instrumented assert now prints its own evidence:
+`PoolAllocator: free-list link 4879466496 is out of bounds for 16384 blocks`. That value is `0x122d6c000` — larger
+than a 32-bit index could ever be, and page-aligned. A free-list link that holds an address-shaped, page-aligned value
+is not a corrupted counter and not an off-by-one: it is a pointer written into a slot another owner believes is its
+own block. Two owners hold the same memory, which is what you get when extents and still-live pool banks describe the
+same range, or when a cross-thread free is routed to the wrong owner.
+
+**What to read first, therefore.** Not the atomics. Read how an extent is obtained and handed back, and whether the
+redesign can return memory to the default allocator while a `PoolAllocator` bank still spans part of it. The abort
+site also moves with timing — Dev stopped in M1, the sanitizer builds reached M4 — so reproduce with the thread counts
+pinned rather than trusting one run.
+
 ## 2026-10-07 17:42 — the sharded allocator fails, and the reason is not the testlets
 
 **Measured, not assumed.** Option C was committed as work in progress on `wip/option-c-sharded` at `72e56ee`.
