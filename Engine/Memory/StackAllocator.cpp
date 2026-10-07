@@ -56,7 +56,7 @@ StackAllocator::StackAllocator(const char* name, SizeType inCapacity)
 StackAllocator::~StackAllocator()
 {
 	auto& mmgr = MemoryManager::GetInstance();
-	mmgr.Deallocate(buffer, capacity);
+	mmgr.Deallocate(parentID, buffer, capacity);
 
 #if PROFILE_ENABLED
 	mmgr.DeregisterAllocator(GetID(), srcLocation);
@@ -113,7 +113,7 @@ void StackAllocator::Deallocate(Pointer ptr, const SizeType requested) noexcept
 		size = multiplier * AlignUnit;
 	}
 
-	Assert(cursor >= size);
+	Assert(cursor >= size, "StackAllocator: cannot release ", size, " bytes with only ", cursor, " bytes outstanding.");
 
 	auto expected = buffer + cursor;
 	auto provided = static_cast<Byte*>(ptr) + size;
@@ -169,6 +169,7 @@ bool StackAllocator::IsMine(Pointer ptr) const
 } // namespace hbe
 
 #ifdef __UNIT_TEST__
+#include "AllocatorScope.h"
 #include "HSTL/HVector.h"
 #include "ScopedAllocator.h"
 #include "String/String.h"
@@ -178,6 +179,43 @@ namespace hbe
 void StackAllocatorTest::Prepare()
 {
 	using namespace std;
+	AddTest("Destroy In Own Scope", [this](auto& ls)
+	{
+		auto& mmgr = MemoryManager::GetInstance();
+
+		auto globalAlloc = [](void*, const size_t n) -> void* { return ::operator new(n); };
+
+		auto globalFree = [](void*, void* ptr, const size_t n) { ::operator delete(ptr, n); };
+
+		constexpr size_t capacity = 128 * 1024;
+		const auto parentID =
+				mmgr.RegisterAllocator(nullptr, "Test::GlobalBackedParent", false, capacity, globalAlloc, globalFree);
+
+		const auto allocBytesBefore = MemoryManager::GetGlobalAllocationBytes();
+		const auto freeBytesBefore = MemoryManager::GetGlobalFreeBytes();
+		{
+			AllocatorScope parentScope(parentID);
+
+			auto alloc = new StackAllocator("Test::StackAllocator", capacity);
+			{
+				AllocatorScope selfScope(alloc->GetID());
+				delete alloc;
+			}
+		}
+
+		const auto allocBytes = MemoryManager::GetGlobalAllocationBytes() - allocBytesBefore;
+		const auto freedBytes = MemoryManager::GetGlobalFreeBytes() - freeBytesBefore;
+
+		mmgr.DeregisterAllocator(parentID);
+
+		if (freedBytes < allocBytes)
+		{
+			ls << "Destroying StackAllocator while its own AllocatorScope is open retained "
+			   << (allocBytes - freedBytes) << " bytes: the backing buffer was released to the allocator's own inert"
+			   << " Deallocate instead of its parent." << lferr;
+		}
+	});
+
 	using namespace hbe;
 
 	AddTest("Vector Allocation", [this](auto& ls)

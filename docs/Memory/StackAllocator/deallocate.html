@@ -68,7 +68,10 @@
   current top of the stack, and the byte count must round up to what the block was charged. Anything else is reported, not repaired.
 </p>
 
-<pre><code>if (unlikely(!IsMine(ptr)))
+<pre><code>{
+	auto&amp; mmgr = MemoryManager::GetInstance();
+
+	if (unlikely(!IsMine(ptr)))
 	{
 		mmgr.Deallocate(parentID, ptr, requested);
 
@@ -82,7 +85,7 @@
 		size = multiplier * AlignUnit;
 	}
 
-	Assert(cursor &gt;= size);
+	Assert(cursor &gt;= size, "StackAllocator: cannot release ", size, " bytes with only ", cursor, " bytes outstanding.");
 
 	auto expected = buffer + cursor;
 	auto provided = static_cast&lt;Byte*&gt;(ptr) + size;
@@ -100,7 +103,12 @@
 		return;
 	}
 
-	cursor -= size;</code></pre>
+	cursor -= size;
+
+#if PROFILE_ENABLED
+	mmgr.ReportDeallocation(id, ptr, size, size);
+#endif // PROFILE_ENABLED
+}</code></pre>
 
 <p class="meta">From Engine/Memory/StackAllocator.cpp, StackAllocator::Deallocate(Pointer ptr, const SizeType requested) noexcept</p>
 

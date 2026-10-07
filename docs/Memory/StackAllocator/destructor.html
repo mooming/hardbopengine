@@ -62,12 +62,11 @@
 <h2 id="description">Function description</h2>
 
 <p>
-  Defined in <code>Engine/Memory/StackAllocator.cpp</code> as <code>StackAllocator::~StackAllocator()</code>. Two calls, in this
-  order: the whole buffer goes back to the manager, then the registration is released.
+  Defined in <code>Engine/Memory/StackAllocator.cpp</code> as <code>StackAllocator::~StackAllocator()</code>. Two calls, in this order: the whole buffer goes back to the allocator's <em>recorded parent</em>, then the registration is released. The buffer is named explicitly rather than left to the ambient allocator scope, because the scope at destruction time is whatever the caller last opened: the constructor recorded <code>parentID</code> as the allocator that actually lent that memory, and handing it anywhere else gives a live buffer to an allocator that never owned it.
 </p>
 
 <pre><code>auto&amp; mmgr = MemoryManager::GetInstance();
-mmgr.Deallocate(buffer, capacity);</code></pre>
+mmgr.Deallocate(parentID, buffer, capacity);</code></pre>
 
 <p class="meta">From Engine/Memory/StackAllocator.cpp, StackAllocator::~StackAllocator()</p>
 
