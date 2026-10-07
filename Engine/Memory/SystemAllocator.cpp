@@ -42,7 +42,7 @@ void hbe::SystemAllocatorTest::Prepare()
 
 		ls << "A signal shall be posted from the next line"
 		   << " due to buffer under-run/" << lf;
-		*underRunPtr = 0; // Comment out to proceede to the next test.
+		*underRunPtr = 0;
 
 		allocator.deallocate(buffer, requestedSize);
 	});
@@ -64,7 +64,7 @@ void hbe::SystemAllocatorTest::Prepare()
 
 		ls << "A signal shall be posted from the next line"
 		   << " due to buffer over-run." << lf;
-		*overRunPtr = 0; // Comment out to proceede to the next test.
+		*overRunPtr = 0;
 
 		allocator.deallocate(buffer, requestedSize);
 	});
@@ -86,7 +86,7 @@ void hbe::SystemAllocatorTest::Prepare()
 
 		ls << "A signal shall be posted from the next line"
 		   << " due to use-after-free." << lf;
-		*buffer = 1; // Comment out to proceede to the next test.
+		*buffer = 1;
 	});
 #endif // MEMORY_DANGLING_POINTER_CHECK_ENABLED
 #endif // MEMORY_INVESTIGATION_ENABLED

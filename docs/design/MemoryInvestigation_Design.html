@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Memory investigation self-tests design — Memory module — HardBop Engine design document</title>
+<link rel="stylesheet" href="../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../Config/index.html">Config</a></li>
+    <li><a href="../Container/index.html">Container</a></li>
+    <li><a class="current" href="../Core/index.html">Core</a></li>
+    <li><a href="../Engine/index.html">Engine</a></li>
+    <li><a href="../HSTL/index.html">HSTL</a></li>
+    <li><a href="../Log/index.html">Log</a></li>
+    <li><a href="../Math/index.html">Math</a></li>
+    <li><a href="../Memory/index.html">Memory</a></li>
+    <li><a href="../OSAL/index.html">OSAL</a></li>
+    <li><a href="../Renderer/index.html">Renderer</a></li>
+    <li><a href="../Resource/index.html">Resource</a></li>
+    <li><a href="../String/index.html">String</a></li>
+    <li><a href="../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This document</h3>
+  <ul>
+<li><a href="#switches">Which switch turns on what</a></li>
+<li><a href="#procedure">Why a self-test ends the process</a></li>
+<li><a href="#asymmetry">The over-run test is the disabled branch</a></li>
+<li><a href="#suspect">Two shapes that look wrong rather than designed</a></li>
+<li><a href="#seealso">Where else to look</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+  <div class="breadcrumb"><a href="../index.html">Docs</a> / <a href="../Memory/index.html">Memory</a> / Memory investigation self-tests</div>
+
+<h1>Memory investigation self-tests</h1>
+
+<p>
+  Implementation design for the investigator self-tests at the end of <code>Engine/Memory/SystemAllocator.cpp</code>.
+  The checks themselves belong to <a href="../Memory/SystemAllocator/index.html"><code>SystemAllocator</code></a>; this
+  document records how the three self-tests are meant to be run, because each one is designed to stop the process,
+  which makes a run without these notes look like a crash.
+</p>
+
+<h2 id="switches">Which switch turns on what</h2>
+
+<table>
+  <tr><th>Switch</th><th>Effect</th></tr>
+  <tr><td><code>MEMORY_INVESTIGATOR_TEST_ENABLED</code></td><td>Gates the whole self-test region, and it sits inside <code>__UNIT_TEST__</code>, so the tests exist only in a test build.</td></tr>
+  <tr><td><code>MEMORY_INVESTIGATION_ENABLED</code></td><td>Gates the checks themselves. With it off there is nothing to detect, and the region compiles to nothing.</td></tr>
+  <tr><td><code>MEMORY_BUFFER_UNDERRUN_CHECK_ENABLED</code></td><td>Selects the under-run testlet, and its <code>#else</code> branch holds the over-run testlet — see below.</td></tr>
+  <tr><td><code>MEMORY_DANGLING_POINTER_CHECK_ENABLED</code></td><td>Adds the use-after-free testlet.</td></tr>
+</table>
+
+<h2 id="procedure">Why a self-test ends the process</h2>
+
+<p>
+  Each testlet allocates one byte and then writes deliberately outside what it is allowed to: one byte before the block
+  for the under-run test, one byte past it for the over-run test, and the first byte of a block it has already
+  released for the dangling-pointer test. The point is that the investigator must react, and the reaction is a signal,
+  so the run stops on that line. The three comments that used to sit on those writes told the reader to comment the
+  write out to reach the next testlet: <strong>the deliberate write is the end of that testlet by design</strong>, and
+  a passing investigator is observed as the signal it posts, not as the testlet returning.
+</p>
+
+<h2 id="asymmetry">The over-run test is the branch where the under-run check is off</h2>
+
+<p>
+  The two buffer testlets are <code>#if</code> and <code>#else</code> of a single switch, so a build gets the under-run
+  test when <code>MEMORY_BUFFER_UNDERRUN_CHECK_ENABLED</code> is on and the over-run test when it is off. That is
+  recorded here as the shape of the code rather than as an intent: nothing in the switches says that over-run coverage
+  is the reward for disabling the under-run check, so whichever was meant, the two cannot both be exercised in one
+  build.
+</p>
+
+<h2 id="suspect">Two shapes that look wrong rather than designed</h2>
+
+<ul>
+  <li>The over-run testlet writes <code>buffer - 1</code> before it writes past the end, so it commits an under-run
+      while standing in the branch compiled with the under-run check disabled. If the branch is meant to isolate the
+      over-run case, that write does not belong to it.</li>
+  <li>The dangling-pointer testlet announces itself as <code>Overrun Test:</code> in its own log line. The test is a
+      use-after-free test, and the label would send a reader looking in the wrong place.</li>
+</ul>
+
+<h2 id="seealso">Where else to look</h2>
+
+<ul>
+  <li><a href="../Memory/SystemAllocator/index.html"><code>SystemAllocator</code></a> — the allocator whose investigation configuration places pages for under-run detection.</li>
+  <li><a href="GlobalAllocationAccounting_Design.html">Global allocation accounting</a> — the reason global allocation is deliberately kept off this page-granular configuration.</li>
+</ul>
+
+</main>
+</body>
+</html>
