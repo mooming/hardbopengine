@@ -1,5 +1,31 @@
 # Journal
 
+## 2026-10-07 17:42 — the sharded allocator fails, and the reason is not the testlets
+
+**Measured, not assumed.** Option C was committed as work in progress on `wip/option-c-sharded` at `72e56ee`.
+With it in the tree the Dev suite dies; with the previous allocator restored two consecutive runs finish 60 of 60.
+So the redesign is the cause, and the tree on `master` is the allocator that works.
+
+**Where it dies, and what that rules out.** The abort first appeared as a message-less `FatalAssert` at
+`MultiPoolAllocator.cpp` in `NewBankAllocate`, then, once that assert could speak, as `PoolAllocator`'s free-list
+bound assert inside the M1 shared-instance contention testlet. M1 and M2 are byte-identical between `master` and the
+branch, and `MultiPoolAllocator.cpp` and `PoolAllocator.cpp` were unchanged by the redesign, so the failing asserts
+are not the testlets and not the pools' own logic. The out-of-bounds link value is garbage rather than an off-by-one,
+which is the signature of something writing outside its own memory. The redesign replaced `banks` with extents, a
+range table and stream slots, so the prime suspect is an extent or stream slot write landing inside a live
+`PoolAllocator`'s block, and the next step is to reproduce M1 alone under a sanitizer rather than guess further.
+
+**It does not yet earn its keep.** Even before the assert, the branch's own benchmark prints efficiency 0.733 at two
+threads and 0.170 at four, against the design's claim of near-linear scaling. The sharding as written has not bought
+the contention fix, so correctness and performance both remain open.
+
+**Landed on `master` regardless, because it stands alone.** `29f4d34`: `NewBankAllocate` asserted `false` with no
+message at all at the exact moment a reader needs the size, index and block count; `PoolAllocator::ReadNextIndex`
+passed printf conversions to a logger that concatenates rather than substitutes, so the abort printed the format
+string literally and the numbers as unreadable digits; `TaskSystem.cpp` had the same printf mistake. All three now
+speak in the engine's own style. Debug, Dev and Release each pass 60 of 60 with it.
+
+
 ## 2026-10-07 07:30 — profiling compiles: the profiler names the source-location type that actually exists
 
 **What was broken.** `.Plans/PROFILE_ENABLED_triage.md` found the engine could not be built with `PROFILE_ENABLED` 1:
