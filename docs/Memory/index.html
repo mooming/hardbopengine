@@ -599,35 +599,38 @@ DoWork();
 <table>
   <tr><th>Gap</th><th>Detail</th></tr>
   <tr>
-    <td>Headers with no entry</td>
-    <td><code>AllocatorID.h</code>, <code>AllocStats.h</code>, <code>MultiPoolAllocatorConfig.h</code>,
-        <code>MultiPoolConfigCache.h</code>, <code>Optional.h</code>, <code>PoolConfigUtil.h</code>,
-        <code>ScopedAllocator.h</code>. The first two are types every signature here mentions —
-        <code>TAllocatorID</code> and the statistics record — and they are the first two worth documenting.</td>
+    <td>Sources with no design document</td>
+    <td>Every header in this module now has a folder, so nothing is owed at header level. What is owed is the other
+        half: seventeen <code>.cpp</code> files hold implementation material — invariants, allocation strategy, the bank
+        growth rule, the locking protocol — and <code>AGENTS.md</code> routes that kind of prose to a design document
+        under <code>docs/design/</code>, never to a reference page a caller trusts for contracts. Until those documents
+        exist, the comments in those sources stay where they are, which is the one part of this migration that cannot be
+        finished by deleting anything.</td>
   </tr>
   <tr>
     <td>Per-allocator API</td>
-    <td>Eight of the nine allocators now have their own folder, so every one named in the catalogue except
-        <code>SystemAllocator</code> is documented entry by entry: <a href="DefaultAllocator/index.html"><code>DefaultAllocator</code></a>,
-        <a href="MonotonicAllocator/index.html"><code>MonotonicAllocator</code></a>,
-        <a href="StackAllocator/index.html"><code>StackAllocator</code></a>,
-        <a href="PoolAllocator/index.html"><code>PoolAllocator</code></a>,
-        <a href="MultiPoolAllocator/index.html"><code>MultiPoolAllocator</code></a>,
-        <a href="ThreadSafeMultiPoolAllocator/index.html"><code>ThreadSafeMultiPoolAllocator</code></a>,
-        <a href="InlineMonotonicAllocator/index.html"><code>InlineMonotonicAllocator</code></a>,
-        <a href="InlinePoolAllocator/index.html"><code>InlinePoolAllocator</code></a>.
-        <code>SystemAllocator</code> is the one allocator left holding only its catalogue row — which says what the
-        strategy is and which header holds it, not its constructor arguments, its bank granularity, or what
-        <code>FORCE_USE_SYSTEM_MALLOC</code> and the investigation switches change about it.</td>
+    <td>All nine allocators named in the <a href="#allocators">catalogue</a> now carry a folder, and
+        <a href="SystemAllocator/index.html"><code>SystemAllocator</code></a> was the last of them: it says what
+        <code>FORCE_USE_SYSTEM_MALLOC</code> changes about it, which the catalogue row could not.
+        The identity and configuration entries documented the same way are
+        <a href="AllocatorID/index.html"><code>AllocatorID</code></a>, which carries the 256 allocator ceiling and the
+        invalid-id sentinel every other signature is written against,
+        <a href="AllocStats/index.html"><code>AllocStats</code></a>,
+        <a href="MultiPoolAllocatorConfig/index.html"><code>MultiPoolAllocatorConfig</code></a>,
+        <a href="MultiPoolConfigCache/index.html"><code>MultiPoolConfigCache</code></a>,
+        <a href="Optional/index.html"><code>Optional</code></a>,
+        <a href="PoolConfigUtil/index.html"><code>PoolConfigUtil</code></a> and
+        <a href="ScopedAllocator/index.html"><code>ScopedAllocator</code></a>.</td>
   </tr>
   <tr>
     <td>Entries with a section here but no folder</td>
-    <td><a href="#allocatorscope"><code>AllocatorScope</code></a>,
-        <a href="#allocatorproxy"><code>AllocatorProxy</code></a>,
-        <a href="#poolconfig"><code>PoolConfig</code></a>, and the <a href="#functions"><code>Memory.h</code>
-        helpers</a> are documented as sections of this page only, so they have no page per method. Together with
-        <code>SystemAllocator</code> and the headers named above, these are the entries
-        <code>docs_coverage.py check Memory</code> still reports as having no page of their own.</td>
+    <td><a href="AllocatorScope/index.html"><code>AllocatorScope</code></a>,
+        <a href="AllocatorProxy/index.html"><code>AllocatorProxy</code></a>,
+        <a href="PoolConfig/index.html"><code>PoolConfig</code></a> and <a href="Memory/index.html"><code>Memory.h</code></a>
+        all have folders now, and this page keeps its sections as the module-level view rather than deleting them.
+        <a href="Memory/index.html"><code>Memory.h</code></a> is the thinnest of them: one page covers the allocation
+        function aliases and the templated <code>New</code> and <code>Delete</code>, where the rest of the module has one
+        page per name. That is the shape to revisit first if a caller ever reports the free-function contract unclear.</td>
   </tr>
   <tr>
     <td>Allocation failure</td>
