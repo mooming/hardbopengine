@@ -67,9 +67,9 @@
 </p>
 
 <pre><code>: id(InvalidAllocatorID)
-, cursor(0)
-, capacity(inCapacity)
-, buffer(nullptr)
+	, cursor(0)
+	, capacity(inCapacity)
+	, buffer(nullptr)
 {
 	{
 		constexpr auto AlignUnit = Config::DefaultAlign;
@@ -81,10 +81,8 @@
 	parentID = hbe::MemoryManager::GetCurrentAllocatorID();
 	bufferPtr = mmgr.Allocate(capacity);
 
-	/* allocFunc, deallocFunc: static_cast the registration's void* back to MonotonicAllocator* and call Allocate / Deallocate */
-
-	id = mmgr.RegisterAllocator(this, name, false, capacity, allocFunc, deallocFunc);
-}</code></pre>
+	// … the allocFunc and deallocFunc registration lambdas …
+	id = mmgr.RegisterAllocator(this, name, false, capacity, allocFunc, deallocFunc);</code></pre>
 
 <p class="meta">From Engine/Memory/MonotonicAllocator.cpp, MonotonicAllocator::MonotonicAllocator(const char* name, TSize inCapacity)</p>
 

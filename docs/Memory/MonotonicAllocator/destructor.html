@@ -68,11 +68,11 @@
 <pre><code>auto&amp; mmgr = MemoryManager::GetInstance();
 
 #if PROFILE_ENABLED
-mmgr.ReportDeallocation(id, bufferPtr, 0, cursor);
+	mmgr.ReportDeallocation(id, bufferPtr, 0, cursor);
 #endif // PROFILE_ENABLED
 
-mmgr.Deallocate(bufferPtr, capacity);
-mmgr.DeregisterAllocator(GetID());</code></pre>
+	mmgr.Deallocate(parentID, bufferPtr, capacity);
+	mmgr.DeregisterAllocator(GetID());</code></pre>
 
 <p class="meta">From Engine/Memory/MonotonicAllocator.cpp, MonotonicAllocator::~MonotonicAllocator()</p>
 

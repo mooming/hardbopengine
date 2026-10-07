@@ -153,13 +153,14 @@ cursor += size;</code></pre>
 
 <pre><code>using Allocator = InlineMonotonicAllocator&lt;2048&gt;;
 
-Allocator alloc("InlineMonotonicAllocator");
-{
-	AllocatorScope scope(alloc.GetID());
+		…
+		Allocator alloc("InlineMonotonicAllocator");
+		{
+			AllocatorScope scope(alloc.GetID());
 
-	HVector&lt;int&gt; a;
-	a.push_back(0);
-}</code></pre>
+			HVector&lt;int&gt; a;
+			a.push_back(0);
+		}</code></pre>
 
 <p class="meta">From Engine/Memory/InlineMonotonicAllocator.cpp, InlineMonotonicAllocatorTest::Prepare(), testlet "Vector Allocation"</p>
 

@@ -98,15 +98,15 @@ figure the test harness compares before and after a testlet body.
 <h2 id="example">Examples</h2>
 
 <pre><code>const auto totalBefore = MemoryManager::GetGlobalAllocationCount();
-
-grow.push_back('y');
-
-const auto totalAfter = MemoryManager::GetGlobalAllocationCount();
-
-if (totalAfter &lt;= totalBefore)
-{
-	ls &lt;&lt; "OS image traffic bypassed the global total" &lt;&lt; lferr;
-}</code></pre>
+			…
+			grow.push_back('y');
+		…
+		const auto totalAfter = MemoryManager::GetGlobalAllocationCount();
+		…
+		if (totalAfter &lt;= totalBefore)
+		{
+			ls &lt;&lt; "OS image traffic bypassed the global total" &lt;&lt; lferr;
+		}</code></pre>
 
 <p class="meta">From Engine/Memory/GlobalAllocation.cpp, GlobalAllocationTest::Prepare()</p>
 

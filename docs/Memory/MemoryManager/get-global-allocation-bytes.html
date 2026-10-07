@@ -111,14 +111,16 @@ life of the process.
 <h2 id="example">Examples</h2>
 
 <pre><code>const auto globalBytesBefore = MemoryManager::GetGlobalAllocationBytes();
+		…
+		testlet.Run(logStream);
 
-testlet.Run(logStream);
-
-const auto globalBytesOverBody = MemoryManager::GetGlobalAllocationBytes() - globalBytesBefore;
-const auto osBytesOverBody = MemoryManager::GetOSAllocationBytes() - osBytesBefore;
-
-const auto engineBytesOverBody =
-		globalBytesOverBody &gt; osBytesOverBody ? globalBytesOverBody - osBytesOverBody : 0;</code></pre>
+		…
+		const auto globalBytesOverBody = MemoryManager::GetGlobalAllocationBytes() - globalBytesBefore;
+		…
+		const auto osBytesOverBody = MemoryManager::GetOSAllocationBytes() - osBytesBefore;
+		…
+		const auto engineBytesOverBody =
+				globalBytesOverBody &gt; osBytesOverBody ? globalBytesOverBody - osBytesOverBody : 0;</code></pre>
 
 <p class="meta">From Engine/Test/TestCollection.cpp, TestCollection::RunTestAt()</p>
 

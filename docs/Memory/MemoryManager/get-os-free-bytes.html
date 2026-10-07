@@ -111,8 +111,9 @@ load of the <code>globalOSFreeBytes</code> atomic. Bytes released through the re
 
 <pre><code>const auto osFreedBytesOverBody = MemoryManager::GetOSFreeBytes() - osFreedBytesBefore;
 
-const auto engineFreedBytesOverBody =
-		globalFreedBytesOverBody &gt; osFreedBytesOverBody ? globalFreedBytesOverBody - osFreedBytesOverBody : 0;</code></pre>
+		…
+		const auto engineBytesOverBody =
+				globalBytesOverBody &gt; osBytesOverBody ? globalBytesOverBody - osBytesOverBody : 0;</code></pre>
 
 <p class="meta">From Engine/Test/TestCollection.cpp, TestCollection::RunTestAt()</p>
 

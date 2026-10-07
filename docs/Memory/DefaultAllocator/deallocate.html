@@ -140,17 +140,18 @@ mmgr.DeallocateTypes(ptr, n);</code></pre>
 <h2 id="example">Examples</h2>
 
 <pre><code>PoolAllocator alloc2("BaseAllodTestAlloc2", 1024, 1024);
-AllocatorScope allocScope2(alloc2);
+				…
+				AllocatorScope allocScope2(alloc2);
 
-v.reserve(1);
-…
-v.clear();
-v.shrink_to_fit();
+				v.reserve(1);
+				…
+				v.clear();
+				v.shrink_to_fit();
 
-if (alloc2.GetUsage() != 0)
-{
-	ls &lt;&lt; "Invalid allocator 2 usage = " &lt;&lt; alloc2.GetUsage() &lt;&lt; ", 0 is expected." &lt;&lt; lferr;
-}</code></pre>
+				if (alloc2.GetUsage() != 0)
+				{
+					ls &lt;&lt; "Invalid allocator 2 usage = " &lt;&lt; alloc.GetUsage() &lt;&lt; ", 0 is expected." &lt;&lt; lferr;
+				}</code></pre>
 
 <p class="meta">From Engine/Memory/DefaultAllocator.cpp, BaseAllocatorTest::Prepare(), testlet "Nested Allocations"</p>
 

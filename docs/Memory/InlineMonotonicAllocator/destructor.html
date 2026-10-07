@@ -68,10 +68,10 @@
 <pre><code>auto&amp; mmgr = MemoryManager::GetInstance();
 
 #ifdef __MEMOR_STATISTICS__
-	mmgr.ReportDeallocation(id, buffer, cursor, cursor);
+		mmgr.ReportDeallocation(id, buffer, cursor, cursor);
 #endif // __MEMOR_STATISTICS__
 
-	mmgr.DeregisterAllocator(GetID());</code></pre>
+		mmgr.DeregisterAllocator(GetID());</code></pre>
 
 <p class="meta">From Engine/Memory/InlineMonotonicAllocator.h, InlineMonotonicAllocator::~InlineMonotonicAllocator()</p>
 

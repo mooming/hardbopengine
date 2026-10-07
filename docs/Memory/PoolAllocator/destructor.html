@@ -76,10 +76,10 @@
 <p class="meta">From Engine/Memory/PoolAllocator.cpp, PoolAllocator::~PoolAllocator()</p>
 
 <pre><code>const size_t totalSize = blockSize * numberOfBlocks;
-Assert(buffer != nullptr);
+	Assert(buffer != nullptr);
 
-auto&amp; mmgr = MemoryManager::GetInstance();
-mmgr.Deallocate(parentID, buffer, totalSize);
+	auto&amp; mmgr = MemoryManager::GetInstance();
+	mmgr.Deallocate(parentID, buffer, totalSize);
 
 #if PROFILE_ENABLED
 	mmgr.DeregisterAllocator(GetID(), srcLocation);
@@ -87,8 +87,8 @@ mmgr.Deallocate(parentID, buffer, totalSize);
 	mmgr.DeregisterAllocator(GetID());
 #endif // PROFILE_ENABLED
 
-buffer = nullptr;
-id = InvalidAllocatorID;</code></pre>
+	buffer = nullptr;
+	id = InvalidAllocatorID;</code></pre>
 
 <p class="meta">From Engine/Memory/PoolAllocator.cpp, PoolAllocator::~PoolAllocator()</p>
 

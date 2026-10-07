@@ -67,14 +67,16 @@ the proxy slot as userData — the same shape as the allocation side, and the sa
 </p>
 
 <pre><code>auto&amp; allocator = allocators[SystemAllocatorID];
-if (unlikely(allocator.deallocate == nullptr))
-{
-	Log(ELogLevel::FatalError, ...);
+	if (unlikely(allocator.deallocate == nullptr))
+	{
+		Log(ELogLevel::FatalError, [funcName = __func__](auto&amp; ls)
+		// … the fatal-error message lambda …
+		});
 
-	return;
-}
+		return;
+	}
 
-allocator.deallocate(&amp;allocator, ptr, nBytes);</code></pre>
+	allocator.deallocate(&amp;allocator, ptr, nBytes);</code></pre>
 
 <p class="meta">From Engine/Memory/MemoryManager.cpp, MemoryManager::SysDeallocate()</p>
 

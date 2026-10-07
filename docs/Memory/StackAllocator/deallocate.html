@@ -69,33 +69,38 @@
 </p>
 
 <pre><code>if (unlikely(!IsMine(ptr)))
-{
-	mmgr.Deallocate(parentID, ptr, requested);
+	{
+		mmgr.Deallocate(parentID, ptr, requested);
 
-	return;
-}
+		return;
+	}
 
-SizeType size = requested;
-{
-	constexpr auto AlignUnit = Config::DefaultAlign;
-	const auto multiplier = (size + AlignUnit - 1) / AlignUnit;
-	size = multiplier * AlignUnit;
-}
+	SizeType size = requested;
+	{
+		constexpr auto AlignUnit = Config::DefaultAlign;
+		const auto multiplier = (size + AlignUnit - 1) / AlignUnit;
+		size = multiplier * AlignUnit;
+	}
 
-Assert(cursor &gt;= size);
+	Assert(cursor &gt;= size);
 
-auto expected = buffer + cursor;
-auto provided = static_cast&lt;Byte*&gt;(ptr) + size;
-if (unlikely(expected != provided))
-{
-	mmgr.LogError(/* names ptr, the expected address and the provided one */);
+	auto expected = buffer + cursor;
+	auto provided = static_cast&lt;Byte*&gt;(ptr) + size;
+	if (unlikely(expected != provided))
+	{
+		mmgr.LogError([this, ptr, expected, provided](auto&amp; lout)
+		{
+			lout &lt;&lt; "StackAllocator[" &lt;&lt; static_cast&lt;int&gt;(GetID()) &lt;&lt; "]: Pointer mismatched! ptr = " &lt;&lt; ptr &lt;&lt; ", "
+				 &lt;&lt; static_cast&lt;void*&gt;(expected) &lt;&lt; " is expected. But " &lt;&lt; static_cast&lt;void*&gt;(provided)
+				 &lt;&lt; " is provided.";
+		});
 
-	Assert(false);
+		Assert(false);
 
-	return;
-}
+		return;
+	}
 
-cursor -= size;</code></pre>
+	cursor -= size;</code></pre>
 
 <p class="meta">From Engine/Memory/StackAllocator.cpp, StackAllocator::Deallocate(Pointer ptr, const SizeType requested) noexcept</p>
 

@@ -144,15 +144,16 @@ mmgr.Deallocate(bufferPtr, capacity);</code></pre>
 <h2 id="example">Examples</h2>
 
 <pre><code>StackAllocator stack("Test::StackAllocator::Deallocation", 1024 * 1024);
-AllocatorScope scope(stack.GetID());
-{
-	String a = "0";
-}
+		AllocatorScope scope(stack.GetID());
+		{
+			String a = "0";
+		…
+		}
 
-if (stack.GetUsage() != 0)
-{
-	ls &lt;&lt; "Deallocation Failed. Usage should be zero, but " &lt;&lt; stack.GetUsage() &lt;&lt; lferr;
-}</code></pre>
+		if (stack.GetUsage() != 0)
+		{
+			ls &lt;&lt; "Deallocation Failed. Usage should be zero, but " &lt;&lt; stack.GetUsage() &lt;&lt; lferr;
+		}</code></pre>
 
 <p class="meta">From Engine/Memory/StackAllocator.cpp, StackAllocatorTest::Prepare(), Deallocation testlet</p>
 

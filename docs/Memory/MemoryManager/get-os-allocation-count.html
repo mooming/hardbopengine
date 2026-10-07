@@ -98,15 +98,15 @@ distinction that matters when a testlet's global request count is higher than it
 <h2 id="example">Examples</h2>
 
 <pre><code>const auto osRequestsBefore = MemoryManager::GetOSAllocationCount();
-
-grow.push_back('y');
-
-const auto osRequestsAfter = MemoryManager::GetOSAllocationCount();
-
-if (osRequestsAfter &lt;= osRequestsBefore)
-{
-	ls &lt;&lt; "A libc++ reallocation inside the shared cache was not bucketed as OS image traffic" &lt;&lt; lferr;
-}</code></pre>
+			…
+			grow.push_back('y');
+		…
+		const auto osRequestsAfter = MemoryManager::GetOSAllocationCount();
+		…
+		if (osRequestsAfter &lt;= osRequestsBefore)
+		{
+			ls &lt;&lt; "A libc++ reallocation inside the shared cache was not bucketed as OS image traffic" &lt;&lt; lferr;
+		}</code></pre>
 
 <p class="meta">From Engine/Memory/GlobalAllocation.cpp, GlobalAllocationTest::Prepare()</p>
 

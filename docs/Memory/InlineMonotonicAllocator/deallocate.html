@@ -68,23 +68,23 @@
 
 <pre><code>auto&amp; mmgr = MemoryManager::GetInstance();
 
-if (unlikely(!IsMine(ptr)))
-{
-	mmgr.Deallocate(parentID, ptr, requested);
+		if (unlikely(!IsMine(ptr)))
+		{
+			mmgr.Deallocate(parentID, ptr, requested);
 
-	return;
-}
+			return;
+		}
 
 #if MEMORY_LOGGING_ENABLED
-	mmgr.Log(ELogLevel::Info, [this, &amp;mmgr, ptr, requested](auto&amp; ls)
-	{
-		ls &lt;&lt; mmgr.GetAllocatorName(id) &lt;&lt; '[' &lt;&lt; static_cast&lt;int&gt;(GetID())
-		   &lt;&lt; "] Deallocate call shall be ignored. ptr = " &lt;&lt; static_cast&lt;void*&gt;(ptr) &lt;&lt; ", size = " &lt;&lt; requested;
-	});
+		mmgr.Log(ELogLevel::Info, [this, &amp;mmgr, ptr, requested](auto&amp; ls)
+		{
+			ls &lt;&lt; mmgr.GetAllocatorName(id) &lt;&lt; '[' &lt;&lt; static_cast&lt;int&gt;(GetID())
+			   &lt;&lt; "] Deallocate call shall be ignored. ptr = " &lt;&lt; static_cast&lt;void*&gt;(ptr) &lt;&lt; ", size = " &lt;&lt; requested;
+		});
 #endif // MEMORY_LOGGING_ENABLED
 
 #if PROFILE_ENABLED
-	mmgr.ReportDeallocation(id, ptr, requested, 0);
+		mmgr.ReportDeallocation(id, ptr, requested, 0);
 #endif // PROFILE_ENABLED</code></pre>
 
 <p class="meta">From Engine/Memory/InlineMonotonicAllocator.h, InlineMonotonicAllocator::Deallocate(TPointer ptr, TSize requested)</p>

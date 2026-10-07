@@ -69,14 +69,16 @@
 <pre><code>[[nodiscard]] auto GetID() const
 {
 	return allocatorID;
-}
+}</code></pre>
 
-[[nodiscard]] auto GetSourceAllocatorID() const
+<p class="meta">From Engine/Memory/DefaultAllocator.h, DefaultAllocator::GetID() const</p>
+
+<pre><code>[[nodiscard]] auto GetSourceAllocatorID() const
 {
 	return allocatorID;
 }</code></pre>
 
-<p class="meta">From Engine/Memory/DefaultAllocator.h, DefaultAllocator::GetID() const and DefaultAllocator::GetSourceAllocatorID() const</p>
+<p class="meta">From Engine/Memory/DefaultAllocator.h, DefaultAllocator::GetSourceAllocatorID() const</p>
 
 <p>
   The value names whichever allocator was current on the constructing thread — see

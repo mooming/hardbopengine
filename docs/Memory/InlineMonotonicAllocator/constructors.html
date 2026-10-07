@@ -72,13 +72,14 @@
 <p>What it does, in the order the source writes it:</p>
 
 <pre><code>Assert(OS::CheckAligned(buffer));
-buffer[0] = 0;
+		buffer[0] = 0;
 
-parentID = hbe::MemoryManager::GetCurrentAllocatorID();
-auto&amp; mmgr = MemoryManager::GetInstance();
-id = mmgr.RegisterAllocator(this, name, true, Capacity, allocFunc, deallocFunc);</code></pre>
+		// … the two registration lambdas the constructor defines …
+		parentID = hbe::MemoryManager::GetCurrentAllocatorID();
+		auto&amp; mmgr = MemoryManager::GetInstance();
+		id = mmgr.RegisterAllocator(this, name, true, Capacity, allocFunc, deallocFunc);</code></pre>
 
-<p class="meta">From Engine/Memory/InlineMonotonicAllocator.h, InlineMonotonicAllocator::InlineMonotonicAllocator(const char* name)</p>
+<p class="meta">From Engine/Memory/InlineMonotonicAllocator.h, InlineMonotonicAllocator::InlineMonotonicAllocator(const char* name) — condensed: the body is quoted around the two registration lambdas, which are marked rather than copied</p>
 
 <ol>
   <li>
@@ -157,11 +158,12 @@ id = mmgr.RegisterAllocator(this, name, true, Capacity, allocFunc, deallocFunc);
 
 <pre><code>using Allocator = InlineMonotonicAllocator&lt;2048&gt;;
 
-Allocator alloc("InlineMonotonicAllocator");
-{
-	AllocatorScope scope(alloc.GetID());
-	…
-}</code></pre>
+		…
+		Allocator alloc("InlineMonotonicAllocator");
+		{
+			AllocatorScope scope(alloc.GetID());
+		…
+		}</code></pre>
 
 <p class="meta">From Engine/Memory/InlineMonotonicAllocator.cpp, InlineMonotonicAllocatorTest::Prepare()</p>
 

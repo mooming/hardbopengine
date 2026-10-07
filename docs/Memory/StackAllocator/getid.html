@@ -112,12 +112,13 @@
 <h2 id="example">Examples</h2>
 
 <pre><code>StackAllocator stack("Test::StackAllocator", 1024 * 1024);
-{
-	AllocatorScope scope(stack.GetID());
+		{
+			AllocatorScope scope(stack.GetID());
 
-	HVector&lt;int&gt; a;
-	a.push_back(0);
-}</code></pre>
+			HVector&lt;int&gt; a;
+			a.push_back(0);
+		…
+		}</code></pre>
 
 <p class="meta">From Engine/Memory/StackAllocator.cpp, StackAllocatorTest::Prepare()</p>
 

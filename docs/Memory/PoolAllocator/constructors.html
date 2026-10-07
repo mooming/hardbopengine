@@ -60,7 +60,7 @@
 public:
 #if PROFILE_ENABLED
 	PoolAllocator(const char* inName, TSize inBlockSize, TSize inNumberOfBlocks,
-				  hbe::source_location location = hbe::source_location::current())
+				  SourceLocation location = SourceLocation::current())
 
 #else
 	PoolAllocator(const char* inName, TSize inBlockSize, TSize inNumberOfBlocks)

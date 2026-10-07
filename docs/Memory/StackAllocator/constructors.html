@@ -158,25 +158,29 @@ bufferPtr = mmgr.Allocate(capacity);</code></pre>
 <h2 id="example">Examples</h2>
 
 <pre><code>StackAllocator stack("Test::StackAllocator", 1024 * 1024);
-{
-	AllocatorScope scope(stack.GetID());
+		{
+			AllocatorScope scope(stack.GetID());
 
-	HVector&lt;int&gt; a;
-	a.push_back(0);
-}</code></pre>
+			HVector&lt;int&gt; a;
+			a.push_back(0);
+		…
+		}</code></pre>
 
 <p class="meta">From Engine/Memory/StackAllocator.cpp, StackAllocatorTest::Prepare()</p>
 
 <pre><code>using TAlloc = StackAllocator;
+	…
 
-ScopedAllocator&lt;TAlloc&gt; scope0("NestedStack0", 1024);
-{
-	ScopedAllocator&lt;TAlloc&gt; scope1("NestedStack1", 512);
+		ScopedAllocator&lt;TAlloc&gt; scope0("NestedStack0", 1024);
+		…
+		{
+			ScopedAllocator&lt;TAlloc&gt; scope1("NestedStack1", 512);
 
-	auto ptr = New&lt;long double&gt;(0);
-	/* ... */
-	Delete(ptr);
-}</code></pre>
+			auto ptr = New&lt;long double&gt;(0);
+			// … the scopes for nesting levels 2 to 5, and the logging between them …
+			Delete(ptr);
+		…
+		}</code></pre>
 
 <p class="meta">From Engine/Memory/StackAllocator.cpp, StackAllocatorTest::Prepare(), Nested Usage testlet</p>
 

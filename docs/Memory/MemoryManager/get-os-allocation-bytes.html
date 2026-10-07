@@ -124,20 +124,20 @@ function growing a <code>std::string</code> or a <code>std::vector</code> on App
 <h2 id="example">Examples</h2>
 
 <pre><code>const auto osBytesBefore = MemoryManager::GetOSAllocationBytes();
+		…
+		std::string grow;
 
-std::string grow;
-
-for (int i = 0; i &lt; 4096; ++i)
-{
-	grow.push_back('y');
-}
-
-const auto osBytesAfter = MemoryManager::GetOSAllocationBytes();
-
-if (osBytesAfter - osBytesBefore &lt; grow.size())
-{
-	ls &lt;&lt; "The OS bucket did not see the string growth bytes" &lt;&lt; lferr;
-}</code></pre>
+		for (int i = 0; i &lt; 4096; ++i)
+		{
+			grow.push_back('y');
+		}
+		…
+		const auto osBytesAfter = MemoryManager::GetOSAllocationBytes();
+		…
+		if (osBytesAfter - osBytesBefore &lt; grow.size())
+		{
+			ls &lt;&lt; "The OS bucket did not see the string growth bytes" &lt;&lt; lferr;
+		}</code></pre>
 
 <p class="meta">From Engine/Memory/GlobalAllocation.cpp, GlobalAllocationTest::Prepare()</p>
 

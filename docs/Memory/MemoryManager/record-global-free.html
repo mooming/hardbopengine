@@ -110,11 +110,13 @@ carry: <code>OS::GetAllocSize</code> reports the block, which can be larger than
 <h2 id="example">Examples</h2>
 
 <pre><code>const auto globalFreedBytesBefore = MemoryManager::GetGlobalFreeBytes();
-const auto globalFreedCountBefore = MemoryManager::GetGlobalFreeCount();
+		const auto globalFreedCountBefore = MemoryManager::GetGlobalFreeCount();
 
-testlet.Run(logStream);
+		…
+		testlet.Run(logStream);
 
-const auto globalFreedBytesOverBody = MemoryManager::GetGlobalFreeBytes() - globalFreedBytesBefore;</code></pre>
+		…
+		const auto globalFreedBytesOverBody = MemoryManager::GetGlobalFreeBytes() - globalFreedBytesBefore;</code></pre>
 
 <p class="meta">From Engine/Test/TestCollection.cpp, TestCollection::RunTestAt()</p>
 

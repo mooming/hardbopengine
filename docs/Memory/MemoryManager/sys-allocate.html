@@ -67,14 +67,16 @@ that <a href="allocate.html">Allocate</a> performs: the range check, the thread'
 </p>
 
 <pre><code>auto&amp; allocator = allocators[SystemAllocatorID];
-if (unlikely(allocator.allocate == nullptr))
-{
-	Log(ELogLevel::FatalError, ...);
+	if (unlikely(allocator.allocate == nullptr))
+	{
+		Log(ELogLevel::FatalError, [funcName = __func__](auto&amp; ls)
+		// … the fatal-error message lambda …
+		});
 
-	return nullptr;
-}
+		return nullptr;
+	}
 
-return allocator.allocate(&amp;allocator, nBytes);</code></pre>
+	return allocator.allocate(&amp;allocator, nBytes);</code></pre>
 
 <p class="meta">From Engine/Memory/MemoryManager.cpp, MemoryManager::SysAllocate()</p>
 

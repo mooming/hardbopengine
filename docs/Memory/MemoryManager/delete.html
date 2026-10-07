@@ -116,13 +116,14 @@ allocator, and both must name the same type.
 
 <h2 id="example">Examples</h2>
 
-<pre><code>auto newBody = mmgr.New&lt;Body&gt;(std::forward&lt;Types&gt;(args)...);
+<pre><code>auto newBody = mmgr.New&lt;Body&gt;(std::forward&lt;Types&gt;(args)...);</code></pre>
 
-…
+<p class="meta">From Engine/Memory/Shareable.h, Shareable&lt;TType, RefCount&gt;::Body::Create(Types&amp;&amp;... args)</p>
 
+<pre><code>auto&amp; mmgr = MemoryManager::GetInstance();
 mmgr.Delete&lt;Body&gt;(this);</code></pre>
 
-<p class="meta">From Engine/Memory/Shareable.h, Shareable&lt;TType, RefCount&gt;::Body::Create() and ::Release()</p>
+<p class="meta">From Engine/Memory/Shareable.h, Shareable&lt;TType, RefCount&gt;::Body::Dereference()</p>
 
 <p>
 Create and destroy in the same class, with the same spelled type — the convention that keeps both halves of the size and the scope
