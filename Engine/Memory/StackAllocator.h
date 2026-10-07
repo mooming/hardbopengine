@@ -27,12 +27,7 @@ private:
 
 	SizeType capacity;
 	SizeType cursor;
-
-	union
-	{
-		Byte* buffer;
-		Pointer bufferPtr;
-	};
+	Byte* buffer;
 
 #if PROFILE_ENABLED
 	TSrcLoc srcLocation;

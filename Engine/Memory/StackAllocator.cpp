@@ -35,7 +35,7 @@ StackAllocator::StackAllocator(const char* name, SizeType inCapacity)
 
 	auto& mmgr = MemoryManager::GetInstance();
 	parentID = hbe::MemoryManager::GetCurrentAllocatorID();
-	bufferPtr = mmgr.Allocate(capacity);
+	buffer = static_cast<Byte*>(mmgr.Allocate(capacity));
 
 	auto allocFunc = [](void* allocatorPtr, size_t n) -> void*
 	{
@@ -56,7 +56,7 @@ StackAllocator::StackAllocator(const char* name, SizeType inCapacity)
 StackAllocator::~StackAllocator()
 {
 	auto& mmgr = MemoryManager::GetInstance();
-	mmgr.Deallocate(bufferPtr, capacity);
+	mmgr.Deallocate(buffer, capacity);
 
 #if PROFILE_ENABLED
 	mmgr.DeregisterAllocator(GetID(), srcLocation);
@@ -297,7 +297,6 @@ void StackAllocatorTest::Prepare()
 				ScopedAllocator<TAlloc> scope2("NestedStack2", 256);
 
 				auto ptr = New<long double>(0);
-
 				const auto depth = depthSeed++;
 				ls << "Neted Level " << depth << ", free size = " << scope2.GetAllocator().GetAvailable() << " / "
 				   << scope1.GetAllocator().GetAvailable() << " / " << scope0.GetAllocator().GetAvailable() << lf;
@@ -305,7 +304,6 @@ void StackAllocatorTest::Prepare()
 					ScopedAllocator<TAlloc> scope3("NestedStack3", 128);
 
 					auto ptr = New<long double>(0);
-
 					const auto depth = depthSeed++;
 					ls << "Neted Level " << depth << ", free size = " << scope3.GetAllocator().GetAvailable() << " / "
 					   << scope2.GetAllocator().GetAvailable() << " / " << scope1.GetAllocator().GetAvailable() << " / "
@@ -314,7 +312,6 @@ void StackAllocatorTest::Prepare()
 						ScopedAllocator<TAlloc> scope4("NestedStack4", 64);
 
 						auto ptr = New<long double>(0);
-
 						const auto depth = depthSeed++;
 						ls << "Neted Level " << depth << ", free size = " << scope4.GetAllocator().GetAvailable()
 						   << " / " << scope3.GetAllocator().GetAvailable() << " / "
@@ -324,7 +321,6 @@ void StackAllocatorTest::Prepare()
 							ScopedAllocator<TAlloc> scope5("NestedStack05", 32);
 
 							auto ptr = New<long double>(0);
-
 							const auto depth = depthSeed++;
 							ls << "Neted Level " << depth << ", free size = " << scope5.GetAllocator().GetAvailable()
 							   << " / " << scope4.GetAllocator().GetAvailable() << " / "
