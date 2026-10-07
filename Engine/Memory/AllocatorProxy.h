@@ -12,6 +12,7 @@
 
 namespace hbe
 {
+/// API reference: docs/Memory/AllocatorProxy/index.html
 class AllocatorProxy final
 {
 public:

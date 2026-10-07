@@ -70,3 +70,4 @@ __pycache__/
 .work
 build-asan/
 build-tsan/
+.multiPoolConfig.dat

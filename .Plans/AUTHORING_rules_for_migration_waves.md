@@ -59,3 +59,18 @@ no code snippet** — it holds zero `<pre>` blocks, and the class declaration fa
 class description instead. Its Coverage table keys rows by a column named `Piece`. Method pages are different: the exemplar's own
 method pages do embed code blocks, so method pages keep theirs. Author new class pages this way from the start; wave 1's pages
 were written with a declaration snippet and are being corrected.
+
+## Verification tiers, adopted for time efficiency
+
+Three-configuration builds are the only proof that matters for a source change, and they are also the most expensive thing an
+agent in this migration can do. Documentation cannot change a binary, so most work in this migration does not need that proof.
+
+| What you changed | Required proof | What you do **not** run |
+|---|---|---|
+| `docs/` only — pages, links, elision markers | `htmlcheck.py`, `docs_pass.py signatures` for touched classes, `docs_methods.py Memory` | Any build. The engine binary is byte-identical to one already proven |
+| `.cpp` only, behaviour unchanged — comment deletion | One configuration build plus its suite run, and `comments.py` per file | Three configurations, unless the file is `ThreadSafeMultiPoolAllocator.cpp`, `PoolAllocator.cpp` or `MemoryManager.cpp` |
+| `.h` declarations, or any of those three files above, or anything under `Engine/Core`, `Engine/OSAL` | All three configurations, all three suite runs | — |
+| `.pi/skills/` scripts only | Run the script over two modules and compare | Any build |
+
+Two standing rules that are not about builds, because both were learned by losing work: never more than two subagents in flight,
+and never print a build log, compiler output or suite output — redirect to a file and report counts.
