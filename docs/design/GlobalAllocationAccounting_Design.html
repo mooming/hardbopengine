@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Global allocation accounting design — Memory module — HardBop Engine design document</title>
+<link rel="stylesheet" href="../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../Config/index.html">Config</a></li>
+    <li><a href="../Container/index.html">Container</a></li>
+    <li><a class="current" href="../Core/index.html">Core</a></li>
+    <li><a href="../Engine/index.html">Engine</a></li>
+    <li><a href="../HSTL/index.html">HSTL</a></li>
+    <li><a href="../Log/index.html">Log</a></li>
+    <li><a href="../Math/index.html">Math</a></li>
+    <li><a href="../Memory/index.html">Memory</a></li>
+    <li><a href="../OSAL/index.html">OSAL</a></li>
+    <li><a href="../Renderer/index.html">Renderer</a></li>
+    <li><a href="../Resource/index.html">Resource</a></li>
+    <li><a href="../String/index.html">String</a></li>
+    <li><a href="../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This document</h3>
+  <ul>
+    <li><a href="#counters">Why the counters live outside a scope</a></li>
+    <li><a href="#atomics">Why they are constant-initialised atomics</a></li>
+    <li><a href="#malloc">Why the backing store stays malloc</a></li>
+    <li><a href="#exhaustion">What happens when the heap is exhausted</a></li>
+    <li><a href="#unsized">A release that arrives without a size</a></li>
+    <li><a href="#namespace">Why the operators cannot carry the namespace</a></li>
+    <li><a href="#seealso">Where else to look</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+  <div class="breadcrumb"><a href="../index.html">Docs</a> / <a href="../Memory/index.html">Memory</a> / Global allocation accounting design</div>
+
+<h1>Global allocation accounting design</h1>
+
+<p>
+  Implementation design for <code>Engine/Memory/GlobalAllocation.cpp</code>: the engine's replacement
+  <code>operator new</code> and <code>operator delete</code> and the counters beside them. The user-facing contract of
+  these entry points is on the <a href="../Memory/index.html">Memory module page</a>; what is recorded here is why the
+  file is built the way it is, which is the material a caller has no reason to read.
+</p>
+
+<h2 id="counters">Why the counters live here and not inside an <code>AllocatorScope</code></h2>
+
+<p>
+  A <code>std::vector</code> or <code>std::string</code> reaches the heap through these entry points, which no scope can
+  intercept, so an allocation made in the middle of a test can otherwise happen entirely off the books.
+</p>
+
+<h2 id="atomics">Why the counters are constant-initialised atomics</h2>
+
+<p>
+  That is what makes them safe for the earliest static initialiser — there is no ready flag to get wrong, and no window
+  where an allocation goes unrecorded and its later release looks like an underflow. They are cumulative on both sides
+  for the same reason: nothing here pairs an allocation with its release, so an unrecorded pointer cannot drive a
+  negative figure.
+</p>
+
+<h2 id="malloc">Why the backing store stays <code>malloc</code></h2>
+
+<p>
+  <a href="../Memory/SystemAllocator/index.html"><code>SystemAllocator</code></a> is the owner of the system heap, and
+  routing these entry points through it is the right destination, but its investigation configuration allocates page
+  granular with underrun placement. Attaching every global allocation to that would silently turn each small
+  standard-library allocation into a page and change what every configuration measures. So the decision taken here is to
+  account first and keep <code>malloc</code>, which also keeps the release path unambiguous — every pointer these
+  produce is freeable by the same call that was freeable before this file existed.
+</p>
+
+<h2 id="exhaustion">What happens when the heap is exhausted</h2>
+
+<p>
+  This reports and aborts instead of throwing <code>bad_alloc</code>, after giving any installed
+  <code>new_handler</code> its turn. The engine is exception-free, so nothing could catch the exception anyway; aborting
+  with a logged size and alignment keeps the information that throwing would lose.
+</p>
+
+<h2 id="unsized">A release that arrives without a size</h2>
+
+<p>
+  The unsized <code>operator delete</code>, which is what most generated code calls, asks the system heap how large the
+  block really is. Without that, the released total stays at zero for most frees, retention degenerates into the
+  requested total, and a testlet that frees everything it allocated looks the same as one that leaks. The answer is the
+  block size, which can exceed the size requested, so the released total can slightly outrun the requested total; the
+  clamp on retention absorbs that.
+</p>
+
+<h2 id="namespace">Why the replacement operators cannot carry the engine namespace</h2>
+
+<p>
+  Replacement allocation functions are global by language rule: a declaration of <code>operator new</code> inside a
+  namespace is rejected outright, so only the accounting above is able to carry the engine namespace.
+</p>
+
+<h2 id="seealso">Where else to look</h2>
+
+<ul>
+  <li><a href="../Memory/index.html">Memory module</a> — the catalogue, and the scope rules these entry points sit outside.</li>
+  <li><a href="../Memory/SystemAllocator/index.html"><code>SystemAllocator</code></a> — the system heap owner whose investigation configuration is declined above.</li>
+  <li><a href="MemoryManagerInternals_Design.html">MemoryManager internals</a> — the scoped allocator the counters deliberately do not depend on.</li>
+</ul>
+
+</main>
+</body>
+</html>

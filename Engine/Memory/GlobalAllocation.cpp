@@ -17,29 +17,6 @@ extern "C" const void* _dyld_get_shared_cache_range(size_t* length);
 #define HBE_ACCOUNTING_CALLER nullptr
 #endif
 
-/*
- * The engine's global allocation entry points, and the accounting that goes with them.
- *
- * Why the counters live here and not inside an AllocatorScope: a std::vector or std::string reaches the heap
- * through these entry points, which no scope can intercept, so an allocation made in the middle of a test can
- * otherwise happen entirely off the books. The counters are constant initialised atomics, which is what makes
- * them safe for the earliest static initialiser - there is no ready flag to get wrong, and no window where an
- * allocation goes unrecorded and its later release looks like an underflow. They are cumulative on both sides
- * for the same reason: nothing here pairs an allocation with its release, so an unrecorded pointer cannot drive
- * a negative figure.
- *
- * Why the backing store stays malloc: SystemAllocator is the owner of the system heap, and routing these entry
- * points through it is the right destination, but its investigation configuration allocates page granular with
- * underrun placement. Attaching every global allocation to that would silently turn each small std allocation
- * into a page and change what every configuration measures. So the decision taken here is to account first and
- * keep malloc, which also keeps the release path unambiguous - every pointer these produce is freeable by the
- * same call that was freeable before this file existed.
- *
- * On exhaustion this reports and aborts instead of throwing bad_alloc, after giving any installed new_handler
- * its turn. The engine is exception-free, so nothing could catch the exception anyway; aborting with a logged
- * size and alignment keeps the information that throwing would lose.
- */
-
 namespace
 {
 std::atomic<size_t> globalAllocationBytes{0};
@@ -211,13 +188,6 @@ void* TryAllocateAccountedAligned(size_t size, std::align_val_t alignment, void*
 	return ptr;
 }
 
-/*
- * A release that arrives without a size - the unsized operator delete, which is what most generated code calls
- * - asks the system heap how large the block really is. Without that, the released total stays at zero for most
- * frees, retention degenerates into the requested total, and a testlet that frees everything it allocated looks
- * the same as one that leaks. The answer is the block size, which can exceed the size requested, so the released
- * total can slightly outrun the requested total; the clamp on retention absorbs that.
- */
 void Deallocate(void* ptr, size_t size, void* caller) noexcept
 {
 	if (ptr != nullptr)
@@ -282,11 +252,6 @@ uint64_t MemoryManager::GetOSFreeCount() noexcept
 	return globalOSFreeCount.load(std::memory_order_relaxed);
 }
 } // namespace hbe
-
-/*
- * Replacement allocation functions are global by language rule: a declaration of operator new inside a
- * namespace is rejected outright, so only the accounting above is able to carry the engine namespace.
- */
 
 void* operator new(size_t size)
 {
