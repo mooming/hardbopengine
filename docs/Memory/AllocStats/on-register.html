@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AllocStats::OnRegister — Memory module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a class="current" href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Memory</a> /
+  <a href="index.html">AllocStats</a> / OnRegister
+</p>
+
+<h1><span class="fn">OnRegister</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::AllocStats</span>
+  <span class="tag">Engine/Memory/AllocStats.h</span>
+  Adopts a registration's name, inline flag and capacity, and zeroes every counter: the record's history restarts
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>void OnRegister(const char* name, bool isInline, size_t inCapacity) noexcept</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  Defined at <code>Engine/Memory/AllocStats.cpp</code>. It copies <code>name</code> into the <code>StaticString</code>
+  member, stores <code>isInline</code> and <code>inCapacity</code>, and zeroes all eight counters plus
+  <code>maxUsage</code>. Registration therefore restarts the record's history: nothing about a previous identity or a
+  previous run survives this call.
+</p>
+
+<p>
+  Both callers the module shows run under the manager's <code>statsLock</code>:
+  <a href="../MemoryManager/register-allocator.html"><code>MemoryManager::RegisterAllocator</code></a> calls it with the
+  registration arguments (after substituting <code>"None"</code> for a null name and adding the capacity into the
+  inline or non-inline aggregate <code>UsageRecord</code> chosen by the same flag), and
+  <a href="../MemoryManager/register-system-allocator.html"><code>RegisterSystemAllocator</code></a> calls it for slot 0
+  with the literal <code>"SystemAllocator"</code>, <code>isInline</code> false and <code>Config::MemCapacity</code>
+  (<code>Engine/Memory/MemoryManager.cpp</code>). The name is the only copy the record keeps; the header's own field
+  table shows why — <a href="index.html#properties"><code>name</code></a> is written nowhere else.
+</p>
+
+<h2 id="parameters">Parameters</h2>
+
+<table>
+  <tr><th>Parameter</th><th>Type</th><th>Requirement</th></tr>
+  <tr><td><code>name</code></td><td><code>const char*</code></td><td>Copied into a <code>StaticString</code>; a null pointer is not tested here — the manager's paths replace it with <code>"None"</code> before calling.</td></tr>
+  <tr><td><code>isInline</code></td><td><code>bool</code></td><td>Whether the registered capacity is inline storage; also the key the manager uses to pick its aggregate record.</td></tr>
+  <tr><td><code>inCapacity</code></td><td><code>size_t</code></td><td>Bytes the allocator declares; stored verbatim into <code>capacity</code>.</td></tr>
+</table>
+
+<h2 id="return">Return value</h2>
+
+<p>None. On return the record describes the new registration and every counter reads zero.</p>
+
+<h2 id="example">Examples</h2>
+
+<pre><code>			auto&amp; stats = allocProxy.stats;
+			stats.OnRegister(name, isInline, capacity);</code></pre>
+
+<p class="meta">From Engine/Memory/MemoryManager.cpp, MemoryManager::RegisterAllocator</p>
+
+<p>
+  The filling step of a registration, inside the <code>statsLock</code> guard, immediately before the declared capacity
+  is added to the aggregate usage record this flag selects.
+</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; AllocStats</a></span>
+  <span><a href="index.html#methods">All AllocStats methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

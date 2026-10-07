@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ScopedAllocator::ScopedAllocator — Memory module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a class="current" href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Memory</a> /
+  <a href="index.html">ScopedAllocator</a> / ScopedAllocator
+</p>
+
+<h1><span class="fn">ScopedAllocator</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::ScopedAllocator</span>
+  <span class="tag">Engine/Memory/ScopedAllocator.h</span>
+  One perfect-forwarding constructor builds the owned allocator first and opens the scope over it second; every way to copy or move the pair is deleted
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>ScopedAllocator(const ScopedAllocator&amp;) = delete
+
+ScopedAllocator(ScopedAllocator&amp;&amp;) = delete
+
+template &lt;typename... Types&gt;
+	ScopedAllocator(Types&amp;&amp;... args)
+		: allocator(std::forward&lt;Types&gt;(args)...)
+		, scope(allocator)</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  One live constructor, defined in the class body of <code>Engine/Memory/ScopedAllocator.h</code>, perfect-forwarding
+  its whole argument pack twice over: <code>allocator(std::forward&lt;Types&gt;(args)...)</code> builds the owned
+  allocator in place with exactly the arguments the caller wrote, and <code>scope(allocator)</code> then opens an
+  <a href="../AllocatorScope/index.html"><code>AllocatorScope</code></a> over the finished object — through that class's
+  template constructor, which asks the allocator for its <code>GetID()</code>. Member-initialisation order is
+  declaration order, so the allocator is a complete, registered object before the scope reads its id; the constructor
+  has no body statements and no error path of its own — if the allocator's construction stops early (a zero-capacity
+  request, a failed registration), the scope is opened over whatever id the object reports, and
+  <a href="../AllocatorScope/constructors.html"><code>AllocatorScope</code> documents what each id value then means</a>.
+</p>
+
+<p>
+  The copy and move constructors are deleted, as is assignment in both directions. The prohibition is not a style
+  preference: the owned allocator's registration typically records the object's address, and the owned scope carries a
+  restore obligation tied to one stack position. Duplicating the pair would duplicate the registration's subject or the
+  obligation; moving either would strand one of them. A <code>ScopedAllocator</code> is therefore constructed where its
+  redirection is wanted and destroyed where it should end.
+</p>
+
+<h2 id="parameters">Parameters</h2>
+
+<table>
+  <tr><th>Parameter</th><th>Type</th><th>Requirement</th></tr>
+  <tr><td><code>args</code></td><td><code>Types&amp;&amp;...</code></td><td>Whatever <code>TAlloc</code>'s own constructor takes — for the tree's uses, the linear and pool allocators' arguments such as a name and a capacity. Forwarded unmodified; nothing here inspects or validates them.</td></tr>
+</table>
+
+<h2 id="return">Return value</h2>
+
+<p>None; a constructor. On return the calling thread allocates from the owned object until this object's scope ends.</p>
+
+<h2 id="example">Examples</h2>
+
+<pre><code>		using TAlloc = StackAllocator;
+		int depthSeed = 0;
+
+		ScopedAllocator&lt;TAlloc&gt; scope0("NestedStack0", 1024);</code></pre>
+
+<p class="meta">From Engine/Memory/StackAllocator.cpp, StackAllocatorTest::Prepare()</p>
+
+<p>
+  The constructor as the engine writes it: the allocator's own arguments — name and capacity for a
+  <code>StackAllocator</code> — arrive at its door through one forwarding call, and the redirection is open for the rest
+  of the block. The same testlet stacks five of these inside each other; the teardown order they unwind in is the
+  subject of <a href="destructor.html">the destructor page</a>.
+</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; ScopedAllocator</a></span>
+  <span><a href="index.html#methods">All ScopedAllocator methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

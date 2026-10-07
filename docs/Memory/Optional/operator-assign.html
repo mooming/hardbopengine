@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Optional::operator= — Memory module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a class="current" href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Memory</a> /
+  <a href="index.html">Optional</a> / operator=
+</p>
+
+<h1><span class="fn">operator=</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::Optional</span>
+  <span class="tag">Engine/Memory/Optional.h</span>
+  <span class="tag">4 overloads</span>
+  assign into a live value or fill an empty one; both optional-taking forms destroy first and neither survives self-assignment
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>Optional&amp; operator=(TType&amp; value)
+
+Optional&amp; operator=(const Optional&amp; rhs)
+
+Optional&amp; operator=(Optional&amp;&amp; rhs)
+
+Optional&amp; operator=(std::nullptr_t)</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  Four assignment operators in the class body of <code>Engine/Memory/Optional.h</code>, each returning
+  <code>*this</code> and each written as a short sequence of tests on <code>hasValue</code>. They differ in one
+  important respect from the constructors: every one of them writes the flag.
+</p>
+
+<table>
+  <tr><th>Overload</th><th>What it does</th></tr>
+  <tr>
+    <td><code>operator=(TType&amp;)</code></td>
+    <td>Already holding a value: assigns through <a href="value.html">Value</a> and returns. Empty: fills by
+      <a href="emplace.html">Emplace</a>. So an empty optional becomes filled and a filled one is updated in
+      place — never destroyed and rebuilt</td>
+  </tr>
+  <tr>
+    <td><code>operator=(const Optional&amp;)</code></td>
+    <td>If this holds a value, <a href="destroy.html">Destroy</a> runs first; then if <code>rhs</code> holds a
+      value, <a href="copyvalue.html">CopyValue</a> adopts a copy of it. If <code>rhs</code> is empty, nothing is
+      copied and the result is empty</td>
+  </tr>
+  <tr>
+    <td><code>operator=(Optional&amp;&amp;)</code></td>
+    <td>Same shape with <a href="movevalue.html">MoveValue</a>, which additionally clears the source's flag — so a
+      moved-from optional is genuinely empty afterwards, not dangling</td>
+  </tr>
+  <tr>
+    <td><code>operator=(std::nullptr_t)</code></td>
+    <td>Calls <a href="reset.html">Reset</a>. The one form that never throws, copies or moves anything</td>
+  </tr>
+</table>
+
+<div class="gap">
+  <p>
+    <strong>Neither optional-taking form handles assigning an object to itself.</strong> Both destroy their own
+    value before looking at the source, so <code>opt = opt;</code> and <code>std::move(opt2) </code> onto
+    <code>opt2</code> run the destructor of the element and then read it: <a href="copyvalue.html">CopyValue</a>
+    assigns from <code>rhs.Value()</code> and <a href="movevalue.html">MoveValue</a> moves from it, and when
+    <code>&amp;rhs == this</code> both are reading the value that was just destroyed. No comparison of addresses
+    appears in either operator, and nothing logs the attempt.
+  </p>
+</div>
+
+<div class="note">
+  <p>
+    <strong>The value form takes a non-const lvalue reference.</strong> <code>operator=(TType&amp;)</code> is the
+    only assignment from an element, so assigning from a <code>const TType</code>, a temporary, or the result of an
+    expression does not select it — and unlike the other three it does not destroy first, which is what makes
+    "assign into a filled optional" an in-place update. For a reference element type, in-place assignment writes
+    <em>through</em> the stored address to the object being referred to; the optional never re-points at a different
+    object this way, because re-pointing would mean <a href="emplace.html">Emplace</a>.
+  </p>
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<table>
+  <tr><th>Parameter</th><th>Type</th><th>Requirement</th></tr>
+  <tr><td><code>value</code></td><td><code>TType&amp;</code></td><td>A modifiable lvalue of the element type. For a reference element type, the referent to assign into</td></tr>
+  <tr><td><code>rhs</code></td><td><code>const Optional&amp;</code> / <code>Optional&amp;&amp;</code></td><td>The source. Must not be this object: the destroy-then-copy order makes self-assignment undefined</td></tr>
+</table>
+
+<p><code>operator=(std::nullptr_t)</code> takes a null pointer constant and ignores its value.</p>
+
+<h2 id="return">Return value</h2>
+
+<table>
+  <tr><th>Type</th><th>What you get</th></tr>
+  <tr><td><code>Optional&amp;</code></td><td><code>*this</code>, in its post-assignment state. All four return it, so chains work; none reports whether anything was destroyed, copied or moved.</td></tr>
+</table>
+
+<h2 id="example">Examples</h2>
+
+<p>The value form is the only one that emplaces rather than overwriting:</p>
+
+<pre><code>Emplace(value);</code></pre>
+
+<p class="meta">From Engine/Memory/Optional.h, Optional::operator=(TType&amp; value)</p>
+
+<p>
+  It is reached only on the empty branch, and it is the same call an outside caller could make directly — see
+  <a href="emplace.html">Emplace</a>. The <code>nullptr</code> form's counterpart is
+  <a href="reset.html">Reset</a>, and the two together are the whole of "put a value in / take it out" at this
+  interface.
+</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; Optional</a></span>
+  <span><a href="index.html#methods">All Optional methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

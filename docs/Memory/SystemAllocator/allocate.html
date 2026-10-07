@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SystemAllocator::allocate — Memory module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a class="current" href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Memory</a> /
+  <a href="index.html">SystemAllocator</a> / allocate
+</p>
+
+<h1><span class="fn">allocate</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::SystemAllocator</span>
+  <span class="tag">Engine/Memory/SystemAllocator.h</span>
+  Room for n elements of T: element arithmetic over the private byte layer, with no test of the result before it reaches the caller
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>[[nodiscard]] T* allocate(std::size_t n) noexcept</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  Defined in the class body of <code>Engine/Memory/SystemAllocator.h</code>, and the whole function is
+  <code>return reinterpret_cast&lt;T*&gt;(AllocateBytes(n * sizeof(T)));</code> — element count in, byte count computed,
+  raw result reinterpreted as a typed pointer. Everything that decides where the bytes come from lives in
+  <a href="allocate-bytes.html">AllocateBytes</a>: the system heap in the shipped configuration, page-rounded virtual
+  blocks with deliberately placed pointers in an investigation build, and a profiling report filed under
+  <a href="get-id.html">GetID</a> when <code>PROFILE_ENABLED</code> is on.
+</p>
+
+<p>
+  The function is <code>noexcept</code> in every configuration, so a failure of the underlying allocation cannot be an
+  exception either: in the default build the chain reaches <code>malloc</code>, whose null return this function passes
+  through unchanged. The class page's gap note records who checks the result — the callers above this class, never this
+  class. Note also the element arithmetic: <code>n * sizeof(T)</code> is unguarded multiplication, so an
+  <code>n</code> large enough to wrap the product asks the byte layer for the wrong size; no caller in the tree builds
+  a request that way, and no guard here would catch one that did.
+</p>
+
+<h2 id="parameters">Parameters</h2>
+
+<table>
+  <tr><th>Parameter</th><th>Type</th><th>Requirement</th></tr>
+  <tr><td><code>n</code></td><td><code>std::size_t</code></td><td>Element count; the product with <code>sizeof(T)</code> must be the byte count the caller meant. Zero is passed straight down to the underlying allocator, whose answer the C standard leaves open.</td></tr>
+</table>
+
+<h2 id="return">Return value</h2>
+
+<p>
+  A <code>T*</code> with room for <code>n</code> elements — raw, uninitialised — or whatever the underlying allocator
+  returns on failure: the pointer is not tested here. It belongs to this allocator's source (the system heap in the
+  shipped configuration) and must return through <a href="deallocate.html">deallocate</a> with the same element count.
+</p>
+
+<h2 id="example">Examples</h2>
+
+<pre><code>		auto allocFunc = [](void*, size_t nBytes) -&gt; void* { return systemAllocator.allocate(nBytes); };
+		auto deallocFunc = [](void*, void* ptr, size_t nBytes)
+		{ systemAllocator.deallocate(static_cast&lt;uint8_t*&gt;(ptr), nBytes); };</code></pre>
+
+<p class="meta">From Engine/Memory/MemoryManager.cpp, MemoryManager::RegisterSystemAllocator()</p>
+
+<p>
+  Slot 0's registered operations call exactly this pair on the instantiation
+  <code>SystemAllocator&lt;uint8_t&gt;</code>, which is why every byte figure carrying the system allocator's id passed
+  through an element width of one: here <code>n * sizeof(uint8_t)</code> is the byte count unchanged.
+</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; SystemAllocator</a></span>
+  <span><a href="index.html#methods">All SystemAllocator methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

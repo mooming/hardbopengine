@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AllocStats — Memory module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a class="current" href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This class</h3>
+  <ul>
+    <li><a href="#description">Class description</a></li>
+    <li><a href="#template">Template parameters</a></li>
+    <li><a href="#properties">Class properties</a></li>
+    <li><a href="#methods">Class methods</a></li>
+    <li><a href="#non-member">Non-member helper functions</a></li>
+    <li><a href="#coverage">Coverage</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Memory</a> /
+  AllocStats
+</p>
+
+<h1>AllocStats</h1>
+<p class="subtitle">
+  <span class="tag">Engine/Memory/AllocStats.h</span>
+  <span class="tag">final</span>
+  <span class="tag">namespace hbe</span>
+  One registered allocator's profiling record: identity, capacity, usage peaks and traffic counters, owned and updated by the MemoryManager under its stats lock
+</p>
+
+<h2 id="description">Class description</h2>
+
+<p>
+  <code>class AllocStats final</code> at <code>Engine/Memory/AllocStats.h</code> is one allocator's profiling record:
+  what it was registered as, how much it was given, how much it holds, and the peaks and counters that describe the
+  traffic it has served. The engine keeps one per registered allocator, embedded in that allocator's
+  <a href="../MemoryManager/get-allocator-proxy.html"><code>AllocatorProxy</code></a> record under
+  <code>PROFILE_ENABLED</code> (<code>Engine/Memory/MemoryManager.h</code>), and the class compiles in every
+  configuration — with <code>PROFILE_ENABLED 0</code>, the setting in <code>Engine/Config/BuildConfig.h</code>, only
+  <a href="report.html">Report</a>'s body disappears and every other member still exists.
+</p>
+
+<p>
+  Its whole life is owned by the <a href="../MemoryManager/index.html"><code>MemoryManager</code></a>, which is the
+  only writer the module shows. <a href="../MemoryManager/register-allocator.html"><code>RegisterAllocator</code></a>
+  fills a record through <a href="on-register.html">OnRegister</a>; the reporting paths
+  (<a href="../MemoryManager/report-allocation.html">ReportAllocation</a>,
+  <a href="../MemoryManager/report-deallocation.html">ReportDeallocation</a>) move the counters under the manager's
+  <code>statsLock</code>; <a href="../MemoryManager/deregister-allocator.html"><code>DeregisterAllocator</code></a>
+  refuses release while <code>usage &gt; 0</code>, warns of a leak, and on the clean path calls
+  <a href="reset.html">Reset</a> before the record returns to the free list. The source-location deregistration variant
+  first hands the record to <a href="report.html">Report</a>, which copies it into the engine's statistics collector.
+</p>
+
+<table>
+  <tr><th>Piece</th><th>What it is</th><th>Where the contract lives</th></tr>
+  <tr><td>Identity fields</td><td><code>name</code> and <code>isInline</code>, written only by <a href="on-register.html">OnRegister</a></td><td><a href="../MemoryManager/register-allocator.html">RegisterAllocator</a></td></tr>
+  <tr><td>Size fields</td><td><code>capacity</code> from the registration; <code>usage</code>, <code>maxUsage</code> and the requested totals moved by the reporting paths</td><td><a href="../MemoryManager/report-allocation.html">ReportAllocation</a>, <a href="../MemoryManager/report-deallocation.html">ReportDeallocation</a></td></tr>
+  <tr><td>Fallback fields</td><td><code>totalFallback</code>, <code>maxFallback</code>, <code>fallbackCount</code>: bytes and requests a child allocator pushed up to its parent</td><td><a href="../MemoryManager/fallback-allocate.html">FallbackAllocate</a></td></tr>
+  <tr><td>Whole-record reads</td><td>a copy handed out by <code>MemoryManager::GetAllocatorStat</code> under <code>statsLock</code>, or one line group on the log by <a href="print.html">Print</a></td><td><a href="../MemoryManager/get-allocator-stat.html">GetAllocatorStat</a></td></tr>
+</table>
+
+<div class="gap">
+  <strong>The class itself synchronises nothing.</strong> <code>AllocStats</code> holds plain fields — no mutex, no
+  atomic — so its thread-safety is entirely the discipline of whoever holds the record: the manager updates and reads
+  the embedded copies under its <code>statsLock</code> (<code>Engine/Memory/MemoryManager.cpp</code>), and a record
+  copied out by <a href="../MemoryManager/get-allocator-stat.html"><code>GetAllocatorStat</code></a> is a snapshot, not
+  a view. What a caller may rely on: the copy you hold does not change; what a caller may not rely on: that the live
+  record cannot change underneath the very act of copying it outside that lock.
+</div>
+
+<h2 id="template">Template parameters</h2>
+
+<p>None. <code>AllocStats</code> is <code>final</code> and not a template; every allocator, whatever its design, is
+described through the same field set.</p>
+
+<h2 id="properties">Class properties</h2>
+
+<p>
+  All twelve fields are <code>public</code>; the manager's reporting paths read and write them directly under
+  <code>statsLock</code>. None carries an in-class initialiser — the values below all come from the
+  <a href="constructors.html">constructor's</a> initializer list — and unit is bytes throughout except the three
+  counters, which count requests.
+</p>
+
+<table>
+  <tr><th>Type + Name</th><th>Default Value</th><th>Description</th></tr>
+  <tr><td><code>StaticString name;</code> <span class="badge">public</span></td><td><span class="muted">none in the header</span></td><td>The registered name, written only by <a href="on-register.html">OnRegister</a>; empty before the first registration.</td></tr>
+  <tr><td><code>bool isInline;</code> <span class="badge">public</span></td><td><span class="muted">none in the header</span></td><td>Whether the allocator's capacity is inline storage rather than a heap buffer; picks which of the manager's two aggregate <code>UsageRecord</code>s its capacity joins.</td></tr>
+  <tr><td><code>size_t capacity;</code> <span class="badge">public</span></td><td><span class="muted">none in the header</span></td><td>Bytes the registration declared; fixed until the record is re-registered or <a href="reset.html">Reset</a>.</td></tr>
+  <tr><td><code>size_t usage;</code> <span class="badge">public</span></td><td><span class="muted">none in the header</span></td><td>Bytes currently held; a nonzero value at deregistration is treated as a leak and blocks the release path.</td></tr>
+  <tr><td><code>size_t maxUsage;</code> <span class="badge">public</span></td><td><span class="muted">none in the header</span></td><td>Peak <code>usage</code> the record has reached.</td></tr>
+  <tr><td><code>size_t totalRequested;</code> <span class="badge">public</span></td><td><span class="muted">none in the header</span></td><td>Cumulative bytes callers asked for — the numerator of the average <a href="print.html">Print</a> divides by <code>allocCount</code>.</td></tr>
+  <tr><td><code>size_t maxRequested;</code> <span class="badge">public</span></td><td><span class="muted">none in the header</span></td><td>Largest single request served.</td></tr>
+  <tr><td><code>size_t totalFallback;</code> <span class="badge">public</span></td><td><span class="muted">none in the header</span></td><td>Cumulative bytes served by the parent on this allocator's behalf.</td></tr>
+  <tr><td><code>size_t maxFallback;</code> <span class="badge">public</span></td><td><span class="muted">none in the header</span></td><td>Largest single fallback request.</td></tr>
+  <tr><td><code>size_t allocCount;</code> <span class="badge">public</span></td><td><span class="muted">none in the header</span></td><td>Allocations reported to this record.</td></tr>
+  <tr><td><code>size_t deallocCount;</code> <span class="badge">public</span></td><td><span class="muted">none in the header</span></td><td>Releases reported to this record.</td></tr>
+  <tr><td><code>size_t fallbackCount;</code> <span class="badge">public</span></td><td><span class="muted">none in the header</span></td><td>Fallback requests; <a href="print.html">Print</a> shows it as a percentage of <code>allocCount</code>.</td></tr>
+</table>
+
+<h2 id="methods">Class methods</h2>
+
+<table class="methods">
+  <tr><th>Name</th><th>Signature</th><th>What a caller depends on</th></tr>
+  <tr><td><a href="constructors.html"><code>AllocStats</code></a></td><td class="sig">AllocStats()</td><td>Zeroes every counter, clears the name — the state of a record that has never been registered.</td></tr>
+  <tr><td><a href="destructor.html"><code>~AllocStats</code></a></td><td class="sig">~AllocStats() = default</td><td>Defaulted; destroys <code>name</code> and nothing else, which is what makes <a href="reset.html">Reset</a> a destroy-and-rebuild.</td></tr>
+  <tr><td><a href="on-register.html"><code>OnRegister</code></a></td><td class="sig">void OnRegister(const char* name, bool isInline, size_t inCapacity) noexcept</td><td>Adopts a name, sets identity and capacity, and zeroes every counter — registration restarts the record's history.</td></tr>
+  <tr><td><a href="reset.html"><code>Reset</code></a></td><td class="sig">void Reset() noexcept</td><td>Ends the record's life in place and rebuilds it empty; called on the clean release path before the slot is reused.</td></tr>
+  <tr><td><a href="report.html"><code>Report</code></a></td><td class="sig">void Report() noexcept</td><td>Under <code>PROFILE_ENABLED</code>, copies the record to the engine's statistics collector; a no-op without it.</td></tr>
+  <tr><td><a href="print.html"><code>Print</code></a></td><td class="sig">void Print() noexcept</td><td>One group of log lines at <code>Verbose</code>: identity, usage triple, requested triple, fallback triple, count triple with fallback percentage.</td></tr>
+</table>
+
+<h2 id="non-member">Non-member helper functions</h2>
+
+<p>None. The functions that feed a record — <code>MemoryManager::ReportAllocation</code>,
+<code>ReportDeallocation</code>, <code>ReportFallback</code> and the two <code>DeregisterAllocator</code> paths — all
+belong to <a href="../MemoryManager/index.html">that entry</a>.</p>
+
+<h2 id="coverage">Coverage</h2>
+
+<table>
+  <tr><th>Not documented here</th><th>Why</th></tr>
+  <tr><td>What the statistics collector does with a reported record — how <code>SystemStatistics::Report</code> stores
+      copies and when <code>PrintAllocatorProfiles</code> prints them</td>
+    <td><code>SystemStatistics</code> is a Core-module entry with its own page; the hand-off point
+      (<a href="report.html">Report</a>) is documented here, the sink is not.</td></tr>
+  <tr><td>The exact byte arithmetic behind <code>usage</code> — whether it accumulates the allocator's rounded size or
+      the caller's request</td>
+    <td>That rule is the reporting paths' own contract; it lives on
+      <a href="../MemoryManager/report-allocation.html">ReportAllocation</a> and its sibling page, which this page
+      points at rather than restating.</td></tr>
+  <tr><td>Where the average figures <a href="print.html">Print</a> divides could mislead (integer division, zero-count
+      guards)</td>
+    <td>Documented on the <a href="print.html">Print</a> page itself, where the expressions live.</td></tr>
+  <tr><td>Storage rules of <code>StaticString name</code> — buffer size, truncation of long registration names</td>
+    <td><code>StaticString</code> is a String-module entry this wave has not written; pages say the name is copied into
+      a <code>StaticString</code>, which is all the code read here proves.</td></tr>
+</table>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; AllocStats</a></span>
+  <span><a href="index.html#methods">All AllocStats methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

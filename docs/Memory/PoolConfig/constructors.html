@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PoolConfig::PoolConfig — Memory module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a class="current" href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Memory</a> /
+  <a href="index.html">PoolConfig</a> / PoolConfig
+</p>
+
+<h1><span class="fn">PoolConfig</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::PoolConfig</span>
+  <span class="tag">Engine/Memory/PoolConfig.h</span>
+  either all zeros or exactly what was handed over - neither form floors, aligns or rejects anything
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>PoolConfig() noexcept
+		: blockSize(0)
+		, numberOfBlocks(0)
+
+PoolConfig(size_t blockSize, size_t nBlocks) noexcept
+		: blockSize(blockSize)
+		, numberOfBlocks(nBlocks)</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  Two constructors defined in the class body of <code>Engine/Memory/PoolConfig.h</code>, both initialising the
+  pair through a member initializer list. The default form leaves a configuration that means "no pool":
+  <code>blockSize</code> and <code>numberOfBlocks</code> are both <code>0</code>. The two-argument form stores
+  what it is given — <code>blockSize(blockSize), numberOfBlocks(nBlocks)</code> — with no floor, no alignment,
+  no ceiling and no check, so <code>PoolConfig(0, 500)</code> is a value the type will hold.
+</p>
+
+<p>
+  The parameters shadow the members, which is why the initializer list reads
+  <code>blockSize(blockSize)</code>. The second parameter is named <code>nBlocks</code> rather than
+  <code>numberOfBlocks</code>, so a caller reading the header sees a different word in the declaration than the
+  field name the value lands in.
+</p>
+
+<p>
+  Both are used the same way everywhere: <code>configs.emplace_back(key, value)</code> in
+  <code>MultiPoolAllocator::ReportConfiguration()</code> builds one from a bank's live block size and peak usage,
+  and <code>MultiPoolConfigCache::Deserialize()</code> builds one per record read out of the cache file with
+  whatever two integers the file held. Neither caller validates the pair; validation, if any happens, is left to
+  <a href="../PoolConfigUtil/normalize.html"><code>PoolConfigUtil::Normalize</code></a> afterwards.
+</p>
+
+<div class="note">
+  <p>
+    <strong>The type has no invariants, so "valid" is not a state a <code>PoolConfig</code> can be in.</strong>
+    A default-constructed one is indistinguishable from a deliberately written <code>PoolConfig(0, 0)</code>, and
+    both are dropped by <a href="../PoolConfigUtil/normalize.html">Normalize</a> for the same reason — a zero
+    count. That is the whole of the safety net at this layer.
+  </p>
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<table>
+  <tr><th>Parameter</th><th>Type</th><th>Requirement</th></tr>
+  <tr><td><code>blockSize</code></td><td><code>size_t</code></td><td>Bytes per block. Accepted as given, including <code>0</code>; nothing here applies the floor and alignment a real pool would</td></tr>
+  <tr><td><code>nBlocks</code></td><td><code>size_t</code></td><td>Blocks to provision. Accepted as given, including <code>0</code>; unsigned, so a negative intent arrives as a very large positive number</td></tr>
+</table>
+
+<p>The default constructor takes nothing.</p>
+
+<h2 id="return">Return value</h2>
+
+<p>
+  Neither constructor returns a value or reports failure. Construction always succeeds; the pair it produced is
+  judged later, by whoever sorts the list.
+</p>
+
+<h2 id="example">Examples</h2>
+
+<p>
+  The reporting path builds these straight from live banks, which is how a peak observed in one run becomes a
+  provisioning request for the next:
+</p>
+
+<pre><code>configs.emplace_back(key, value);</code></pre>
+
+<p class="meta">From Engine/Memory/MultiPoolAllocator.cpp, MultiPoolAllocator::ReportConfiguration() const</p>
+
+<p>
+  <code>key</code> is that bank's real block size and <code>value</code> its peak block usage, so the
+  configuration records what the allocator actually needed rather than what it was asked for. It reaches the next
+  boot through <a href="../MemoryManager/report-multi-pool-configutation.html">ReportMultiPoolConfigutation</a>
+  and <a href="../MultiPoolConfigCache/serialize.html">MultiPoolConfigCache::Serialize</a>.
+</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; PoolConfig</a></span>
+  <span><a href="index.html#methods">All PoolConfig methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

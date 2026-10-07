@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MultiPoolConfigCache — Memory module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a class="current" href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This class</h3>
+  <ul>
+    <li><a href="#description">Class description</a></li>
+    <li><a href="#template">Template parameters</a></li>
+    <li><a href="#properties">Class properties</a></li>
+    <li><a href="#methods">Class methods</a></li>
+    <li><a href="#non-member">Non-member helper functions</a></li>
+    <li><a href="#coverage">Coverage</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Memory</a> /
+  MultiPoolConfigCache
+</p>
+
+<h1>MultiPoolConfigCache</h1>
+<p class="subtitle">
+  <span class="tag">Engine/Memory/MultiPoolConfigCache.h</span>
+  <span class="tag">final</span>
+  <span class="tag">namespace hbe</span>
+  bank configurations that survive a restart: what gets written to .multiPoolConfig.dat, when it is read back, and what a bad file does
+</p>
+
+<h2 id="description">Class description</h2>
+
+<p>
+  <code>class MultiPoolConfigCache final</code> at <code>Engine/Memory/MultiPoolConfigCache.h</code>: a vector of
+  <a href="../MultiPoolAllocatorConfig/index.html"><code>MultiPoolAllocatorConfig</code></a> records plus the two
+  functions that turn it into bytes and back. Its whole purpose is to carry a multi-pool allocator's observed bank
+  sizes across a process boundary, so the next run provisions the pools that were actually used instead of growing
+  them one fallback at a time.
+</p>
+
+<p>
+  Two instances exist, both direct members of <a href="../MemoryManager/index.html"><code>MemoryManager</code></a>
+  (<code>Engine/Memory/MemoryManager.h</code>), and the manager owns them for the process's life. Which one is
+  which is the key to reading the rest of this page:
+</p>
+
+<table>
+  <tr><th>Piece</th><th>What it is</th><th>Where the contract lives</th></tr>
+  <tr>
+    <td><code>multiPoolConfigCache</code></td>
+    <td>The record read <em>from disk</em>: what the previous run needed. The only one anyone looks up at
+      start-up</td>
+    <td><a href="../MemoryManager/load-multi-pool-configs.html">LoadMultiPoolConfigs</a>,
+      <a href="../MemoryManager/look-up-multi-pool-config.html">LookUpMultiPoolConfig</a></td>
+  </tr>
+  <tr>
+    <td><code>multiPoolConfigLog</code></td>
+    <td>The record <em>of this run</em>: one entry per report, appended while the engine is running. Only exists
+      under <code>PROFILE_ENABLED</code></td>
+    <td><a href="../MemoryManager/report-multi-pool-configutation.html">ReportMultiPoolConfigutation</a>,
+      <a href="../MemoryManager/save-multi-pool-configs.html">SaveMultiPoolConfigs</a></td>
+  </tr>
+  <tr>
+    <td>The two orderings</td>
+    <td>Records by allocator name, pool entries inside a record by block size</td>
+    <td><a href="normalize.html">Normalize</a>,
+      <a href="../PoolConfigUtil/normalize.html">PoolConfigUtil::Normalize</a></td>
+  </tr>
+  <tr>
+    <td>The file</td>
+    <td><code>.multiPoolConfig.dat</code> — the <code>MULTIPOOL_ALLOC_LOG</code> path in
+      <code>Engine/Config/BuildConfig.h</code>, resolved by
+      <a href="../MemoryManager/get-multi-pool-config-cache-file-path.html">GetMultiPoolConfigCacheFilePath</a></td>
+    <td><a href="serialize.html">Serialize</a>, <a href="deserialize.html">Deserialize</a></td>
+  </tr>
+</table>
+
+<h3>What is written, and when it is read</h3>
+
+<p>
+  The file holds nothing but pool sizes: per allocator, its name as text and then, per bank, a block size and a
+  block count (<a href="serialize.html">Serialize</a>). No allocator type, no capacity, no parent, no thread, no
+  timestamp. It is written once, from
+  <a href="../MemoryManager/pre-engine-shutdown.html"><code>MemoryManager::PreEngineShutdown</code></a>, and only
+  under <code>PROFILE_ENABLED</code>; it is read once, from <code>MemoryManager</code>'s own constructor, before
+  the engine reports memory ready (<a href="../MemoryManager/load-multi-pool-configs.html">LoadMultiPoolConfigs</a>)
+  — reading is <em>not</em> behind <code>PROFILE_ENABLED</code>, so a build that never writes a file still tries to
+  read one. Between those two moments nobody opens the file: an edit by hand is read at the next start-up and
+  nothing else.
+</p>
+
+<h3>What a stale or corrupt cache file does</h3>
+
+<p>Every failure is a log line and a load that gives up; none of them stops the engine.</p>
+
+<table>
+  <tr><th>Condition</th><th>What the code does</th></tr>
+  <tr>
+    <td>No file at the path</td>
+    <td><a href="../MemoryManager/load-multi-pool-configs.html">LoadMultiPoolConfigs</a> logs at
+      <code>Significant</code> ("Failed to find") and returns. The cache stays empty and every allocator sizes
+      itself by demand</td>
+  </tr>
+  <tr>
+    <td>File present but unreadable</td>
+    <td>The read-only file buffer comes back with null data, logged at <code>Error</code>, and the load returns
+      before <a href="deserialize.html">Deserialize</a> is called</td>
+  </tr>
+  <tr>
+    <td>Wrong class-name tag</td>
+    <td><a href="deserialize.html">Deserialize</a> reads the tag first and compares it to
+      <a href="get-class-name.html">GetClassName</a>: an <code>Error</code> naming both, then
+      <code>false</code> — nothing is discarded first, so whatever was already in <code>data</code> stays</td>
+  </tr>
+  <tr>
+    <td>Version mismatch</td>
+    <td>The <code>uint32_t</code> after the tag must equal the private <code>version</code>, which is
+      <code>0</code> (<a href="get-version.html">GetVersion</a>). Any other value logs the read number, returns
+      <code>false</code>, and the file is ignored</td>
+  </tr>
+  <tr>
+    <td>Truncated or unreadable stream</td>
+    <td>Checked once after the header and once per allocator record; either logs "Input stream failure." and
+      returns <code>false</code> — but records already read have been appended to <code>data</code>, so a failed
+      load leaves a <em>partial</em> cache, not an empty one</td>
+  </tr>
+  <tr>
+    <td>Pool sizes out of order inside a record</td>
+    <td>Outside <code>RELEASE_BUILD</code> only: each adjacent pair that fails
+      <code>a &lt; b</code> logs a fatal error line naming the allocator and both sizes, and the function still
+      returns <code>true</code> having loaded the record as read</td>
+  </tr>
+  <tr>
+    <td>A name in the file that no allocator uses this run</td>
+    <td>Nothing. It sits in the vector, never matched by
+      <a href="../MemoryManager/look-up-multi-pool-config.html">LookUpMultiPoolConfig</a>. Renamed allocators
+      accumulate here</td>
+  </tr>
+</table>
+
+<div class="note">
+  <p>
+    <strong>The class-name tag is derived from the compiler, not typed by a person.</strong>
+    <a href="get-class-name.html">GetClassName</a> builds its string from <code>__PRETTY_FUNCTION__</code> through
+    <code>StringUtil::ToCompactClassName</code> and caches it in a function-local static, and that string is the
+    first thing written and the first thing compared on read. Renaming the class, or moving it into another
+    namespace, changes the tag — and every cache file on every developer's machine then fails the name check and
+    is silently ignored. The same trick is used for the log category
+    (<code>ToCompactMethodName(__PRETTY_FUNCTION__)</code>) in both serialisation functions.
+  </p>
+</div>
+
+<div class="gap">
+  <p>
+    <strong>Loading does not clear, and serialising does not leave the data alone.</strong>
+    <a href="deserialize.html">Deserialize</a> appends to whatever <code>data</code> already holds — it reserves
+    and emplaces, so calling it twice on one instance gives the union, in file order, with duplicates. And
+    <a href="serialize.html">Serialize</a> is not a read-only operation: it calls <a href="normalize.html">the
+    private Normalize</a> first, which sorts, collapses duplicate allocator names and empties the pool lists of
+    records that were merged away. The instance the save path uses, <code>multiPoolConfigLog</code>, is therefore
+    rewritten by the act of saving it — and <a href="../MemoryManager/save-multi-pool-configs.html">SaveMultiPoolConfigs</a>
+    deliberately serialises twice, once into a dummy buffer to measure the size, so the normalisation runs twice
+    before the file is written.
+  </p>
+</div>
+
+<h2 id="template">Template parameters</h2>
+
+<p>
+  None on the class. <code>MultiPoolConfigCache</code> is <code>final</code> and not a template; its public
+  <a href="#properties"><code>TVector</code></a> alias is a member alias template, declared so the record list can
+  be spelled without naming <code>std::vector</code>.
+</p>
+
+<h2 id="properties">Class properties</h2>
+
+<table>
+  <tr><th>Type + Name</th><th>Default Value</th><th>Description</th></tr>
+  <tr><td><code>using TVersion = uint32_t;</code> <span class="badge">alias</span> <span class="badge">public</span></td><td><span class="muted">not applicable</span></td><td>The format-version type: written after the class-name tag and compared on read, so the file's version field is 32 bits wide whatever it holds</td></tr>
+  <tr><td><code>template &lt;typename T&gt; using TVector = std::vector&lt;T&gt;;</code> <span class="badge">alias template</span> <span class="badge">public</span></td><td><span class="muted">not applicable</span></td><td>The container spelling used by the record list below, and the same alias <code>MultiPoolAllocatorConfig</code> declares for its own pool list</td></tr>
+  <tr><td><code>using TMultiPoolConfigs = TVector&lt;MultiPoolAllocatorConfig&gt;;</code> <span class="badge">alias</span> <span class="badge">public</span></td><td><span class="muted">not applicable</span></td><td>The record list this class owns and hands out through <a href="get-data.html">GetData</a>; sorted by allocator name whenever <a href="normalize.html">Normalize</a> has run over it</td></tr>
+  <tr><td><code>static constexpr TVersion version = 0;</code> <span class="badge">private static</span></td><td><code>0</code></td><td>The format this build writes and the only version it accepts; bumped by editing this constant, which makes every existing file a version mismatch by design — see <a href="get-version.html">GetVersion</a></td></tr>
+  <tr><td><code>TMultiPoolConfigs data;</code> <span class="badge">private</span></td><td><span class="muted">none in the header</span></td><td>The records themselves — filled by <a href="deserialize.html">Deserialize</a> on load and appended to through <a href="get-data.html">GetData</a> while a run reports; the owner of every <code>MultiPoolAllocatorConfig</code> in the engine</td></tr>
+</table>
+
+<h2 id="methods">Class methods</h2>
+
+<table class="methods">
+  <tr><th>Name</th><th>Signature</th><th>What a caller depends on</th></tr>
+  <tr>
+    <td><a href="get-class-name.html"><code>GetClassName</code></a></td>
+    <td class="sig">static StaticString GetClassName()</td>
+    <td>The file's type tag, derived from <code>__PRETTY_FUNCTION__</code> and cached once — the check that rejects a file written by a different class.</td>
+  </tr>
+  <tr>
+    <td><a href="serialize.html"><code>Serialize</code></a></td>
+    <td class="sig">size_t Serialize(Buffer&amp; outBuffer)</td>
+    <td>Bytes written, or <code>0</code> on a stream error — and it normalises <code>data</code> first, so it changes the object it is asked to write out.</td>
+  </tr>
+  <tr>
+    <td><a href="deserialize.html"><code>Deserialize</code></a></td>
+    <td class="sig">bool Deserialize(const Buffer&amp; buffer)</td>
+    <td>Tag and version must match or nothing is loaded; on a mid-record failure the records read so far stay, and a successful load does not verify ordering in a Release build.</td>
+  </tr>
+  <tr>
+    <td><a href="get-version.html"><code>GetVersion</code></a></td>
+    <td class="sig">[[nodiscard]] static auto GetVersion()</td>
+    <td>The <code>version</code> constant by value, as <code>TVersion</code> — the only public window onto the private format number.</td>
+  </tr>
+  <tr>
+    <td><a href="get-data.html"><code>GetData</code></a><span class="badge">2 overloads</span></td>
+    <td class="sig">[[nodiscard]] auto&amp; GetData()<br>[[nodiscard]] auto&amp; GetData() const</td>
+    <td>The record list itself, by reference, in both const and non-const form — the way reporting code appends to a cache.</td>
+  </tr>
+  <tr>
+    <td><a href="normalize.html"><code>Normalize</code></a></td>
+    <td class="sig">void Normalize()</td>
+    <td>Private: sorts by name, collapses one allocator's several records by taking the larger block count per size, and drops records with nothing in them.</td>
+  </tr>
+</table>
+
+<h2 id="non-member">Non-member helper functions</h2>
+
+<p>
+  None. <code>Engine/Memory/MultiPoolConfigCache.h</code> includes
+  <a href="../MultiPoolAllocatorConfig/index.html"><code>MultiPoolAllocatorConfig.h</code></a> and
+  <code>Engine/String/StaticString.h</code>, and forward-declares <code>class Buffer;</code> so the serialisation
+  pair can take a buffer without pulling its header in; <code>Engine/Memory/MultiPoolConfigCache.cpp</code> is
+  where <code>BufferInputStream</code>, <code>BufferOutputStream</code>, <code>Logger</code>,
+  <code>StringUtil</code>, <code>Intrinsic</code>, <code>&lt;algorithm&gt;</code> and
+  <a href="../PoolConfigUtil/index.html"><code>PoolConfigUtil.h</code></a> are actually reached.
+</p>
+
+<h2 id="coverage">Coverage</h2>
+
+<table>
+  <tr><th>Not documented here</th><th>Why</th></tr>
+  <tr>
+    <td>What a corrupt record-count field does when it is enormous</td>
+    <td><a href="deserialize.html">Deserialize</a> does check the stream after reading the allocator-record count
+      and before reserving for it, but it reads each record's <em>configuration</em> count and calls
+      <code>configs.reserve(configSize)</code> with no error check in between. The failure mode of a huge reserve —
+      an allocation throw, or the process ending with it — is decided outside this file by whatever allocator the
+      vector's <code>operator new</code> reaches, and no page in this module states what that does. Recorded as
+      unknown rather than guessed</td>
+  </tr>
+  <tr>
+    <td>Whether the file's byte layout is stable across platforms or builds</td>
+    <td>What <a href="serialize.html">Serialize</a> writes is whatever
+      <code>BufferOutputStream</code> writes for a <code>const char*</code>, a <code>uint32_t</code> and a
+      <code>size_t</code>; alignment, padding and width are that class's business and no page in Memory documents
+      it. The version constant exists precisely because the answer is not "always"</td>
+  </tr>
+  <tr>
+    <td>Thread-safety of the two instances and of <a href="get-data.html">GetData</a>'s reference</td>
+    <td>Reports arrive from whichever allocator finishes a run, appended through the non-const
+      <a href="get-data.html">GetData</a>, while the loaded cache is read by every allocator initialising itself.
+      Neither instance carries a lock and no page states an ordering rule, so the safety of a reference taken
+      while another thread appends is genuinely undocumented</td>
+  </tr>
+  <tr>
+    <td>Why reading the cache is unconditional while writing it is <code>PROFILE_ENABLED</code>-only</td>
+    <td>The asymmetry is visible in <code>Engine/Memory/MemoryManager.cpp</code>: the constructor calls
+      <a href="../MemoryManager/load-multi-pool-configs.html">LoadMultiPoolConfigs</a> directly, while
+      <a href="../MemoryManager/save-multi-pool-configs.html">SaveMultiPoolConfigs</a> and
+      <a href="../MemoryManager/report-multi-pool-configutation.html">ReportMultiPoolConfigutation</a> are inside
+      <code>#if PROFILE_ENABLED</code>. Nothing states whether that is intended or incidental</td>
+  </tr>
+  <tr>
+    <td><code>Buffer</code>, <code>BufferInputStream</code>, <code>BufferOutputStream</code></td>
+    <td>Resource module entries; this page documents only the order and meaning of the fields this class puts into
+      them</td>
+  </tr>
+</table>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; MultiPoolConfigCache</a></span>
+  <span><a href="index.html#methods">All MultiPoolConfigCache methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

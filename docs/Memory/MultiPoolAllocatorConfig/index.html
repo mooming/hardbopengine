@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MultiPoolAllocatorConfig — Memory module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a class="current" href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This class</h3>
+  <ul>
+    <li><a href="#description">Class description</a></li>
+    <li><a href="#template">Template parameters</a></li>
+    <li><a href="#properties">Class properties</a></li>
+    <li><a href="#methods">Class methods</a></li>
+    <li><a href="#non-member">Non-member helper functions</a></li>
+    <li><a href="#coverage">Coverage</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Memory</a> /
+  MultiPoolAllocatorConfig
+</p>
+
+<h1>MultiPoolAllocatorConfig</h1>
+<p class="subtitle">
+  <span class="tag">Engine/Memory/MultiPoolAllocatorConfig.h</span>
+  <span class="tag">final</span>
+  <span class="tag">namespace hbe</span>
+  one allocator name and the pool sizes recorded for it - the record the multi-pool configuration cache stores, writes and looks up
+</p>
+
+<h2 id="description">Class description</h2>
+
+<p>
+  <code>class MultiPoolAllocatorConfig final</code> at <code>Engine/Memory/MultiPoolAllocatorConfig.h</code>: one
+  allocator's name and the list of pool sizes it should be provisioned with. Where
+  <a href="../PoolConfig/index.html"><code>PoolConfig</code></a> answers "how big, how many", this answers
+  "<em>which</em> multi-pool allocator". It is the record
+  <a href="../MultiPoolConfigCache/index.html"><code>MultiPoolConfigCache</code></a> stores, writes and reads, and
+  the thing <a href="../MemoryManager/index.html"><code>MemoryManager</code></a> looks up by name at start-up.
+</p>
+
+<p>
+  A record is created in exactly two places. On the way out of a run,
+  <a href="../MemoryManager/report-multi-pool-configutation.html"><code>MemoryManager::ReportMultiPoolConfigutation</code></a>
+  appends one built from an allocator's name and the block sizes it actually peaked at. On the way in,
+  <a href="../MultiPoolConfigCache/deserialize.html"><code>MultiPoolConfigCache::Deserialize</code></a> appends one
+  per record the cache file held. Nothing else in the engine constructs one, and nothing modifies one afterwards:
+  both fields are public, but the only mutating code path is the vector they live in.
+</p>
+
+<table>
+  <tr><th>Piece</th><th>What it is</th><th>Where the contract lives</th></tr>
+  <tr>
+    <td><code>uniqueName</code></td>
+    <td>The interning id of the allocator's name — the key the whole cache is ordered and searched by</td>
+    <td><a href="operator-less.html">operator&lt;</a>,
+      <a href="../MemoryManager/look-up-multi-pool-config.html">LookUpMultiPoolConfig</a></td>
+  </tr>
+  <tr>
+    <td><code>configs</code></td>
+    <td>Its pool sizes, ascending by block size once the cache has normalised them</td>
+    <td><a href="../PoolConfigUtil/normalize.html">Normalize</a>,
+      <a href="../MultiPoolAllocator/generate-banks-by-cache.html">GenerateBanksByCache</a></td>
+  </tr>
+  <tr>
+    <td>The empty record</td>
+    <td>The defaulted default constructor — a default <code>StaticStringID</code> and an empty list</td>
+    <td><a href="constructors.html">constructors</a>,
+      <a href="../MemoryManager/look-up-multi-pool-config.html">LookUpMultiPoolConfig</a></td>
+  </tr>
+</table>
+
+<div class="note">
+  <p>
+    <strong>Its ordering is by name; the record inside it is ordered by size.</strong>
+    <a href="../PoolConfig/index.html"><code>PoolConfig</code></a> compares block size, this compares a name. <a href="operator-less.html"><code>operator&lt;</code></a> compares
+    <code>uniqueName</code> and nothing else, and that is what makes
+    <a href="../MemoryManager/look-up-multi-pool-config.html"><code>MemoryManager::LookUpMultiPoolConfig</code></a>
+    a binary search: <code>MultiPoolConfigCache::Normalize()</code> sorts the vector with this comparator before
+    the cache is written, so the file arrives name-ordered and the search over it works. Inside one record, the
+    <code>configs</code> list is ordered by the other comparator. The two orderings are independent, and the
+    nested list is the one a reader most often assumes was sorted by size.
+  </p>
+</div>
+
+<div class="gap">
+  <p>
+    <strong>A record is a value the cache owns, and a lookup hands out a reference into the cache's vector.</strong>
+    The records live in <code>MultiPoolConfigCache::data</code>, which lives inside
+    <code>MemoryManager</code> — one for the loaded cache and, under <code>PROFILE_ENABLED</code>, a second for
+    what this run reports — so a reference to a record is valid for as long as that vector is not reallocated.
+    <a href="../MemoryManager/look-up-multi-pool-config.html"><code>LookUpMultiPoolConfig</code></a> returns such a
+    reference, and hands back a function-local static empty record when the name is absent — the caller
+    distinguishes "not found" by comparing <code>uniqueName</code>, which is exactly what
+    <a href="../MultiPoolAllocator/generate-banks-by-cache.html"><code>GenerateBanksByCache</code></a> does before
+    it builds any bank. Nothing here refills a record the caller forgot to check.
+  </p>
+</div>
+
+<h2 id="template">Template parameters</h2>
+
+<p>
+  None on the class: <code>MultiPoolAllocatorConfig</code> is <code>final</code> and not a template. Its public
+  <a href="#properties"><code>TVector</code></a> alias is a member alias template, which is a different thing —
+  it exists to spell the list type inside the class without naming
+  <code>std::vector</code> at each use.
+</p>
+
+<h2 id="properties">Class properties</h2>
+
+<table>
+  <tr><th>Type + Name</th><th>Default Value</th><th>Description</th></tr>
+  <tr><td><code>template &lt;typename T&gt; using TVector = std::vector&lt;T&gt;;</code> <span class="badge">alias template</span> <span class="badge">public</span></td><td><span class="muted">not applicable</span></td><td>The container this class uses for lists, declared here so <code>TPoolConfigs</code> can be written without naming <code>std::vector</code>; <code>MultiPoolConfigCache</code> declares the same alias again for its own lists</td></tr>
+  <tr><td><code>using TPoolConfigs = TVector&lt;PoolConfig&gt;;</code> <span class="badge">alias</span> <span class="badge">public</span></td><td><span class="muted">not applicable</span></td><td>The pool-size list for one allocator — the same shape as <a href="../PoolConfigUtil/index.html"><code>PoolConfigUtil::TPoolConfigs</code></a> and <code>MemoryManager::TVector&lt;PoolConfig&gt;</code>, spelled a third time here</td></tr>
+  <tr><td><code>StaticStringID uniqueName;</code> <span class="badge">public</span></td><td><span class="muted">none in the header</span></td><td>The allocator's name as an interned id; the key this record is found by, and the value a caller compares to detect "no such allocator"</td></tr>
+  <tr><td><code>TPoolConfigs configs;</code> <span class="badge">public</span></td><td><span class="muted">none in the header</span></td><td>The pool sizes to provision, one entry per block size once the cache has normalised them; empty on a record that was never filled or whose contents were merged away</td></tr>
+</table>
+
+<h2 id="methods">Class methods</h2>
+
+<table class="methods">
+  <tr><th>Name</th><th>Signature</th><th>What a caller depends on</th></tr>
+  <tr>
+    <td><a href="constructors.html"><code>MultiPoolAllocatorConfig</code></a><span class="badge">2 overloads</span></td>
+    <td class="sig">MultiPoolAllocatorConfig() noexcept = default;<br>MultiPoolAllocatorConfig(StaticStringID id, TPoolConfigs&amp;&amp; configs) noexcept</td>
+    <td>The defaulted form is the empty record a lookup hands back; the two-argument form takes the list by rvalue reference and moves it in.</td>
+  </tr>
+  <tr>
+    <td><a href="operator-less.html"><code>operator&lt;</code></a></td>
+    <td class="sig">bool operator&lt;(const MultiPoolAllocatorConfig&amp; rhs) const noexcept</td>
+    <td>Ordering by <code>uniqueName</code> alone — the invariant the binary-search lookup is built on.</td>
+  </tr>
+</table>
+
+<h2 id="non-member">Non-member helper functions</h2>
+
+<p>
+  None. The class declares no free operator, no hash and no formatter, so records are compared only through
+  <a href="operator-less.html"><code>operator&lt;</code></a> and are never compared for equality by the container
+  that stores them — <a href="../MemoryManager/look-up-multi-pool-config.html">LookUpMultiPoolConfig</a> compares
+  the <code>uniqueName</code> field directly. <code>Engine/Memory/MultiPoolAllocatorConfig.h</code> includes
+  <code>&lt;vector&gt;</code>, <a href="../PoolConfig/index.html"><code>PoolConfig.h</code></a> and
+  <code>Engine/String/StaticStringID.h</code>.
+</p>
+
+<h2 id="coverage">Coverage</h2>
+
+<table>
+  <tr><th>Not documented here</th><th>Why</th></tr>
+  <tr>
+    <td>What happens to a loaded record whose allocator no longer exists, and to an allocator whose name is not
+      in the file</td>
+    <td>Both are the cache-reading side of the manager's policy, not a property of this record:
+      <a href="../MultiPoolAllocator/generate-banks-by-cache.html">GenerateBanksByCache</a> returns false when the
+      name is absent and the allocator then sizes itself by demand instead. Nothing in the module reports how many
+      cached records went unused, so the cost of a stale record is not measured anywhere</td>
+  </tr>
+  <tr>
+    <td>Whether both fields being public is intended as a mutation point</td>
+    <td>Nothing in <code>Engine/</code> writes either field after construction — the code that changes a record's
+      contents does it by rebuilding the vector element, not by assigning to the fields. The class states no
+      rule, so none is asserted here</td>
+  </tr>
+  <tr>
+    <td>Thread-safety of the records and the vector that holds them</td>
+    <td>The load happens once during <code>MemoryManager</code>'s construction and the reporting path appends to a
+      separate <code>MultiPoolConfigCache</code> member, but no page in the module states a lock or an ordering
+      rule for the two. A reference taken from
+      <a href="../MemoryManager/look-up-multi-pool-config.html">LookUpMultiPoolConfig</a> while another thread
+      appends is exactly the case that is not documented anywhere</td>
+  </tr>
+  <tr>
+    <td><code>StaticStringID</code> itself — how a name becomes an id, and what two names colliding on one id
+      would mean</td>
+    <td>A <a href="../../String/index.html">String</a> module entry; this page documents only that the record is
+      keyed by it and that a hash collision would make two allocators share one provisioning plan</td>
+  </tr>
+</table>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; MultiPoolAllocatorConfig</a></span>
+  <span><a href="index.html#methods">All MultiPoolAllocatorConfig methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

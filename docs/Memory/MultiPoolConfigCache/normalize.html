@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MultiPoolConfigCache::Normalize — Memory module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a class="current" href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Memory</a> /
+  <a href="index.html">MultiPoolConfigCache</a> / Normalize
+</p>
+
+<h1><span class="fn">Normalize</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::MultiPoolConfigCache</span>
+  <span class="tag">Engine/Memory/MultiPoolConfigCache.h</span>
+  <span class="tag">private</span>
+  sort the records by name, collapse one allocator's several reports, and drop the ones with nothing left in them
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>void Normalize()</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  A private member of <code>MultiPoolConfigCache</code>, defined in
+  <code>Engine/Memory/MultiPoolConfigCache.cpp</code>, called from exactly one place:
+  <a href="serialize.html">Serialize</a>, before it writes anything. It is the step that turns "a list of records
+  this run appended" into "one provisioning plan per allocator", in five passes:
+</p>
+
+<ol>
+  <li><code>std::sort(data.begin(), data.end())</code> — by allocator name, using
+    <a href="../MultiPoolAllocatorConfig/operator-less.html"><code>MultiPoolAllocatorConfig::operator&lt;</code></a>,
+    so every record sharing a name lands next to every other.</li>
+  <li><a href="../PoolConfigUtil/normalize.html"><code>PoolConfigUtil::Normalize</code></a> on each record's
+    configuration list, so each list is ascending by block size with one entry per size
+    (<a href="../PoolConfig/operator-less.html"><code>PoolConfig::operator&lt;</code></a> — the other ordering in
+    the same object).</li>
+  <li>A count of distinct names, skipping any record whose configuration list is empty.</li>
+  <li>A rebuild: <code>data</code> is swapped into a temporary, space is reserved for the counted names, and the
+    records are replayed in order — each new name flushes the configurations accumulated so far as a fresh record,
+    and each record merges into the accumulator with
+    <a href="../PoolConfigUtil/merge-max.html"><code>PoolConfigUtil::MergeMax</code></a>.</li>
+  <li><code>std::sort(data.begin(), data.end())</code> again, because flushing appends at the end and the order
+    built during pass 4 is only as good as the accumulator's own.</li>
+</ol>
+
+<p>
+  The result is the invariant the rest of the system depends on: one record per allocator name, the vector in name
+  order, and each record's configurations in block-size order. That is what lets
+  <a href="../MemoryManager/look-up-multi-pool-config.html"><code>MemoryManager::LookUpMultiPoolConfig</code></a>
+  binary-search, and it is the reason the file
+  <a href="deserialize.html">Deserialize</a> reads back is already sorted — nothing else ever sorts the records.
+</p>
+
+<div class="gap">
+  <p>
+    <strong>It is destructive to its own input, in three ways.</strong> The records that get merged away are left
+    behind with empty configuration lists, because <code>MergeMax</code> clears the list it merges <em>from</em>;
+    the vector is swapped out and rebuilt, so every reference, pointer and iterator into the old
+    <code>data</code> dies when this returns; and the counts of equal sizes across duplicate records are not summed
+    but maxed, so two reports of the same allocator collapse to the larger figure. A record whose configuration
+    list is empty is dropped entirely — never counted, never replayed.
+  </p>
+</div>
+
+<div class="note">
+  <p>
+    <strong>Calling it changes what a "serialize" means.</strong> Because <a href="serialize.html">Serialize</a>
+    normalises first, writing the cache out rewrites the object in memory, and
+    <a href="../MemoryManager/save-multi-pool-configs.html">SaveMultiPoolConfigs</a> calls
+    <code>Serialize</code> twice — once into a dummy buffer to measure the size, once into the file. The second run
+    finds nothing left to merge, which is why the double call is harmless here; it is also why the shutdown dump
+    that walks <code>multiPoolConfigLog.GetData()</code> afterwards reports the merged plan rather than the five or
+    six reports the run really made.
+  </p>
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<p>None. It operates on <code>data</code>, the instance's own record list.</p>
+
+<h2 id="return">Return value</h2>
+
+<p>
+  None, and nothing is reported: records disappear and counts change with no log line and no return value. The only
+  observable effect is the state of <code>data</code>, readable afterwards through
+  <a href="get-data.html">GetData</a>.
+</p>
+
+<h2 id="example">Examples</h2>
+
+<p>The two calls that do the per-record and per-name work:</p>
+
+<pre><code>PoolConfigUtil::Normalize(item.configs);</code></pre>
+
+<p class="meta">From Engine/Memory/MultiPoolConfigCache.cpp, MultiPoolConfigCache::Normalize</p>
+
+<pre><code>PoolConfigUtil::MergeMax(tempConfigs, item.configs);</code></pre>
+
+<p class="meta">From Engine/Memory/MultiPoolConfigCache.cpp, MultiPoolConfigCache::Normalize</p>
+
+<p>
+  The first runs over every record before any grouping happens; the second is inside the replay loop and is what
+  consumes each duplicate record's list. Together they mean the file that finally leaves the engine describes
+  <em>the largest bank set any single report of that allocator produced</em>, size by size — see
+  <a href="../PoolConfigUtil/merge-max.html">MergeMax</a> for why the merge is a maximum rather than a sum, and
+  <a href="../MultiPoolAllocator/report-configuration.html">ReportConfiguration</a> for where the numbers originate.
+</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; MultiPoolConfigCache</a></span>
+  <span><a href="index.html#methods">All MultiPoolConfigCache methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

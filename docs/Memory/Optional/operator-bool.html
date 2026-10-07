@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Optional::operator bool — Memory module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a class="current" href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Memory</a> /
+  <a href="index.html">Optional</a> / operator bool
+</p>
+
+<h1><span class="fn">operator bool</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::Optional</span>
+  <span class="tag">Engine/Memory/Optional.h</span>
+  <span class="tag">implicit conversion</span>
+  the implicit test - the same boolean as HasValue, with none of the ceremony
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>[[nodiscard]] operator bool() const noexcept</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  A single conversion function defined in the class body of <code>Engine/Memory/Optional.h</code>, returning
+  <code>hasValue</code>. It is <code>const</code>, <code>noexcept</code>, marked <code>[[nodiscard]]</code>, and
+  touches nothing but the flag — no assert, no storage access, no destructor or constructor involvement.
+</p>
+
+<p>
+  It is what makes <code>if (opt)</code>, <code>while (opt)</code>, <code>opt &amp;&amp; *opt</code> and
+  <code>!opt</code> mean the same thing as <code>opt.HasValue()</code>. The flag is the only state the class has, so
+  three spellings of the same test cannot drift apart; the operator exists for the callers who write the test as a
+  condition rather than as a call.
+</p>
+
+<div class="note">
+  <p>
+    <strong>The conversion is implicit, not explicit.</strong> Unlike <code>std::optional</code>, which declares
+    <code>explicit operator bool</code>, this one has no <code>explicit</code> — so an optional converts to
+    <code>bool</code> anywhere a boolean is wanted, including where it was not intended: a function taking
+    <code>bool</code>, a comparison against an integer, or a stream formatting a flag. That is a real overload-
+    resolution hazard in a type whose interesting operations are the ones that take a <code>TType</code>.
+  </p>
+</div>
+
+<div class="gap">
+  <p>
+    <strong>It answers "is the flag set", not "is there a live object in there".</strong> The two are the same as
+    long as only this class writes <a href="index.html#properties"><code>hasValue</code></a>, which nothing enforces
+    — the field is public. And the flag is the field the <a href="constructors.html">copy and move
+    constructors</a> leave unset when their source is empty, so an optional built by copying an empty one can
+    convert to <code>true</code> without ever having held a value, and the following
+    <a href="operator-multiply.html"><code>operator*</code></a> then walks straight past its assert into unconstructed
+    storage.
+  </p>
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<p>None.</p>
+
+<h2 id="return">Return value</h2>
+
+<table>
+  <tr><th>Type</th><th>What you get</th></tr>
+  <tr><td><code>bool</code></td><td>The current value of <code>hasValue</code>. The function is marked <code>[[nodiscard]]</code>, so discarding the test is a compile error rather than a silent no-op.</td></tr>
+</table>
+
+<h2 id="example">Examples</h2>
+
+<p>The operator's body and <a href="hasvalue.html">HasValue</a>'s are the same single line:</p>
+
+<pre><code>return hasValue;</code></pre>
+
+<p class="meta">From Engine/Memory/Optional.h, Optional::HasValue</p>
+
+<p>
+  A caller that wants the test as a value uses <a href="hasvalue.html">HasValue</a>; a caller that wants it as a
+  condition uses this conversion. Both then reach the element through
+  <a href="operator-multiply.html">operator*</a> — the only read that re-checks the flag before handing out a
+  reference.
+</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; Optional</a></span>
+  <span><a href="index.html#methods">All Optional methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MultiPoolConfigCache::GetData — Memory module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a class="current" href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Memory</a> /
+  <a href="index.html">MultiPoolConfigCache</a> / GetData
+</p>
+
+<h1><span class="fn">GetData</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::MultiPoolConfigCache</span>
+  <span class="tag">Engine/Memory/MultiPoolConfigCache.h</span>
+  <span class="tag">nodiscard</span>
+  <span class="tag">2 overloads</span>
+  the record list itself, by reference - the only way a run appends to a cache while it is in flight
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>[[nodiscard]] auto&amp; GetData()
+
+[[nodiscard]] auto&amp; GetData() const</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  Two accessors defined in the class body of <code>Engine/Memory/MultiPoolConfigCache.h</code>, each a single
+  <code>return data;</code>. Both declare their return type as <code>auto&amp;</code>, so the non-const form deduces
+  <code>TMultiPoolConfigs&amp;</code> and the const form deduces <code>const TMultiPoolConfigs&amp;</code> — the
+  const-ness comes from the deduction, not from the declaration.
+</p>
+
+<p>
+  This is not a read-only window. It is the <em>only</em> way the record list is written while a run is in flight:
+  the non-const reference hands the caller the vector itself, and reporting code appends straight into it.
+</p>
+
+<table>
+  <tr><th>Overload</th><th>Who uses it</th><th>What they do with it</th></tr>
+  <tr>
+    <td>non-const</td>
+    <td><a href="../MemoryManager/report-multi-pool-configutation.html"><code>MemoryManager::ReportMultiPoolConfigutation</code></a></td>
+    <td><code>data.emplace_back(uniqueName, std::move(poolConfigs))</code> — one record appended per report, with no
+      de-duplication, no size limit and no lock at this point</td>
+  </tr>
+  <tr>
+    <td>const and non-const</td>
+    <td>The verbose start-up and shutdown dumps in <code>Engine/Memory/MemoryManager.cpp</code></td>
+    <td>Walk every record and log each configuration as <code>index : name (blockSize, numberOfBlocks)</code>,
+      inside <code>#if !RELEASE_BUILD</code> and behind a log-level test</td>
+  </tr>
+  <tr>
+    <td>const</td>
+    <td><a href="../MemoryManager/look-up-multi-pool-config.html"><code>MemoryManager::LookUpMultiPoolConfig</code></a></td>
+    <td>That member function is <code>const</code>, so its access to the cache is <code>const</code> and the const
+      overload is the one it gets: a read-only view it binary-searches by name and hands a reference out of</td>
+  </tr>
+</table>
+
+<div class="gap">
+  <p>
+    <strong>The reference is a borrow, not a lease.</strong> <code>data</code> is a <code>std::vector</code> and the
+    reporting path grows it, so a reference or pointer taken from an element — or a
+    <a href="../MultiPoolAllocatorConfig/index.html"><code>MultiPoolAllocatorConfig</code></a> reached through this
+    accessor — is invalid the moment the vector reallocates. The same holds for
+    <a href="normalize.html">Normalize</a>, which swaps the whole vector out and rebuilds it, and for
+    <a href="deserialize.html">Deserialize</a>, which reserves and appends. The manager gets away with it because
+    the two instances are separated — the loaded cache is grown once at load time and read afterwards, while
+    reports go to the other instance — and no page in the module states that as a rule.
+  </p>
+</div>
+
+<div class="note">
+  <p>
+    <strong>No validation of any kind sits behind it.</strong> Nothing sorts, de-duplicates, bounds or inspects what
+    arrives through this accessor; the ordering and collapsing rules live in
+    <a href="normalize.html">Normalize</a>, which is private and runs only when
+    <a href="serialize.html">Serialize</a> asks for it. A caller that appends through the non-const form has
+    produced an unsorted list, and the only consumer that cares is the binary search in
+    <a href="../MemoryManager/look-up-multi-pool-config.html">LookUpMultiPoolConfig</a> — which reads the
+    <em>other</em> instance.
+  </p>
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<p>None.</p>
+
+<h2 id="return">Return value</h2>
+
+<table>
+  <tr><th>Type</th><th>What you get</th></tr>
+  <tr><td><code>TMultiPoolConfigs&amp;</code> (non-const overload) / <code>const TMultiPoolConfigs&amp;</code> (const overload)</td><td>The cache's record list itself — modifiable through the non-const form, and valid only until the vector next grows or <a href="normalize.html">Normalize</a> runs. Never null; an empty list is the answer for a cache that loaded nothing.</td></tr>
+</table>
+
+<h2 id="example">Examples</h2>
+
+<p>The one mutating caller appends directly:</p>
+
+<pre><code>data.emplace_back(uniqueName, std::move(poolConfigs));</code></pre>
+
+<p class="meta">From Engine/Memory/MemoryManager.cpp, MemoryManager::ReportMultiPoolConfigutation</p>
+
+<p>
+  <code>data</code> there is the reference this accessor returned for
+  <code>multiPoolConfigLog.GetData()</code>. The allocator's report is
+  <a href="../MultiPoolAllocator/report-configuration.html">ReportConfiguration</a>, and the list it hands over is
+  still in bank order rather than size order — normalisation is what fixes that, and it happens at
+  <a href="serialize.html">Serialize</a> time, not here.
+</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; MultiPoolConfigCache</a></span>
+  <span><a href="index.html#methods">All MultiPoolConfigCache methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

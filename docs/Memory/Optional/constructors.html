@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Optional::Optional — Memory module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a class="current" href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Memory</a> /
+  <a href="index.html">Optional</a> / Optional
+</p>
+
+<h1><span class="fn">Optional</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::Optional</span>
+  <span class="tag">Engine/Memory/Optional.h</span>
+  <span class="tag">5 overloads</span>
+  empty, filled, copied, moved or empty again - but the copy and move forms leave the flag unset when the source is empty
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>Optional()
+		: hasValue(false)
+
+Optional(const TType&amp; value)
+		: hasValue(true)
+
+Optional(const Optional&amp; rhs)
+
+Optional(Optional&amp;&amp; rhs)
+
+Optional(std::nullptr_t)
+		: hasValue(false)</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  Five constructors defined in the class body of <code>Engine/Memory/Optional.h</code>, all defined inline. Three of
+  them state their result unambiguously and two do not.
+</p>
+
+<table>
+  <tr><th>Overload</th><th>What it leaves behind</th></tr>
+  <tr><td><code>Optional()</code></td><td>Empty: <code>hasValue(false)</code> in the initializer list. The byte array is untouched — never zeroed — but nothing reads it while the flag is false</td></tr>
+  <tr><td><code>Optional(const TType&amp; value)</code></td><td>Filled: <code>hasValue(true)</code>, then <code>Value() = value</code>. Note the order — the flag is set <em>before</em> the value is written, and the write goes through <a href="value.html">Value</a>, so for a value type this assigns into storage no constructor ran over</td></tr>
+  <tr><td><code>Optional(std::nullptr_t)</code></td><td>Empty, by the same initializer list as the default constructor. It exists so <code>Optional&lt;T&gt; opt = nullptr;</code> reads as intended</td></tr>
+  <tr><td><code>Optional(const Optional&amp; rhs)</code></td><td>When <code>rhs</code> holds a value: <a href="copyvalue.html">CopyValue</a> adopts the flag and the bytes or value. When <code>rhs</code> is empty: the constructor writes nothing, and its <code>else if (hasValue)</code> branch reads this object's own flag before it has a value</td></tr>
+  <tr><td><code>Optional(Optional&amp;&amp; rhs)</code></td><td>When <code>rhs</code> holds a value: <a href="movevalue.html">MoveValue</a> adopts it and clears the source's flag. When <code>rhs</code> is empty: it calls <a href="destroy.html">Destroy</a>, which begins by testing a flag that this constructor never set</td></tr>
+</table>
+
+<div class="gap">
+  <p>
+    <strong>Neither the copy nor the move constructor initialises <code>hasValue</code>.</strong> Neither appears in
+    an initializer list, so for an empty source the flag is whatever the bytes of the new object happened to hold.
+    The copy constructor then <em>tests</em> it, and the move constructor hands it to
+    <a href="destroy.html">Destroy</a>, whose value-type overload runs
+    <code>Value().~TType()</code> whenever the flag reads true — a destructor call on storage no constructor ever
+    ran over. The consequence depends on stack or heap residue, so it is silent most of the time. Copying or moving
+    a <em>filled</em> optional is unaffected: both paths assign the flag from the source.
+  </p>
+</div>
+
+<div class="note">
+  <p>
+    <strong>There is no converting constructor from anything except <code>const TType&amp;</code> and
+    <code>std::nullptr_t</code>.</strong> A value convertible to <code>TType</code> but not of it does not fill an
+    optional; and the variadic <a href="emplace.html">Emplace</a>, which does accept arbitrary arguments, is the
+    only way to build an element from constructor arguments.
+  </p>
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<table>
+  <tr><th>Parameter</th><th>Type</th><th>Requirement</th></tr>
+  <tr><td><code>value</code></td><td><code>const TType&amp;</code></td><td>The element to hold. For a reference element type this is the object the new optional will refer to — it is not copied, only its address is taken (<a href="constructat.html">ConstructAt</a>)</td></tr>
+  <tr><td><code>rhs</code></td><td><code>const Optional&amp;</code> / <code>Optional&amp;&amp;</code></td><td>The source. Safe to hold a value; an empty source is the case that leaves the new object's flag unset</td></tr>
+</table>
+
+<h2 id="return">Return value</h2>
+
+<p>
+  Constructors return nothing. There is no failure to report: an optional that could not be constructed is
+  indistinguishable from one that was constructed empty, because the flag is the only state and this is the code
+  that writes it.
+</p>
+
+<h2 id="example">Examples</h2>
+
+<p>Reading a copied optional is only meaningful if the source held something:</p>
+
+<pre><code>if (rhs.hasValue)</code></pre>
+
+<p class="meta">From Engine/Memory/Optional.h, Optional::Optional(const Optional&amp;)</p>
+
+<p>
+  That test is the first line of both the copy constructor and
+  <a href="operator-assign.html"><code>operator=(const Optional&amp;)</code></a> — the assignment form sets the flag
+  on the empty branch because it has already destroyed and cleared its own, whereas the constructor has no own state
+  to clear and so never writes the flag at all. See the class page's gap note for the consequence.
+</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; Optional</a></span>
+  <span><a href="index.html#methods">All Optional methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

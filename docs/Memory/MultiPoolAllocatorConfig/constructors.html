@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MultiPoolAllocatorConfig::MultiPoolAllocatorConfig — Memory module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a class="current" href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Memory</a> /
+  <a href="index.html">MultiPoolAllocatorConfig</a> / MultiPoolAllocatorConfig
+</p>
+
+<h1><span class="fn">MultiPoolAllocatorConfig</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::MultiPoolAllocatorConfig</span>
+  <span class="tag">Engine/Memory/MultiPoolAllocatorConfig.h</span>
+  the empty record a failed lookup returns, and the record every report appends
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>MultiPoolAllocatorConfig() noexcept = default
+
+MultiPoolAllocatorConfig(StaticStringID id, TPoolConfigs&amp;&amp; configs) noexcept</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  Two ways to make a record of type <code>MultiPoolAllocatorConfig</code> at
+  <code>Engine/Memory/MultiPoolAllocatorConfig.h</code>. The defaulted default constructor is declared, not
+  written: it value-initialises <code>uniqueName</code> and leaves <code>configs</code> as an empty vector, which
+  is exactly the record
+  <a href="../MemoryManager/look-up-multi-pool-config.html"><code>MemoryManager::LookUpMultiPoolConfig</code></a>
+  returns as its "no such allocator" answer — a function-local static that every failed lookup shares and reads.
+</p>
+
+<p>
+  The two-argument form is defined out of line in <code>Engine/Memory/MultiPoolAllocatorConfig.cpp</code> and does
+  what its initializer list says: <code>uniqueName(id), configs(std::move(inConfigs))</code>. The parameter is a
+  name and an rvalue reference to the pool list, so the caller's vector is emptied by the move and no copy of the
+  configurations is made. Both parameters are taken by value-of-reference and neither is inspected — a null name id
+  and an empty list produce a record just the same.
+</p>
+
+<p>
+  Both are reached through <code>emplace_back</code>, so the record is built inside the
+  <a href="../MultiPoolConfigCache/index.html"><code>MultiPoolConfigCache</code></a>'s vector rather than into a
+  temporary that is then copied:
+</p>
+
+<ul>
+  <li><code>data.emplace_back(uniqueName, std::move(poolConfigs))</code> in
+    <a href="../MemoryManager/report-multi-pool-configutation.html"><code>MemoryManager::ReportMultiPoolConfigutation</code></a>
+    — the record for what this run peaked at</li>
+  <li><code>data.emplace_back(key.GetID(), std::move(configs))</code> in
+    <a href="../MultiPoolConfigCache/deserialize.html"><code>MultiPoolConfigCache::Deserialize</code></a> — one per
+    record read back from the cache file, where the name arrives as a <code>StaticString</code> and is interned to
+    an id on the way in</li>
+</ul>
+
+<div class="note">
+  <p>
+    <strong>The type has no copy or move constructor of its own, so it has the ones it gets.</strong> Neither is
+    declared, deleted or defaulted in the header, so the compiler supplies members-copies of both fields: the id
+    copies, and the pool list copies element-wise. That matters at load time because
+    <code>data</code> is a <code>std::vector</code> and every growth reallocates and copies its elements — records
+    move around the cache while it is being filled, which is why a reference into it is not a promise (see the
+    class page's note on ownership).
+  </p>
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<table>
+  <tr><th>Parameter</th><th>Type</th><th>Requirement</th></tr>
+  <tr><td><code>id</code></td><td><code>StaticStringID</code></td><td>The allocator's interned name. Not checked for emptiness or uniqueness — two allocators that intern to one id share one record's identity</td></tr>
+  <tr><td><code>configs</code></td><td><code>TPoolConfigs&amp;&amp;</code></td><td>The pool sizes, moved in and left empty in the caller. May be empty, may be unsorted: neither is inspected here</td></tr>
+</table>
+
+<p>The default constructor takes nothing.</p>
+
+<h2 id="return">Return value</h2>
+
+<p>
+  Constructors return nothing and cannot fail. Neither form reports an empty name, an empty configuration list, or
+  an out-of-order one; a record is valid-looking the moment it exists, and only
+  <a href="../MultiPoolConfigCache/normalize.html">the cache's normalisation step</a> ever decides what to do with
+  a useless one.
+</p>
+
+<h2 id="example">Examples</h2>
+
+<p>Both constructors are invoked through the vector that will own the record:</p>
+
+<pre><code>data.emplace_back(key.GetID(), std::move(configs));</code></pre>
+
+<p class="meta">From Engine/Memory/MultiPoolConfigCache.cpp, MultiPoolConfigCache::Deserialize(const Buffer&amp;)</p>
+
+<p>
+  The name is read out of the file as text and interned by <code>GetID()</code> at this point — so the id in a
+  loaded record is this run's id for that spelling of the name, not a number that travelled through the file. That
+  is what allows
+  <a href="../MemoryManager/look-up-multi-pool-config.html">LookUpMultiPoolConfig</a> to match a freshly constructed
+  allocator's <code>GetName().GetID()</code> against a record written by an earlier process.
+</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; MultiPoolAllocatorConfig</a></span>
+  <span><a href="index.html#methods">All MultiPoolAllocatorConfig methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

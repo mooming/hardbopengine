@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PoolConfigUtil::Normalize — Memory module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a class="current" href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Memory</a> /
+  <a href="index.html">PoolConfigUtil</a> / Normalize
+</p>
+
+<h1><span class="fn">Normalize</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::PoolConfigUtil</span>
+  <span class="tag">Engine/Memory/PoolConfigUtil.h</span>
+  <span class="tag">free function in hbe::PoolConfigUtil</span>
+  sort a configuration list, then fold it down to one entry per block size, summing the counts of every run
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>void Normalize(TPoolConfigs&amp; configs);</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  Defined in <code>Engine/Memory/PoolConfigUtil.cpp</code>. It takes a list of pool configurations in any order
+  and leaves behind the same list sorted ascending by block size and folded down to at most one entry per size.
+  Three steps, in this order:
+</p>
+
+<ol>
+  <li><code>std::sort(configs.begin(), configs.end())</code> — the ordering
+    <a href="../PoolConfig/operator-less.html"><code>PoolConfig::operator&lt;</code></a> decides, which reads
+    <code>blockSize</code> only.</li>
+  <li>A first pass counts distinct block sizes with a local lambda, skipping every entry whose count is zero, so
+    the result can be reserved exactly.</li>
+  <li>A second pass walks the sorted list and emits one entry per run of equal sizes, with the run's counts
+    summed.</li>
+</ol>
+
+<p>
+  The walk is run-detection, not a hash: it advances to a new size whenever
+  <code>config.blockSize != blockSize</code>, which is only correct because step 1 put equal sizes next to each
+  other. Before the second pass the caller's vector is swapped into a temporary and
+  <code>configs.reserve(numUniqueBlocks)</code> is called, so the output is written into freshly reserved storage
+  sized to the distinct count — the caller's previous capacity is not kept, and any pointer or reference into the
+  old buffer is invalid once this returns.
+</p>
+
+<p>The fold is closed by <code>Assert(configs.size() == numUniqueBlocks)</code>: the number of entries emitted
+must equal the number of sizes counted in step 2. That assertion is the only cross-check between the two
+passes.</p>
+
+<div class="gap">
+  <p>
+    <strong>Two kinds of entry are dropped silently, and the assertion cannot see it.</strong> The emit guard is
+    <code>if (blockSize &gt; 0 &amp;&amp; numBlocks &gt; 0)</code>, so a run whose block size is zero or whose summed
+    count is zero never reaches the output; the counting pass makes the same exclusion — it skips zero-count
+    entries, and its running comparison is seeded with <code>blockSize = 0</code>, which means a leading
+    zero-size entry is never recognised as a new run either. Both passes agree, so the sizes still match and the
+    assertion passes. A configuration that asked for nothing is quietly removed rather than reported, and a list
+    of nothing-but-zeros comes back empty.
+  </p>
+</div>
+
+<div class="note">
+  <p>
+    <strong>Counts are summed here and maxed later.</strong> Normalisation is the additive step: two entries of
+    the same size become one whose count is their total. The next function in this namespace,
+    <a href="merge-max.html">MergeMax</a>, deliberately does not add — across two <em>lists</em> it keeps the
+    larger count for each size.
+  </p>
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<table>
+  <tr><th>Parameter</th><th>Type</th><th>Requirement</th></tr>
+  <tr><td><code>configs</code></td><td><code>TPoolConfigs&amp;</code></td><td>A list of pool configurations, modified in place. May be empty, may be unsorted, may hold duplicate sizes; the caller keeps the sorted, folded result and loses its original capacity</td></tr>
+</table>
+
+<h2 id="return">Return value</h2>
+
+<p>
+  None. The function reports nothing: it cannot fail, it cannot refuse an entry, and it gives no signal when it
+  drops one. The observable outcome is entirely in the list the caller passed in.
+</p>
+
+<h2 id="example">Examples</h2>
+
+<p>The one caller in the tree applies it to each bank configuration before a merge:</p>
+
+<pre><code>PoolConfigUtil::Normalize(item.configs);</code></pre>
+
+<p class="meta">From Engine/Memory/MultiPoolConfigCache.cpp, MultiPoolConfigCache::Normalize()</p>
+
+<p>
+  That call sits inside the loop over every cached allocator entry, run before the entries are grouped by name
+  and reconciled with <a href="merge-max.html">MergeMax</a>. The same function is what guarantees the cache file
+  is written in size order, because it is called from
+  <a href="../MultiPoolConfigCache/serialize.html">MultiPoolConfigCache::Serialize</a> by way of that
+  <code>Normalize</code> — and <a href="../MultiPoolConfigCache/deserialize.html">Deserialize</a> trusts that
+  order rather than restoring it.
+</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; PoolConfigUtil</a></span>
+  <span><a href="index.html#methods">All PoolConfigUtil methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

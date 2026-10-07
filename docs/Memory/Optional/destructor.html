@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Optional::~Optional — Memory module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a class="current" href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Memory</a> /
+  <a href="index.html">Optional</a> / ~Optional
+</p>
+
+<h1><span class="fn">~Optional</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::Optional</span>
+  <span class="tag">Engine/Memory/Optional.h</span>
+  runs the element destructor the flag claims is needed, and nothing else
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>~Optional()</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  Defined in the class body of <code>Engine/Memory/Optional.h</code>, and its whole body is one call:
+  <code>Destroy(typename IsReferenceType&lt;TType&gt;::Result());</code>. The trait selects which of the two
+  <a href="destroy.html">Destroy</a> overloads runs, so the destructor has two behaviours and no branch of its own.
+</p>
+
+<p>
+  For a value type that means the destructor of <code>TType</code> is run explicitly on the storage, but only if
+  <a href="destroy.html">Destroy</a> finds <code>hasValue</code> true. For a reference type it means the flag is
+  cleared and nothing else — the referred-to object is not destroyed, because it was never the optional's to
+  destroy (<a href="constructat.html">ConstructAt</a> only stored its address).
+</p>
+
+<div class="gap">
+  <p>
+    <strong>The destructor trusts the flag completely.</strong> It never consults the storage, so it will run a
+    destructor over bytes that were never constructed if the flag says so — the exact risk left open by the
+    <a href="constructors.html">copy and move constructors</a>, which do not initialise the flag when their source
+    is empty. It also means a caller who writes <code>hasValue = true</code> directly (the field is public) has
+    scheduled a destructor call for whatever those bytes hold.
+  </p>
+</div>
+
+<div class="note">
+  <p>
+    <strong>Nothing releases memory here.</strong> This class allocates nothing — the storage is a member array — so
+    the destructor returns no bytes to any allocator and takes no part in the
+    <a href="../AllocatorID/index.html"><code>TAllocatorID</code></a> bookkeeping the rest of this module is
+    concerned with. Whatever owns the optional owns its bytes outright.
+  </p>
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<p>None.</p>
+
+<h2 id="return">Return value</h2>
+
+<p>
+  A destructor returns nothing. The only observable effect is that <code>hasValue</code> is false afterwards, which
+  <a href="destroy.html">Destroy</a> guarantees on both paths.
+</p>
+
+<h2 id="example">Examples</h2>
+
+<p>The trait decides the destructor's behaviour, not an <code>if</code>:</p>
+
+<pre><code>Destroy(typename IsReferenceType&lt;TType&gt;::Result());</code></pre>
+
+<p class="meta">From Engine/Memory/Optional.h, Optional::~Optional</p>
+
+<p>
+  The same call appears in <a href="reset.html">Reset</a>, in both assignment operators and in the
+  <a href="emplace.html">Emplace</a> overloads, always with the same argument — which is why "empty this out" means
+  one thing everywhere in this class. See <a href="destroy.html">Destroy</a> for the two things it then does.
+</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; Optional</a></span>
+  <span><a href="index.html#methods">All Optional methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

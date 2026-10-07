@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AllocatorScope — Memory module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a class="current" href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This class</h3>
+  <ul>
+    <li><a href="#description">Class description</a></li>
+    <li><a href="#template">Template parameters</a></li>
+    <li><a href="#properties">Class properties</a></li>
+    <li><a href="#methods">Class methods</a></li>
+    <li><a href="#non-member">Non-member helper functions</a></li>
+    <li><a href="#coverage">Coverage</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Memory</a> /
+  AllocatorScope
+</p>
+
+<h1>AllocatorScope</h1>
+<p class="subtitle">
+  <span class="tag">Engine/Memory/AllocatorScope.h</span>
+  <span class="tag">final</span>
+  <span class="tag">namespace hbe</span>
+  RAII redirection of one thread's default allocations: saves the scoped allocator id, installs another, restores the saved value on destruction - and protects the routing of calls, never the history of pointers
+</p>
+
+<h2 id="description">Class description</h2>
+
+<p>
+  <code>class AllocatorScope final</code> at <code>Engine/Memory/AllocatorScope.h</code> is the engine's way to say
+  "allocate from this allocator while I am current." On construction it reads the thread's current allocator id from
+  <a href="../MemoryManager/index.html"><code>MemoryManager</code></a>, stores it in <code>previous</code>, and installs
+  the id it was given; on destruction it writes <code>previous</code> back
+  (<code>Engine/Memory/AllocatorScope.cpp</code>). The state it steers is
+  <code>MemoryManager::scopedAllocatorID</code>, a <code>thread_local</code> value that the id-free entry points
+  <code>MemoryManager::Allocate(size_t)</code> and <code>MemoryManager::Deallocate(void*, size_t)</code>, and the
+  <a href="../Memory/index.html">free <code>New</code>/<code>Delete</code> helpers</a>, read on every call. It changes
+  nothing about allocators themselves — it registers nothing, owns nothing, and keeps nothing alive; it changes where
+  one thread's subsequent default traffic goes.
+</p>
+
+<p>
+  Three ways to open one, all on <a href="constructors.html">the constructors page</a>: by id,
+  <code>AllocatorScope scope(someId)</code>; by allocator object, the template constructor that forwards
+  <code>allocator.GetID()</code>, which is the shape the pool users write; or default-constructed, which installs
+  <code>InvalidAllocatorID</code> — a scope under which an actual allocation asserts (see below), not a scope that means
+  "no opinion." Nesting works because each object stores the value it found, not the value it replaced: scopes opened
+  inside one another restore in reverse order, which is what ordinary stack lifetimes already give. The copy and move
+  operations are <code>delete</code>d and private — an object holds the single restore obligation for one saved value,
+  and a second live object carrying the same saved value would write it back twice
+  (<a href="constructors.html">constructors</a>).
+</p>
+
+<table>
+  <tr><th>Piece</th><th>What it is</th><th>Where the contract lives</th></tr>
+  <tr><td>Save and install</td><td>Read the thread's current id, store it, write the new one through the manager's private setter (this class is that setter's friend)</td><td><a href="constructors.html">constructors</a></td></tr>
+  <tr><td>Restore</td><td>The destructor writes <code>previous</code> back, on every exit path, once</td><td><a href="destructor.html">~AllocatorScope</a></td></tr>
+  <tr><td>Thread locality</td><td><code>scopedAllocatorID</code> is <code>thread_local</code> and initialised to 0; the scope binds the constructing thread only</td><td><a href="../MemoryManager/get-scoped-allocator-id.html">GetScopedAllocatorID</a></td></tr>
+  <tr><td>Steered traffic</td><td>Id-free allocate/deallocate, <code>AllocateByType</code>/<code>DeallocateTypes</code>, <code>New</code>/<code>Delete</code> and the free helpers</td><td><a href="../MemoryManager/allocate.html">Allocate</a>, <a href="../MemoryManager/deallocate.html">Deallocate</a></td></tr>
+  <tr><td>Invalid identity</td><td>A scope may legitimately hold <code>InvalidAllocatorID</code>; allocating under it is refused by assert, and — outside a build where <code>Assert</code> has teeth — logged and re-routed to slot 0</td><td><a href="../MemoryManager/allocate.html">Allocate</a></td></tr>
+</table>
+
+<div class="gap">
+  <strong>A scope redirects the calls made inside it; it does not attach itself to memory.</strong> An allocation made
+  while a scope is open does not "belong" to that scope: release is routed by whichever scope is current at the moment
+  of the release call, because the id-free deallocate reads the same thread-local value. The module has already paid for
+  this fact twice. A monotonic allocator destroyed while its own <code>AllocatorScope</code> was open used to release
+  its backing buffer through the ambient scope instead of the parent recorded at construction — the release entered the
+  dying allocator's own inert <code>Deallocate</code>, nothing asserted, and the buffer never returned to its parent;
+  the repair of 2026-10-06 (recorded in <code>JOURNAL.md</code>, reproduced by the testlet
+  <code>Destroy In Own Scope</code>) names the parent explicitly, and the fixed release line is quoted on
+  <a href="destructor.html">the destructor page</a>. <code>PoolAllocator</code>'s destructor carries the same rule,
+  recorded in its own page's gap note. The general statement, which is the reason both allocators state it:
+  an <code>AllocatorScope</code> protects the routing of calls made inside it and the restoration of the outer value on
+  exit — it does not protect an object's own teardown from the scope that happens to be open around it, does not keep
+  the allocator it names alive (destroying a scoped-over allocator leaves the id pointing at a cleared or reused slot),
+  and does not cross threads (a new thread begins at id 0, and destroying a scope on a thread other than the one that
+  constructed it writes one thread's saved value into another thread's state).
+</div>
+
+<div class="gap">
+  <strong>A scope is not safe before the engine exists or after it dies.</strong> Every constructor and the destructor
+  reach the manager through <code>MemoryManager::GetInstance()</code>, whose <code>FatalAssert</code> is live in all
+  three build configurations (<code>Engine/Memory/AllocatorScope.cpp</code>,
+  <a href="../MemoryManager/get-instance.html">GetInstance</a>). Static-init-time or post-shutdown construction aborts
+  the process rather than falling through to the system allocator.
+</div>
+
+<h2 id="template">Template parameters</h2>
+
+<p>
+  The class is not a template, but its third <a href="constructors.html">constructor</a> is: one type parameter, the
+  allocator object's class, with one requirement — it must offer a <code>GetID()</code> returning a
+  <code>TAllocatorID</code>. Every allocator in the module does; the constructor body is that single call.
+</p>
+
+<h2 id="properties">Class properties</h2>
+
+<table>
+  <tr><th>Type + Name</th><th>Default Value</th><th>Description</th></tr>
+  <tr><td><code>TAllocatorID previous;</code> <span class="badge">private</span></td><td><span class="muted">none in the header</span></td><td>The id this thread held when the scope was constructed — the whole content of the destructor's restore.</td></tr>
+  <tr><td><code>TAllocatorID current;</code> <span class="badge">private</span></td><td><span class="muted">none in the header</span></td><td>The id this scope installed. Written in the constructor and read by no later path: the header gives it no accessor, so it records rather than reports — see the Coverage row.</td></tr>
+</table>
+
+<h2 id="methods">Class methods</h2>
+
+<table class="methods">
+  <tr><th>Name</th><th>Signature</th><th>What a caller depends on</th></tr>
+  <tr><td><a href="constructors.html"><code>AllocatorScope</code></a><span class="badge">5 overloads</span></td><td class="sig">AllocatorScope(const AllocatorScope&amp;) = delete<br>AllocatorScope(AllocatorScope&amp;&amp;) = delete<br>AllocatorScope() noexcept<br>AllocatorScope(TAllocatorID id) noexcept<br>template &lt;typename T&gt;<br>AllocatorScope(const T&amp; allocator) noexcept</td><td>Save this thread's id, install the given one; the deleted forms make a second live owner of one restore obligation impossible.</td></tr>
+  <tr><td><code>operator=</code></td><td class="sig">AllocatorScope&amp; operator=(const AllocatorScope&amp;) noexcept = delete<br>AllocatorScope&amp; operator=(AllocatorScope&amp;&amp;) noexcept = delete</td><td>Deleted — no page; a scope that could be reassigned could be made to restore the wrong value, and neither form compiles (the declarations are also private).</td></tr>
+  <tr><td><a href="destructor.html"><code>~AllocatorScope</code></a></td><td class="sig">~AllocatorScope() noexcept</td><td>Writes <code>previous</code> back through the same manager setter, once, on every exit path.</td></tr>
+</table>
+
+<h2 id="non-member">Non-member helper functions</h2>
+
+<p>None. The only functions a scope calls are the manager's own —
+<a href="../MemoryManager/get-scoped-allocator-id.html">GetScopedAllocatorID</a> and the private setter it is friended
+to read (<a href="../MemoryManager/set-scoped-allocator-id.html">SetScopedAllocatorID</a>).</p>
+
+<h2 id="coverage">Coverage</h2>
+
+<table>
+  <tr><th>Not documented here</th><th>Why</th></tr>
+  <tr><td>What <code>current</code> is for</td><td>It is written by the constructor and read by nothing that exists: private, unaccessoried, and unread in <code>Engine/Memory/AllocatorScope.cpp</code>. This page states that fact rather than inventing a use for it.</td></tr>
+  <tr><td><code>AllocatorScopeTest</code></td><td>Test-only: declared in <code>Engine/Memory/AllocatorScope.h</code> inside <code>#ifdef __UNIT_TEST__</code>; its single testlet opens a scope over an <code>InlinePoolAllocator</code>, allocates through the manager and checks <code>GetCurrentAllocatorID</code> answers the scoped id — the shape is quoted on <a href="constructors.html">constructors</a>.</td></tr>
+  <tr><td><code>dVarScopedAllocLogging</code></td><td>A debug-console variable inside <code>MemoryManager::SetScopedAllocatorID</code>, on the setter's page rather than this class's.</td></tr>
+  <tr><td>What the multi-pool allocators do with scopes during shutdown</td><td>Their bank-restamping and drain-order rules belong to their own pages; this page documents only the mechanism they lean on.</td></tr>
+</table>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; AllocatorScope</a></span>
+  <span><a href="index.html#methods">All AllocatorScope methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

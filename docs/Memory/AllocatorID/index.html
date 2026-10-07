@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AllocatorID — Memory module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a class="current" href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This class</h3>
+  <ul>
+    <li><a href="#description">Class description</a></li>
+    <li><a href="#template">Template parameters</a></li>
+    <li><a href="#properties">Class properties</a></li>
+    <li><a href="#methods">Class methods</a></li>
+    <li><a href="#non-member">Non-member helper functions</a></li>
+    <li><a href="#coverage">Coverage</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Memory</a> /
+  AllocatorID
+</p>
+
+<h1>AllocatorID</h1>
+<p class="subtitle">
+  <span class="tag">Engine/Memory/AllocatorID.h</span>
+  <span class="tag">namespace hbe</span>
+  <span class="tag">utility header</span>
+  the identity type every allocator in the engine is named by, its two bounds, and the single range check that guards it
+</p>
+
+<h2 id="description">Class description</h2>
+
+<p>
+  A header, not a class: <code>Engine/Memory/AllocatorID.h</code> declares the identity type that every other
+  signature in the Memory module is written against — <code>using TAllocatorID = int;</code> in namespace
+  <code>hbe</code>, the two constants that bound it, and the one free function that tests it. Everything else in
+  the module takes or returns this type: <a href="../PoolAllocator/getid.html"><code>GetID</code></a> on every
+  allocator, <a href="../MemoryManager/index.html"><code>MemoryManager</code></a>'s
+  <a href="../MemoryManager/register-allocator.html">RegisterAllocator</a> and
+  <a href="../MemoryManager/deregister-allocator.html">DeregisterAllocator</a>, and the allocation and
+  deallocation entry points that route a request to an allocator by number.
+</p>
+
+<p>
+  An id names a <strong>slot</strong>, not an allocator object. <code>MemoryManager</code> owns
+  <code>AllocatorProxy allocators[MaxNumAllocators]</code> and hands out the slot's fixed index
+  (<code>Engine/Memory/MemoryManager.h</code>); the proxy at that index is the registration, and
+  <code>AllocatorProxy</code> holds the allocator pointer plus the <code>allocate</code> and
+  <code>deallocate</code> function pointers that a request is dispatched through. Id 0 is reserved:
+  <code>MemoryManager::SystemAllocatorID</code> is registered before the free pool is built, so the pool a
+  normal allocator draws from holds indices 1 to <code>MaxNumAllocators - 1</code>.
+</p>
+
+<table>
+  <tr><th>Piece</th><th>What it is</th><th>Where the contract lives</th></tr>
+  <tr>
+    <td>The value</td>
+    <td>An <code>int</code> index into the proxy table, bounded by <a href="isvalid.html">IsValid</a></td>
+    <td><a href="isvalid.html">IsValid</a>, <a href="#properties">MaxNumAllocators</a></td>
+  </tr>
+  <tr>
+    <td>The issuance</td>
+    <td>Pops a proxy off the manager's free pool and returns its index; exhaustion yields
+      <code>InvalidAllocatorID</code></td>
+    <td><a href="../MemoryManager/register-allocator.html">RegisterAllocator</a></td>
+  </tr>
+  <tr>
+    <td>The retirement</td>
+    <td>Clears the two function pointers, then returns the proxy to the free pool — unless a check refuses
+      to</td>
+    <td><a href="../MemoryManager/deregister-allocator.html">DeregisterAllocator</a></td>
+  </tr>
+  <tr>
+    <td>The dispatch</td>
+    <td>Index → proxy → function pointer. An out-of-range id is answered with a throwaway proxy, not a
+      failure</td>
+    <td><a href="../MemoryManager/get-allocator-proxy.html">GetAllocatorProxy</a></td>
+  </tr>
+</table>
+
+<p>
+  <strong>The lifetime of an id is exactly the lifetime of the registration that issued it.</strong> It is not a
+  handle, not a lease, and carries no generation: <code>AllocatorProxy</code> stores an id but nothing that says
+  <em>which</em> registration is currently sitting in that slot. Contrast
+  <a href="../../Core/TaskID/index.html"><code>TaskID</code></a>, which pairs an index with a generation
+  precisely so a stale identity resolves to nothing. Once
+  <a href="../MemoryManager/deregister-allocator.html">DeregisterAllocator</a> returns the proxy to the free
+  pool, the next <a href="../MemoryManager/register-allocator.html">RegisterAllocator</a> call may hand the same
+  integer to an unrelated allocator, and <a href="isvalid.html">IsValid</a> still reports the old value as valid
+  because the only thing it can check is the range. Nothing in the engine can tell the two registrations apart.
+</p>
+
+<div class="gap">
+  <strong>A block that outlives its registration is routed by the id it carries, not by the allocator that gave
+  it memory.</strong> That is the hazard this module has already had to fix once: the monotonic allocators
+  recorded their owner in <code>parentID</code> at construction but released their backing buffer through the
+  ambient <a href="../MemoryManager/deallocate.html">MemoryManager::Deallocate</a>, which resolves the
+  <em>currently open scope</em>. Destroying such an allocator while its own scope was open sent the release into
+  that allocator's own <code>Deallocate</code> — which ignores individual releases — so the buffer never came
+  back; the destructor now names the parent explicitly
+  (<code>mmgr.Deallocate(parentID, bufferPtr, capacity)</code> in <code>Engine/Memory/MonotonicAllocator.cpp</code>,
+  <code>MonotonicAllocator::~MonotonicAllocator()</code>). The rule for a caller is the same rule: memory is
+  released through the id of the allocator that owns it, never through whatever scope happens to be open.
+</div>
+
+<div class="note">
+  <strong>What a stale id costs depends on the build.</strong> Under <code>PROFILE_ENABLED</code>,
+  <a href="../MemoryManager/deregister-allocator.html">DeregisterAllocator</a> inspects the proxy's usage, logs
+  <code>Memory leak is detected!</code> with the byte counts, calls <code>debugBreak()</code> outside
+  <code>RELEASE_BUILD</code>, and <em>returns early</em> — so the slot is never recycled and a stale id keeps
+  naming the dead registration whose function pointers are already null. With profiling off there is no usage
+  accounting at all, so the proxy goes straight back to the pool and the same stale id reaches whatever
+  allocator takes that slot next, whose <code>deallocate</code> receives a pointer it never handed out.
+  <a href="../MemoryManager/report-deallocation.html">ReportDeallocation</a> then subtracts that byte count from
+  the new owner's usage, which is how an accounting error and a wrong-allocator free arrive together.
+</div>
+
+<h2 id="template">Template parameters</h2>
+
+<p>None. <code>Engine/Memory/AllocatorID.h</code> declares no template — the id is a plain alias, not a type
+wrapper, so it converts implicitly with <code>int</code> everywhere.</p>
+
+<h2 id="properties">Class properties</h2>
+
+<table>
+  <tr><th>Type + Name</th><th>Default Value</th><th>Description</th></tr>
+  <tr><td><code>using TAllocatorID = int;</code> <span class="badge">alias</span></td><td><span class="muted">not applicable</span></td><td>The allocator's slot number in the manager's proxy table; signed, so that one negative value can mean "no allocator" and still be compared against real ids</td></tr>
+  <tr><td><code>static constexpr TAllocatorID MaxNumAllocators = 256;</code> <span class="badge">public static</span></td><td><code>256</code></td><td>Both the size of <code>MemoryManager::allocators</code> and the exclusive upper bound <a href="isvalid.html">IsValid</a> enforces, so the engine can hold at most 255 simultaneously registered allocators plus the system allocator</td></tr>
+  <tr><td><code>static constexpr TAllocatorID InvalidAllocatorID = -1;</code> <span class="badge">public static</span></td><td><code>-1</code></td><td>"No allocator": returned by <a href="../MemoryManager/register-allocator.html">RegisterAllocator</a> when the pool is empty, and the initial <code>id</code> of every proxy and every allocator that failed to register</td></tr>
+</table>
+
+<h2 id="methods">Class methods</h2>
+
+<p>
+  One function. It is a free function in namespace <code>hbe</code>, declared <code>inline</code> in the header,
+  so it is reachable unqualified from anywhere the alias is.
+</p>
+
+<table class="methods">
+  <tr><th>Name</th><th>Signature</th><th>What a caller depends on</th></tr>
+  <tr><td><a href="isvalid.html"><code>IsValid</code></a></td><td class="sig">[[nodiscard]] inline bool IsValid(TAllocatorID id) noexcept</td><td>The id is inside the table — nothing more. It says nothing about whether a registration currently occupies the slot.</td></tr>
+</table>
+
+<h2 id="non-member">Non-member helper functions</h2>
+
+<p>
+  None besides <a href="isvalid.html"><code>IsValid</code></a>. <code>MemoryManager</code> also declares a private
+  static member of the same name and the same expression
+  (<a href="../MemoryManager/is-valid.html"><code>MemoryManager::IsValid</code></a>); the two are independent
+  definitions of one rule, and the member does not call this one.
+</p>
+
+<h2 id="coverage">Coverage</h2>
+
+<table>
+  <tr><th>Not documented here</th><th>Why</th></tr>
+  <tr>
+    <td>Which allocator a stale id resolves to once its slot has been re-issued, and what freeing through it
+      does to that new owner</td>
+    <td>It depends entirely on the order registrations happen to take, and nothing in <code>Engine/</code>
+      records or exposes that order. The mechanism is described above; the specific consequence for a given run
+      cannot be stated from the code</td>
+  </tr>
+  <tr>
+    <td>Thread-safety of registration and deregistration — whether two threads may register at once</td>
+    <td>The free pool is an <code>AtomicStackView</code>, and the statistics under <code>PROFILE_ENABLED</code>
+      are written under <code>statsLock</code>, but the plain writes to <code>allocator</code>,
+      <code>allocate</code> and <code>deallocate</code> in <code>MemoryManager::RegisterAllocator</code> are
+      unsynchronised. No page in the module states a rule, so none is asserted here</td>
+  </tr>
+  <tr>
+    <td>The proxy type itself: <code>AllocatorProxy</code>, its fields, its <code>GetName</code>, its profiling
+      and verification fields</td>
+    <td>A separate entry with its own page in progress under <code>docs/Memory/AllocatorProxy/</code>; this
+      page documents only what an id means to its holder</td>
+  </tr>
+  <tr>
+    <td>Whether 255 allocators is enough, and what happens when the pool is exhausted</td>
+    <td><a href="../MemoryManager/register-allocator.html">RegisterAllocator</a> logs <code>FatalError</code> and
+      returns <code>InvalidAllocatorID</code>; the allocator that receives it must cope, and each allocator
+      handles that refusal differently. There is no compile-time or running count that warns before the
+      exhaustion happens</td>
+  </tr>
+  <tr>
+    <td>The duplicate check inside <code>MemoryManager</code>: <code>MemoryManager::IsValid</code>, a private
+      static member with the same body</td>
+    <td>Documented on <a href="../MemoryManager/is-valid.html">its own page</a>; the risk of the two expressions
+      diverging is a maintenance note, not a contract a caller relies on</td>
+  </tr>
+</table>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; AllocatorID</a></span>
+  <span><a href="index.html#methods">All AllocatorID methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

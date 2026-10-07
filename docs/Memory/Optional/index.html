@@ -1,0 +1,356 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Optional — Memory module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a class="current" href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This class</h3>
+  <ul>
+    <li><a href="#description">Class description</a></li>
+    <li><a href="#template">Template parameters</a></li>
+    <li><a href="#properties">Class properties</a></li>
+    <li><a href="#methods">Class methods</a></li>
+    <li><a href="#non-member">Non-member helper functions</a></li>
+    <li><a href="#coverage">Coverage</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Memory</a> /
+  Optional
+</p>
+
+<h1>Optional</h1>
+<p class="subtitle">
+  <span class="tag">Engine/Memory/Optional.h</span>
+  <span class="tag">final</span>
+  <span class="tag">class template</span>
+  <span class="tag">namespace hbe</span>
+  a value or nothing, entirely inside the caller - the state a caller can test, and the two very different ways of reading an empty one
+</p>
+
+<h2 id="description">Class description</h2>
+
+<p>
+  <code>template &lt;typename TType&gt; class Optional final</code> at <code>Engine/Memory/Optional.h</code>: a
+  value-or-nothing that lives entirely inside the caller's object, with no heap allocation and no separate
+  control block. It is the shape the engine returns when an answer may legitimately be absent, and it does two
+  things <code>std::optional</code> does not: it accepts a reference type as its element, storing a pointer
+  instead of an object, and it carries its state in a plain public <code>bool</code>.
+</p>
+
+<p>
+  The whole object is two members — <a href="index.html#properties"><code>hasValue</code></a> and an
+  aligned byte array — and everything else is a function that reads or writes them. There is no allocator, no
+  parent, no id, and no <code>TAllocatorID</code> anywhere in this header; the storage is a member of whatever
+  holds the optional, so its lifetime is the owner's.
+</p>
+
+<h3>The state a caller can test</h3>
+
+<p>
+  One boolean, spelled three ways. All three read the same field, so they cannot disagree:
+</p>
+
+<table>
+  <tr><th>Form</th><th>What it answers</th><th>Page</th></tr>
+  <tr><td><code>opt.hasValue</code></td><td>The field itself — public, readable and writable by anything that holds the optional</td><td><a href="index.html#properties">Class properties</a></td></tr>
+  <tr><td><code>opt.HasValue()</code></td><td>The same bool, returned by value, marked <code>[[nodiscard]]</code></td><td><a href="hasvalue.html">HasValue</a></td></tr>
+  <tr><td><code>if (opt)</code></td><td>The same bool again, through an implicit conversion to <code>bool</code></td><td><a href="operator-bool.html">operator bool</a></td></tr>
+</table>
+
+<p>
+  Two states exist, not three: constructed-with-a-value and constructed-without-one. There is no
+  "moved-from-but-valid" state, because a move clears the source's flag
+  (<a href="movevalue.html">MoveValue</a> ends with <code>rhs.hasValue = false;</code>), and no
+  "destroyed-but-valid" state, because <a href="reset.html">Reset</a> and the
+  <a href="destructor.html">destructor</a> both clear the flag as their last act.
+</p>
+
+<h3>What reading an empty optional does</h3>
+
+<table>
+  <tr><th>Read</th><th>What happens when <code>hasValue</code> is false</th></tr>
+  <tr>
+    <td><a href="operator-multiply.html"><code>*opt</code></a></td>
+    <td>Both overloads open with <code>FatalAssert(hasValue)</code>. In <code>Engine/Core/Debug.h</code> that
+      flushes the logs, prints a <code>[FatalAssert]</code> line, calls <code>debugBreak()</code> and then
+      <code>std::abort()</code> — and it is not inside any build guard, so the process ends in a Release build
+      exactly as it does in Debug. There is no return value to inspect afterwards</td>
+  </tr>
+  <tr>
+    <td><a href="value.html"><code>opt.Value()</code></a></td>
+    <td>Nothing checks the flag. For a value type the reference is a reinterpret cast of the raw byte array, so a
+      caller reads memory that was never constructed — and may write it, because the non-const overload returns a
+      modifiable reference. For a reference type the stored pointer is dereferenced after
+      <code>Assert(valuePtr != nullptr)</code>, and <code>Assert</code> is defined away in
+      <code>RELEASE_BUILD</code>, so a null there is a null dereference in a shipped build</td>
+  </tr>
+  <tr>
+    <td><a href="hasvalue.html"><code>HasValue()</code></a>, <a href="operator-bool.html"><code>operator bool</code></a></td>
+    <td>These are the reads that answer honestly, and they are the only two that do not touch the storage</td>
+  </tr>
+</table>
+
+<div class="note">
+  <p>
+    <strong><code>operator*</code> guards, <code>Value()</code> does not — and both are marked
+    <code>[[nodiscard]]</code>.</strong> The difference is the whole safety story of this type: the operator asserts
+    loudly and aborts, the accessor is unchecked and silent. A caller who prefers the accessor's name because it
+    reads better has dropped the only check between "there is no value" and "here is a reference to whatever those
+    bytes happen to hold". The two const overloads behave the same way as their non-const twins.
+  </p>
+</div>
+
+<div class="gap">
+  <p>
+    <strong>The copy and move constructors do not set the flag when the source is empty.</strong> Neither appears in
+    an initializer list, and neither branch assigns <code>hasValue</code> in that case — the copy constructor reads
+    the field instead of writing it, in <code>else if (hasValue)</code>, and the move constructor calls
+    <a href="destroy.html">Destroy</a>, which itself begins by testing the flag. For an empty source, the new
+    object's state therefore comes out of uninitialised storage, and for a value type the
+    <code>Destroy(False_t)</code> path can end in an explicit destructor call on memory no constructor ever ran
+    over. Every other path in the class assigns the flag: the <a href="constructors.html">other three
+    constructors</a>, both <a href="copyvalue.html">CopyValue</a> overloads, both
+    <a href="movevalue.html">MoveValue</a> overloads, <a href="constructat.html">ConstructAt</a>,
+    <a href="destroy.html">Destroy</a> and <a href="reset.html">Reset</a>. The hole is only in those two
+    constructors, and it is only reachable when the source is empty.
+  </p>
+</div>
+
+<div class="gap">
+  <p>
+    <strong>Self-assignment is not handled, and both copy and move assignment destroy before they copy.</strong>
+    <code>operator=(const Optional&amp;)</code> calls <a href="destroy.html">Destroy</a> on its own value, then
+    <a href="copyvalue.html">CopyValue</a> from the argument; if the argument <em>is</em> this object, the copy
+    reads the value it just destroyed. <code>operator=(Optional&amp;&amp;)</code> has the same shape with
+    <a href="movevalue.html">MoveValue</a>. There is no address comparison in either — see
+    <a href="operator-assign.html">operator=</a>.
+  </p>
+</div>
+
+<h3>Reference element types</h3>
+
+<p>
+  <code>Optional&lt;T&amp;&gt;</code> is a supported instantiation, and it is a different object internally. The
+  storage is sized by <code>IsReferenceType&lt;TType&gt;::TypeSize</code>
+  (<code>Engine/Core/CommonUtil.h</code>), which is <code>sizeof(T)</code> for a value type and
+  <code>sizeof(T*)</code> for a reference, and every private helper is overloaded on
+  <code>True_t</code>/<code>False_t</code> from that same trait's <code>Result</code>. For a reference element the
+  optional stores the <em>address</em> of someone else's object
+  (<a href="constructat.html">ConstructAt</a>), so it names a value it does not own: the referred object's lifetime
+  is nobody's responsibility here, and <a href="destroy.html">Destroy</a> for a reference type only clears the flag.
+</p>
+
+<table>
+  <tr><th>Piece</th><th>What it is</th><th>Where the contract lives</th></tr>
+  <tr>
+    <td>The flag</td>
+    <td><code>bool hasValue</code> — the only state, public, and the thing every test reads</td>
+    <td><a href="hasvalue.html">HasValue</a>, <a href="operator-bool.html">operator bool</a></td>
+  </tr>
+  <tr>
+    <td>The storage</td>
+    <td>An aligned byte array, <code>sizeof(TType)</code> or <code>sizeof(TType*)</code> wide, aligned to at least
+      <code>Config::DefaultAlign</code></td>
+    <td><a href="index.html#properties">Class properties</a>, <a href="getvalue.html">GetValue</a></td>
+  </tr>
+  <tr>
+    <td>The two paths</td>
+    <td>Value semantics construct in place; reference semantics store a pointer</td>
+    <td><a href="constructat.html">ConstructAt</a>, <a href="getvalue.html">GetValue</a>,
+      <a href="destroy.html">Destroy</a></td>
+  </tr>
+  <tr>
+    <td>The fill and empty operations</td>
+    <td>Constructors, assignment, <a href="emplace.html">Emplace</a>, <a href="reset.html">Reset</a></td>
+    <td>Each on its own page, in the table below</td>
+  </tr>
+</table>
+
+<h2 id="template">Template parameters</h2>
+
+<table>
+  <tr><th>Parameter</th><th>What it must be</th><th>What it decides</th></tr>
+  <tr>
+    <td><code>TType</code></td>
+    <td>A value type, or a reference type — both are supported and behave differently</td>
+    <td>Storage size and the entire private implementation. <code>IsReferenceType&lt;TType&gt;::Result</code> is
+      <code>False_t</code> for a value type, whose storage is <code>sizeof(TType)</code> and whose value is
+      constructed in place, and <code>True_t</code> for a reference type, whose storage is
+      <code>sizeof(T*)</code> and holds an address. Every private helper has a <code>True_t</code> and a
+      <code>False_t</code> overload for this reason</td>
+  </tr>
+</table>
+
+<h2 id="properties">Class properties</h2>
+
+<p>
+  Both members are public, and both are declared before every function. Nothing in the class hides them, and
+  nothing outside the class is prevented from writing them.
+</p>
+
+<table>
+  <tr><th>Type + Name</th><th>Default Value</th><th>Description</th></tr>
+  <tr><td><code>bool hasValue;</code> <span class="badge">public</span></td><td><span class="muted">none in the header</span> (the default and null-pointer constructors set <code>false</code>, the value constructor sets <code>true</code>)</td><td>The single state of the object: whether <code>value</code> holds a live element. Read by <a href="hasvalue.html">HasValue</a>, <a href="operator-bool.html">operator bool</a>, <a href="operator-multiply.html">operator*</a>, and by every fill and destroy helper</td></tr>
+  <tr><td><code>alignas(std::max(IsReferenceType&lt;TType&gt;::TypeSize, Config::DefaultAlign)) Byte value[IsReferenceType&lt;TType&gt;::TypeSize];</code> <span class="badge">public</span></td><td><span class="muted">none in the header</span></td><td>The element itself, unconstructed until something fills it: raw bytes for a value type, a stored address for a reference type. Aligned to the larger of the element's size and <code>Config::DefaultAlign</code>, and reached only through <a href="getvalue.html">GetValue</a></td></tr>
+</table>
+
+<h2 id="methods">Class methods</h2>
+
+<table class="methods">
+  <tr><th>Name</th><th>Signature</th><th>What a caller depends on</th></tr>
+  <tr>
+    <td><a href="constructors.html"><code>Optional</code></a><span class="badge">5 overloads</span></td>
+    <td class="sig">Optional()<br>Optional(const TType&amp; value)<br>Optional(const Optional&amp; rhs)<br>Optional(Optional&amp;&amp; rhs)<br>Optional(std::nullptr_t)</td>
+    <td>Empty, filled, copied, moved, or empty again — but the copy and move forms leave the flag unset when the source is empty.</td>
+  </tr>
+  <tr>
+    <td><a href="destructor.html"><code>~Optional</code></a></td>
+    <td class="sig">~Optional()</td>
+    <td>Runs <code>Destroy</code> on whatever the flag claims is there — and for a value type, on storage no constructor touched if the flag came out of uninitialised memory.</td>
+  </tr>
+  <tr>
+    <td><a href="operator-assign.html"><code>operator=</code></a><span class="badge">4 overloads</span></td>
+    <td class="sig">Optional&amp; operator=(TType&amp; value)<br>Optional&amp; operator=(const Optional&amp; rhs)<br>Optional&amp; operator=(Optional&amp;&amp; rhs)<br>Optional&amp; operator=(std::nullptr_t)</td>
+    <td>Assign into a live value or emplace into an empty one; both optional-taking forms destroy first and neither handles self-assignment; <code>nullptr</code> empties.</td>
+  </tr>
+  <tr>
+    <td><a href="hasvalue.html"><code>HasValue</code></a></td>
+    <td class="sig">[[nodiscard]] auto HasValue() const noexcept</td>
+    <td>The state, by value: <code>hasValue</code> returned unchanged, deduced to <code>bool</code>.</td>
+  </tr>
+  <tr>
+    <td><a href="operator-bool.html"><code>operator bool</code></a></td>
+    <td class="sig">[[nodiscard]] operator bool() const noexcept</td>
+    <td>The implicit test — <code>hasValue</code> itself, so <code>if (opt)</code> and <code>opt.HasValue()</code> cannot disagree.</td>
+  </tr>
+  <tr>
+    <td><a href="operator-multiply.html"><code>operator*</code></a><span class="badge">2 overloads</span></td>
+    <td class="sig">TType&amp; operator*()<br>const TType&amp; operator*() const</td>
+    <td>The checked read: <code>FatalAssert(hasValue)</code> first, which aborts the process in every build configuration.</td>
+  </tr>
+  <tr>
+    <td><a href="value.html"><code>Value</code></a><span class="badge">2 overloads</span></td>
+    <td class="sig">[[nodiscard]] TType&amp; Value()<br>[[nodiscard]] const TType&amp; Value() const</td>
+    <td>The unchecked read: a reference to the storage with no test of the flag at all.</td>
+  </tr>
+  <tr>
+    <td><a href="reset.html"><code>Reset</code></a></td>
+    <td class="sig">void Reset()</td>
+    <td>Empties the optional — destroys the element for a value type, clears the flag for a reference, and does nothing when already empty.</td>
+  </tr>
+  <tr>
+    <td><a href="emplace.html"><code>Emplace</code></a><span class="badge">2 overloads</span></td>
+    <td class="sig">void Emplace(TType&amp; value)<br>template &lt;typename... Types&gt; void Emplace(Types&amp;&amp;... args)</td>
+    <td>Destroys any current value, then constructs a new one in the same bytes; the variadic form is the value-type path.</td>
+  </tr>
+  <tr>
+    <td><a href="constructat.html"><code>ConstructAt</code></a><span class="badge">2 overloads</span></td>
+    <td class="sig">void ConstructAt(True_t, TType&amp; inValue)<br>template &lt;typename... Types&gt; void ConstructAt(False_t, Types&amp;&amp;... args)</td>
+    <td>Private. The reference form stores an address; the value form placement-news the arguments in. Neither destroys what was there.</td>
+  </tr>
+  <tr>
+    <td><a href="copyvalue.html"><code>CopyValue</code></a><span class="badge">2 overloads</span></td>
+    <td class="sig">void CopyValue(True_t, const Optional&amp; rhs)<br>void CopyValue(False_t, const Optional&amp; rhs)</td>
+    <td>Private. Adopts the source's flag and its bytes or value; assumes the destination needs no destruction first.</td>
+  </tr>
+  <tr>
+    <td><a href="movevalue.html"><code>MoveValue</code></a><span class="badge">2 overloads</span></td>
+    <td class="sig">void MoveValue(True_t, Optional&amp; rhs)<br>void MoveValue(False_t, Optional&amp; rhs)</td>
+    <td>Private. Same as copying, plus clearing the source's flag — which is what makes a moved-from optional empty rather than dangling.</td>
+  </tr>
+  <tr>
+    <td><a href="getvalue.html"><code>GetValue</code></a><span class="badge">4 overloads</span></td>
+    <td class="sig">TType&amp; GetValue(True_t)<br>TType&amp; GetValue(False_t)<br>const TType&amp; GetValue(True_t) const<br>const TType&amp; GetValue(False_t) const</td>
+    <td>Private. The reinterpret cast that turns the byte array back into an element; the only check on it is a Debug-only <code>Assert</code> on the reference path.</td>
+  </tr>
+  <tr>
+    <td><a href="destroy.html"><code>Destroy</code></a><span class="badge">2 overloads</span></td>
+    <td class="sig">void Destroy(True_t)<br>void Destroy(False_t)</td>
+    <td>Private. Reference path clears the flag and nothing else; value path runs the destructor when the flag says one is needed, then clears the flag.</td>
+  </tr>
+</table>
+
+<h2 id="non-member">Non-member helper functions</h2>
+
+<p>
+  None. There is no <code>operator==</code>, no <code>Nullopt</code> type of its own (the
+  <code>std::nullptr_t</code> overloads stand in for one), no <code>operator-&gt;</code>, and no <code>value_or</code>.
+  <code>Engine/Memory/Optional.h</code> includes <code>Core/CommonUtil.h</code> for <code>True_t</code>,
+  <code>False_t</code> and <code>IsReferenceType</code>, <code>Core/Debug.h</code> for the two assert shapes,
+  <code>Core/Types.h</code> for <code>Byte</code>, and <code>OSAL/OSMemory.h</code>.
+</p>
+
+<h2 id="coverage">Coverage</h2>
+
+<table>
+  <tr><th>Not documented here</th><th>Why</th></tr>
+  <tr>
+    <td>What <code>IsReferenceType</code>, <code>True_t</code> and <code>False_t</code> are</td>
+    <td>Core module entries with their own pages: <a href="../../Core/IsReferenceType/index.html">IsReferenceType</a>,
+      <a href="../../Core/True_t/index.html">True_t</a>, <a href="../../Core/False_t/index.html">False_t</a>. This
+      page documents only the two shapes of <code>Optional</code> they produce</td>
+  </tr>
+  <tr>
+    <td>Whether <code>CopyValue</code>'s <code>memcpy</code> length is right for a reference type</td>
+    <td>It copies <code>sizeof(TType)</code> bytes into a field that
+      <code>IsReferenceType&lt;TType&gt;::TypeSize</code> sized as <code>sizeof(T*)</code>, so for a referent smaller
+      than a pointer the copy is shorter than the address it is meant to move and the rest of the field keeps
+      whatever the destination held. Where the remaining bytes matter is a question about byte order and about what
+      the destination previously held, and neither is answered anywhere in the code</td>
+  </tr>
+  <tr>
+    <td>Whether the two constructor holes and the self-assignment behaviour have ever produced a real failure</td>
+    <td>Recorded here because the class page must not read as though they were intentional. Nothing in
+      <code>Engine/</code>, <code>Applications/</code> or the test collection says, and a defect that has not fired
+      is not a defect that is absent</td>
+  </tr>
+  <tr>
+    <td><code>OptionalTest</code>, declared in the <code>#ifdef __UNIT_TEST__</code> region at the end of the
+      header</td>
+    <td>Test-only by the authoring contract, so it owns a row on the module ledger rather than a page; its
+      <code>Prepare</code> is defined in <code>Engine/Memory/Optional.cpp</code></td>
+  </tr>
+  <tr>
+    <td>Which engine types instantiate <code>Optional</code>, and with what</td>
+    <td>A survey of call sites across modules rather than a property of this template; the reference-element
+      behaviour and the unchecked <a href="value.html">Value</a> read are the parts a caller of any instantiation
+      needs to know, and both are documented above</td>
+  </tr>
+</table>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; Optional</a></span>
+  <span><a href="index.html#methods">All Optional methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

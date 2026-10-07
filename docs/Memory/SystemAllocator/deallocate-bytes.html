@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SystemAllocator::DeallocateBytes — Memory module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a class="current" href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Memory</a> /
+  <a href="index.html">SystemAllocator</a> / DeallocateBytes
+</p>
+
+<h1><span class="fn">DeallocateBytes</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::SystemAllocator</span>
+  <span class="tag">Engine/Memory/SystemAllocator.h</span>
+  Private: assert, undo the investigation build's pointer placement, report, and hand the block back - free, protect, or VirtualFree
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>void DeallocateBytes(void* ptr, std::size_t nBytes)</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  Private; defined in the class body of <code>Engine/Memory/SystemAllocator.h</code> and reached only through
+  <a href="deallocate.html">deallocate</a>. It is the exact inverse of <a href="allocate-bytes.html">AllocateBytes</a>,
+  and the order of its steps is the contract: assert the pointer, undo the investigation build's pointer placement,
+  file the statistics report, then hand the block back.
+</p>
+
+<p>
+  The undo is the reason the byte count is a parameter at all. On the investigation path the pointer this function was
+  handed is usually not the block base — the allocator returned an end-aligned address — so the base is recomputed as
+  <code>bytePtr + nBytes - allocSize</code>, with the same page rounding the allocation applied; a wrong
+  <code>nBytes</code> here releases (or protects) the wrong range. The underrun-check switch makes the handed pointer
+  the raw base and skips the arithmetic. Then, under <code>PROFILE_ENABLED</code>, comes
+  <code>mmgr.ReportDeallocation(GetID(), ptr, nBytes, allocated)</code> — the heap path deriving
+  <code>allocated</code> from <code>OS::GetAllocSize(ptr)</code>, the investigation path from the page-rounded size —
+  guarded on that path by <code>Assert(nBytes &lt;= allocated)</code> under <code>MEMORY_VERIFICATION_ENABLED</code>.
+  Finally the block leaves: <code>OS::VirtualFree</code>, or — with the dangling-pointer switch on —
+  <code>OS::ProtectMemory</code>, leaving the pages mapped but unreadable so any later touch faults, or in the shipped
+  configuration, plain <code>free(ptr)</code>.
+</p>
+
+<p>
+  The precondition is asserted twice before anything happens — once by the public
+  <a href="deallocate.html">deallocate</a> and once here with the message
+  <code>"[SysAlloc][Dealloc] Null Pointer Error"</code> — and neither assert exists in a shipped build, where a null
+  pointer continues into whichever release the configuration selects.
+</p>
+
+<h2 id="parameters">Parameters</h2>
+
+<table>
+  <tr><th>Parameter</th><th>Type</th><th>Requirement</th></tr>
+  <tr><td><code>ptr</code></td><td><code>void*</code></td><td>The pointer the allocation returned — asserted non-null, and on the investigation path geometrically meaningful: the base is computed from it, so it must be that pointer, unchanged.</td></tr>
+  <tr><td><code>nBytes</code></td><td><code>std::size_t</code></td><td>The requested byte count the allocation was asked for; the reporting input on one path and the base-pointer's second operand on the other.</td></tr>
+</table>
+
+<h2 id="return">Return value</h2>
+
+<p>None. The block is freed, protected, or — in a shipped build given a null pointer — released into whatever the underlying free call does with null.</p>
+
+<h2 id="example">Examples</h2>
+
+<pre><code>#if MEMORY_DANGLING_POINTER_CHECK_ENABLED
+		OS::ProtectMemory(rawPtr, allocated);
+#else // MEMORY_DANGLING_POINTER_CHECK_ENABLED
+		OS::VirtualFree(rawPtr, allocated);
+#endif // MEMORY_DANGLING_POINTER_CHECK_ENABLED</code></pre>
+
+<p class="meta">From Engine/Memory/SystemAllocator.h, SystemAllocator::DeallocateBytes</p>
+
+<p>
+  The investigation path's two exits: free the pages, or keep them mapped and inaccessible so a use-after-free becomes
+  a crash at the illegal touch instead of silent corruption. The dangling-pointer semantics themselves belong to the
+  OSAL entry for <code>OS::ProtectMemory</code>, which this wave has not written — recorded as an omission on the class
+  page.
+</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; SystemAllocator</a></span>
+  <span><a href="index.html#methods">All SystemAllocator methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

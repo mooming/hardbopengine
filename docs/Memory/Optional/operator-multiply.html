@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Optional::operator* — Memory module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a class="current" href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Memory</a> /
+  <a href="index.html">Optional</a> / operator*
+</p>
+
+<h1><span class="fn">operator*</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::Optional</span>
+  <span class="tag">Engine/Memory/Optional.h</span>
+  <span class="tag">2 overloads</span>
+  the checked read: FatalAssert first, which ends the process in every build configuration
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>TType&amp; operator*()
+
+const TType&amp; operator*() const</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  Two dereference operators defined in the class body of <code>Engine/Memory/Optional.h</code>, each two lines:
+  <code>FatalAssert(hasValue);</code> then <code>return Value();</code>. They are the checked way to read an
+  optional, and the check is the point.
+</p>
+
+<p>
+  The constness of the overload follows the constness of the optional, so a <code>const Optional&amp;</code> yields
+  a <code>const TType&amp;</code>. There is no <code>operator-&gt;</code>, so reaching a member goes through the
+  reference: <code>(*opt).Member()</code>.
+</p>
+
+<h3>What happens when the optional is empty</h3>
+
+<p>
+  <code>FatalAssert</code> is not a debug facility. In <code>Engine/Core/Debug.h</code> it flushes the logs, prints
+  a <code>[FatalAssert]</code> line naming the file and line, calls <code>debugBreak()</code> and then
+  <code>std::abort()</code> — and unlike <code>Assert</code>, whose definition is empty in
+  <code>RELEASE_BUILD</code>, it sits outside any build guard. Reading an empty optional through this operator ends
+  the process in every configuration the engine builds.
+</p>
+
+<div class="note">
+  <p>
+    <strong>There is no message.</strong> The message-less overload of <code>FatalAssert</code> is the one taken
+    here, so the only report is the file and line of the assert inside the header plus its standing note that a
+    message-less assert "has no other way to say what it caught". No accessor on the optional — not the element
+    type, not the caller's variable name — appears in the output. Whoever debugs it starts from a header line and
+    works back out of the log.
+  </p>
+</div>
+
+<div class="gap">
+  <p>
+    <strong>The assert tests the flag and nothing else.</strong> It is satisfied by <code>hasValue</code> being
+    true, however it got there: written by hand through the public field, or left as residue by the
+    <a href="constructors.html">copy or move constructor of an empty source</a>. In both cases the assert passes and
+    the reference returned is to bytes that were never constructed (<a href="value.html">Value</a>, which performs no
+    check of its own). Treat <a href="hasvalue.html">HasValue</a> as the precondition and this operator as the
+    action, not as a validator.
+  </p>
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<p>None.</p>
+
+<h2 id="return">Return value</h2>
+
+<table>
+  <tr><th>Type</th><th>What you get</th></tr>
+  <tr><td><code>TType&amp;</code> / <code>const TType&amp;</code></td><td>The element, by reference — a borrow of the optional's storage, valid only while the optional still holds it. A later <a href="reset.html">Reset</a>, reassignment or destruction invalidates it, and for a reference element type it is an alias to an object the optional does not own. Not marked <code>[[nodiscard]]</code>, unlike <a href="value.html">Value</a>.</td></tr>
+</table>
+
+<h2 id="example">Examples</h2>
+
+<p>The guard is one line and it is unconditional:</p>
+
+<pre><code>FatalAssert(hasValue);</code></pre>
+
+<p class="meta">From Engine/Memory/Optional.h, Optional::operator*</p>
+
+<p>
+  Because that line has no else and no fallback return, the checked read has exactly two outcomes: the element, or
+  the end of the process. Callers that must survive an absent value test first —
+  <code>if (opt) { use(*opt); } </code> — or read the flag with <a href="hasvalue.html">HasValue</a> and branch.
+  The unchecked sibling is <a href="value.html">Value</a>, which trades the abort for silence.
+</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; Optional</a></span>
+  <span><a href="index.html#methods">All Optional methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

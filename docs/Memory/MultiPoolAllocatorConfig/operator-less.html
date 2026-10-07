@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MultiPoolAllocatorConfig::operator&lt; — Memory module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a class="current" href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Memory</a> /
+  <a href="index.html">MultiPoolAllocatorConfig</a> / operator&lt;
+</p>
+
+<h1><span class="fn">operator&lt;</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::MultiPoolAllocatorConfig</span>
+  <span class="tag">Engine/Memory/MultiPoolAllocatorConfig.h</span>
+  ordering by allocator name - the invariant the binary-search lookup is built on
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>bool operator&lt;(const MultiPoolAllocatorConfig&amp; rhs) const noexcept</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  Declared in <code>Engine/Memory/MultiPoolAllocatorConfig.h</code>, defined in
+  <code>Engine/Memory/MultiPoolAllocatorConfig.cpp</code>, and its body is one comparison: the record is smaller
+  when its <code>uniqueName</code> is smaller. The pool list
+  <a href="index.html#properties"><code>configs</code></a> plays no part in it, so two records naming the same allocator are
+  equivalent under this comparator however differently they are provisioned.
+</p>
+
+<p>
+  That is a deliberate mirror of how the records are used. The cache holds one vector of records and finds things
+  in it by name, so the vector is kept sorted by name:
+</p>
+
+<ul>
+  <li><code>MultiPoolConfigCache::Normalize()</code> calls <code>std::sort(data.begin(), data.end())</code> before
+    it groups duplicates, and calls it again after, so the vector is name-ordered on the way out of a run —
+    see <a href="../MultiPoolConfigCache/normalize.html">MultiPoolConfigCache::Normalize</a></li>  <li>the file inherits that order, and
+    <a href="../MultiPoolConfigCache/deserialize.html">Deserialize</a> restores records in the order they were
+    written</li>
+  <li><a href="../MemoryManager/look-up-multi-pool-config.html"><code>MemoryManager::LookUpMultiPoolConfig</code></a>
+    is a plain binary search over that vector — midpoint, compare <code>uniqueName</code>, halve. It is only
+    correct because this comparator is what ordered the vector</li>
+</ul>
+
+<div class="gap">
+  <p>
+    <strong>The search has no fallback for a list that is not ordered.</strong> Nothing between
+    <a href="../MultiPoolConfigCache/deserialize.html">Deserialize</a> and the lookup re-sorts the records: the
+    check that runs on load, outside <code>RELEASE_BUILD</code>, validates the <em>block-size</em> order inside
+    each record's configuration list, not the name order of the vector holding the records. A file whose records
+    were written out of name order therefore loads without complaint and makes the binary search fail — and a
+    failed lookup is indistinguishable from "this allocator has never been seen", so the allocator silently
+    provisions itself by demand instead of by cache.
+  </p>
+</div>
+
+<div class="note">
+  <p>
+    <strong>Name equivalence is used to group, not to merge.</strong>
+    <code>MultiPoolConfigCache::Normalize()</code> counts distinct names by comparing each record's
+    <code>uniqueName</code> against the previous one, which relies on this comparator having put every equal name
+    next to every other. Two records for one allocator — two reports in one run, or a report that disagrees with
+    the file — are then collapsed by
+    <a href="../PoolConfigUtil/merge-max.html"><code>PoolConfigUtil::MergeMax</code></a>, keeping the larger block
+    count for every size.
+  </p>
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<table>
+  <tr><th>Parameter</th><th>Type</th><th>Requirement</th></tr>
+  <tr><td><code>rhs</code></td><td><code>const MultiPoolAllocatorConfig&amp;</code></td><td>Any other record; only its <code>uniqueName</code> is read</td></tr>
+</table>
+
+<h2 id="return">Return value</h2>
+
+<table>
+  <tr><th>Type</th><th>What you get</th></tr>
+  <tr><td><code>bool</code></td><td><code>true</code> when this record's <code>uniqueName</code> compares less than <code>rhs</code>'s. Two records for the same allocator are equivalent: <code>false</code> in both directions, which is what lets the normalisation pass recognise them as one group.</td></tr>
+</table>
+
+<h2 id="example">Examples</h2>
+
+<p>The comparator is the whole of the body:</p>
+
+<pre><code>return uniqueName &lt; rhs.uniqueName;</code></pre>
+
+<p class="meta">From Engine/Memory/MultiPoolAllocatorConfig.cpp, MultiPoolAllocatorConfig::operator&lt;</p>
+
+<p>
+  It is used at exactly the two moments a name-ordered vector needs: before the cache is written, by
+  <a href="../MultiPoolConfigCache/serialize.html">Serialize</a> through
+  <a href="../MultiPoolConfigCache/normalize.html">Normalize</a>, and once more inside that same normalisation
+  after the groups have been collapsed. No sort elsewhere in the module uses it — bank lists inside one allocator
+  are ordered by <a href="../PoolConfig/index.html"><code>PoolConfig</code></a>'s comparator instead.
+</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; MultiPoolAllocatorConfig</a></span>
+  <span><a href="index.html#methods">All MultiPoolAllocatorConfig methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>
