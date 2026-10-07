@@ -10,8 +10,7 @@ namespace hbe
 {
 class Buffer;
 
-/// @brief Cache for multi-pool allocator configurations.
-/// @details Serializes and deserializes pool configurations.
+/// API reference: docs/Memory/MultiPoolConfigCache/index.html
 class MultiPoolConfigCache final
 {
 public:

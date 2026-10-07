@@ -10,6 +10,7 @@
 
 namespace hbe
 {
+/// API reference: docs/Memory/Memory/index.html
 using TAllocFunc = std::function<void*(size_t)>;
 using TDeallocFunc = std::function<void(void*, size_t)>;
 

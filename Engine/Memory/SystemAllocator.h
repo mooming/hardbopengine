@@ -11,8 +11,7 @@
 
 namespace hbe
 {
-/// @brief Allocator that uses the system heap (malloc/free).
-/// @details Wraps OS-level memory allocation functions.
+/// API reference: docs/Memory/SystemAllocator/index.html
 template <class T>
 class SystemAllocator
 {
