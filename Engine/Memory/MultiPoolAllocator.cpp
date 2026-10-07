@@ -142,15 +142,12 @@ void* MultiPoolAllocator::Allocate(size_t size)
 	auto index = GetBankIndex(size);
 	if (index >= banks.size())
 	{
-		// Failed to find a suitable bank for the given size
-		// Generate a new bank and allocate
 		return NewBankAllocate(size);
 	}
 
 	auto& bank = banks[index];
 	if (unlikely(bank.GetAvailableBlocks() <= 0))
 	{
-		// The bank is full. Need to generate a new bank
 		return NewBankAllocate(size);
 	}
 
@@ -325,7 +322,6 @@ void* MultiPoolAllocator::NewBankAllocate(size_t size)
 	auto& statistics = engine.GetStatistics();
 	statistics.IncFallbackAllocCount();
 
-	// Create a new bank for the given size
 	auto blockSize = CalculateBlockSize(size);
 	auto numBlocks = CalculateNumberOfBlocks(bankSize, blockSize);
 	GenerateBank(blockSize, numBlocks);

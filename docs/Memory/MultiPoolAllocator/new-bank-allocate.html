@@ -74,7 +74,6 @@ private:
 	auto&amp; statistics = engine.GetStatistics();
 	statistics.IncFallbackAllocCount();
 
-	// Create a new bank for the given size
 	auto blockSize = CalculateBlockSize(size);
 	auto numBlocks = CalculateNumberOfBlocks(bankSize, blockSize);
 	GenerateBank(blockSize, numBlocks);
