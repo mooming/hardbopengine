@@ -1,5 +1,28 @@
 # Journal
 
+## 2026-10-07 22:34 — the sharded allocator takes its extents from whatever allocator happens to be in scope
+
+**The call site.** `GrowBank` in the sharded allocator obtains its backing memory with
+`mmgr.Allocate(extentBytes)`, and the two-argument `MemoryManager::Allocate` routes through
+`GetScopedAllocatorID()`. So an extent is a loan from whichever allocator is ambient at the moment the pool decides to
+grow, and inside the benchmark testlets that is one of the `MultiPoolAllocator` baselines, whose banks are
+`PoolAllocator` objects.
+
+**Why that produces exactly the assert we saw.** The redesign writes 64-bit tagged free-list links into its extents.
+Those bytes are simultaneously a live `PoolAllocator`'s blocks, because nobody told the lender the range left its
+ownership — `ReleaseState` hands the memory back, but while both owners are alive the range is claimed twice. The
+lender's free-list field therefore receives the borrower's packed tag, and `PoolAllocator::ReadNextIndex` aborts with
+a link of `0x122d6c000`: an address-shaped value, which is what a tagged 64-bit link looks like to code expecting a
+block index. This also explains the two negative sanitizer results, since every write is into valid in-use heap
+serialized by the redesign's own locks, and the timing dependence, since which pool is ambient changes with the
+schedule.
+
+**The fix is the one already made once in this module.** Commit `044c575` stopped the monotonic allocators from
+releasing their backing buffer to the ambient scope, for the same reason: an allocator's own memory must not depend on
+whoever happens to own the current scope. The extent allocation, the two `mmgr.New` and `mmgr.NewArray` sites beside it,
+and the matching release in `ReleaseState` all need a fixed owner — the default allocator, or a parent id recorded at
+construction. That is a small change, and it is the first thing to try; it does not by itself settle whether the design
+scales, which the 0.170 efficiency at four threads still leaves open.
 ## 2026-10-07 22:24 — the sanitizer is the wrong instrument, and that narrows the sharded allocator's bug
 
 **Two scratch builds, both kept.** `build-asan/` and `build-tsan/` are configured and built and now ignored by Git, so
