@@ -69,10 +69,12 @@ private:
   <a href="../index.html#allocators">pool bank</a>, and one block taken from it.
 </p>
 
-<pre><code>	auto&amp; engine = Engine::Get();
+<pre><code>{
+	auto&amp; engine = Engine::Get();
 	auto&amp; statistics = engine.GetStatistics();
 	statistics.IncFallbackAllocCount();
-…
+
+	// Create a new bank for the given size
 	auto blockSize = CalculateBlockSize(size);
 	auto numBlocks = CalculateNumberOfBlocks(bankSize, blockSize);
 	GenerateBank(blockSize, numBlocks);
@@ -80,13 +82,25 @@ private:
 	auto index = GetBankIndex(size);
 	if (unlikely(index &gt;= banks.size()))
 	{
-		FatalAssert(false);
+		FatalAssert(false, "MultiPoolAllocator: bank generated for ", size, " bytes cannot be used: index ", index,
+				  " of ", banks.size(), ", proposed block ", blockSize, " by ", numBlocks, ", allocation unit ",
+				  bankSize);
 
 		return nullptr;
 	}
 
 	auto&amp; bank = banks[index];
-	auto ptr = bank.Allocate(size);</code></pre>
+	auto ptr = bank.Allocate(size);
+
+#if PROFILE_ENABLED
+	{
+		auto&amp; mmgr = MemoryManager::GetInstance();
+		mmgr.ReportAllocation(GetID(), ptr, size, bank.GetBlockSize());
+	}
+#endif // PROFILE_ENABLED
+
+	return ptr;
+}</code></pre>
 
 <p class="meta">From Engine/Memory/MultiPoolAllocator.cpp, MultiPoolAllocator::NewBankAllocate()</p>
 
