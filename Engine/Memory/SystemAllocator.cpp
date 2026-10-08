@@ -2,7 +2,7 @@
 
 #include "SystemAllocator.h"
 
-#ifdef __UNIT_TEST__
+#ifdef __TEST__
 #include <vector>
 
 void hbe::SystemAllocatorTest::Prepare()
@@ -93,4 +93,4 @@ void hbe::SystemAllocatorTest::Prepare()
 #endif // MEMORY_INVESTIGATOR_TEST_ENABLED
 }
 
-#endif // __UNIT_TEST__
+#endif // __TEST__

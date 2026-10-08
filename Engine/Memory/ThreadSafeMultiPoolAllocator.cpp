@@ -559,7 +559,7 @@ void ThreadSafeMultiPoolAllocator::GenerateBank(size_t blockSize, size_t numberO
 }
 } // namespace hbe
 
-#ifdef __UNIT_TEST__
+#ifdef __TEST__
 #include <algorithm>
 #include <atomic>
 #include <chrono>
@@ -1385,4 +1385,4 @@ void ThreadSafeMultiPoolAllocatorTest::Prepare()
 	AddTest("Bank Growth Latency Spike M4", [this](auto& ls) { RunBankGrowthLatencyMeasurement(*this, ls); });
 }
 } // namespace hbe
-#endif //__UNIT_TEST__
+#endif //__TEST__

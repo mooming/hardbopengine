@@ -9,7 +9,7 @@ template class Transform<float>;
 template class Transform<double>;
 } // namespace hbe
 
-#ifdef __UNIT_TEST__
+#ifdef __TEST__
 #include "Core/CommonUtil.h"
 #include "Vector3.h"
 
@@ -116,4 +116,4 @@ void TransformTest::Prepare() noexcept
 }
 } // namespace hbe
 
-#endif //__UNIT_TEST__
+#endif //__TEST__

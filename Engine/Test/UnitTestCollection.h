@@ -2,7 +2,7 @@
 
 #pragma once
 
-#ifdef __UNIT_TEST__
+#ifdef __TEST__
 
 #include <cstddef>
 
@@ -26,4 +26,4 @@ void ScheduleSuiteOnBaseStream();
 } // namespace Test
 } // namespace hbe
 
-#endif // __UNIT_TEST__
+#endif // __TEST__

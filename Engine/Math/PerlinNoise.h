@@ -75,7 +75,7 @@ private:
 };
 } // namespace hbe
 
-#ifdef __UNIT_TEST__
+#ifdef __TEST__
 #include "Test/TestCollection.h"
 
 namespace hbe
@@ -92,4 +92,4 @@ protected:
 	void Prepare() noexcept override;
 };
 } // namespace hbe
-#endif //__UNIT_TEST__
+#endif //__TEST__

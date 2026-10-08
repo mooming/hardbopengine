@@ -9,7 +9,7 @@ template class AABB<TFloat2>;
 template class AABB<TFloat3>;
 } // namespace hbe
 
-#ifdef __UNIT_TEST__
+#ifdef __TEST__
 
 void hbe::AABBTest::Prepare() noexcept
 {
@@ -121,4 +121,4 @@ void hbe::AABBTest::Prepare() noexcept
 	});
 }
 
-#endif // __UNIT_TEST__
+#endif // __TEST__

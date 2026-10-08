@@ -2,7 +2,7 @@
 
 #include "Core/ComponentSystem.h"
 
-#ifdef __UNIT_TEST__
+#ifdef __TEST__
 #include "Component.h"
 #include "ComponentState.h"
 #include "ScopedTime.h"
@@ -177,4 +177,4 @@ void ComponentSystemTest::Prepare()
 }
 } // namespace hbe
 
-#endif //__UNIT_TEST__
+#endif //__TEST__

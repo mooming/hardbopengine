@@ -802,7 +802,7 @@ void TaskSystem::BuildStreams()
 }
 } // namespace hbe
 
-#ifdef __UNIT_TEST__
+#ifdef __TEST__
 #include <algorithm>
 #include <memory>
 #include <mutex>
@@ -3610,4 +3610,4 @@ void TaskSystemTest::Prepare()
 	});
 }
 } // namespace hbe
-#endif //__UNIT_TEST__
+#endif //__TEST__

@@ -146,7 +146,7 @@ TReal PerlinNoise::Grad(TUInt hash, TReal x, TReal y, TReal z) noexcept
 }
 } // namespace hbe
 
-#ifdef __UNIT_TEST__
+#ifdef __TEST__
 
 // Note on the flush convention: TestCollection's operator<< sends whatever the test stream
 // holds so far to the logger, at the level of the LogFlush handed to it (lf = Info,
@@ -362,4 +362,4 @@ void hbe::PerlinNoiseTest::Prepare() noexcept
 	});
 }
 
-#endif //__UNIT_TEST__
+#endif //__TEST__

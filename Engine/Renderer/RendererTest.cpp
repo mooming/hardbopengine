@@ -1,6 +1,6 @@
 // Copyright (c) 2026 Hansol Park (mooming.go@gmail.com). All rights reserved.
 
-#ifdef __UNIT_TEST__
+#ifdef __TEST__
 #include "RendererTest.h"
 
 #include "RenderCapabilities.h"
@@ -58,4 +58,4 @@ void RendererTest::Prepare()
 	});
 }
 } // namespace hbe
-#endif // __UNIT_TEST__
+#endif // __TEST__

@@ -6,7 +6,7 @@
 #include "ImportanceResampling.h"
 #include "StratifiedSampling.h"
 
-#ifdef __UNIT_TEST__
+#ifdef __TEST__
 #include <random>
 
 #include "Core/Constants.h"
@@ -394,4 +394,4 @@ void hbe::ImportanceResamplingTest::Prepare() noexcept
 
 	AddTest("Calculate Pi (Rebuild Growth)", sampleRebuildGrowthTest);
 }
-#endif // __UNIT_TEST__
+#endif // __TEST__

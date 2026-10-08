@@ -250,7 +250,7 @@ TaskHandle TaskProvider::GetHandle() noexcept
 }
 } // namespace hbe
 
-#ifdef __UNIT_TEST__
+#ifdef __TEST__
 namespace
 {
 class RecordingProvider final : public hbe::TaskProvider
@@ -911,4 +911,4 @@ void hbe::TaskProviderTest::Prepare()
 	});
 }
 
-#endif //__UNIT_TEST__
+#endif //__TEST__
