@@ -61,7 +61,7 @@ if %CONFIG_DEV%==0 if %CONFIG_DEBUG%==0 if %CONFIG_RELEASE%==0 (
 echo Generating build files...
 if %ENABLE_TESTS%==1 (
     echo Tests enabled!
-    cmake -B build -S . -G "Ninja Multi-Config" -DCMAKE_CXX_FLAGS="%CXXFLAGS% -D__TEST__ -D__UNIT_TEST__" --fresh
+    cmake -B build -S . -G "Ninja Multi-Config" -DCMAKE_CXX_FLAGS="%CXXFLAGS% -D__TEST__" --fresh
     if %errorlevel% neq 0 exit /b %errorlevel%
 ) else (
     cmake -B build -S . -G "Ninja Multi-Config" --fresh
