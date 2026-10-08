@@ -86,7 +86,7 @@ MultiPoolAllocatorConfig(StaticStringID id, TPoolConfigs&amp;&amp; configs) noex
 
 <ul>
   <li><code>data.emplace_back(uniqueName, std::move(poolConfigs))</code> in
-    <a href="../MemoryManager/report-multi-pool-configutation.html"><code>MemoryManager::ReportMultiPoolConfigutation</code></a>
+    <a href="../MemoryManager/report-multi-pool-configuration.html"><code>MemoryManager::ReportMultiPoolConfiguration</code></a>
     — the record for what this run peaked at</li>
   <li><code>data.emplace_back(key.GetID(), std::move(configs))</code> in
     <a href="../MultiPoolConfigCache/deserialize.html"><code>MultiPoolConfigCache::Deserialize</code></a> — one per

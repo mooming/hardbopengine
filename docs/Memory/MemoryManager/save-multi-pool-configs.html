@@ -101,7 +101,7 @@ if (result != size)
 <div class="gap">
   <strong>The source of what gets written is a different table from the one that is read.</strong>
   This serialises <code>multiPoolConfigLog</code> — this run's reports, appended by
-  <a href="report-multi-pool-configutation.html">ReportMultiPoolConfigutation</a> — not <code>multiPoolConfigCache</code>, the
+  <a href="report-multi-pool-configuration.html">ReportMultiPoolConfiguration</a> — not <code>multiPoolConfigCache</code>, the
   table loaded at start-up. Entries are only appended, never merged with what was loaded, so a pool that reports nothing in a run
   contributes nothing to the file even if last year's cache contained it. Combined with the single call site in
   <a href="pre-engine-shutdown.html">PreEngineShutdown</a>, that is the whole reason most pools' geometry never reaches the file:

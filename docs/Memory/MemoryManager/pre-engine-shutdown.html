@@ -80,8 +80,8 @@ reads whatever <a href="load-multi-pool-configs.html">the previous profiled run<
 <div class="gap">
   <strong>Only what has already been reported is saved, and most pools have not reported yet.</strong>
   <a href="save-multi-pool-configs.html">SaveMultiPoolConfigs</a> serialises
-  <code>multiPoolConfigLog</code> — the table that <a href="report-multi-pool-configutation.html">
-  ReportMultiPoolConfigutation</a> appends to — and this is its only call site. A multi-pool reports from its own
+  <code>multiPoolConfigLog</code> — the table that <a href="report-multi-pool-configuration.html">
+  ReportMultiPoolConfiguration</a> appends to — and this is its only call site. A multi-pool reports from its own
   destructor (<code>Engine/Memory/MultiPoolAllocator.cpp</code>, <code>MultiPoolAllocator::~MultiPoolAllocator()</code>
   calls <code>ReportConfiguration()</code>), which runs during <code>~Engine</code>, i.e. <em>after</em> the
   <code>Engine::PreShutdown()</code> call that lands here. The one pool that is in the file is the logger's:

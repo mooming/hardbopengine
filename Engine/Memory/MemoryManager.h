@@ -144,7 +144,7 @@ public:
 	AllocStats GetAllocatorStat(TAllocatorID id);
 
 	void DeregisterAllocator(TId id, const SourceLocation& srcLocation);
-	void ReportMultiPoolConfigutation(StaticStringID uniqueName, TPoolConfigs&& poolConfigs);
+	void ReportMultiPoolConfiguration(StaticStringID uniqueName, TPoolConfigs&& poolConfigs);
 #endif // PROFILE_ENABLED
 
 	template <typename T>

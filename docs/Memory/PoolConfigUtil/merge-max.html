@@ -137,7 +137,7 @@
 
 <p>
   The cache can hold several records with the same <code>uniqueName</code> — one per
-  <a href="../MemoryManager/report-multi-pool-configutation.html">ReportMultiPoolConfigutation</a> call, and an
+  <a href="../MemoryManager/report-multi-pool-configuration.html">ReportMultiPoolConfiguration</a> call, and an
   allocator may report more than once in a run. This call is where those records collapse into one provisioning
   plan per allocator, keeping the highest count seen for every block size rather than adding the reports
   together. See <a href="../MultiPoolConfigCache/normalize.html">MultiPoolConfigCache::Normalize</a>.

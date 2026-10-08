@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>MemoryManager::ReportMultiPoolConfigutation — Memory module — HardBop Engine API reference</title>
+<title>MemoryManager::ReportMultiPoolConfiguration — Memory module — HardBop Engine API reference</title>
 <link rel="stylesheet" href="../../assets/hbe-docs.css">
 </head>
 <body>
@@ -43,10 +43,10 @@
 <p class="breadcrumb">
   <a href="../../index.html">Module Index</a> /
   <a href="../index.html">Memory</a> /
-  <a href="index.html">MemoryManager</a> / ReportMultiPoolConfigutation
+  <a href="index.html">MemoryManager</a> / ReportMultiPoolConfiguration
 </p>
 
-<h1><span class="fn">ReportMultiPoolConfigutation</span></h1>
+<h1><span class="fn">ReportMultiPoolConfiguration</span></h1>
 <p class="subtitle">
   <span class="tag">member of hbe::MemoryManager</span>
   <span class="tag">Engine/Memory/MemoryManager.h</span>
@@ -55,16 +55,13 @@
 
 <h2 id="signature">Signature</h2>
 
-<pre><code>void ReportMultiPoolConfigutation(StaticStringID uniqueName, TPoolConfigs&amp;&amp; poolConfigs)</code></pre>
+<pre><code>void ReportMultiPoolConfiguration(StaticStringID uniqueName, TPoolConfigs&amp;&amp; poolConfigs)</code></pre>
 
 <h2 id="description">Function description</h2>
 
 <p>
-Defined in <code>Engine/Memory/MemoryManager.cpp</code> as <code>MemoryManager::ReportMultiPoolConfigutation()</code>, declared
-inside <code>#if PROFILE_ENABLED</code> and therefore absent from every configuration this repository builds. The spelling of the
-name — <code>Configutation</code>, not <code>Configuration</code> — is the source's own
-(<code>Engine/Memory/MemoryManager.h</code>), and the reference follows the header rather than correcting it, because a page title a
-reader cannot grep is a page they will never find.
+Defined in <code>Engine/Memory/MemoryManager.cpp</code> as <code>MemoryManager::ReportMultiPoolConfiguration()</code>, declared
+inside <code>#if PROFILE_ENABLED</code> and therefore absent from every configuration this repository builds.
 </p>
 
 <p>The body is a single statement:</p>
@@ -72,7 +69,7 @@ reader cannot grep is a page they will never find.
 <pre><code>auto&amp; data = multiPoolConfigLog.GetData();
 data.emplace_back(uniqueName, std::move(poolConfigs));</code></pre>
 
-<p class="meta">From Engine/Memory/MemoryManager.cpp, MemoryManager::ReportMultiPoolConfigutation()</p>
+<p class="meta">From Engine/Memory/MemoryManager.cpp, MemoryManager::ReportMultiPoolConfiguration()</p>
 
 <p>
 That is all it does: append one <code>MultiPoolAllocatorConfig</code> — a name plus a <code>TPoolConfigs</code>
@@ -122,7 +119,7 @@ next boot are deliberately separate tables, and only a save operation moves one 
 
 	auto&amp; mmgr = MemoryManager::GetInstance();
 	auto uniqueName = GetName();
-	mmgr.ReportMultiPoolConfigutation(uniqueName.GetID(), std::move(configs));</code></pre>
+	mmgr.ReportMultiPoolConfiguration(uniqueName.GetID(), std::move(configs));</code></pre>
 
 <p class="meta">From Engine/Memory/MultiPoolAllocator.cpp, MultiPoolAllocator::ReportConfiguration()</p>
 

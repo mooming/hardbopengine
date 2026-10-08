@@ -303,7 +303,7 @@ void MemoryManager::DeregisterAllocator(TId id, const SourceLocation& srcLoc)
 	DeregisterAllocator(id);
 }
 
-void MemoryManager::ReportMultiPoolConfigutation(StaticStringID uniqueName, TPoolConfigs&& poolConfigs)
+void MemoryManager::ReportMultiPoolConfiguration(StaticStringID uniqueName, TPoolConfigs&& poolConfigs)
 {
 	auto& data = multiPoolConfigLog.GetData();
 	data.emplace_back(uniqueName, std::move(poolConfigs));

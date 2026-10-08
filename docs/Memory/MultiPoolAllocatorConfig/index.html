@@ -68,7 +68,7 @@
 
 <p>
   A record is created in exactly two places. On the way out of a run,
-  <a href="../MemoryManager/report-multi-pool-configutation.html"><code>MemoryManager::ReportMultiPoolConfigutation</code></a>
+  <a href="../MemoryManager/report-multi-pool-configuration.html"><code>MemoryManager::ReportMultiPoolConfiguration</code></a>
   appends one built from an allocator's name and the block sizes it actually peaked at. On the way in,
   <a href="../MultiPoolConfigCache/deserialize.html"><code>MultiPoolConfigCache::Deserialize</code></a> appends one
   per record the cache file held. Nothing else in the engine constructs one, and nothing modifies one afterwards:

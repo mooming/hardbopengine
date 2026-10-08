@@ -124,7 +124,7 @@
   merge into one entry, nothing else may change the total. <code>peakBlocks</code> is read straight out of each bank one
   at a time, so when the assert fires the grouped figure is the defective one: trust <code>peakBlocks</code> and treat
   the report as wrong. The assert sits before
-  <code>mmgr.ReportMultiPoolConfigutation(uniqueName.GetID(), std::move(configs))</code>, so in a build where
+  <code>mmgr.ReportMultiPoolConfiguration(uniqueName.GetID(), std::move(configs))</code>, so in a build where
   <code>Assert</code> is live — every non-Release build, per <a href="../../Core/index.html#debug">Core: Debug</a> — the
   process stops without publishing anything, and the cache keeps the last correct ladder. A configuration in which the
   assert is compiled out would publish the wrong figure, and that configuration is also one the tree cannot currently
@@ -173,7 +173,7 @@
 <h2 id="return">Return value</h2>
 
 <p>
-  <code>void</code>. The configuration goes to <code>MemoryManager::ReportMultiPoolConfigutation</code> keyed on the
+  <code>void</code>. The configuration goes to <code>MemoryManager::ReportMultiPoolConfiguration</code> keyed on the
   allocator's name id, and there is no read-back: a caller cannot ask the manager what this instance reported, only what
   the next instance boots from.
 </p>

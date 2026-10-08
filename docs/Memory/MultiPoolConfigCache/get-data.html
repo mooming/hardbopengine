@@ -79,7 +79,7 @@
   <tr><th>Overload</th><th>Who uses it</th><th>What they do with it</th></tr>
   <tr>
     <td>non-const</td>
-    <td><a href="../MemoryManager/report-multi-pool-configutation.html"><code>MemoryManager::ReportMultiPoolConfigutation</code></a></td>
+    <td><a href="../MemoryManager/report-multi-pool-configuration.html"><code>MemoryManager::ReportMultiPoolConfiguration</code></a></td>
     <td><code>data.emplace_back(uniqueName, std::move(poolConfigs))</code> — one record appended per report, with no
       de-duplication, no size limit and no lock at this point</td>
   </tr>
@@ -139,7 +139,7 @@
 
 <pre><code>data.emplace_back(uniqueName, std::move(poolConfigs));</code></pre>
 
-<p class="meta">From Engine/Memory/MemoryManager.cpp, MemoryManager::ReportMultiPoolConfigutation</p>
+<p class="meta">From Engine/Memory/MemoryManager.cpp, MemoryManager::ReportMultiPoolConfiguration</p>
 
 <p>
   <code>data</code> there is the reference this accessor returned for

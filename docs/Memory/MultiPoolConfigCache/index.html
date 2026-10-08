@@ -84,7 +84,7 @@
     <td><code>multiPoolConfigLog</code></td>
     <td>The record <em>of this run</em>: one entry per report, appended while the engine is running. Only exists
       under <code>PROFILE_ENABLED</code></td>
-    <td><a href="../MemoryManager/report-multi-pool-configutation.html">ReportMultiPoolConfigutation</a>,
+    <td><a href="../MemoryManager/report-multi-pool-configuration.html">ReportMultiPoolConfiguration</a>,
       <a href="../MemoryManager/save-multi-pool-configs.html">SaveMultiPoolConfigs</a></td>
   </tr>
   <tr>
@@ -290,7 +290,7 @@
     <td>The asymmetry is visible in <code>Engine/Memory/MemoryManager.cpp</code>: the constructor calls
       <a href="../MemoryManager/load-multi-pool-configs.html">LoadMultiPoolConfigs</a> directly, while
       <a href="../MemoryManager/save-multi-pool-configs.html">SaveMultiPoolConfigs</a> and
-      <a href="../MemoryManager/report-multi-pool-configutation.html">ReportMultiPoolConfigutation</a> are inside
+      <a href="../MemoryManager/report-multi-pool-configuration.html">ReportMultiPoolConfiguration</a> are inside
       <code>#if PROFILE_ENABLED</code>. Nothing states whether that is intended or incidental</td>
   </tr>
   <tr>
