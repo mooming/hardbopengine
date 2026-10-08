@@ -6,8 +6,8 @@ if (NOT CMAKE_BUILD_TYPE)
     set (CMAKE_BUILD_TYPE "Release" CACHE STRING "Build type" FORCE)
 endif ()
 
-set (CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -g -O0 -DDEBUG_BUILD=1 -D__TEST__ -D__UNIT_TEST__")
-set (CMAKE_CXX_FLAGS_DEV "${CMAKE_CXX_FLAGS_DEV} -g -O1 -DDEV_BUILD=1 -D__TEST__ -D__UNIT_TEST__")
+set (CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -g -O0 -DDEBUG_BUILD=1 -D__TEST__")
+set (CMAKE_CXX_FLAGS_DEV "${CMAKE_CXX_FLAGS_DEV} -g -O1 -DDEV_BUILD=1 -D__TEST__")
 set (CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -O3 -DRELEASE_BUILD=1")
 
 set (CMAKE_CXX_STANDARD 23)
@@ -25,7 +25,7 @@ else (MSVC)
 	add_compile_options (-Wall -Werror)
 endif (MSVC)
 
-add_compile_definitions (__UNIT_TEST__ )
+add_compile_definitions (__TEST__ )
 include_directories ( ${CMAKE_SOURCE_DIR}
  ${CMAKE_SOURCE_DIR}/include
  ${CMAKE_SOURCE_DIR}/External
