@@ -2,7 +2,7 @@
 
 #include "InlinePoolAllocator.h"
 
-#ifdef __TEST__
+#ifdef TEST_ENABLED
 #include <vector>
 
 #include "Core/ScopedTime.h"
@@ -288,4 +288,4 @@ void hbe::InlinePoolAllocatorTest::Prepare()
 		}
 	});
 }
-#endif // __TEST__
+#endif // TEST_ENABLED

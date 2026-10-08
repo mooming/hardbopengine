@@ -101,7 +101,7 @@
 
 <p>
   The pairing is what a caller that borrows a stream it does not own must do, and the repository's only example of it is a test:
-  the <code>#ifdef __TEST__</code> region of <code>Engine/Core/TaskSystem.cpp</code> stores
+  the <code>#ifdef TEST_ENABLED</code> region of <code>Engine/Core/TaskSystem.cpp</code> stores
   <code>const std::chrono::nanoseconds ceilingFound = baseStream.GetMaxAge();</code>, sets a ceiling to measure staleness, and
   restores <code>ceilingFound</code> on every exit path — because a ceiling set to zero to prove a point is a stream the next
   test inherits. No shipping code sets a ceiling, so this read is currently a test's safety net and nothing else.

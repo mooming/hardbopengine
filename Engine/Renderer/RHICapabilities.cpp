@@ -35,7 +35,7 @@ RenderCapabilities RHICapabilities::GetCapabilities() noexcept
 } // namespace Renderer
 } // namespace hbe
 
-#ifdef __TEST__
+#ifdef TEST_ENABLED
 
 namespace hbe
 {

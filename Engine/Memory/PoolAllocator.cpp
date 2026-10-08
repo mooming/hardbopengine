@@ -310,7 +310,7 @@ Pointer PoolAllocator::AllocateBlock()
 }
 } // namespace hbe
 
-#ifdef __TEST__
+#ifdef TEST_ENABLED
 
 namespace hbe
 {
@@ -508,4 +508,4 @@ void PoolAllocatorTest::Prepare()
 }
 } // namespace hbe
 
-#endif //__TEST__
+#endif //TEST_ENABLED

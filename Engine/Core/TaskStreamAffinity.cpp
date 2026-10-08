@@ -1,6 +1,6 @@
 // Copyright (c) 2026 Hansol Park (mooming.go@gmail.com). All rights reserved.
 
-#ifdef __TEST__
+#ifdef TEST_ENABLED
 #include "TaskStreamAffinity.h"
 
 #include <algorithm>
@@ -188,4 +188,4 @@ void hbe::TaskStreamAffinityTest::Prepare()
 		}
 	});
 }
-#endif // __TEST__
+#endif // TEST_ENABLED

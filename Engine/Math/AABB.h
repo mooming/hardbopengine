@@ -214,7 +214,7 @@ TStringBuilder& operator<<(TStringBuilder& os, const AABB<T>& bbox) noexcept
 }
 } // namespace hbe
 
-#ifdef __TEST__
+#ifdef TEST_ENABLED
 #include "Test/TestCollection.h"
 
 namespace hbe
@@ -232,4 +232,4 @@ protected:
 };
 } // namespace hbe
 
-#endif //__TEST__
+#endif //TEST_ENABLED

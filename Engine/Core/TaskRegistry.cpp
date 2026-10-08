@@ -299,7 +299,7 @@ void TaskRegistry::ReportRefusedGrowth(std::size_t requestedCapacity) noexcept
 }
 } // namespace hbe
 
-#ifdef __TEST__
+#ifdef TEST_ENABLED
 #include "Engine/Engine.h"
 
 namespace hbe
@@ -782,4 +782,4 @@ void TaskRegistryTest::Prepare()
 	});
 }
 } // namespace hbe
-#endif //__TEST__
+#endif //TEST_ENABLED

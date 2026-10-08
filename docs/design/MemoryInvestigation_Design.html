@@ -54,7 +54,7 @@
 
 <table>
   <tr><th>Switch</th><th>Effect</th></tr>
-  <tr><td><code>MEMORY_INVESTIGATOR_TEST_ENABLED</code></td><td>Gates the whole self-test region, and it sits inside <code>__TEST__</code>, so the tests exist only in a test build.</td></tr>
+  <tr><td><code>MEMORY_INVESTIGATOR_TEST_ENABLED</code></td><td>Gates the whole self-test region, and it sits inside <code>TEST_ENABLED</code>, so the tests exist only in a test build.</td></tr>
   <tr><td><code>MEMORY_INVESTIGATION_ENABLED</code></td><td>Gates the checks themselves. With it off there is nothing to detect, and the region compiles to nothing.</td></tr>
   <tr><td><code>MEMORY_BUFFER_UNDERRUN_CHECK_ENABLED</code></td><td>Selects the under-run testlet, and its <code>#else</code> branch holds the over-run testlet — see below.</td></tr>
   <tr><td><code>MEMORY_DANGLING_POINTER_CHECK_ENABLED</code></td><td>Adds the use-after-free testlet.</td></tr>

@@ -2,7 +2,7 @@
 
 #include "UniformTransform.h"
 
-#ifdef __TEST__
+#ifdef TEST_ENABLED
 #include "Matrix4x4.h"
 
 void hbe::UniformTransformTest::Prepare() noexcept
@@ -91,4 +91,4 @@ void hbe::UniformTransformTest::Prepare() noexcept
 	});
 }
 
-#endif //__TEST__
+#endif //TEST_ENABLED

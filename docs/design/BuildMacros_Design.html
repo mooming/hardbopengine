@@ -99,7 +99,7 @@ membership test, and cannot accidentally write the inverted question with <code>
 
 <h2 id="definitions">Definitions a project adds per configuration</h2>
 <p>
-A definition that is not about the configuration itself — the engine's <code>__TEST__</code>,
+A definition that is not about the configuration itself — the engine's <code>TEST_ENABLED</code>,
 which gates the test bodies each module carries — comes from
 <code>precompileDefinitionsDebug</code>, <code>precompileDefinitionsDev</code> or
 <code>precompileDefinitionsRelease</code> in <code>.project.config</code>. The generator appends them as
@@ -111,7 +111,7 @@ the point: the pair is stated rather than assumed.
 Writing such a definition into one module's <code>customCMake.txt</code> does not work. Those lines are appended
 after <code>add_subdirectory</code>, so a directory-level definition there reaches no child, and a
 <code>target_compile_definitions</code> there reaches only that module's own sources — which for
-<code>__TEST__</code> means the test executable compiles its half of the suite and then fails to link against
+<code>TEST_ENABLED</code> means the test executable compiles its half of the suite and then fails to link against
 libraries that compiled the other half out. The same trap is why <code>build.sh -test</code> passes the defines on
 the configure command line rather than through a target, and why it remains the only route that puts them into
 Release.
@@ -124,7 +124,7 @@ than read off a <code>CMakeLists.txt</code>, which says what was intended rather
 </p>
 <pre><code>grep -c 'DRELEASE_BUILD' build/CMakeFiles/impl-Release.ninja   # every translation unit
 grep -c 'DDEV_BUILD'     build/CMakeFiles/impl-Dev.ninja
-grep -c 'D__TEST__'      build/CMakeFiles/impl-Release.ninja   # 4: Engine/Test's own sources only</code></pre>
+grep -c 'DTEST_ENABLED'      build/CMakeFiles/impl-Release.ninja   # 4: Engine/Test's own sources only</code></pre>
 <p class="meta">From docs/BuildSystem.md, which repeats the commands as the build-system gate</p>
 
 <h2 id="history">The macro this replaced</h2>
@@ -151,10 +151,18 @@ every configuration that defined either, and no source ever asked <code>__TEST__
 read <code>__UNIT_TEST__</code>. So the pair was never two questions, only two names for one question, and the
 dead half let a page claim something was compiled when it was not — <em>docs/RunningTests.md</em> and
 <em>README.md</em> both said <code>-D__TEST__</code> built the test bodies while it in fact built nothing.
-<code>__UNIT_TEST__</code> is now removed and <code>__TEST__</code> carries the meaning alone. The change is a
-rename of the live macro onto the dead one's name, proven by the flag count moving from
-<code>__UNIT_TEST__</code> to <code>__TEST__</code> without either configuration's number changing: 455 tokens in
-Debug and Dev, 4 in Release, before and after.
+<code>__UNIT_TEST__</code> was removed and <code>__TEST__</code> carried the meaning alone, proven by the flag count
+moving from one name to the other without any configuration's number changing: 455 tokens in Debug and Dev, 4 in
+Release, before and after.
+</p>
+
+<p>
+It did not keep that name. Both halves of the old pair began with a double underscore, which <em>[lex.name]</em>
+reserves to the C++ implementation, and <em>docs/CodingStandards.md</em> says the same in prose and names
+<code>SCREAMING_SNAKE_CASE</code> as the rule. <code>__TEST__</code> is therefore now <code>TEST_ENABLED</code>, which
+joins the <code>DEBUG_BUILD</code> / <code>DEV_BUILD</code> / <code>RELEASE_BUILD</code> family that
+<code>61c6152</code> created and completes the cleanup that rename started. The second rename is the same proof run
+again: the identical 455 / 455 / 4 token counts, and the same 392 testlets passing.
 </p>
 
 <h2 id="coverage">What this document does not own</h2>

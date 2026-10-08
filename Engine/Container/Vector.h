@@ -320,7 +320,7 @@ private:
 };
 } // namespace hbe
 
-#ifdef __TEST__
+#ifdef TEST_ENABLED
 #include "Test/TestCollection.h"
 
 namespace hbe
@@ -337,4 +337,4 @@ protected:
 	void Prepare() override;
 };
 } // namespace hbe
-#endif //__TEST__
+#endif //TEST_ENABLED

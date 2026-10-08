@@ -187,7 +187,7 @@ int64_t StreamDrainPolicy::PriorityCredit() const noexcept
 }
 } // namespace hbe
 
-#ifdef __TEST__
+#ifdef TEST_ENABLED
 namespace
 {
 using Lane = hbe::StreamDrainPolicy::ELane;
@@ -416,4 +416,4 @@ void hbe::StreamDrainPolicyTest::Prepare()
 	});
 }
 
-#endif //__TEST__
+#endif //TEST_ENABLED

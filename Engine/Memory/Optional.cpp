@@ -2,7 +2,7 @@
 
 #include "Optional.h"
 
-#ifdef __TEST__
+#ifdef TEST_ENABLED
 
 void hbe::OptionalTest::Prepare()
 {
@@ -121,4 +121,4 @@ void hbe::OptionalTest::Prepare()
 	});
 }
 
-#endif //__TEST__
+#endif //TEST_ENABLED

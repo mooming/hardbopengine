@@ -5,7 +5,7 @@
 
 #include "StratifiedSampling.h"
 
-#ifdef __TEST__
+#ifdef TEST_ENABLED
 
 #include <random>
 
@@ -147,4 +147,4 @@ void hbe::StratifiedSamplingTest::Prepare() noexcept
 
 	AddTest("Calculate Pi Comparison", calculatePi);
 }
-#endif // __TEST__
+#endif // TEST_ENABLED

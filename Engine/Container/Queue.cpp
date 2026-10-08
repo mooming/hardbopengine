@@ -2,7 +2,7 @@
 
 #include "Queue.h"
 
-#ifdef __TEST__
+#ifdef TEST_ENABLED
 #include <queue>
 
 #include "Core/ScopedTime.h"
@@ -224,4 +224,4 @@ void QueueTest::Prepare()
 }
 } // namespace hbe
 
-#endif //__TEST__
+#endif //TEST_ENABLED

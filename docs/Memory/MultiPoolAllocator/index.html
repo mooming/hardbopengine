@@ -186,7 +186,7 @@
   <tr><th>Not documented here</th><th>Why</th></tr>
   <tr>
     <td><code>MultiPoolAllocatorTest</code> and its four testlets</td>
-    <td>Test-only code: the class is declared inside <code>#ifdef __TEST__</code> in the header and its
+    <td>Test-only code: the class is declared inside <code>#ifdef TEST_ENABLED</code> in the header and its
       <code>Prepare()</code> in the source, so the authoring contract puts it in this section rather than on a page. The
       four testlets cover construction, a zero-size request, allocation with fallback, and a performance comparison
       against <code>std::malloc</code>. Two facts about them belong here: none of them starts a second thread, so nothing

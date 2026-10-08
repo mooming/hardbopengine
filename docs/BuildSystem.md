@@ -37,7 +37,7 @@
   rather than by reading a CMakeLists: `grep -c 'DDEV_BUILD'
   build/CMakeFiles/impl-Dev.ninja` reads 151 lines, and `grep -c 'DRELEASE_BUILD'
   build/CMakeFiles/impl-Debug.ninja` reads 0.
-- **`__TEST__`**: given to Debug and Dev by `precompileDefinitionsDebug` and
+- **`TEST_ENABLED`**: given to Debug and Dev by `precompileDefinitionsDebug` and
   `precompileDefinitionsDev`; `precompileDefinitionsRelease` is deliberately left empty. It gates
   each module's own test bodies, so a definition reaching only `Applications/EngineTest` compiles
   `TestMain.cpp`'s test half and then fails to link — that is why this is a tree-wide
@@ -46,14 +46,15 @@
   still builds a binary that reports it contains none; `build.sh -test` stays the only route that
   puts the macro into Release. `docs/design/UnitTestSelection_Design.html` owns why the bodies are
   compiled per module. Counted the same way:
-  `grep -o 'D__TEST__' build/CMakeFiles/impl-Debug.ninja` reads 455, Dev reads 455, and Release
+  `grep -o 'DTEST_ENABLED' build/CMakeFiles/impl-Debug.ninja` reads 455, Dev reads 455, and Release
   reads 4 — and those four are `Engine/Test`'s own sources, because its `.module.config` carries a
-  plain `precompileDefinitions = __TEST__` that no configuration key limits. So in Release `libTest.a`
+  plain `precompileDefinitions = TEST_ENABLED` that no configuration key limits. So in Release `libTest.a`
   is compiled with the macro while the engine modules are not — which links only because
   `TestMain.cpp`'s `#else` branch never names `Test::RegisterSuite`, so the linker never pulls that
-  object in. Do not make Release's `EngineTest` reference the suite by hand. There used to be a second
-  macro, `__UNIT_TEST__`, defined alongside this one everywhere and nowhere read by any source; it is
-  gone, and `__TEST__` carries the whole meaning.
+  object in. Do not make Release's `EngineTest` reference the suite by hand. There used to be two names
+  before this one: `__UNIT_TEST__` was defined alongside `__TEST__` everywhere and read by no source, so it was
+  removed, and `__TEST__` itself was then renamed to `TEST_ENABLED` because a leading double underscore is reserved
+  to the C++ implementation.
 - **Common Configurations**: Debug, Dev (default), Release.
   ```bash
   cmake --fresh -B build -G "Ninja Multi-Config" -S .

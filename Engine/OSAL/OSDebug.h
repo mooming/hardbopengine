@@ -12,7 +12,7 @@ namespace OS
 hbe::StaticString GetBackTrace(uint16_t startIndex = 0, uint16_t maxDepth = 512);
 } // namespace OS
 
-#ifdef __TEST__
+#ifdef TEST_ENABLED
 #include "Test/TestCollection.h"
 
 namespace hbe
@@ -30,4 +30,4 @@ protected:
 	void Prepare() override;
 };
 } // namespace hbe
-#endif //__TEST__
+#endif //TEST_ENABLED

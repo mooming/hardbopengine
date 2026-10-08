@@ -1,6 +1,10 @@
 # PLAN — Merge `__UNIT_TEST__` into `__TEST__`
 
 **Date:** 2026-10-07
+**Superseded 2026-10-08:** the surviving macro was renamed again, to `TEST_ENABLED`, because a leading double
+underscore is reserved to the implementation and `docs/CodingStandards.md` forbids it. See the `JOURNAL.md` entry for
+2026-10-08 21:42, which records that rename and its measurements. Everything below describes what was built at the
+time and stays accurate as a record of it.
 **Status:** executed 2026-10-08. Commits `5efa5de`, `621426f`, `9c0c6ca`, `74feb71`, plus the
 documentation commit.
 

@@ -85,15 +85,15 @@
   <span class="tag">Engine/Test/TestCollection.h</span>
   <span class="tag">namespace hbe</span>
   <span class="tag">abstract</span>
-  <span class="tag">compiled under __TEST__</span>
+  <span class="tag">compiled under TEST_ENABLED</span>
   a named group of tests, the run of those tests, and the verdict on it — all in one object
 </p>
 
 <div class="gap">
-  <strong>This is test-build API.</strong> The Test library target defines <code>__TEST__</code> for itself
+  <strong>This is test-build API.</strong> The Test library target defines <code>TEST_ENABLED</code> for itself
   (<code>Engine/Test/.module.config</code>, <code>add_compile_definitions</code> in
   <code>Engine/Test/CMakeLists.txt</code>), and every subclass you would actually write lives behind
-  <code>#ifdef __TEST__</code> in the header it tests. The header itself carries no such guard, so including
+  <code>#ifdef TEST_ENABLED</code> in the header it tests. The header itself carries no such guard, so including
   it compiles in a normal build — but there is nothing there for a normal build to do with it. The whole suite is
   switched on by <code>build.sh -test</code>; see
   <a href="../index.html#conditional-build">how the Test module is built</a> and
@@ -450,7 +450,7 @@
   <tr>
     <td>Subclasses are not documented here</td>
     <td>Engine headers each declare their own <code>*Test</code> subclass in a trailing
-        <code>#ifdef __TEST__</code> region — <code>ArrayTest</code> in
+        <code>#ifdef TEST_ENABLED</code> region — <code>ArrayTest</code> in
         <a href="../../Container/index.html#array"><code>Engine/Container/Array.h</code></a> is one of roughly sixty.
         Which ones are registered is <a href="../UnitTestCollection/suite-entry-points.html">RunTests</a></td>
   </tr>

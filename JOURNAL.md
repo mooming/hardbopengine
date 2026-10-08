@@ -1,5 +1,48 @@
 # Journal
 
+## 2026-10-08 21:42 — the test macro is `TEST_ENABLED`, which is what the coding standard already asked for
+
+**The reason, not the cosmetics.** `__TEST__` and `__UNIT_TEST__` both began with a double underscore, and
+`[lex.name]` reserves every identifier containing one to the C++ implementation. `docs/CodingStandards.md:27` already
+says this in prose — "Use `SCREAMING_SNAKE_CASE` … Do not use a leading double underscore … reserved for the C++
+implementation" — so the macro the whole test suite is gated by was violating the rule the document states two
+hundred lines above the build section that names it. `61c6152` had already fixed this for `__DEBUG__`, renaming it to
+`DEBUG_BUILD` / `DEV_BUILD` / `RELEASE_BUILD`; this completes that cleanup for the test macro.
+
+**Third name, same numbers, which is the whole point.** `__UNIT_TEST__` to `__TEST__` measured 455 / 455 / 4 tokens for
+Debug / Dev / Release, and `__TEST__` to `TEST_ENABLED` measured 455 / 455 / 4 again. Debug and Dev ran 392 testlets in
+60 collections with 0 failures both times, Release without `-test` still exited 1 refusing to claim it had verified
+anything, and `grep -o 'D__TEST__\|D__UNIT_TEST__'` over the ninja files now reads 0. A rename that changes no count
+is a rename that changed no behaviour.
+
+**A near-miss worth recording: the existing macro sharing the suffix.** `MEMORY_INVESTIGATOR_TEST_ENABLED` already
+exists, so `TEST_ENABLED` is a live suffix of a live name. It is safe — `sed 's/__TEST__/TEST_ENABLED/'` provably
+cannot touch it, because that name contains `_TEST_` and not `__TEST__` — but it means a future `grep TEST_ENABLED`
+finds both, and a careless find-and-replace on the short form would corrupt the long one. Checked before editing,
+not after.
+
+**Two defects the previous rename had left behind, now fixed.** First, `scripts/hang.sh` still said `-D__TEST__`
+because that pass selected files by containing `__UNIT_TEST__`, so a file naming only the other macro was never in the
+set — a filter that silently drops a member is the classic way to report a complete sweep. Second, and worse, the
+prose in `docs/Memory/InlineMonotonicAllocator/index.html` had once listed two different macros, `__TEST__` and
+`__UNIT_TEST__`; after that blanket rename both halves became the same word, so the page claimed the Debug and Dev flag
+sets add "`__TEST__` and `__TEST__`". A rename applied to prose that was naming two things turns the sentence into
+nonsense while still looking fluent, so that one now names what the flag lines actually add.
+
+**The trap that had to survive a third time, and nearly didn't.** The history paragraph added to
+`docs/design/BuildMacros_Design.html` exists precisely to record that `__TEST__` was the dead macro. Running the rename
+over `docs/` rewrote that paragraph, so it came out asserting that `__UNIT_TEST__` and `TEST_ENABLED` had once been the
+dead pair — the rename had edited the account of itself. Caught by grepping the old names before declaring residue
+zero, and repaired: the paragraph now carries both renames in order, `__UNIT_TEST__` removed then `__TEST__` renamed,
+with the standard quoted as the reason for the second.
+
+**Not a correction, a correction to a correction.** An earlier note here and in PR #16 said the Renderer gets the macro
+from `Engine/Renderer/Vulkan/CMakeLists.txt`. It does not: `Engine/Renderer/CMakeLists.txt` contains no
+`add_subdirectory` at all, so that file is never included and its `add_compile_definitions` is inert. The ninja counts
+said so all along — Release's four tokens were `Engine/Test`'s own sources only — and the prose had overridden
+measurement that was already on screen. Renamed there anyway, so no stale name survives, but it changes no build.
+
+
 ## 2026-10-08 17:21 — `__UNIT_TEST__` is gone, and `__TEST__` turns out to have been the dead half all along
 
 **What was asked, and what the measurement showed.** The request was to replace `__UNIT_TEST__` with `__TEST__` and

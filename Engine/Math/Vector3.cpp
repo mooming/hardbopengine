@@ -8,7 +8,7 @@ namespace hbe
 template class Vector3<float>;
 } // namespace hbe
 
-#ifdef __TEST__
+#ifdef TEST_ENABLED
 #include "Core/ScopedTime.h"
 #include "HSTL/HVector.h"
 
@@ -132,4 +132,4 @@ void hbe::Vector3Test::Prepare() noexcept
 	});
 }
 
-#endif //__TEST__
+#endif //TEST_ENABLED

@@ -83,7 +83,7 @@ TOutStream& operator<<(TOutStream& os, const TFloat2& vec) noexcept
 }
 } // namespace hbe
 
-#ifdef __TEST__
+#ifdef TEST_ENABLED
 #include "Test/TestCollection.h"
 
 namespace hbe
@@ -101,4 +101,4 @@ protected:
 };
 } // namespace hbe
 
-#endif //__TEST__
+#endif //TEST_ENABLED

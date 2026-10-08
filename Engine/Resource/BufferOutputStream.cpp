@@ -125,7 +125,7 @@ BufferOutputStream& BufferOutputStream::operator<<(const char* str) noexcept
 }
 } // namespace hbe
 
-#ifdef __TEST__
+#ifdef TEST_ENABLED
 #include "BufferInputStream.h"
 #include "BufferUtil.h"
 
@@ -292,4 +292,4 @@ void BufferOutputStreamTest::Prepare()
 	});
 }
 } // namespace hbe
-#endif //__TEST__
+#endif //TEST_ENABLED

@@ -2,7 +2,7 @@
 
 #include "HUnorderedMap.h"
 
-#ifdef __TEST__
+#ifdef TEST_ENABLED
 #include "String/StringUtil.h"
 
 namespace hbe
@@ -45,4 +45,4 @@ void HUnorderedMapTest::Prepare()
 	});
 }
 } // namespace hbe
-#endif //__TEST__
+#endif //TEST_ENABLED

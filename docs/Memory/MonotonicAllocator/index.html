@@ -263,7 +263,7 @@
   </tr>
   <tr>
     <td><code>MonotonicAllocatorTest</code></td>
-    <td>Test-only: declared in <code>Engine/Memory/MonotonicAllocator.h</code> inside <code>#ifdef __TEST__</code>, with the four
+    <td>Test-only: declared in <code>Engine/Memory/MonotonicAllocator.h</code> inside <code>#ifdef TEST_ENABLED</code>, with the four
         testlets <code>Vector Allocation</code>, <code>Allocation (2)</code>, <code>Deallocation</code> and
         <code>Deallocation (2)</code> defined in <code>Engine/Memory/MonotonicAllocator.cpp</code>. It owns no page; what each testlet
         proves is quoted where the claim is made. All four reach the allocator through an

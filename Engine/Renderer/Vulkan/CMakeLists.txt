@@ -26,7 +26,7 @@ else (MSVC)
 	add_compile_options (-Wall -Werror)
 endif (MSVC)
 
-add_compile_definitions (__TEST__ )
+add_compile_definitions (TEST_ENABLED )
 include_directories ( ${CMAKE_SOURCE_DIR}
  ${CMAKE_SOURCE_DIR}/include
  ${CMAKE_SOURCE_DIR}/External

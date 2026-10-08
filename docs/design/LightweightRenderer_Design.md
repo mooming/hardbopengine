@@ -31,7 +31,7 @@ Engine/Renderer/
 ├── RenderCapabilities.h/cpp      # API-neutral device descriptor: identity, features, limits
 ├── Vertex.h/cpp                  # position + color vertex
 ├── RHICapabilities.h/cpp         # pre-device probe, before a renderer exists
-├── RendererTest.h/cpp            # unit tests, compiled only under __TEST__
+├── RendererTest.h/cpp            # unit tests, compiled only under TEST_ENABLED
 ├── customCMake.txt               # Vulkan source + link wiring for MakeBuild
 └── Vulkan/
     ├── VulkanCapabilities.h/cpp  # VkPhysicalDevice -> RenderCapabilities translation

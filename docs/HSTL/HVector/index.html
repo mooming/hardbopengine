@@ -232,7 +232,7 @@ vlist.<span class="fn">reserve</span>(InlineBufferSize);</code></pre>
 <p>
   None. <code>HVector.h</code> declares nothing at namespace scope beyond the two aliases — no
   <code>std::hash</code> specialisation (contrast <a href="../HString/index.html#non-member">HString</a>, which
-  does declare one), no test fixture under <code>__TEST__</code> (contrast
+  does declare one), no test fixture under <code>TEST_ENABLED</code> (contrast
   <a href="../HUnorderedMap/index.html">HUnorderedMap</a>), and no source file: the module's
   <code>CMakeLists.txt</code> lists <code>HVector.h</code> as a header of the <code>HSTL</code> target with no
   <code>HVector.cpp</code> beside it.
@@ -268,7 +268,7 @@ vlist.<span class="fn">reserve</span>(InlineBufferSize);</code></pre>
   </tr>
   <tr>
     <td>No test fixture of its own</td>
-    <td><code>HVector.h</code> carries no <code>__TEST__</code> block. Vectors are exercised through their
+    <td><code>HVector.h</code> carries no <code>TEST_ENABLED</code> block. Vectors are exercised through their
         users, and those uses are the engine demonstrating the stamping rule: <code>MonotonicAllocatorTest</code>
         and <code>StackAllocatorTest</code> each construct an <code>HVector&lt;int&gt;</code> inside an
         <code>AllocatorScope</code> over their own allocator, then assert the allocator recorded the

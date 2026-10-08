@@ -8,7 +8,7 @@ namespace hbe
 template class OBB<float>;
 } // namespace hbe
 
-#ifdef __TEST__
+#ifdef TEST_ENABLED
 
 namespace hbe
 {
@@ -17,4 +17,4 @@ void OBBTest::Prepare() noexcept
 }
 } // namespace hbe
 
-#endif // __TEST__
+#endif // TEST_ENABLED

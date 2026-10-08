@@ -147,7 +147,7 @@ This& BufferInputStream::operator>>(const hbe::HString& str) noexcept
 }
 } // namespace hbe
 
-#ifdef __TEST__
+#ifdef TEST_ENABLED
 #include "BufferOutputStream.h"
 #include "BufferUtil.h"
 #include "Memory/MemoryManager.h"
@@ -381,4 +381,4 @@ void BufferInputStreamTest::Prepare()
 	});
 }
 } // namespace hbe
-#endif //__TEST__
+#endif //TEST_ENABLED

@@ -1,6 +1,6 @@
 // Copyright (c) 2026 Hansol Park (mooming.go@gmail.com). All rights reserved.
 
-#ifdef __TEST__
+#ifdef TEST_ENABLED
 
 #include <numeric>
 #include <vector>
@@ -225,4 +225,4 @@ void ScheduleSuiteOnBaseStream()
 
 } // namespace hbe::Test
 
-#endif // __TEST__
+#endif // TEST_ENABLED

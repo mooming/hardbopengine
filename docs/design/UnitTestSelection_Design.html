@@ -43,7 +43,7 @@
   <div class="breadcrumb"><a href="../index.html">Docs</a> / <a href="../Test/index.html">Test</a> / Unit-test selection</div>
 
 <h1>Unit-test selection</h1>
-  <div class="subtitle">How <code>__TEST__</code> reaches the tree, what a test body may vary per configuration, and the three places a test was once wrong without failing</div>
+  <div class="subtitle">How <code>TEST_ENABLED</code> reaches the tree, what a test body may vary per configuration, and the three places a test was once wrong without failing</div>
 
 <div class="note">
   <strong>Scope.</strong> This document owns the invariants behind the test bodies inside <em>Engine/</em> and the way
@@ -54,7 +54,7 @@
 
 <h2 id="where">The suite is compiled per module, not per executable</h2>
 <p>
-Each module's own sources carry its test bodies behind <code>#ifdef __TEST__</code> —
+Each module's own sources carry its test bodies behind <code>#ifdef TEST_ENABLED</code> —
 <em>Engine/Core/TaskSystem.cpp</em>, <em>Engine/Memory/DefaultAllocator.cpp</em>,
 <em>Engine/Container/LinkedList.cpp</em> and the rest — while <em>Engine/Test/UnitTestCollection.cpp</em> registers
 the resulting classes. The definition therefore has to be tree-wide. The proof is the link: a build in which only
@@ -136,7 +136,7 @@ comfortable default instead is wrong even when every other field is right.
 <h2 id="seealso">Where else to look</h2>
 <table>
   <tr><th>Question</th><th>Where it lives</th></tr>
-  <tr><td>Which configurations define <code>__TEST__</code>, and how to count it</td><td><a href="../BuildSystem.md">docs/BuildSystem.md</a></td></tr>
+  <tr><td>Which configurations define <code>TEST_ENABLED</code>, and how to count it</td><td><a href="../BuildSystem.md">docs/BuildSystem.md</a></td></tr>
   <tr><td>Why a definition cannot be given to one target only</td><td><a href="BuildMacros_Design.html">Build macros</a></td></tr>
   <tr><td>What <code>Assert</code> prints, and that it aborts</td><td><a href="../Core/index.html#debug">Core: Debug</a>, <a href="AssertMacros_Design.html">Assertion design</a></td></tr>
   <tr><td>How to build and run the suite</td><td><a href="../../AGENTS.md">AGENTS.md</a> and <em>build.sh</em></td></tr>

@@ -83,7 +83,7 @@
 <div class="gap">
   <strong>No shipping code configures a rate, so every stream runs the default 1:1.</strong> The only callers of
   <code>TaskStream::ConfigureRate()</code> in <code>Engine/</code> and <code>Applications/</code> sit in the
-  <code>#ifdef __TEST__</code> region of <code>Engine/Core/TaskSystem.cpp</code>, which reads both weights, sets a test
+  <code>#ifdef TEST_ENABLED</code> region of <code>Engine/Core/TaskSystem.cpp</code>, which reads both weights, sets a test
   rate, and restores them. This accessor therefore has exactly one kind of user today: a test that borrows the base stream.
 </div>
 

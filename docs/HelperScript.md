@@ -12,7 +12,7 @@
 - `-debug` – also build Debug configuration.
 - `-release` – also build Release configuration.
 - `-clean` – clean the target before building.
-- `-test` – reconfigure with `-D__TEST__` so the unit-test sources
+- `-test` – reconfigure with `-DTEST_ENABLED` so the unit-test sources
   actually compile. Without it `TestMain.cpp` compiles to an empty `main`, so
   `EngineTest` builds green while testing nothing.
 

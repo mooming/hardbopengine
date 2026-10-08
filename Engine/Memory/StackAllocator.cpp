@@ -168,7 +168,7 @@ bool StackAllocator::IsMine(Pointer ptr) const
 }
 } // namespace hbe
 
-#ifdef __TEST__
+#ifdef TEST_ENABLED
 #include "AllocatorScope.h"
 #include "HSTL/HVector.h"
 #include "ScopedAllocator.h"
@@ -401,4 +401,4 @@ void StackAllocatorTest::Prepare()
 }
 } // namespace hbe
 
-#endif //__TEST__
+#endif //TEST_ENABLED

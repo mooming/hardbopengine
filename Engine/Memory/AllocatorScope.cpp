@@ -28,7 +28,7 @@ AllocatorScope::~AllocatorScope() noexcept
 }
 } // namespace hbe
 
-#ifdef __TEST__
+#ifdef TEST_ENABLED
 #include "InlinePoolAllocator.h"
 
 namespace hbe
@@ -53,4 +53,4 @@ void AllocatorScopeTest::Prepare()
 }
 } // namespace hbe
 
-#endif //__TEST__
+#endif //TEST_ENABLED

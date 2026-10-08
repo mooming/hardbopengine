@@ -2,7 +2,7 @@
 
 #include "InlineStringBuilder.h"
 
-#ifdef __TEST__
+#ifdef TEST_ENABLED
 #include <limits>
 
 #include "HSTL/HString.h"
@@ -326,4 +326,4 @@ void InlineStringBuilderTest::Prepare()
 	});
 }
 } // namespace hbe
-#endif //__TEST__
+#endif //TEST_ENABLED
