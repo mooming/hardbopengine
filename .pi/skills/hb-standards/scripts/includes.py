@@ -17,7 +17,7 @@ does not name:
 
 B7 is the reason this checker exists next to clang-format rather than inside it. 83 files carry includes
 below the preamble — `#include "VectorCommonImpl.inl"` inside a class body, where position decides what is
-in scope, and the `#ifdef __UNIT_TEST__` regions that close a file — and a pass that "tidied" them would
+in scope, and the `#ifdef __TEST__` regions that close a file — and a pass that "tidied" them would
 break the build while looking like a cleanup. The proof compares the list of below-preamble includes, each
 with the guard text it sits under, against the revision the edit started from: that list survives a
 blank-line pass and does not survive a hoist.
@@ -207,7 +207,7 @@ def below_preamble_includes(text, path):
     body of the file, so a blank-line pass — whose whole job is moving blanks inside the body — failed the
     proof on every file it touched, and seven clean files came out dirty. The measure of an immune include is
     what it belongs to: `#include "Vector3CommonImpl.inl"` cannot leave the class body it sits in, and
-    `#include "../Engine/Engine.h"` cannot leave the `#ifdef __UNIT_TEST__` region that exists to hold it, so
+    `#include "../Engine/Engine.h"` cannot leave the `#ifdef __TEST__` region that exists to hold it, so
     the guard text is part of the identity alongside the written path, and adding, dropping, re-ordering or
     re-guarding any of them is a finding.
 
@@ -244,14 +244,14 @@ def database_entry(entries, path):
     return None
 
 
-TEST_MACRO_FLAGS = ('-D__TEST__=1', '-D__UNIT_TEST__=1')
-TEST_GUARD = re.compile(r'^\s*#\s*ifn?def\s+__UNIT_TEST__\b', re.MULTILINE)
+TEST_MACRO_FLAGS = ('-D__TEST__=1',)
+TEST_GUARD = re.compile(r'^\s*#\s*ifn?def\s+__TEST__\b', re.MULTILINE)
 
 
 def text_macros(text):
     """The preprocessor definitions a measurement must add, judged from the bytes it is about to compile.
 
-    `cmake-build-debug/compile_commands.json` is generated without `-D__TEST__ -D__UNIT_TEST__` — `build.sh`
+    `cmake-build-debug/compile_commands.json` is generated without `-D__TEST__` — `build.sh`
     adds them to `CMAKE_CXX_FLAGS` only under `-test` — so any measurement taken from that database looks at
     a file with its unit-test surface preprocessed away. For a body that lives entirely behind the guard,
     like `main()` in `Applications/EngineTest/TestMain.cpp`, the measurement is not of the file at all: it
@@ -407,7 +407,7 @@ def provided_names(item, entry, includer):
     file that writes it — `#include "Array.h"` in `Array.cpp` is the same directory, and leaving that out
     made every own header look unverifiable.
 
-    A header whose declarations sit behind `#ifdef __UNIT_TEST__` declares **nothing** to a compiler run
+    A header whose declarations sit behind `#ifdef __TEST__` declares **nothing** to a compiler run
     without that macro, and an empty name set intersects everything, so the include it owns is reported as
     one the file neither needs nor names. Measured on `Applications/EngineTest/TestMain.cpp`, whose only two
     calls are `hbe::Test::RegisterSuite` and `ScheduleSuiteOnBaseStream`, both declared solely inside that
@@ -439,7 +439,7 @@ def unused_candidates(path):
     alone would recommend deleting the include a file genuinely depends on and only gets transitively,
     which is the opposite of the rule.
 
-    Both are run under the test macros when the file carries a `#ifdef __UNIT_TEST__` region, because the
+    Both are run under the test macros when the file carries a `#ifdef __TEST__` region, because the
     compile database does not define them and the measurement would otherwise be of an empty translation
     unit. `macros` says which were used, so the report can not read as a clean answer about code nobody
     compiled.
@@ -615,7 +615,7 @@ def main(argv):
     parser.add_argument('--selftest', action='store_true', help='run the built-in fixtures')
     parser.add_argument('--unused', action='store_true',
                         help='B6 candidates: compile this file once per include with that include deleted, '
-                             'under -D__TEST__ -D__UNIT_TEST__ when it carries a unit-test region')
+                             'under -D__TEST__ when it carries a unit-test region')
     parser.add_argument('--prove-immutable', metavar='REV',
                         help='B7: refuse unless every include below the preamble kept its place and its guard')
     parser.add_argument('--summary-only', action='store_true', help='print counts, not findings')
