@@ -122,7 +122,7 @@ drainPolicy.ConfigureRate(fifoWeight, priorityWeight);</code></pre>
   The stream's wrapper is where the thread rule lives, because the policy itself has none: it is plain fields written by
   whoever calls, and the owning stream reads them every pass. Note what the search for callers finds: no shipping code in
   <code>Engine/</code> or <code>Applications/</code> configures a rate at all, so every stream runs the default 1:1 — the only
-  callers are tests in the <code>#ifdef __UNIT_TEST__</code> region of <code>Engine/Core/TaskSystem.cpp</code>, which read both
+  callers are tests in the <code>#ifdef __TEST__</code> region of <code>Engine/Core/TaskSystem.cpp</code>, which read both
   weights, set a rate, and put the originals back.
 </p>
 <footer class="prevnext">

@@ -292,7 +292,7 @@ registration <a href="register-allocator.html">RegisterAllocator</a> created. Th
   </tr>
   <tr>
     <td><code>InlinePoolAllocatorTest</code>.</td>
-    <td>Test-only: declared in <code>Engine/Memory/InlinePoolAllocator.h</code> inside <code>#ifdef __UNIT_TEST__</code> and defined in
+    <td>Test-only: declared in <code>Engine/Memory/InlinePoolAllocator.h</code> inside <code>#ifdef __TEST__</code> and defined in
         <code>Engine/Memory/InlinePoolAllocator.cpp</code> as eight performance-and-stress testlets plus three vector-growth testlets.
         It reports timings and warns when the rate exceeds one; it asserts almost nothing, so none of its numbers is a contract, and it
         owns no page of its own.</td>

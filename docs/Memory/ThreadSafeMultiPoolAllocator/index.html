@@ -236,7 +236,7 @@
   <tr><th>Not documented here</th><th>Why</th></tr>
   <tr>
     <td><code>ThreadSafeMultiPoolAllocatorTest</code></td>
-    <td>The header declares this test collection under <code>#ifdef __UNIT_TEST__</code> with one override,
+    <td>The header declares this test collection under <code>#ifdef __TEST__</code> with one override,
         <code>Prepare()</code>, defined in <code>Engine/Memory/ThreadSafeMultiPoolAllocator.cpp</code> and registered
         by <code>Engine/Test/UnitTestCollection.cpp</code>. Test-only code is documented on the page that owns the
         header rather than as a page of its own, so the testlets themselves — the contention benchmark and the bank

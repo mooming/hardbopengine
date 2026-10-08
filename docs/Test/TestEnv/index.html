@@ -79,7 +79,7 @@
   <span class="tag">Engine/Test/TestEnv.h</span>
   <span class="tag">namespace hbe</span>
   <span class="tag">final</span>
-  <span class="tag">compiled under __UNIT_TEST__</span>
+  <span class="tag">compiled under __TEST__</span>
   the registry and runner for collections — and the object the exit status is read from
 </p>
 
@@ -87,7 +87,7 @@
   <strong>This is test-build API.</strong> <code>TestEnv.h</code> carries no <code>#ifdef</code> of its own, so it is
   includable anywhere, but it is only useful where the fixtures it runs exist — and every
   <a href="../TestCollection/index.html"><code>TestCollection</code></a> subclass in the engine sits behind
-  <code>#ifdef __UNIT_TEST__</code> in the header it tests. The Test library defines the macro for itself; the rest of
+  <code>#ifdef __TEST__</code> in the header it tests. The Test library defines the macro for itself; the rest of
   the tree gets it from <code>build.sh -test</code>. See
   <a href="../index.html#conditional-build">how the Test module is built</a>.
 </div>

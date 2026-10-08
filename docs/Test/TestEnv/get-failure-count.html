@@ -120,7 +120,7 @@
   <strong>Zero failures is not evidence that anything was verified.</strong> Nothing ran, nothing was registered, and
   every case's <code>lferr</code> was declined by the logger — all three answer zero here, and this is the number a CI
   gate trusts. <code>Applications/EngineTest/TestMain.cpp</code> guards the widest of those holes directly, by
-  refusing to report success when the binary was compiled without <code>__UNIT_TEST__</code> at all, rather than
+  refusing to report success when the binary was compiled without <code>__TEST__</code> at all, rather than
   returning zero over an empty suite — see
   <a href="../index.html#conditional-build">how the Test module is built</a>. The narrower holes, a collection that
   registered no cases and a suite filtered quiet, are still visible only in the report's own counts.
