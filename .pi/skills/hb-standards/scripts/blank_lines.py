@@ -22,7 +22,7 @@ Rules, named as the standard names them:
   A11  after the `}` of a nested block: exactly one
   A12  between two definitions at namespace scope: exactly one
   A13  a `///` line and the declaration under it: none
-  A14  before a trailing `#ifdef __UNIT_TEST__` region — one the file holds nothing after: exactly one
+  A14  before a trailing `#ifdef __TEST__` region — one the file holds nothing after: exactly one
   A15  inside a parenthesised list, or between the lines of one: none
   A16  anywhere else: two or more consecutive blanks are forbidden, and a conditional region holding
        nothing but blanks separates nothing
@@ -70,7 +70,7 @@ COND_OPEN = re.compile(r'^#\s*(?:if|ifdef|ifndef)\b')
 COND_ELSE = re.compile(r'^#\s*else\b')
 COND_CLOSE = re.compile(r'^#\s*(?:else|elif|endif)\b')
 COND_END = re.compile(r'^#\s*endif\b')
-UNIT_TEST_GUARD = '#ifdef __UNIT_TEST__'
+UNIT_TEST_GUARD = '#ifdef __TEST__'
 INCLUDE_ANGLE = re.compile(r'^#\s*include\s*<')
 INCLUDE_QUOTED = re.compile(r'^#\s*include\s*"([^"]+)"')
 COND_DIRECTIVE = re.compile(r'^#\s*(?:if|ifdef|ifndef|else|elif|endif)\b')
@@ -275,7 +275,7 @@ CLOSE_BRACE = re.compile(r'^\}(?:\s*$|\s*//)')                  # a scope closin
 
 
 def unit_test_region_is_trailing(facts, index):
-    """Whether the `#ifdef __UNIT_TEST__` opening at `index` is the last thing in the file.
+    """Whether the `#ifdef __TEST__` opening at `index` is the last thing in the file.
 
     A14 is about the seam a reader meets at the *end* of a file, which is what the rule "unit-test blocks go
     at the end of the file" produces. The first version tested for file scope by asking whether the guard sat
@@ -650,20 +650,20 @@ case('A13: a blank under a /// line',
      HEAD + '/// API reference: docs/Core/Foo/index.html\n\nclass Foo\n{\n};\n', [('A2', 4), ('A13', 6)])
 
 case('A14: the unit-test guard opens on no blank',
-     HEAD + 'class C\n{\n};\n#ifdef __UNIT_TEST__\n#endif\n', [('A14', 7)])
+     HEAD + 'class C\n{\n};\n#ifdef __TEST__\n#endif\n', [('A14', 7)])
 
 case('A14 clean, and the guard is not an A12 definition pair',
-     HEAD + 'class C\n{\n};\n\n#ifdef __UNIT_TEST__\n#endif\n', [])
+     HEAD + 'class C\n{\n};\n\n#ifdef __TEST__\n#endif\n', [])
 
 case('A14: a guard inside a namespace is still trailing, and still needs its blank',
-     HEAD + 'namespace hbe\n{\nclass C\n{\n};\n#ifdef __UNIT_TEST__\n#endif\n} // namespace hbe\n', [('A14', 9)])
+     HEAD + 'namespace hbe\n{\nclass C\n{\n};\n#ifdef __TEST__\n#endif\n} // namespace hbe\n', [('A14', 9)])
 
 case('A14: a guard that opens main()\'s body is no trailing region, at column 0 or anywhere else',
-     HEAD + 'int main()\n{\n#ifdef __UNIT_TEST__\n\tint a = 1;\n\n\treturn a;\n#else\n\treturn 0;\n#endif\n\n\treturn 1;\n}\n',
+     HEAD + 'int main()\n{\n#ifdef __TEST__\n\tint a = 1;\n\n\treturn a;\n#else\n\treturn 0;\n#endif\n\n\treturn 1;\n}\n',
      [])
 
 case('A14 clean on an in-function guard, and the blank the old reading demanded is an A4 violation',
-     HEAD + 'int main()\n{\n\n#ifdef __UNIT_TEST__\n\tint a = 1;\n\n\treturn a;\n#else\n\treturn 0;\n#endif\n\n\treturn 1;\n}\n',
+     HEAD + 'int main()\n{\n\n#ifdef __TEST__\n\tint a = 1;\n\n\treturn a;\n#else\n\treturn 0;\n#endif\n\n\treturn 1;\n}\n',
      [('A4', 7)])
 
 case('A15: a blank between the lines of an initializer list',

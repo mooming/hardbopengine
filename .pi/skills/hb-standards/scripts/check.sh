@@ -56,7 +56,7 @@
 #     touched before building so a real recompile is forced and the gate cannot
 #     pass vacuously.
 #   * --test must build EngineTest with "build.sh ... -test". The body of main() and
-#     every module's test bodies sit behind #ifdef __UNIT_TEST__, so without the flag
+#     every module's test bodies sit behind #ifdef __TEST__, so without the flag
 #     the executable has an empty main and exits zero having run nothing (measured on
 #     this tree: 0 tests without -test, 285 with it). Zero tests is a failure.
 #   * Neither timeout(1) nor gtimeout(1) is guaranteed to exist, and on this machine
@@ -425,7 +425,7 @@ if [[ ${#FILES[@]} -gt 0 ]]; then
 		out=$(LC_ALL=C awk -v F="$f" -v OWN="$own" '
 			# phase tracks whether the top-of-file include preamble is still open. The
 			# dominant repo idiom puts further #include directives inside a
-			# "#ifdef __UNIT_TEST__" test block far below the first code body, so the
+			# "#ifdef __TEST__" test block far below the first code body, so the
 			# preamble must close exactly once, at the first body line, or those later
 			# includes get folded into block 1 and every counter is wrong.
 			BEGIN { phase = "pre" }
@@ -438,7 +438,7 @@ if [[ ${#FILES[@]} -gt 0 ]]; then
 			# Conditionals are transparent while they hug the include region: an #ifdef that
 			# directly wraps includes belongs to it, opens no block, and never ends it.
 			# A blank line before the #ifdef is the tell that this is a NEW region instead -
-			# in this repo that is almost always the "#ifdef __UNIT_TEST__" test block or a
+			# in this repo that is almost always the "#ifdef __TEST__" test block or a
 			# "#ifdef PLATFORM_x" block far below the preamble. Folding those includes into
 			# the preamble invents mixed <...>/"..." blocks and reports them as unsorted
 			# (measured: ImportanceSampling.cpp, DefaultAllocator.cpp, WindowsDebug.cpp).
@@ -696,7 +696,7 @@ if [[ $BUILD -eq 1 ]]; then
 		hdr "unit tests — EngineTest, built with -test"
 		# -test is not optional here, and not for the reason it looks like. Both the body
 		# of TestMain.cpp's main() and every module's test bodies sit behind
-		# #ifdef __UNIT_TEST__, so a binary built without the flag has an EMPTY main: it
+		# #ifdef __TEST__, so a binary built without the flag has an EMPTY main: it
 		# exits zero having executed nothing at all. Measured on this tree: 0 tests run
 		# without -test, 285 with it. build.sh reconfigures with --fresh on every run, so
 		# the defines never go sticky into a shared tree; they are configured back off at
@@ -752,7 +752,7 @@ if [[ $BUILD -eq 1 ]]; then
 		fi
 
 		# Leave the tree as it was found. build.sh configures --fresh every time, so a
-		# plain reconfigure is all that is needed to drop -D__TEST__ -D__UNIT_TEST__.
+		# plain reconfigure is all that is needed to drop -D__TEST__ -D__TEST__.
 		if ! ./build.sh Applications/VulkanExample -dev >/dev/null 2>&1; then
 			echo "  note: could not reconfigure without -test; run ./build.sh <target> -dev to restore"
 		fi
