@@ -2,7 +2,7 @@
 
 #include "Quaternion.h"
 
-#ifdef __UNIT_TEST__
+#ifdef __TEST__
 #include "Vector3.h"
 
 namespace hbe
@@ -153,4 +153,4 @@ void QuaternionTest::Prepare() noexcept
 }
 } // namespace hbe
 
-#endif //__UNIT_TEST__
+#endif //__TEST__

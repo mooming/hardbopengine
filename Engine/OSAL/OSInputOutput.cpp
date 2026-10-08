@@ -2,7 +2,7 @@
 
 #include "OSInputOutput.h"
 
-#ifdef __UNIT_TEST__
+#ifdef __TEST__
 #include "OSFileHandle.h"
 #include "OSFileOpenMode.h"
 #include "OSMapSyncMode.h"
@@ -193,4 +193,4 @@ void OSInputOutputTest::Prepare()
 	});
 }
 } // namespace hbe
-#endif //__UNIT_TEST__
+#endif //__TEST__

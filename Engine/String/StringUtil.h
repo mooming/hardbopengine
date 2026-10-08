@@ -44,7 +44,7 @@ void ForEachToken(const char* str, const std::function<void(std::string_view)> f
 } // namespace StringUtil
 } // namespace hbe
 
-#ifdef __UNIT_TEST__
+#ifdef __TEST__
 #include "Test/TestCollection.h"
 
 namespace hbe
@@ -61,4 +61,4 @@ protected:
 	void Prepare() override;
 };
 } // namespace hbe
-#endif //__UNIT_TEST__
+#endif //__TEST__

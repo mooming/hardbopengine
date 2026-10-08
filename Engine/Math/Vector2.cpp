@@ -8,7 +8,7 @@ namespace hbe
 template class Vector2<float>;
 }
 
-#ifdef __UNIT_TEST__
+#ifdef __TEST__
 
 void hbe::Vector2Test::Prepare() noexcept
 {
@@ -30,4 +30,4 @@ void hbe::Vector2Test::Prepare() noexcept
 	});
 }
 
-#endif //__UNIT_TEST__
+#endif //__TEST__

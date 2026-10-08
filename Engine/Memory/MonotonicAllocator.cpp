@@ -144,7 +144,7 @@ bool MonotonicAllocator::IsMine(TPointer ptr) const
 }
 } // namespace hbe
 
-#ifdef __UNIT_TEST__
+#ifdef __TEST__
 #include <new>
 
 #include "HSTL/HVector.h"
@@ -264,4 +264,4 @@ void MonotonicAllocatorTest::Prepare()
 }
 } // namespace hbe
 
-#endif //__UNIT_TEST__
+#endif //__TEST__

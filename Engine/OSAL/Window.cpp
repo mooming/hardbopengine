@@ -21,7 +21,7 @@ std::unique_ptr<Window> CreateWindow(const hbe::HString& title, int width, int h
 }
 } // namespace OS
 
-#ifdef __UNIT_TEST__
+#ifdef __TEST__
 #include <chrono>
 #include <future>
 #include <thread>
@@ -697,4 +697,4 @@ void WindowTest::Prepare()
 	});
 }
 } // namespace hbe
-#endif // __UNIT_TEST__
+#endif // __TEST__

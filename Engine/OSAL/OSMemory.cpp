@@ -186,7 +186,7 @@ void OS::ProtectMemory(void* address, size_t n) noexcept
 static_assert(false, "System is not specified.");
 #endif
 
-#ifdef __UNIT_TEST__
+#ifdef __TEST__
 
 #include "Core/Debug.h"
 
@@ -315,4 +315,4 @@ void OSMemoryTest::Prepare()
 	});
 }
 } // namespace hbe
-#endif // __UNIT_TEST__
+#endif // __TEST__

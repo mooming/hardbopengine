@@ -343,7 +343,7 @@ void operator delete[](void* ptr, const std::nothrow_t&) noexcept
 	Deallocate(ptr, 0, HBE_ACCOUNTING_CALLER);
 }
 
-#ifdef __UNIT_TEST__
+#ifdef __TEST__
 #include <string>
 #include <vector>
 
@@ -406,4 +406,4 @@ void GlobalAllocationTest::Prepare()
 #endif // defined(__APPLE__)
 }
 } // namespace hbe
-#endif // __UNIT_TEST__
+#endif // __TEST__

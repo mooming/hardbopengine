@@ -2,7 +2,7 @@
 
 #include "Deque.h"
 
-#ifdef __UNIT_TEST__
+#ifdef __TEST__
 #include <deque>
 
 #include "Core/ScopedTime.h"
@@ -398,4 +398,4 @@ void DequeTest::Prepare()
 }
 } // namespace hbe
 
-#endif //__UNIT_TEST__
+#endif //__TEST__

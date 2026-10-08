@@ -8,7 +8,7 @@
 #include "TaskRegistry.h"
 #include "WorkItem.h"
 
-#ifdef __UNIT_TEST__
+#ifdef __TEST__
 namespace hbe
 {
 namespace
@@ -197,4 +197,4 @@ void ResultPacketTest::Prepare()
 	});
 }
 } // namespace hbe
-#endif //__UNIT_TEST__
+#endif //__TEST__

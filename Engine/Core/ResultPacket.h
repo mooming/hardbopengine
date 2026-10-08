@@ -83,7 +83,7 @@ static_assert(sizeof(hbe::ResultPacket) == hbe::ResultPacket::SizeBytes,
 static_assert(alignof(hbe::ResultPacket) == sizeof(std::uint64_t),
 			  "A packet payload must be reachable in aligned words, wherever the packet lands");
 
-#ifdef __UNIT_TEST__
+#ifdef __TEST__
 #include "Test/TestCollection.h"
 
 namespace hbe
@@ -100,4 +100,4 @@ protected:
 	void Prepare() override;
 };
 } // namespace hbe
-#endif //__UNIT_TEST__
+#endif //__TEST__

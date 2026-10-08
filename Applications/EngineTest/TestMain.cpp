@@ -10,7 +10,7 @@
 
 int main(int argc, const char* argv[]) noexcept
 {
-#ifdef __UNIT_TEST__
+#ifdef __TEST__
 	constexpr auto BaseStreamPassBudget = std::chrono::duration<double>(0.001);
 
 	hbe::Engine hengine;
@@ -55,14 +55,14 @@ int main(int argc, const char* argv[]) noexcept
 			  << testEnv.GetExecutedTestletCount() << " testlets)" << std::endl;
 
 #else
-	std::cerr << "EngineTest: built WITHOUT __UNIT_TEST__, so this binary contains no tests." << std::endl;
+	std::cerr << "EngineTest: built WITHOUT __TEST__, so this binary contains no tests." << std::endl;
 	std::cerr << "Nothing has been verified, and the exit status used to claim otherwise." << std::endl;
 	std::cerr << std::endl;
 	std::cerr << "To build and run the suite:" << std::endl;
 	std::cerr << "    ./build.sh Applications/EngineTest -dev -debug -release -test" << std::endl;
 	std::cerr << "    ./build/Applications/EngineTest/Dev/EngineTest    (or Debug/ or Release/)" << std::endl;
 	std::cerr << std::endl;
-	std::cerr << "-test adds -D__UNIT_TEST__ to the entire build tree, and it has to be global: the" << std::endl;
+	std::cerr << "-test adds -D__TEST__ to the entire build tree, and it has to be global: the" << std::endl;
 	std::cerr << "test bodies live in the library sources this executable links, not only in this" << std::endl;
 	std::cerr << "file. Leaving them out silently is how whole modules stop being tested without" << std::endl;
 	std::cerr << "anything failing." << std::endl;
@@ -71,7 +71,7 @@ int main(int argc, const char* argv[]) noexcept
 	std::cerr << "    .pi/skills/hb-standards/scripts/check.sh --test" << std::endl;
 
 	return 1;
-#endif // __UNIT_TEST__
+#endif // __TEST__
 
 	return 0;
 }

@@ -8,7 +8,7 @@ namespace hbe
 template class Matrix3x3<float>;
 } // namespace hbe
 
-#ifdef __UNIT_TEST__
+#ifdef __TEST__
 #include "HSTL/HVector.h"
 
 void hbe::Matrix3x3Test::Prepare() noexcept
@@ -63,4 +63,4 @@ void hbe::Matrix3x3Test::Prepare() noexcept
 	});
 }
 
-#endif //__UNIT_TEST__
+#endif //__TEST__
