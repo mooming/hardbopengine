@@ -28,14 +28,9 @@ PoolAllocator::PoolAllocator(const char* inName, TSize inBlockSize, TSize inNumb
 	, srcLocation(location)
 #endif // PROFILE_ENABLED
 {
-	// A free block has to hold the next-index link written below, so a block smaller than
-	// TSize cannot be supported at all - hence a precondition, not something to clamp away.
 	Assert(inBlockSize >= sizeof(TSize));
 
 	parentID = hbe::MemoryManager::GetCurrentAllocatorID();
-	// Both operands are members here: blockSize is the aligned size every later path uses too
-	// (AllocateBlock, Deallocate, GetCapacity). Parameters carry the in prefix precisely so no
-	// unqualified name here can silently resolve to the unaligned request instead.
 	const TSize totalSize = blockSize * numberOfBlocks;
 	if (totalSize <= 0)
 	{
@@ -323,10 +318,6 @@ void PoolAllocatorTest::Prepare()
 {
 	AddTest("Construction", [](auto&)
 	{
-		// Each free block has to hold the pool's next-index link, so a block cannot be
-		// narrower than sizeof(size_t) - that is the constructor's precondition, an input
-		// error rather than a size worth probing. The range still covers every size above
-		// it, including the ones alignment rounds up.
 		for (size_t blockSize = sizeof(size_t); blockSize < 100; ++blockSize)
 		{
 			PoolAllocator pool("TestPoolAllocator", blockSize, 100);
@@ -355,12 +346,6 @@ void PoolAllocatorTest::Prepare()
 
 	AddTest("Allocation With A Clamped Block Size", [this](auto& ls)
 	{
-		// The constructor rounds blockSize up to Config::DefaultAlign, so a request that is
-		// not already aligned is the case that matters: the pool used to lay its free list out
-		// with the requested stride while walking it with the aligned one, which quietly handed
-		// the same block to two callers. 32 is here because it needs no rounding and so proves
-		// the rounding is not over-reaching; 24 is what LinkedList nodes ask for, and 100 lands
-		// mid-way between two multiples.
 		struct Case
 		{
 			size_t requested;
@@ -369,7 +354,7 @@ void PoolAllocatorTest::Prepare()
 
 		const Case cases[] = {{32, 32}, {24, 32}, {100, 112}};
 		constexpr size_t blockCount = 64;
-		constexpr size_t allocSize = 16; // fits every aligned size here, so no fallback path
+		constexpr size_t allocSize = 16;
 
 		for (const Case& testCase : cases)
 		{
@@ -383,8 +368,6 @@ void PoolAllocatorTest::Prepare()
 				return;
 			}
 
-			// Twice over. A mis-linked free list survives the first pass and only shows
-			// itself once the released blocks are walked again.
 			for (size_t round = 0; round < 2; ++round)
 			{
 				Pointer blocks[blockCount] = {};
@@ -410,8 +393,6 @@ void PoolAllocatorTest::Prepare()
 						}
 					}
 
-					// Rounding the stride to Config::DefaultAlign only buys 16-byte addresses if
-					// the pool buffer itself is aligned, so check the address, not the stride.
 					if (!OS::CheckAligned(blocks[i]))
 					{
 						ls << "blockSize " << testCase.requested << ": block " << i

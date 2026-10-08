@@ -51,6 +51,7 @@
     <li><a href="../design/ThreadSafeMultiPoolLocking_Design.html">Thread-safe multi-pool locking</a></li>
     <li><a href="../design/GlobalAllocationAccounting_Design.html">Global allocation accounting</a></li>
     <li><a href="../design/MemoryInvestigation_Design.html">Memory investigation self-tests</a></li>
+    <li><a href="../design/PoolAllocatorInternals_Design.html">Pool allocator internals</a></li>
   </ul>
 </nav>
 
@@ -602,12 +603,14 @@ DoWork();
   <tr><th>Gap</th><th>Detail</th></tr>
   <tr>
     <td>Sources with no design document</td>
-    <td>Every header in this module now has a folder, so nothing is owed at header level. What is owed is the other
-        half: seventeen <code>.cpp</code> files hold implementation material — invariants, allocation strategy, the bank
-        growth rule, the locking protocol — and <code>AGENTS.md</code> routes that kind of prose to a design document
-        under <code>docs/design/</code>, never to a reference page a caller trusts for contracts. Until those documents
-        exist, the comments in those sources stay where they are, which is the one part of this migration that cannot be
-        finished by deleting anything.</td>
+        <td>Every <code>.cpp</code> in this module is now free of comments, which is the half of the migration that
+        can be proven by a count. What it cannot prove is whether the reasoning survived: four documents carry what the
+        sources used to hold, <a href="../design/PoolAllocatorInternals_Design.html">pool allocator internals</a>,
+        <a href="../design/GlobalAllocationAccounting_Design.html">global allocation accounting</a>,
+        <a href="../design/MemoryInvestigation_Design.html">the investigator self-tests</a>, and
+        <a href="../design/MemoryManagerInternals_Design.html">the manager's internals</a>. The other sources held no
+        prose to migrate, so they have no document and need none — a design document earns its place by holding a claim
+        that was in danger, not by matching a file count.</td>
   </tr>
   <tr>
     <td>Per-allocator API</td>
