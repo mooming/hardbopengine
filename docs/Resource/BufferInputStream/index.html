@@ -261,7 +261,7 @@
 <h2 id="non-member">Non-member helper functions</h2>
 
 <p>
-  None in <code>BufferInputStream.h</code>, beyond the test collection under <code>__UNIT_TEST__</code> noted below.
+  None in <code>BufferInputStream.h</code>, beyond the test collection under <code>__TEST__</code> noted below.
   The buffers it reads are produced by <a href="../BufferUtil/index.html"><code>hbe::BufferUtil</code></a> —
   <a href="../BufferUtil/index.html#get-file-buffer"><code>GetFileBuffer</code></a> and
   <a href="../BufferUtil/index.html#get-read-only-file-buffer"><code>GetReadOnlyFileBuffer</code></a> are the two that
@@ -315,7 +315,7 @@
   </tr>
   <tr>
     <td>Test coverage</td>
-    <td><code>BufferInputStreamTest</code> is declared in this header under <code>__UNIT_TEST__</code> and
+    <td><code>BufferInputStreamTest</code> is declared in this header under <code>__TEST__</code> and
         registered through <a href="../../Test/index.html#unittestcollection">Test</a>. It covered the empty-buffer
         and full-image cases, and now also the tail shorter than one element, a bulk read past the end, and the
         three container outcomes — refused, explicitly empty, accepted. Still uncovered: a buffer whose pointer is

@@ -169,7 +169,7 @@
 <h2 id="non-member">Non-member helper functions</h2>
 
 <p>
-  None. <code>Engine/Memory/DefaultAllocator.h</code> declares this class and, under <code>#ifdef __UNIT_TEST__</code>, the test
+  None. <code>Engine/Memory/DefaultAllocator.h</code> declares this class and, under <code>#ifdef __TEST__</code>, the test
   collection named below; the free functions that build on an allocator — <code>hbe::New</code> and <code>hbe::Delete</code> in
   <code>Engine/Memory/Memory.h</code>, which call <code>allocate(1)</code> and <code>deallocate(ptr, 1)</code> — work on any allocator and
   belong to the <a href="../index.html#functions">module page</a>.
@@ -232,7 +232,7 @@
   </tr>
   <tr>
     <td><code>BaseAllocatorTest</code></td>
-    <td>Test-only: declared in <code>Engine/Memory/DefaultAllocator.h</code> inside <code>#ifdef __UNIT_TEST__</code>, defined in
+    <td>Test-only: declared in <code>Engine/Memory/DefaultAllocator.h</code> inside <code>#ifdef __TEST__</code>, defined in
         <code>Engine/Memory/DefaultAllocator.cpp</code> with the three testlets <code>Basic Usage</code>, <code>Multiple Allocations</code>
         and <code>Nested Allocations</code>. They are quoted as examples on the method pages, because they are the only call sites that
         distinguish the two paths; the class itself owns no page of its own.</td>

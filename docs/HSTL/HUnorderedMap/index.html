@@ -207,7 +207,7 @@
   three headers to do so:
 </p>
 
-<pre><code><span class="kw">#ifdef __UNIT_TEST__</span>
+<pre><code><span class="kw">#ifdef __TEST__</span>
 <span class="kw">class</span> <span class="ty">HUnorderedMapTest</span> <span class="kw">final</span> : <span class="kw">public</span> <span class="ty">TestCollection</span>
 {
 <span class="kw">public</span>:
@@ -217,11 +217,11 @@
 <span class="kw">protected</span>:
         <span class="kw">void</span> <span class="fn">Prepare</span>() <span class="kw">override</span>;
 };
-<span class="kw">#endif //__UNIT_TEST__</span></code></pre>
+<span class="kw">#endif //__TEST__</span></code></pre>
 <p class="meta">From Engine/HSTL/HUnorderedMap.h</p>
 
 <p>
-  It is compiled only under <code>__UNIT_TEST__</code>, and a fixture is the Test module's subject rather than
+  It is compiled only under <code>__TEST__</code>, and a fixture is the Test module's subject rather than
   this module's — see <a href="../../Test/index.html">Test</a>. No <code>std::hash</code> specialisation lives
   in this header, unlike <a href="../HString/index.html#non-member">HString.h</a>.
 </p>
@@ -232,7 +232,7 @@
   <tr><th>Gap</th><th>Detail</th></tr>
   <tr>
     <td><code>HUnorderedMapTest</code> is test-only code</td>
-    <td>Declared in <code>Engine/HSTL/HUnorderedMap.h</code> inside <code>#ifdef __UNIT_TEST__</code>, defined in
+    <td>Declared in <code>Engine/HSTL/HUnorderedMap.h</code> inside <code>#ifdef __TEST__</code>, defined in
         <code>Engine/HSTL/HUnorderedMap.cpp</code>, and compiled in no other configuration — so the alias above is
         the entire production interface of this header. A fixture is not an entry and gets no page of its own:
         this row names it, the next row states what it asserts, registration is the single

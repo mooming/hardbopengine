@@ -143,7 +143,7 @@
   <code>Engine/OSAL/Window.cpp</code> and <code>:124</code> — a window-creation sequence posted to the thread that owns
   window work, and a wait that drives the base stream until the posted callable fulfils the promise. The body between the
   first line and the last is elided here; it polls events for a hundred iterations before settling the promise. This is the
-  file's unit-test region, built only under <code>__UNIT_TEST__</code>.
+  file's unit-test region, built only under <code>__TEST__</code>.
 </p>
 <footer class="prevnext">
   <span><a href="index.html">&larr; TaskSystem</a></span>

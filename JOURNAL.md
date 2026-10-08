@@ -1,5 +1,53 @@
 # Journal
 
+## 2026-10-08 17:21 — `__UNIT_TEST__` is gone, and `__TEST__` turns out to have been the dead half all along
+
+**What was asked, and what the measurement showed.** The request was to replace `__UNIT_TEST__` with `__TEST__` and
+remove `__UNIT_TEST__`. Auditing first showed the pair was not two questions but two names for one: both were defined
+together in every configuration that defined either, and `__TEST__` was asked about by no source anywhere in
+`Engine`, `Applications`, `Examples` or `External` — zero hits across every `.h`, `.cpp` and `.inl`. So `README.md`,
+`AGENTS.md`, `docs/RunningTests.md`, `docs/HelperScript.md` and a JOURNAL entry at `:3812` were all asserting that
+`-D__TEST__` "compiles the unit-test sources" while it in fact compiled nothing. The rename makes those pages true
+rather than editing them.
+
+**Where the definitions actually live.** Not in the `CMakeLists.txt`, which are generated: `.project.config`'s
+`precompileDefinitionsDebug` and `precompileDefinitionsDev` are the tree-wide source, `Engine/Test/.module.config`
+carries a plain `precompileDefinitions` that no configuration key limits, and
+`Engine/Renderer/Vulkan/CMakeLists.txt` is hand-written because Renderer's `ignoreSubdirectories` keeps the generator
+away from it. MakeBuild itself names neither macro and emits whatever token the config holds, so the submodule did not
+move. Editing the 19 generated files by hand would have been erased by the next `generate_cmake_files.sh`, silently.
+
+**The rename is provably behaviour-free.** The flag count moved name to name without any configuration's number
+changing: `grep -o` over the ninja files reads 455 in Debug, 455 in Dev and 4 in Release as `__TEST__`, which is what
+`__UNIT_TEST__` read before, and the Release four are still exactly `Engine/Test`'s own sources. That preserves the
+link trap `docs/BuildSystem.md` warns about — in Release `libTest.a` gets the macro while the engine modules do not,
+and it links only because `TestMain.cpp`'s `#else` branch never names `Test::RegisterSuite`. Debug and Dev still run
+392 testlets in 60 collections with 0 failures, and Release without `-test` still exits 1 saying it verified nothing.
+The trap held because `Engine/Test/.module.config` was renamed rather than re-scoped.
+
+**Nothing behind the macro changes an object layout.** All 127 regions were classified: 126 end their file, the single
+exception being the in-function guard in `TestMain.cpp` that `docs/CodingStandards.md` already waives. 110 hold only
+`#include "Test/TestCollection.h"` plus a `<Class>Test : public TestCollection` declaration, and 17 hold the matching
+definition. No production class gains a member, a base or a virtual behind the macro, so a mismatched define across
+targets yields a link error and never corruption — which is what made a macro of this reach safe to touch at all.
+
+**The silent-breakage surface was the tooling, not the compiler.** 54 literals across seven checkers matched the old
+name, and a regex that stops matching reports success: `prove_regroup.py` would have answered `[NONE]` and let a
+regrouping move test code, and `includes.py` would have probed guarded files without the macro and offered live
+includes for deletion. Three sites needed reasoning instead of substitution, because the substitution left them
+saying something untrue — `layout.py` blamed Dev for a macro it now defines, when the real reason it must still add
+the flag is that the `compile_commands.json` the checkers read is generated without it.
+
+**Left deliberately undone.** Two A4/A5 blank-line findings in `Engine/Test/UnitTestCollection.cpp` at `:119` and
+`:226` are untouched: they reproduce at those line numbers against the original file and the original checker, and
+`:226` is the known A14-versus-A5 tension over a trailing region's closing brace, which is a rule-table decision.
+The user's uncommitted `PROFILE_ENABLED 1` in `Engine/Config/BuildConfig.h` stayed out of every commit.
+
+**A defect found beside the task, not caused by it.** With `PROFILE_ENABLED 1` the suite aborts with `Trace/BPT trap`
+at `PoolAllocatorTest` TC2 after 26 passes and 3 failures, in both Debug and Dev; at `0` the same tree runs all 392
+testlets clean. Every parity number in this entry was therefore taken at `0`, and remains comparable only while that
+flag stays there.
+
 ## 2026-10-07 22:34 — the sharded allocator takes its extents from whatever allocator happens to be in scope
 
 **The call site.** `GrowBank` in the sharded allocator obtains its backing memory with

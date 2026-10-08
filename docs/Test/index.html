@@ -94,7 +94,7 @@
   <code>hbe::Test::ScheduleSuiteOnBaseStream</code> are the entry points <code>Applications/EngineTest</code> calls: the
   first registers before the main thread is entered, the second posts the first testlet to the base stream, and after
   that each testlet posts the next. Almost every engine header carries its own <code>*Test</code> class inside an
-  <code>#ifdef __UNIT_TEST__</code> region at the bottom of the file, which is the convention
+  <code>#ifdef __TEST__</code> region at the bottom of the file, which is the convention
   <a href="../CodingStandards.md">docs/CodingStandards.md</a> fixes.
 </p>
 
@@ -149,7 +149,7 @@
     <td>
       Not a class: the header is one declaration, <a href="UnitTestCollection/suite-entry-points.html"><code>RegisterSuite</code> · <code>ScheduleSuiteOnBaseStream</code></a>,
       which registers the engine's sixty collections and enqueues the run. Present only under
-      <code>__UNIT_TEST__</code>
+      <code>__TEST__</code>
     </td>
   </tr>
   <tr id="testhelper">
@@ -238,7 +238,7 @@
   <tr><th>What</th><th>Switched by</th><th>Consequence</th></tr>
   <tr>
     <td><code>UnitTestCollection.h</code>, entirely</td>
-    <td><code>#ifdef __UNIT_TEST__</code> around the whole file</td>
+    <td><code>#ifdef __TEST__</code> around the whole file</td>
     <td>
       <code>RunTests</code> does not exist unless the macro is defined, so an <code>EngineTest</code> built without it
       links a different <code>main</code> branch
@@ -249,19 +249,19 @@
     <td>nothing — both are unguarded and includable in any configuration</td>
     <td>
       The types are visible everywhere; what is missing in a normal build is the fixtures. Every
-      <code>*Test</code> subclass sits behind <code>#ifdef __UNIT_TEST__</code> in the header it tests, so a suite
+      <code>*Test</code> subclass sits behind <code>#ifdef __TEST__</code> in the header it tests, so a suite
       compiled without the macro registers nothing and has nothing to run
     </td>
   </tr>
   <tr>
     <td>The Test library target itself</td>
     <td>
-      <code>precompileDefinitions = __UNIT_TEST__</code> in <code>Engine/Test/.module.config</code>, and
-      <code>add_compile_definitions(__UNIT_TEST__)</code> in <code>Engine/Test/CMakeLists.txt</code>
+      <code>precompileDefinitions = __TEST__</code> in <code>Engine/Test/.module.config</code>, and
+      <code>add_compile_definitions(__TEST__)</code> in <code>Engine/Test/CMakeLists.txt</code>
     </td>
     <td>
       The framework's own sources always see the macro. It is the rest of the tree that needs it from
-      <code>build.sh -test</code>, which reconfigures with <code>-D__TEST__ -D__UNIT_TEST__</code> — and it has to be
+      <code>build.sh -test</code>, which reconfigures with <code> -D__TEST__</code> — and it has to be
       global, because the test bodies live in the library sources the executable links, not only in
       <code>TestMain.cpp</code>
     </td>

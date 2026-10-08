@@ -59,7 +59,7 @@ A helper script `build.sh` is provided for building specific targets with option
 ./build.sh Applications/VulkanExample -dev -debug -release -clean
 ```
 The script defaults to the **Dev** configuration when no explicit config flag is given.
-`-test` reconfigures with `-D__TEST__ -D__UNIT_TEST__` so the unit-test sources compile at all;
+`-test` reconfigures with `-D__TEST__` so the unit-test sources compile at all;
 without it `EngineTest` builds green while testing nothing. The script only builds — it never runs tests.
 
 ### Build Types

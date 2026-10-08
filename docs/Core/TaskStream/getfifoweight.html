@@ -105,7 +105,7 @@
 <p>
   The one writer of the field this reads, and the only place the ratio is ever set in the class
   (<code>Engine/Core/TaskStream.cpp</code>). Its own callers are all unit-test code — every <a href="configurerate.html">ConfigureRate</a> call site in the
-  repository sits inside the <code>#ifdef __UNIT_TEST__</code> region of <code>Engine/Core/TaskSystem.cpp</code> — so a stream nobody re-rated reads back the
+  repository sits inside the <code>#ifdef __TEST__</code> region of <code>Engine/Core/TaskSystem.cpp</code> — so a stream nobody re-rated reads back the
   constructed default, and a non-default reading means a test set it.
 </p>
 <footer class="prevnext">
