@@ -2,7 +2,7 @@
 
 #include "LinkedList.h"
 
-#ifdef __TEST__
+#ifdef TEST_ENABLED
 
 #include <list>
 
@@ -385,4 +385,4 @@ void LinkedListTest::Prepare()
 	});
 }
 } // namespace hbe
-#endif //__TEST__
+#endif //TEST_ENABLED

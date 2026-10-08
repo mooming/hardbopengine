@@ -276,7 +276,7 @@ def collect_records(target, entries, by_name, clang_override=None):
       * the file's own namespace catches the classes declared in it (the common case, one pass);
       * a `std::hash<hbe::HString>` specialisation is declared in `namespace std`, and rescuing it
         needs a pass filtered by its own name;
-      * a class inside `#ifdef __TEST__` is invisible unless the define is added —
+      * a class inside `#ifdef TEST_ENABLED` is invisible unless the define is added —
         Engine/Renderer/RendererTest.h and three Math sources preprocess to nothing in a database
         generated without it, and clang then exits 0 having dumped nothing, which reads as clean
         unless it is retried.
@@ -326,8 +326,8 @@ def collect_records(target, entries, by_name, clang_override=None):
     if still_missing and guarded:
         for name in still_missing[:MAX_RESCUE_PASSES]:
             try:
-                absorb(name, ('-D__TEST__=1',),
-                       'checked with -D__TEST__=1, which the compile-commands database was generated without')
+                absorb(name, ('-DTEST_ENABLED=1',),
+                       'checked with -DTEST_ENABLED=1, which the compile-commands database was generated without')
             except Skipped:
                 continue
     if wanted:

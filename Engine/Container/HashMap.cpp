@@ -2,7 +2,7 @@
 
 #include "HashMap.h"
 
-#ifdef __TEST__
+#ifdef TEST_ENABLED
 #include <unordered_map>
 
 #include "Core/ScopedTime.h"
@@ -321,4 +321,4 @@ void HashMapTest::Prepare()
 }
 } // namespace hbe
 
-#endif //__TEST__
+#endif //TEST_ENABLED

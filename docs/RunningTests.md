@@ -1,7 +1,7 @@
 ## Running Tests
 
 Engine tests are defined in `Engine/Test/UnitTestCollection.cpp`. Every test body in the engine sits
-behind `#ifdef __TEST__`, including the ones the test executable links from the library modules,
+behind `#ifdef TEST_ENABLED`, including the ones the test executable links from the library modules,
 so building the suite and running it are two separate things that must both be verified.
 
 ### Build and run
@@ -11,7 +11,7 @@ so building the suite and running it are two separate things that must both be v
 ./build/Applications/EngineTest/<Config>/EngineTest    # <Config> = Debug|Dev|Release
 ```
 
-`-test` reconfigures with `-D__TEST__`, and it has to apply to the **whole** tree: the
+`-test` reconfigures with `-DTEST_ENABLED`, and it has to apply to the **whole** tree: the
 test bodies live in the library sources `EngineTest` links, not only in `TestMain.cpp`. Building one
 target with it and the rest without is how whole modules quietly stop being tested while nothing fails.
 
@@ -122,7 +122,7 @@ review.
 
 | Symptom | Cause |
 |---|---|
-| `built WITHOUT __TEST__, so this binary contains no tests` | Built without `-test`; nothing was verified |
+| `built WITHOUT TEST_ENABLED, so this binary contains no tests` | Built without `-test`; nothing was verified |
 | `only N of M registered testlets ran` | The engine stopped driving the suite; see the guardrail above |
 | `N test collection(s) FAILED` | A testlet assertion failed; each one prints its own message and level |
 | `retained N bytes of the global heap at the end of its body, over the M byte ceiling` | The testlet held more than the

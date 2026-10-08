@@ -8,7 +8,7 @@ namespace hbe
 template class StringBuilder<char, DefaultAllocator<char>>;
 } // namespace hbe
 
-#ifdef __TEST__
+#ifdef TEST_ENABLED
 #include <limits>
 #include "HSTL/HString.h"
 
@@ -341,4 +341,4 @@ void StringBuilderTest::Prepare()
 	});
 }
 } // namespace hbe
-#endif //__TEST__
+#endif //TEST_ENABLED

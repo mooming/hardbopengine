@@ -2,7 +2,7 @@
 
 #include "Map.h"
 
-#ifdef __TEST__
+#ifdef TEST_ENABLED
 #include <map>
 
 #include "Core/ScopedTime.h"
@@ -270,4 +270,4 @@ void MapTest::Prepare()
 }
 } // namespace hbe
 
-#endif //__TEST__
+#endif //TEST_ENABLED

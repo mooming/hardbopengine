@@ -77,7 +77,7 @@ bool hbe::CPUBudget::CanTakeWork() const noexcept
 	return GetAccumulated() < std::chrono::duration_cast<std::chrono::nanoseconds>(allowance);
 }
 
-#ifdef __TEST__
+#ifdef TEST_ENABLED
 namespace
 {
 void BurnCPU(std::chrono::milliseconds target) noexcept
@@ -252,4 +252,4 @@ void hbe::CPUBudgetTest::Prepare()
 	});
 }
 
-#endif //__TEST__
+#endif //TEST_ENABLED

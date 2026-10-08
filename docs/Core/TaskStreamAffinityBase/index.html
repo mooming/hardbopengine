@@ -165,7 +165,7 @@ affinity.Unset(TaskSystem::GetIOTaskStreamIndex());</code></pre>
     <td>The mask itself has no synchronisation — it is plain words — and the rules about who may hold an item are the
     queue's and the stream's, not this type's. Nothing in <code>Engine/</code> states that contract for a mask, so none is
     claimed here</td></tr>
-  <tr><td><code>TaskStreamAffinityTest</code>, in <code>#ifdef __TEST__</code> at the end of the header</td>
+  <tr><td><code>TaskStreamAffinityTest</code>, in <code>#ifdef TEST_ENABLED</code> at the end of the header</td>
     <td>Test-only; it owns a Coverage row on the module ledger rather than a page. Its assertions are quoted where they pin
     a contract, because they are the only executable statement of the width and the out-of-range rules</td></tr>
 </table>

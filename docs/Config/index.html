@@ -199,7 +199,7 @@
 ./build.sh Applications/VulkanExample -dev -debug -release -clean</code></pre>
 
 <p>
-  Dev is the default configuration. <code>-test</code> reconfigures with <code> -D__TEST__</code>
+  Dev is the default configuration. <code>-test</code> reconfigures with <code> -DTEST_ENABLED</code>
   so the unit-test sources compile at all; without it <code>EngineTest</code> builds green while testing
   nothing. <code>build.sh</code> only builds — it never runs a test binary. To run the suite, see
   <a href="../RunningTests.md">docs/RunningTests.md</a>.

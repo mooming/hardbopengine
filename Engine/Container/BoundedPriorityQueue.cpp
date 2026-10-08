@@ -2,7 +2,7 @@
 
 #include "Container/BoundedPriorityQueue.h"
 
-#ifdef __TEST__
+#ifdef TEST_ENABLED
 
 #include <chrono>
 #include <queue>
@@ -466,4 +466,4 @@ void BoundedPriorityQueueTest::Prepare()
 }
 } // namespace hbe
 
-#endif // __TEST__
+#endif // TEST_ENABLED

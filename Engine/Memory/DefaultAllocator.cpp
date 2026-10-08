@@ -2,7 +2,7 @@
 
 #include "DefaultAllocator.h"
 
-#ifdef __TEST__
+#ifdef TEST_ENABLED
 #include <vector>
 
 #include "AllocatorScope.h"
@@ -104,4 +104,4 @@ void hbe::BaseAllocatorTest::Prepare() noexcept
 	});
 }
 
-#endif // __TEST__
+#endif // TEST_ENABLED

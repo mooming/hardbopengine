@@ -180,7 +180,7 @@ static_assert(alignof(hbe::ResultPacket) == sizeof(std::uint64_t),
   <tr><td>Why a byte of the header, rather than a stream index field, carries the destination</td>
     <td>A design decision recorded in <code>docs/TaskSystemRedesign.md</code>; the page states the consequence a caller
     depends on, not the reasoning history</td></tr>
-  <tr><td><code>ResultPacketTest</code>, in <code>#ifdef __TEST__</code> at the end of the header</td>
+  <tr><td><code>ResultPacketTest</code>, in <code>#ifdef TEST_ENABLED</code> at the end of the header</td>
     <td>Test-only; it owns a Coverage row on the module ledger rather than a page. Its assertions are quoted where they
     pin a contract, because they are the only executable statement of "a reused record must not report the previous
     occupant's result"</td></tr>

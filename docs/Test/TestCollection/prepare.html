@@ -143,7 +143,7 @@
 
 <p class="meta">From Engine/Container/Array.h</p>
 
-<pre><code><span class="kw">#ifdef</span> __TEST__
+<pre><code><span class="kw">#ifdef</span> TEST_ENABLED
 <span class="kw">class</span> <span class="ty">ArrayTest</span> : <span class="kw">public</span> <span class="ty">TestCollection</span>
 {
 <span class="kw">public</span>:
@@ -155,7 +155,7 @@
 <span class="kw">protected</span>:
         <span class="kw">void</span> <span class="fn">Prepare</span>() <span class="kw">override</span>;
 };
-<span class="kw">#endif</span> <span class="cm">// __TEST__</span></code></pre>
+<span class="kw">#endif</span> <span class="cm">// TEST_ENABLED</span></code></pre>
 
 <p>and is defined in the paired source, where each case is one <code>AddTest</code> call:</p>
 

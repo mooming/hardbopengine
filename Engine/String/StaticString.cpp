@@ -38,7 +38,7 @@ const char* StaticString::c_str() const noexcept
 }
 } // namespace hbe
 
-#ifdef __TEST__
+#ifdef TEST_ENABLED
 
 #include <iostream>
 #include "HSTL/HString.h"
@@ -109,4 +109,4 @@ void StaticStringTest::Prepare()
 }
 } // namespace hbe
 
-#endif //__TEST__
+#endif //TEST_ENABLED

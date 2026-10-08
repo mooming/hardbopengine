@@ -263,14 +263,14 @@ the seam, the duplicates and the below-preamble regions are.
 **Never move an include that sits below the preamble.** 83 files carry one. The
 `#include "MatrixCommonImpl.inl"` / `"VectorCommonImpl.inl"` directives sit *inside a class body*
 (`Engine/Math/Vector3.h:90`), where their position decides what is in scope where, and the
-`#ifdef __TEST__` regions at the end of a file (`Engine/Core/TaskSystem.cpp:787-794`) are test-only
+`#ifdef TEST_ENABLED` regions at the end of a file (`Engine/Core/TaskSystem.cpp:787-794`) are test-only
 surface that belongs after everything it tests. Hoisting either is a compile break dressed as a cleanup, so
 `includes.py` checks the preamble and `--prove-immutable <rev>` proves every include below the preamble kept
 its place and its guard. The claim is exactly that, and no larger: the first version compared everything
 from the preamble boundary to end of file, which is the body, so a blank-line pass failed it on every file it
 touched. What a below-preamble include cannot lose is the thing it belongs to — a class body, a `#ifdef`
 region — so the guard text is part of each entry's identity, and a hoist prints both lists:
-`[(None, '"', 'VectorCommonImpl.inl'), ('#ifdef __TEST__', ...)] -> [...]`. It prints its counts when
+`[(None, '"', 'VectorCommonImpl.inl'), ('#ifdef TEST_ENABLED', ...)] -> [...]`. It prints its counts when
 nothing moved (`9 file(s) compared; 0 include(s) below the preamble in 0 file(s); unmoved`) rather than
 staying silent, because an unmeasured case must not read as a passing one. That no *line* moved at all is the
 stronger claim, and `prove_regroup.py --whitespace-only` is what makes it.
@@ -295,7 +295,7 @@ before the fix and 164 after (`Vector3.h` 1 to 43, `MemoryManager.h` 1 to 32). A
 every include that ablation survives look unnamed and therefore deletable, which is the recommendation this
 paragraph was written to refuse. The file is inherited down the AST, the way `layout.py` already inherits it
 for a template's definition node. Separately, a measurement taken from `cmake-build-debug/compile_commands.json`
-does not define `-D__TEST__`, so for a file whose body lives behind that guard it compiled an
+does not define `-DTEST_ENABLED`, so for a file whose body lives behind that guard it compiled an
 empty translation unit in which any include deletion succeeds; the tool now adds the macro when the file
 carries the region and prints that it did, because a measurement of code that was never compiled must not read
 as a clean answer. It is per entry, not per build directory — `Engine/Test/UnitTestCollection.cpp`'s entry
@@ -304,10 +304,10 @@ defines the macro, `Applications/EngineTest/TestMain.cpp`'s does not.
 Two obligations this layer carries. A blank-line pass is proved by `prove_regroup.py --whitespace-only`,
 which compares the sequence of non-blank lines position by position so an accidental deletion or a swap of
 two lines is a refusal — the multiset comparison the same script uses for a regrouping cannot see two lines
-trading places. Its `__TEST__` guard over-claimed first, in the same shape as `--prove-immutable` above:
+trading places. Its `TEST_ENABLED` guard over-claimed first, in the same shape as `--prove-immutable` above:
 it compared bytes from the marker to end of file, so on `Applications/EngineTest/TestMain.cpp` at
 `1b28de5..ea4c934` — a pass that inserted three blanks and moved no code — one run printed `[PASS] every
-non-blank line is still in place - only blank lines differ` and then `[FAIL] the #ifdef __TEST__ region
+non-blank line is still in place - only blank lines differ` and then `[FAIL] the #ifdef TEST_ENABLED region
 differs`, and rule A14 (a blank before a trailing region) plus rule A1 (a seam before a `return` after a
 paragraph of output) meant no file could satisfy both checkers at once. A regrouping still may not touch a
 byte of the region; a blank-line pass may add blanks inside it and is held to its code lines, which still
@@ -428,7 +428,7 @@ python3 scripts/prove_regroup.py Engine/Module/Header.h --between <rev>^ <rev>
 It proves four things: every non-blank line survives unchanged (so a member cannot be dropped or quietly
 edited — `layout.py` cannot see a vanished member, because a class missing a member has no ordering
 problem); non-static data members keep their declaration order, read from the clang AST, because C++
-initialises them in that order and nothing else reports a change; the `__TEST__` region is
+initialises them in that order and nothing else reports a change; the `TEST_ENABLED` region is
 byte-identical, since test-only surface is never part of a regrouping; and it reports how many lines moved,
 so a commit can say what it regrouped. Exit 0 proven, 1 not proven, 3 could not run — and a run that could
 not measure the data order says so rather than printing a pass.
@@ -715,7 +715,7 @@ Grep these in the changed hunks and fix by hand:
 | `inline` keyword | redundant on an in-class member definition and on a template; **load-bearing** on a function or operator defined at namespace scope in a header, where dropping it makes every including translation unit emit the symbol and the link fails. Only the AST separates the two, so the lint reports `inline` as advisory |
 | No snake_case member | a member is the token before `;`, and a type sits in the same position — `size_t MaxNameLength = 127;` is a type then a PascalCase name, so no grep separates them. The `m_` prefix is checked mechanically; this half of the rule is not |
 | `noexcept` | mark only what is provably exception-free; drop it where `new` is called |
-| Unit-test guard placement | an `#ifdef __TEST__` region sits at the **end** of the file, one region per file |
+| Unit-test guard placement | an `#ifdef TEST_ENABLED` region sits at the **end** of the file, one region per file |
 | Paragraph seams | whether a seam is a real thought boundary — `blank_lines.py` sizes a seam it can see and never decides that one exists, so a file with 0 findings can still be one dense slab |
 | An include is unused | whether the file really names nothing the include provides, once the header it owns has supplied half its vocabulary; `includes.py --unused` proposes, the build gate decides |
 
@@ -747,7 +747,7 @@ to sit between concerns, so a strip can flatten grouping that was there before i
 stripping a header, not only before.
 
 **Exempt from the behavioural rules**: `Engine/CodingStandards.{h,cpp}`, whose job is to break them
-legibly, and `Applications/EngineTest/TestMain.cpp`, whose `__TEST__` guard is intentionally `main()`'s
+legibly, and `Applications/EngineTest/TestMain.cpp`, whose `TEST_ENABLED` guard is intentionally `main()`'s
 body.
 
 **Zero findings is a correct answer**, for a file and for a slice. This is stated rather than implied
@@ -794,8 +794,8 @@ start.
   marks their locs with `includedFrom`, and the line is relative to the `.inl`. Attributing them
   to the includer reports line 242 of a 151-line file. Resolve the real file by proving the
   declaration is on that line of a candidate include, and say so when you cannot prove it.
-- **A `#ifdef __TEST__` file compiles to nothing under Dev**, and clang then exits 0 having
-  dumped zero declarations. That is not a pass. Re-run with `-D__TEST__=1` and report which
+- **A `#ifdef TEST_ENABLED` file compiles to nothing under Dev**, and clang then exits 0 having
+  dumped zero declarations. That is not a pass. Re-run with `-DTEST_ENABLED=1` and report which
   macros were active — `Engine/Renderer/RendererTest.h` and three Math sources need it.
 - **The doc gate must check three things, not one.** `docs_coverage.py` asks whether a page exists; it
   cannot tell whether the page says anything about the method it names. Wiring only that one left `Log`
@@ -853,7 +853,7 @@ start.
   a verified result. Two wrong claims reached the standard through that route; `clang-format --style=file -`
   with the input on stdin uses the working tree's config and is the only form to trust.
 - **`build.sh` takes `-test`, not `-notest`** as `AGENTS.md` and
-  `docs/HelperScript.md` claim. Without `-test`, `__TEST__` is undefined and
+  `docs/HelperScript.md` claim. Without `-test`, `TEST_ENABLED` is undefined and
   `TestMain.cpp` compiles to an empty `main`, so the test sources are never
   compiled — pass `-test` when the gate is meant to cover them.
 

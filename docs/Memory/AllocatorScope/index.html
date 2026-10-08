@@ -153,7 +153,7 @@ to read (<a href="../MemoryManager/set-scoped-allocator-id.html">SetScopedAlloca
 <table>
   <tr><th>Not documented here</th><th>Why</th></tr>
   <tr><td>What <code>current</code> is for</td><td>It is written by the constructor and read by nothing that exists: private, unaccessoried, and unread in <code>Engine/Memory/AllocatorScope.cpp</code>. This page states that fact rather than inventing a use for it.</td></tr>
-  <tr><td><code>AllocatorScopeTest</code></td><td>Test-only: declared in <code>Engine/Memory/AllocatorScope.h</code> inside <code>#ifdef __TEST__</code>; its single testlet opens a scope over an <code>InlinePoolAllocator</code>, allocates through the manager and checks <code>GetCurrentAllocatorID</code> answers the scoped id — the shape is quoted on <a href="constructors.html">constructors</a>.</td></tr>
+  <tr><td><code>AllocatorScopeTest</code></td><td>Test-only: declared in <code>Engine/Memory/AllocatorScope.h</code> inside <code>#ifdef TEST_ENABLED</code>; its single testlet opens a scope over an <code>InlinePoolAllocator</code>, allocates through the manager and checks <code>GetCurrentAllocatorID</code> answers the scoped id — the shape is quoted on <a href="constructors.html">constructors</a>.</td></tr>
   <tr><td><code>dVarScopedAllocLogging</code></td><td>A debug-console variable inside <code>MemoryManager::SetScopedAllocatorID</code>, on the setter's page rather than this class's.</td></tr>
   <tr><td>What the multi-pool allocators do with scopes during shutdown</td><td>Their bank-restamping and drain-order rules belong to their own pages; this page documents only the mechanism they lean on.</td></tr>
 </table>

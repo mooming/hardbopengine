@@ -106,7 +106,7 @@
   The module's two <code>.cpp</code> files are worth stating plainly, because they change what a build of
   <code>libHSTL</code> contains. <code>HString.cpp</code> is a copyright line and <code>#include "HString.h"</code>
   and nothing else; <code>HUnorderedMap.cpp</code> is an include plus the body of a
-  <code>__TEST__</code>-guarded fixture. Outside the test build the target compiles no code — which is
+  <code>TEST_ENABLED</code>-guarded fixture. Outside the test build the target compiles no code — which is
   exactly what an alias layer should do, and is the reason <code>HVector.h</code> has no source file beside it.
 </p>
 
@@ -206,7 +206,7 @@
   <tr>
     <td>Test-only code</td>
     <td><code>HUnorderedMap.h</code> declares the fixture <code>HUnorderedMapTest</code> under
-        <code>__TEST__</code> and <code>HUnorderedMap.cpp</code> defines it; that is the module's only
+        <code>TEST_ENABLED</code> and <code>HUnorderedMap.cpp</code> defines it; that is the module's only
         fixture, and its <code>operator[]</code> expectations are recorded on
         <a href="HUnorderedMap/index.html#coverage">HUnorderedMap</a>. <code>HString.h</code> and
         <code>HVector.h</code> declare none. Fixtures and registration are

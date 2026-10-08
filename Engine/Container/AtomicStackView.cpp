@@ -2,7 +2,7 @@
 
 #include "AtomicStackView.h"
 
-#ifdef __TEST__
+#ifdef TEST_ENABLED
 #include <array>
 #include <atomic>
 #include <thread>
@@ -291,4 +291,4 @@ void AtomicStackViewTest::Prepare()
 	});
 }
 } // namespace hbe
-#endif //__TEST__
+#endif //TEST_ENABLED

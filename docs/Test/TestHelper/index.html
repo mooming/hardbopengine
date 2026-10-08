@@ -75,7 +75,7 @@
   Both were cut out of <a href="../../Core/TaskSystem/index.html"><code>TaskSystem</code></a>, where they had been
   members. The reason is a count: the wait had fourteen callers, six in <code>Engine/OSAL/Window.cpp</code> and eight in
   <code>Engine/Core/TaskSystem.cpp</code>, and every one of them was a test body inside an
-  <code>__TEST__</code> region. Nothing in the engine called it. A member whose only callers are tests is an
+  <code>TEST_ENABLED</code> region. Nothing in the engine called it. A member whose only callers are tests is an
   interface that misreports what the engine does, so the pair now names the system in its argument list instead of
   through <code>this</code>.
 </p>
@@ -103,9 +103,9 @@
 </div>
 
 <p>
-  The header carries no <code>#ifdef __TEST__</code> around its body, unlike
+  The header carries no <code>#ifdef TEST_ENABLED</code> around its body, unlike
   <a href="../UnitTestCollection/index.html"><code>UnitTestCollection.h</code></a>, which is wrapped whole. The Test
-  library defines <code>__TEST__</code> for itself — <code>add_compile_definitions</code> in
+  library defines <code>TEST_ENABLED</code> for itself — <code>add_compile_definitions</code> in
   <code>Engine/Test/CMakeLists.txt</code> — and each caller includes this header from inside a test region of its own, so
   a third guard would remove no condition while adding one failure mode: an inclusion from somewhere unguarded would
   resolve to nothing and report an undeclared identifier far from its cause. It follows

@@ -83,7 +83,7 @@ void Buffer::SetReleaser(TReleaseBuffer&& releaseFunc)
 }
 } // namespace hbe
 
-#ifdef __TEST__
+#ifdef TEST_ENABLED
 #include "BufferUtil.h"
 #include "Memory/MemoryManager.h"
 #include "OSAL/OSFileHandle.h"
@@ -313,4 +313,4 @@ void BufferTest::Prepare()
 	});
 }
 } // namespace hbe
-#endif //__TEST__
+#endif //TEST_ENABLED

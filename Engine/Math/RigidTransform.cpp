@@ -5,7 +5,7 @@
 
 using namespace hbe;
 
-#ifdef __TEST__
+#ifdef TEST_ENABLED
 #include "Matrix4x4.h"
 
 void RigidTransformTest::Prepare() noexcept
@@ -90,4 +90,4 @@ void RigidTransformTest::Prepare() noexcept
 	});
 }
 
-#endif //__TEST__
+#endif //TEST_ENABLED

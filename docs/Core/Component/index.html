@@ -98,7 +98,7 @@
 
 <div class="gap">
   <strong>Nothing in the engine uses this class, and the only subclass is a unit-test type.</strong>
-  The sole derivation in the repository is <code>struct Test : public Component</code>, defined inside the <code>#ifdef __TEST__</code> region of
+  The sole derivation in the repository is <code>struct Test : public Component</code>, defined inside the <code>#ifdef TEST_ENABLED</code> region of
   <code>Engine/Core/ComponentSystem.cpp</code>, and the sole <code>ComponentSystem</code> instantiation is that test's
   No subsystem in <code>Engine/</code> outside these two headers, and nothing in <code>Applications/</code>, declares a component or owns a system.
   <code>Engine/Core/Component.cpp</code> includes the header, names the namespace, and defines nothing — the entire class lives inline in the header. What

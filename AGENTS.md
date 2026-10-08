@@ -125,7 +125,7 @@ whose own reference is finished.
   its own include rather than restoring the transitive one; the three-configuration build is the proof, so
   the deletion is a reader's edit with a build behind it, never a pattern match. **Only the preamble is
   rewritten:** the `#include "…CommonImpl.inl"` directives that sit inside a class body and the trailing
-  `#ifdef __TEST__` include regions stay exactly where they stand. `docs/CodingStandards.md` rule set
+  `#ifdef TEST_ENABLED` include regions stay exactly where they stand. `docs/CodingStandards.md` rule set
   B (B1-B7) carries the details; `scripts/includes.py` checks B1-B5 and prints B6 candidates as advice for a
   human to confirm.
 
@@ -160,7 +160,7 @@ See [docs/BuildSystem.md](docs/BuildSystem.md).
 ./build.sh Applications/VulkanExample -dev -debug -release -clean
 ```
 There is no `-notest`: `build.sh` only builds and never runs tests. `-test` is the
-opposite of what it sounds like — it reconfigures with `-D__TEST__`
+opposite of what it sounds like — it reconfigures with `-DTEST_ENABLED`
 so the unit-test sources compile at all. Targets that are not an application
 directory cannot be reached through this script (the basename becomes the target
 name); build those with `cmake --build build --config <Config> --target <Name>`.

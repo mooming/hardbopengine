@@ -13,7 +13,7 @@ template <class TKey, class T, class THash = std::hash<TKey>, class TPred = std:
 using HUnorderedMap = std::unordered_map<TKey, T, THash, TPred, hbe::DefaultAllocator<std::pair<const TKey, T>>>;
 } // namespace hbe
 
-#ifdef __TEST__
+#ifdef TEST_ENABLED
 #include "Test/TestCollection.h"
 
 namespace hbe
@@ -28,4 +28,4 @@ protected:
 	void Prepare() override;
 };
 } // namespace hbe
-#endif //__TEST__
+#endif //TEST_ENABLED

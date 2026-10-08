@@ -413,7 +413,7 @@ size_t CalculateHash(const std::string_view& str)
 } // namespace StringUtil
 } // namespace hbe
 
-#ifdef __TEST__
+#ifdef TEST_ENABLED
 
 namespace hbe
 {
@@ -553,4 +553,4 @@ void StringUtilTest::Prepare()
 	});
 }
 } // namespace hbe
-#endif //__TEST__
+#endif //TEST_ENABLED

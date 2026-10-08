@@ -58,7 +58,7 @@ fi
 echo "Generating build files..."
 if [[ $ENABLE_TESTS -eq 1 ]]; then
   echo "Tests enabled!"
-  cmake -B build -S . -G "Ninja Multi-Config" -DCMAKE_CXX_FLAGS="$CXXFLAGS -D__TEST__" --fresh
+  cmake -B build -S . -G "Ninja Multi-Config" -DCMAKE_CXX_FLAGS="$CXXFLAGS -DTEST_ENABLED" --fresh
 else
   cmake -B build -S . -G "Ninja Multi-Config" --fresh
 fi

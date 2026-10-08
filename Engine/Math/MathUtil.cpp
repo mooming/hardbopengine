@@ -2,7 +2,7 @@
 
 #include "MathUtil.h"
 
-#ifdef __TEST__
+#ifdef TEST_ENABLED
 
 void hbe::MathUtilTest::Prepare() noexcept
 {
@@ -24,4 +24,4 @@ void hbe::MathUtilTest::Prepare() noexcept
 	});
 }
 
-#endif //__TEST__
+#endif //TEST_ENABLED

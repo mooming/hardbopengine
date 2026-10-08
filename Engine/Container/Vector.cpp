@@ -2,7 +2,7 @@
 
 #include "Vector.h"
 
-#ifdef __TEST__
+#ifdef TEST_ENABLED
 #include <vector>
 
 #include "Core/ScopedTime.h"
@@ -289,4 +289,4 @@ void VectorTest::Prepare()
 }
 } // namespace hbe
 
-#endif //__TEST__
+#endif //TEST_ENABLED

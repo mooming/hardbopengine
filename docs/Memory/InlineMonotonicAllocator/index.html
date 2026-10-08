@@ -146,7 +146,7 @@
 <p>
   Two of its statistics calls sit behind <code>#ifdef __MEMOR_STATISTICS__</code>, and that macro is defined nowhere in the
   repository (no header, no <code>CMakeLists.txt</code> definition — the Debug and Dev flag sets add only
-  <code>__TEST__</code> and <code>__TEST__</code>). In this tree the destructor's arena release report and
+  <code>TEST_ENABLED</code> besides their own <code>DEBUG_BUILD</code> / <code>DEV_BUILD</code> marker). In this tree the destructor's arena release report and
   <a href="allocate.html">Allocate</a>'s allocation report are dead code in all three configurations, while
   <a href="deallocate.html">Deallocate</a>'s report is <code>PROFILE_ENABLED</code> code and equally absent. See
   <a href="#coverage">Coverage</a>.
@@ -259,7 +259,7 @@
   </tr>
   <tr>
     <td><code>InlineMonotonicAllocatorTest</code></td>
-    <td>Test-only: declared in <code>Engine/Memory/InlineMonotonicAllocator.h</code> inside <code>#ifdef __TEST__</code>, with the four
+    <td>Test-only: declared in <code>Engine/Memory/InlineMonotonicAllocator.h</code> inside <code>#ifdef TEST_ENABLED</code>, with the four
         testlets <code>Vector Allocation</code>, <code>Allocation (2)</code>, <code>Deallocation</code> and
         <code>Deallocation (2)</code> defined in <code>Engine/Memory/InlineMonotonicAllocator.cpp</code>. All four assert the same
         thing — that <a href="getusage.html">GetUsage</a> is non-zero after a scope that allocated and destroyed — which is the test suite

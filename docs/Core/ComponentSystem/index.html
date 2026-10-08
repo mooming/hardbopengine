@@ -106,7 +106,7 @@
 
 <div class="gap">
   <strong>Nothing in the engine uses this class, and the only instantiation is a unit test.</strong>
-  The sole <code>ComponentSystem</code> object in the tree is <code>ComponentSystem&lt;Test&gt;</code> inside the <code>#ifdef __TEST__</code> region of
+  The sole <code>ComponentSystem</code> object in the tree is <code>ComponentSystem&lt;Test&gt;</code> inside the <code>#ifdef TEST_ENABLED</code> region of
   <code>Engine/Core/ComponentSystem.cpp</code>, where <code>Test</code> is a local struct deriving from <a href="../Component/index.html">Component</a> and
   asserting the state it sees at each of the five callbacks. No subsystem in <code>Engine/</code> outside these two headers, and nothing in
   <code>Applications/</code>, owns a component system — so everything stated here comes from the header's own code plus the behavior that test pins down.
@@ -160,9 +160,9 @@
 
 <p>
   None. <code>Engine/Core/ComponentSystem.cpp</code> defines no helper and no out-of-line member — since the class is a template, everything about it must live
-  in the header. What the source file does contain, inside <code>#ifdef __TEST__</code>, is <code>ComponentSystemTest::Prepare</code>, the suite entry that
+  in the header. What the source file does contain, inside <code>#ifdef TEST_ENABLED</code>, is <code>ComponentSystemTest::Prepare</code>, the suite entry that
   builds the only component system in the engine and measures it; the class is declared in the same header, also under
-  <code>#ifdef __TEST__</code>, and belongs to the test module rather than to this one.
+  <code>#ifdef TEST_ENABLED</code>, and belongs to the test module rather than to this one.
 </p>
 
 <h2 id="coverage">Coverage</h2>
@@ -195,7 +195,7 @@
   </tr>
   <tr>
     <td><code>ComponentSystemTest</code></td>
-    <td>A <code>TestCollection</code> subclass declared under <code>#ifdef __TEST__</code> in this header and defined in the source file; it is the suite
+    <td>A <code>TestCollection</code> subclass declared under <code>#ifdef TEST_ENABLED</code> in this header and defined in the source file; it is the suite
       entry point, not part of this class's interface. Its content is quoted throughout the method pages as the only executable evidence of the lifecycle's
       behavior</td>
   </tr>

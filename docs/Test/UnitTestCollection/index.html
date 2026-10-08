@@ -70,7 +70,7 @@
   <span class="tag">Engine/Test/UnitTestCollection.h</span>
   <span class="tag">namespace hbe::Test</span>
   <span class="tag">not a class</span>
-  <span class="tag">entire header inside #ifdef __TEST__</span>
+  <span class="tag">entire header inside #ifdef TEST_ENABLED</span>
   the engine's suite entry point — one free function, and the registration list it owns
 </p>
 
@@ -78,10 +78,10 @@
 
 <p>
   There is no class. The name is the header's, and the header's whole content is a single declaration inside an
-  <code>#ifdef __TEST__</code> guard:
+  <code>#ifdef TEST_ENABLED</code> guard:
 </p>
 
-<pre><code><span class="kw">#ifdef</span> __TEST__
+<pre><code><span class="kw">#ifdef</span> TEST_ENABLED
 <span class="kw">namespace</span> hbe
 {
 <span class="kw">namespace</span> Test
@@ -89,7 +89,7 @@
 <span class="kw">void</span> <span class="fn">Suite entry points</span>();
 }
 } <span class="cm">// namespace hbe</span>
-<span class="kw">#endif</span> <span class="cm">// __TEST__</span></code></pre>
+<span class="kw">#endif</span> <span class="cm">// TEST_ENABLED</span></code></pre>
 
 <p>
   <a href="suite-entry-points.html"><code>hbe::Test::RegisterSuite</code> and <code>ScheduleSuiteOnBaseStream</code></a> is what
@@ -102,8 +102,8 @@
 <div class="gap">
   <strong>This is the one header in the module that is genuinely conditional.</strong> <code>TestCollection.h</code> and
   <code>TestEnv.h</code> carry no guard and are includable from any build; this one declares nothing unless
-  <code>__TEST__</code> is defined, so <code>RegisterSuite</code> and <code>ScheduleSuiteOnBaseStream</code> does not exist to link against in a normal build —
-  which is the same switch <code>build.sh -test</code> passes as <code> -D__TEST__</code>. The
+  <code>TEST_ENABLED</code> is defined, so <code>RegisterSuite</code> and <code>ScheduleSuiteOnBaseStream</code> does not exist to link against in a normal build —
+  which is the same switch <code>build.sh -test</code> passes as <code> -DTEST_ENABLED</code>. The
   consequences for an <code>EngineTest</code> built without it are recorded on
   <a href="../index.html#conditional-build">the module page</a>.
 </div>

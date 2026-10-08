@@ -160,7 +160,7 @@ TOutStream& operator<<(TOutStream& os, const Vector3<TNumber>& v) noexcept
 }
 } // namespace hbe
 
-#ifdef __TEST__
+#ifdef TEST_ENABLED
 #include "Test/TestCollection.h"
 
 namespace hbe
@@ -177,4 +177,4 @@ protected:
 	void Prepare() noexcept override;
 };
 } // namespace hbe
-#endif //__TEST__
+#endif //TEST_ENABLED

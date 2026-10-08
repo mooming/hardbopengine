@@ -249,7 +249,7 @@
   </tr>
   <tr>
     <td><code>StackAllocatorTest</code></td>
-    <td>Test-only: declared in <code>Engine/Memory/StackAllocator.h</code> inside <code>#ifdef __TEST__</code>, with the five
+    <td>Test-only: declared in <code>Engine/Memory/StackAllocator.h</code> inside <code>#ifdef TEST_ENABLED</code>, with the five
         testlets <code>Vector Allocation</code>, <code>Allocation (2)</code>, <code>Deallocation</code>,
         <code>Deallocation (2)</code> and <code>Nested Usage</code> defined in <code>Engine/Memory/StackAllocator.cpp</code>. It
         owns no page; what each testlet proves is quoted where the claim is made. Note that all five exercise the stack through an

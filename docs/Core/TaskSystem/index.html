@@ -236,7 +236,7 @@
     <code>TaskStreamAffinity</code>, <code>StreamDrainPolicy</code>, <code>CPUBudget</code></td>
     <td>Each is its own entry; the contracts quoted here from them — generation semantics, the 128-byte packet, the 64-bit
       affinity mask, the 255-subtask ceiling — were read from their headers</td></tr>
-  <tr><td><code>TaskSystemTest</code>, in <code>#ifdef __TEST__</code> at the end of the header</td><td>Test-only; it owns a
+  <tr><td><code>TaskSystemTest</code>, in <code>#ifdef TEST_ENABLED</code> at the end of the header</td><td>Test-only; it owns a
     Coverage row on the module ledger rather than a page</td></tr>
   <tr><td>Two silent returns in <a href="dispatch-successor.html">DispatchSuccessor</a></td>
     <td>Documented there as rows 1 and 2 of its refusal table — recorded here because "every refusal is reported" is true only of

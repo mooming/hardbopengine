@@ -28,7 +28,7 @@ public:
 } // namespace Renderer
 } // namespace hbe
 
-#ifdef __TEST__
+#ifdef TEST_ENABLED
 
 #include "Test/TestCollection.h"
 

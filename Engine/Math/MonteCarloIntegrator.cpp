@@ -5,7 +5,7 @@
 
 #include "MonteCarloIntegrator.h"
 
-#ifdef __TEST__
+#ifdef TEST_ENABLED
 #include <random>
 
 #include "Core/Constants.h"
@@ -153,4 +153,4 @@ void hbe::MonteCarloIntegrationTest::Prepare() noexcept
 		   << lf;
 	});
 }
-#endif // __TEST__
+#endif // TEST_ENABLED

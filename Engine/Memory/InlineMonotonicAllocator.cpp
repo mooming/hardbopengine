@@ -1,6 +1,6 @@
 // Copyright (c) 2026 Hansol Park (mooming.go@gmail.com). All rights reserved.
 
-#ifdef __TEST__
+#ifdef TEST_ENABLED
 
 #include "InlineMonotonicAllocator.h"
 
@@ -106,4 +106,4 @@ void InlineMonotonicAllocatorTest::Prepare() noexcept
 }
 } // namespace hbe
 
-#endif //__TEST__
+#endif //TEST_ENABLED

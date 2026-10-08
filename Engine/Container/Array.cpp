@@ -2,7 +2,7 @@
 
 #include "Array.h"
 
-#ifdef __TEST__
+#ifdef TEST_ENABLED
 #include "Log/Logger.h"
 
 namespace hbe
@@ -58,4 +58,4 @@ void ArrayTest::Prepare()
 	});
 }
 } // namespace hbe
-#endif //__TEST__
+#endif //TEST_ENABLED

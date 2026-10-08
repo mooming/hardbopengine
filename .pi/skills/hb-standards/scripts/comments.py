@@ -156,7 +156,7 @@ def condition_variants(condition):
 
     The rule book permits the guard named directly (`#endif // PROFILE_ENABLED`) and in negated
     form (`#else // !__DEBUG__`), and conditions written with `defined(...)` too. Enumerating the
-    variants is what lets `//__TEST__` through while `// TODO` still reads as a comment: the
+    variants is what lets `//TEST_ENABLED` through while `// TODO` still reads as a comment: the
     label has to *be* the construct's name, not merely look like an identifier.
     """
     condition = ' '.join(condition.split()).strip()
@@ -176,7 +176,7 @@ def label_expectations(text):
 
     The first version judged the comment *text* by pattern, and got it wrong in both directions. It
     rejected `#else  // !__DEBUG__`, the rule book's own example, because the guard macros this
-    engine uses begin with an underscore — 104 `#endif //__TEST__` labels — and it would have
+    engine uses begin with an underscore — 104 `#endif //TEST_ENABLED` labels — and it would have
     accepted `// TODO`, since a capitalised word matches `[A-Z][A-Z0-9_]*`. Comparing the label
     against what the line actually closes gets both right, and it is what stops the exemption from
     becoming a hole through which any short comment can pass.
@@ -210,8 +210,8 @@ def label_expectations(text):
             line += 1
             line_start = index + 1
             # A newline is a token boundary, not nothing. Accumulating nothing fused the last word of
-            # one line onto the first of the next, so `#ifdef __TEST__` above `namespace hbe` put
-            # `__TEST__namespace` in front of the keyword, `\bnamespace` refused to match, and the
+            # one line onto the first of the next, so `#ifdef TEST_ENABLED` above `namespace hbe` put
+            # `TEST_ENABLEDnamespace` in front of the keyword, `\bnamespace` refused to match, and the
             # namespace was never pushed — which cost its closing `} // namespace hbe` the structural-label
             # exemption and let `--strip` delete a label the standard protects. Any directive ending in a
             # word character did this, which is why a region that opens with an `#include` was unaffected:
@@ -783,14 +783,14 @@ SELFTEST_CASES.append(('api reference pointer on a member is reported', POINTER_
 
 SELFTEST_CASES.append(('a namespace label inside a conditional is still a structural label',
                        'selftest.h',
-                       '\n'.join(['#ifdef __TEST__',
+                       '\n'.join(['#ifdef TEST_ENABLED',
                                   'namespace hbe',
                                   '{',
                                   '\tclass T final',
                                   '\t{',
                                   '\t};',
                                   '} // namespace hbe',
-                                  '#endif //__TEST__', '']), []))
+                                  '#endif //TEST_ENABLED', '']), []))
 SELFTEST_CASES.append(('the exempt exemplar is exempt under every spelling of its path',
                        './Engine/CodingStandards.cpp',
                        '\n'.join(['// Copyright (c) 2025 Hansol Park', '// prose that would count', '']), []))

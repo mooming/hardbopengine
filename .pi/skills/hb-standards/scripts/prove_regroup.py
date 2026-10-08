@@ -13,7 +13,7 @@ Four properties, and each fails loudly with the lines involved:
      initialises them in declaration order and nothing else in the toolchain reports a change. It is read
      from the clang AST through layout.py, on a copy of the old revision written beside the new file so the
      compile database and the includes resolve;
-  3. the `__TEST__` region took no part in the edit. Test-only surface belongs at the end of a file
+  3. the `TEST_ENABLED` region took no part in the edit. Test-only surface belongs at the end of a file
      and is never part of a regrouping, so a regrouping may not touch a byte of it; a blank-line pass
      (`--whitespace-only`) may insert blanks there like anywhere else, and is held to the code lines
      instead — see `unit_test_check`.
@@ -41,7 +41,7 @@ sys.path.insert(0, SCRIPT_DIR)
 
 import layout  # noqa: E402  (same directory; the AST machinery is not to be duplicated)
 
-UNIT_TEST_MARKER = '#ifdef __TEST__'
+UNIT_TEST_MARKER = '#ifdef TEST_ENABLED'
 DATA_ORDER_NOTE = 'data members keep their declaration order (C++ initialises in that order)'
 
 
@@ -61,14 +61,14 @@ def multiset_check(before, after):
 
 
 def unit_test_check(before, after, strict=True):
-    """Whether the `__TEST__` region took no part in the edit, or None when the file has no such region.
+    """Whether the `TEST_ENABLED` region took no part in the edit, or None when the file has no such region.
 
     Two answers, because the two modes ask different questions, and asking the stricter one of the mode
     that exists to edit blank lines makes the two checkers contradict each other. Measured on
     `Applications/EngineTest/TestMain.cpp` at `1b28de5..ea4c934`, a blank-line pass that inserted one blank
     before each of three `return 1;` statements inside the region, and no code line anywhere moved: the run
     printed `[PASS] every non-blank line is still in place - only blank lines differ` and then
-    `[FAIL] the #ifdef __TEST__ region differs`, exiting 1 on a diff that contained nothing but blanks.
+    `[FAIL] the #ifdef TEST_ENABLED region differs`, exiting 1 on a diff that contained nothing but blanks.
     `blank_lines.py` rule A14 *requires* a blank before a trailing region, and rule A1 requires a seam
     before a `return` after a paragraph of output, so a file cannot satisfy both checkers at once while this
     compares bytes.
@@ -216,7 +216,7 @@ def main(argv):
             print('[PASS] the %s region holds the same code lines in the same order; blank lines inside it '
                   'differ, which is what --whitespace-only is for' % UNIT_TEST_MARKER)
     else:
-        failures.append('the __TEST__ region moved or changed')
+        failures.append('the TEST_ENABLED region moved or changed')
         if opts.whitespace_only:
             print('[FAIL] the %s region\'s code lines differ — a blank-line pass may add blanks inside the '
                   'region, never a line of code' % UNIT_TEST_MARKER)

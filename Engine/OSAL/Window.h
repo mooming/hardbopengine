@@ -57,7 +57,7 @@ private:
 [[nodiscard]] std::unique_ptr<Window> CreateWindow(const hbe::HString& title, int width, int height);
 } // namespace OS
 
-#ifdef __TEST__
+#ifdef TEST_ENABLED
 #include "Test/TestCollection.h"
 
 namespace hbe
@@ -74,4 +74,4 @@ protected:
 	void Prepare() override;
 };
 } // namespace hbe
-#endif // __TEST__
+#endif // TEST_ENABLED

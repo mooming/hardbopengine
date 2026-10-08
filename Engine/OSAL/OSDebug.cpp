@@ -2,7 +2,7 @@
 
 #include "OSDebug.h"
 
-#ifdef __TEST__
+#ifdef TEST_ENABLED
 
 namespace hbe
 {
@@ -15,4 +15,4 @@ void OSDebugTest::Prepare()
 	});
 }
 } // namespace hbe
-#endif //__TEST__
+#endif //TEST_ENABLED

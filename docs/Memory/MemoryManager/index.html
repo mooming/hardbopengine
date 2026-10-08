@@ -388,7 +388,7 @@ of which the two that name no allocator are thin calls into
   </tr>
   <tr>
     <td><code>GlobalAllocationTest</code></td>
-    <td>Test-only: declared in <code>Engine/Memory/MemoryManager.h</code> inside <code>#ifdef __TEST__</code>,
+    <td>Test-only: declared in <code>Engine/Memory/MemoryManager.h</code> inside <code>#ifdef TEST_ENABLED</code>,
     defined in <code>Engine/Memory/GlobalAllocation.cpp</code> as the two testlets
     <code>Engine traffic reaches the global counters</code> and (Apple only)
     <code>OS image traffic reaches its own bucket</code>. It owns no page; what it proves is quoted on

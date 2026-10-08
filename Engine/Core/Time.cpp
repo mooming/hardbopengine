@@ -81,7 +81,7 @@ void time::SetBaseFrameRate(double hertz) noexcept
 }
 } // namespace hbe
 
-#ifdef __TEST__
+#ifdef TEST_ENABLED
 namespace hbe
 {
 void TimeTest::Prepare()
@@ -163,4 +163,4 @@ void TimeTest::Prepare()
 	});
 }
 } // namespace hbe
-#endif //__TEST__
+#endif //TEST_ENABLED

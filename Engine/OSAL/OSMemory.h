@@ -39,7 +39,7 @@ void VirtualFree(void* address, std::size_t n) noexcept;
 void ProtectMemory(void* address, std::size_t n) noexcept;
 } // namespace OS
 
-#ifdef __TEST__
+#ifdef TEST_ENABLED
 #include "Test/TestCollection.h"
 
 namespace hbe
@@ -57,4 +57,4 @@ protected:
 	void Prepare() override;
 };
 } // namespace hbe
-#endif //__TEST__
+#endif //TEST_ENABLED

@@ -62,10 +62,10 @@ def blank_out(text):
 
 
 def unit_test_guarded_lines(text):
-    """Lines whose code exists only when __TEST__ is defined.
+    """Lines whose code exists only when TEST_ENABLED is defined.
 
     The authoring contract puts test-only code in the Coverage section of the page that owns it,
-    not on a page of its own, so a test class declared inside `#ifdef __TEST__` must not be
+    not on a page of its own, so a test class declared inside `#ifdef TEST_ENABLED` must not be
     demanded as `docs/HSTL/HUnorderedMapTest/index.html`. The first ledger asked for exactly that.
 
     Only the branch the guard opens is treated as test-only: an `#else` branch is the production
@@ -77,7 +77,7 @@ def unit_test_guarded_lines(text):
         directive = line.strip()
         if directive.startswith('#'):
             if re.match(r'#\s*if(n?def)?\b', directive):
-                stack.append(bool(re.search(r'__TEST__', directive)))
+                stack.append(bool(re.search(r'TEST_ENABLED', directive)))
             elif re.match(r'#\s*(else|elif)\b', directive) and stack:
                 stack[-1] = False
             elif re.match(r'#\s*endif\b', directive) and stack:
@@ -234,7 +234,7 @@ def entries_in(path):
         # .Plans/AUTHORING_method_and_class_pages.md — a page per class, macro set or free-function namespace —
         # and a page for `TByte` would be three sentences of nothing. The same reasoning the nested-class
         # exclusion above already uses applies: a name a reader cannot reach unambiguously is documented with
-        # its owner, and here the owner is the header. A `__TEST__`-only class does not count as owning
+        # its owner, and here the owner is the header. A `TEST_ENABLED`-only class does not count as owning
         # the file, which is what lets `Time.h` — 6 free functions in `hbe::time` plus its duration aliases,
         # and a test class that made it look class-shaped — finally be demanded.
         found.append((stem, 'utility header'))
@@ -537,16 +537,16 @@ ENTRY_CASES = [
      [('Engine', 'class')]),
     ('SelftestGuarded', 'a test-only class does not make a file class-shaped',
      '\n#pragma once\n\nnamespace hbe\n{\nusing TStreamIndex = int;\n} // namespace hbe\n\n'
-     '#ifdef __TEST__\nnamespace hbe\n{\nclass SelftestGuardedTest final\n{\n};\n} // namespace hbe\n'
-     '#endif //__TEST__\n',
+     '#ifdef TEST_ENABLED\nnamespace hbe\n{\nclass SelftestGuardedTest final\n{\n};\n} // namespace hbe\n'
+     '#endif //TEST_ENABLED\n',
      [('SelftestGuardedTest', 'test-only'), ('SelftestGuarded', 'utility header')]),
     ('Map', 'an alias inside a class body is the class\u2019s business, not a surface',
      '\n#pragma once\n\nnamespace hbe\n{\nclass Map final\n{\npublic:\n\tusing TEntry = int;\n'
      '\tusing TSize = size_t;\n};\n} // namespace hbe\n',
      [('Map', 'class')]),
     ('SelftestGuardedAlias', 'an alias inside the unit-test region demands nothing',
-     '\n#pragma once\n\n#ifdef __TEST__\nnamespace hbe\n{\nusing TTestOnly = int;\n'
-     '} // namespace hbe\n#endif //__TEST__\n',
+     '\n#pragma once\n\n#ifdef TEST_ENABLED\nnamespace hbe\n{\nusing TTestOnly = int;\n'
+     '} // namespace hbe\n#endif //TEST_ENABLED\n',
      []),
     ('SelftestFwd', 'a forward declaration names a type owned elsewhere',
      '\n#pragma once\n\nnamespace hbe\n{\nclass Logger;\n} // namespace hbe\n',

@@ -243,7 +243,7 @@
   </tr>
   <tr>
     <td><code>PoolAllocatorTest</code></td>
-    <td>Test-only: declared in <code>Engine/Memory/PoolAllocator.h</code> inside <code>#ifdef __TEST__</code>, with the three
+    <td>Test-only: declared in <code>Engine/Memory/PoolAllocator.h</code> inside <code>#ifdef TEST_ENABLED</code>, with the three
         testlets <code>Construction</code>, <code>Allocation &amp; Deallocation</code> and
         <code>Allocation With A Clamped Block Size</code> defined in <code>Engine/Memory/PoolAllocator.cpp</code>. It owns no page of
         its own; what it proves is quoted where each claim is made.</td>
