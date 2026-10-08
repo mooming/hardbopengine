@@ -146,6 +146,11 @@ private:
 				auto ptr = immediateBlock;
 				immediateBlock = nullptr;
 
+#if PROFILE_ENABLED
+				auto& mmgr = MemoryManager::GetInstance();
+				mmgr.ReportAllocation(id, ptr, nBytes, BlockSizeInBytes);
+#endif // PROFILE_ENABLED
+
 				return ptr;
 			}
 
@@ -172,9 +177,24 @@ private:
 
 	void DeallocateBytes(void* ptr, size_t nBytes) noexcept
 	{
+#if PROFILE_ENABLED
+		if (!IsValidPointer(ptr))
+		{
+			auto& mmgr = MemoryManager::GetInstance();
+			mmgr.Deallocate(parentID, ptr, nBytes);
+
+			return;
+		}
+#endif // PROFILE_ENABLED
+
 		if (immediateBlock == nullptr && nBytes <= BlockSizeInBytes)
 		{
 			immediateBlock = ptr;
+
+#if PROFILE_ENABLED
+			auto& mmgr = MemoryManager::GetInstance();
+			mmgr.ReportDeallocation(id, ptr, nBytes, BlockSizeInBytes);
+#endif // PROFILE_ENABLED
 
 			return;
 		}
