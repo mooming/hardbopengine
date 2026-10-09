@@ -1,5 +1,11 @@
 # Journal
 
+## 2026-10-09 18:22 — the RapidJson submodule declaration is deleted
+
+**The declaration outlived its checkout.** `External/RapidJson` had no checkout, gitlink, git directory or
+config entry left; only `.gitmodules` and `External/.gitignore` still named it, and nothing in the tree
+referenced the library.
+
 ## 2026-10-05 00:18 — OS allocations get their own bucket, so the ceiling measures what the engine owns
 
 **Cause.** `WindowTest::TC0` had been failing the 65,536-byte retained-global-heap ceiling since long before this
