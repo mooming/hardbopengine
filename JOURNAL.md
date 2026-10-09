@@ -1,5 +1,11 @@
 # Journal
 
+## 2026-10-09 18:42 — GLFW's orphaned submodule git directory is deleted
+
+**The tracked removal had already happened, so only the data was left.** `8b3f854` deleted the gitlink and the
+`.gitmodules` block, and the surviving 18 MB `.git/modules/External/GLFW` object store held no commit beyond
+`origin/master`, so deleting it re-clones rather than loses.
+
 ## 2026-10-09 18:22 — the RapidJson submodule declaration is deleted
 
 **The declaration outlived its checkout.** `External/RapidJson` had no checkout, gitlink, git directory or
