@@ -206,42 +206,13 @@ void MemoryManager::DeregisterAllocator(TId id)
 	allocator.deallocate = nullptr;
 
 #if MEMORY_VERIFICATION_ENABLED
-	if (unlikely(allocator.threadId != std::this_thread::get_id()))
-	{
-		Log(ELogLevel::Error, [funcName = __func__, id](auto& ls)
-		{ ls << "[" << funcName << "] Allocator(" << id << ") Thread id is mismatched."; });
-
-#if !RELEASE_BUILD
-		debugBreak();
-#endif // !RELEASE_BUILD
-
-		return;
-	}
+	Assert(allocator.threadId == std::this_thread::get_id(), "MemoryManager: allocator (", id,
+		   ") is deregistered from a thread other than the one that registered it.");
 #endif // MEMORY_VERIFICATION_ENABLED
 
 #if PROFILE_ENABLED
-	if (unlikely(stats.usage > 0))
-	{
-		Log(ELogLevel::Warning, [funcName = __func__, &stats, id](auto& ls)
-		{
-			ls << "[" << funcName << "] Allocator [" << stats.name << "](" << id << ") Memory leak is detected! "
-			   << stats.usage << " / " << stats.capacity << " bytes";
-		});
-
-#if !RELEASE_BUILD
-		debugBreak();
-#endif // !RELEASE_BUILD
-
-		return;
-	}
-
-	if (unlikely(stats.usage > 0))
-	{
-		Log(ELogLevel::Warning, [funcName = __func__, &stats, id](auto& ls)
-		{ ls << "[" << funcName << "] Allocator [" << stats.name << "](" << id << ") Memory leak is detected!"; });
-
-		return;
-	}
+	Assert(stats.usage == 0, "MemoryManager: allocator [", stats.name, "](", id, ") leaks ", stats.usage, " of ",
+		   stats.capacity, " bytes at deregistration.");
 	{
 		std::lock_guard lockScope(statsLock);
 
