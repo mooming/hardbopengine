@@ -12,7 +12,7 @@ namespace hbe
 {
 #if PROFILE_ENABLED
 PoolAllocator::PoolAllocator(const char* inName, TSize inBlockSize, TSize inNumberOfBlocks,
-							 const hbe::source_location location)
+							 const SourceLocation location)
 #else // PROFILE_ENABLED
 PoolAllocator::PoolAllocator(const char* inName, TSize inBlockSize, TSize inNumberOfBlocks)
 #endif // PROFILE_ENABLED
@@ -264,7 +264,8 @@ PoolAllocator::TSize PoolAllocator::GetIndex(Pointer ptr) const
 PoolAllocator::TSize PoolAllocator::ReadNextIndex(Pointer ptr) const
 {
 	auto index = GetAs<TSize>(ptr);
-	Assert(index <= numberOfBlocks, "PoolAllocator: out of bounds index = %zu / %zu", index, numberOfBlocks);
+	Assert(index <= numberOfBlocks, "PoolAllocator: free-list link ", index, " is out of bounds for ", numberOfBlocks,
+			   " blocks.");
 
 	return index;
 }
