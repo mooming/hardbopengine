@@ -13,9 +13,7 @@ namespace hbe
 {
 class MemoryManager;
 
-/// @brief A multi-pool allocator that manages multiple pools of different block sizes.
-/// @details Uses multiple pools to handle various allocation sizes efficiently.
-/// Blocks are organized into banks that can grow as needed.
+/// API reference: docs/Memory/MultiPoolAllocator/index.html
 class MultiPoolAllocator final
 {
 public:
@@ -62,7 +60,6 @@ public:
 #endif // PROFILE_ENABLED
 
 private:
-	// Generate a new bank to allocae
 	void* NewBankAllocate(size_t size);
 
 	bool GenerateBanksByCache(MemoryManager& mmgr);
@@ -80,7 +77,6 @@ private:
 
 namespace hbe
 {
-/// @brief Test class for MultiPoolAllocator.
 class MultiPoolAllocatorTest : public TestCollection
 {
 public:
