@@ -9,6 +9,7 @@
 
 namespace hbe
 {
+/// API reference: docs/Memory/AllocStats/index.html
 class AllocStats final
 {
 public:

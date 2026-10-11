@@ -10,8 +10,7 @@
 
 namespace hbe
 {
-/// @brief Configuration for a multi-pool allocator.
-/// @details Stores name and pool configurations for a multi-pool allocator.
+/// API reference: docs/Memory/MultiPoolAllocatorConfig/index.html
 class MultiPoolAllocatorConfig final
 {
 public:
