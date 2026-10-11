@@ -400,7 +400,7 @@ void ThreadSafeMultiPoolAllocator::ReportConfiguration()
 
 	auto& mmgr = MemoryManager::GetInstance();
 	auto uniqueName = GetName();
-	mmgr.ReportMultiPoolConfigutation(uniqueName.GetID(), std::move(configs));
+	mmgr.ReportMultiPoolConfiguration(uniqueName.GetID(), std::move(configs));
 }
 #endif // PROFILE_ENABLED
 
