@@ -1,0 +1,210 @@
+<h2 id="description">Class description</h2>
+
+<p>
+  <code>class StackAllocator final</code> at <code>Engine/Memory/StackAllocator.h</code> hands out bytes from one fixed
+  buffer by moving a cursor. The constructor rounds the requested capacity up to a multiple of
+  <a href="../../Config/index.html"><code>Config::DefaultAlign</code></a> (16 bytes), records the allocator that is current
+  at that moment as <code>parentID</code>, takes the buffer from the <a href="../index.html#memorymanager"><code>MemoryManager</code></a>,
+  and registers the object under an id of its own — the same three steps
+  <a href="../PoolAllocator/index.html"><code>PoolAllocator</code></a> performs, with a free list replaced by a cursor.
+  Every byte it serves comes from inside that one buffer, except the ones described under exhaustion below.
+</p>
+
+<p>
+  Release is last-in-first-out. <a href="deallocate.html">Deallocate</a> rewinds the cursor, and it rewinds it only for the
+  block that currently sits on top of the stack, given a byte count that rounds up to the same size the block was charged.
+  The shape the repository actually uses is in <code>Engine/Memory/StackAllocator.cpp</code>,
+  <code>StackAllocatorTest::Prepare()</code>: construct the allocator, open an
+  <a href="../index.html#allocatorscope"><code>AllocatorScope</code></a> over its id, and let the containers built inside that
+  scope allocate through it — nothing in the engine calls <a href="allocate.html">Allocate</a> on a stack directly.
+</p>
+
+<pre><code>StackAllocator stack("Test::StackAllocator", 1024 * 1024);
+{
+	AllocatorScope scope(stack.GetID());
+
+	HVector&lt;int&gt; a;
+	a.push_back(0);
+}</code></pre>
+
+<p class="meta">From Engine/Memory/StackAllocator.cpp, StackAllocatorTest::Prepare()</p>
+
+<div class="gap">
+  <strong>A pointer into the buffer dies with the object, not with the block that was released.</strong>
+  The <a href="destructor.html">destructor</a> returns the whole buffer to the manager in one call; there is no per-block
+  bookkeeping left to release, and no block survives that call. There is also no reset: the header declares no
+  <code>Reset</code>, <code>Rewind</code>, or <code>ReleaseAll</code>, so destroying the object is the only way to drop many
+  allocations at once, and it drops every pointer the allocator ever handed out from the buffer — including the ones still
+  held. The one release that keeps the rest alive is a <a href="deallocate.html">Deallocate</a> of the current top block: the
+  bytes below it keep their addresses, the released block's address is reusable by the next
+  <a href="allocate.html">Allocate</a>, and nothing clears or poisons the released memory first.
+</div>
+
+<div class="gap">
+  <strong>A release that is not the top of the stack is a reported failure, and in a Release build it leaks silently.</strong>
+  <a href="deallocate.html">Deallocate</a> compares <code>buffer + cursor</code> against <code>ptr + alignedSize</code>. On a
+  mismatch it logs an error naming the pointer it was given and the address it expected, calls <code>Assert(false)</code>, and
+  returns without touching the cursor. In <code>Debug</code> and <code>Dev</code> that assert aborts the process
+  (<code>Engine/Core/Debug.h</code>); in <code>Release</code> <code>Assert</code> is an empty inline function, so the only trace
+  is the log line, and <code>MemoryManager::LogError</code> prints nothing unless
+  <code>MEMORY_LOGGING_ENABLED</code> is on — <code>Engine/Config/BuildConfig.h</code> defines it as 0. A wrong-order release in
+  a shipped build therefore strands those bytes until the allocator is destroyed, with no diagnostic anyone sees.
+</div>
+
+<div class="note">
+  <strong>Exhaustion is not a failure, and the block that survives it belongs to the parent.</strong>
+  When the aligned request exceeds <a href="getavailable.html">GetAvailable</a>(), <a href="allocate.html">Allocate</a> asks
+  the parent instead of returning null: <code>return mmgr.FallbackAllocate(GetID(), parentID, requested);</code>. That block is
+  outside this buffer, so a later <a href="deallocate.html">Deallocate</a> of it is forwarded to <code>parentID</code> rather
+  than rewinding the cursor — asking the same stack object is the correct way to release it. Two consequences a caller has to
+  hold: the comparison is made against the <em>rounded</em> size, so a request that would fit in the last few bytes goes to the
+  parent anyway; and the fallback block is <em>not</em> freed by this object's destructor, so it must be released explicitly or
+  it leaks past the stack.
+</div>
+
+<div class="note">
+  <strong>Alignment is fixed at the engine default and cannot be asked for.</strong>
+  Every request is rounded up to <code>Config::DefaultAlign</code> (16) by the inline arithmetic in
+  <code>StackAllocator::Allocate()</code> — <code>(size + AlignUnit - 1) / AlignUnit</code>, then multiplied back — and the same
+  rounding is applied to the byte count in
+  <a href="deallocate.html">Deallocate</a>, which is why the two must be paired by size. Neither this class nor its parent
+  path takes an alignment argument, so a request for an over-aligned type gets 16-byte spacing at best, and even that is
+  inherited: a block's address is <code>buffer + cursor</code>, and the buffer is whatever the parent's answer happened to be
+  aligned to. See the <a href="#coverage">Coverage section</a> for what the code does not settle.
+</div>
+
+<p>
+  The class declares no copy constructor, no move constructor and no assignment operator, and it owns two resources: one
+  buffer and one registration id whose proxy record stores <code>this</code>
+  (<code>MemoryManager::RegisterAllocator()</code> in <code>Engine/Memory/MemoryManager.cpp</code>). Two live objects over one
+  buffer would each return that buffer to the manager and each deregister the same id, so one object per buffer is the only
+  supported use. Whether the implicit operations compile at all is a build question this page does not answer — the migration
+  step that owns these pages runs no compiler; see <a href="#coverage">Coverage</a>.
+</p>
+
+<h2 id="template">Template parameters</h2>
+
+<p>
+  None. <code>StackAllocator</code> is <code>final</code> and not a template: capacity and name are constructor arguments, and
+  the allocator serves raw bytes, so no element type reaches the class.
+</p>
+
+<h2 id="properties">Class properties</h2>
+
+<table>
+  <tr><th>Type + Name</th><th>Default Value</th><th>Description</th></tr>
+  <tr><td><code>using This = StackAllocator;</code> <span class="badge">member type</span></td><td><span class="muted">not applicable</span></td><td>Self-alias; nothing in the engine's own code for this class uses it.</td></tr>
+  <tr><td><code>using SizeType = size_t;</code> <span class="badge">member type</span></td><td><span class="muted">not applicable</span></td><td>Byte-count type of the buffer and of every size a caller passes in or reads back.</td></tr>
+  <tr><td><code>using TSrcLoc = hbe::source_location;</code> <span class="badge">member type</span></td><td><span class="muted">not applicable</span></td><td>Construction-site type. Exists only under <code>PROFILE_ENABLED</code>, which <code>Engine/Config/BuildConfig.h</code> defines as 0.</td></tr>
+  <tr><td><code>TAllocatorID id;</code> <span class="badge">private</span></td><td><span class="muted">none in the header</span></td><td>This allocator's registration id, set from <code>MemoryManager::RegisterAllocator()</code>; <code>InvalidAllocatorID</code> is what the constructor starts from and what a failed registration leaves behind.</td></tr>
+  <tr><td><code>TAllocatorID parentID;</code> <span class="badge">private</span></td><td><span class="muted">none in the header</span></td><td>The allocator current at construction, recorded once in the constructor body: where the buffer came from, where overflow requests go, and where foreign pointers are sent.</td></tr>
+  <tr><td><code>SizeType capacity;</code> <span class="badge">private</span></td><td><span class="muted">none in the header</span></td><td>Size of the backing allocation in bytes — the constructor argument already rounded up to a multiple of <code>Config::DefaultAlign</code>, so it is never smaller than what was asked for.</td></tr>
+  <tr><td><code>SizeType cursor;</code> <span class="badge">private</span></td><td><span class="muted">none in the header</span></td><td>Bytes handed out from the buffer, and the offset the next block starts at. Both usage figures are read straight off it.</td></tr>
+  <tr><td><code>Byte* buffer;</code> <span class="badge">private</span></td><td><span class="muted">none in the header</span></td><td>Base of the backing allocation, as every allocation and range test reads it. One of two names for one member: it lives in an anonymous union beside <code>bufferPtr</code>.</td></tr>
+  <tr><td><code>Pointer bufferPtr;</code> <span class="badge">private</span></td><td><span class="muted">none in the header</span></td><td>The same storage as <code>buffer</code>, as a raw pointer — the name the constructor writes through when the manager hands the bytes over, and the name the destructor gives back.</td></tr>
+  <tr><td><code>TSrcLoc srcLocation;</code> <span class="badge">private</span></td><td><span class="muted">none in the header</span></td><td>Construction site, passed to <code>MemoryManager::DeregisterAllocator</code>. Exists only under <code>PROFILE_ENABLED</code>.</td></tr>
+</table>
+
+<h2 id="methods">Class methods</h2>
+
+<table class="methods">
+  <tr><th>Name</th><th>Signature</th><th>What a caller depends on</th></tr>
+  <tr><td><a href="getsize.html"><code>GetSize</code></a></td><td class="sig">static size_t GetSize(Pointer)</td><td>Always 0 — a stack cannot recover a block's size from a pointer, and says so by answering zero.</td></tr>
+  <tr><td><a href="constructors.html"><code>StackAllocator</code></a><span class="badge">2 overloads</span></td><td class="sig">StackAllocator(const char* name, SizeType capacity, const TSrcLoc&amp; location = TSrcLoc::current())<br>StackAllocator(const char* name, SizeType capacity)</td><td>Rounds capacity up, takes the buffer from the allocator that is current, registers the object; the second form is the one this tree compiles.</td></tr>
+  <tr><td><a href="destructor.html"><code>~StackAllocator</code></a></td><td class="sig">~StackAllocator()</td><td>Returns the whole buffer through whichever allocator is current at that moment, then deregisters — so the surrounding scope decides who is asked for the bytes.</td></tr>
+  <tr><td><a href="allocate.html"><code>Allocate</code></a></td><td class="sig">[[nodiscard]] Pointer Allocate(size_t size)</td><td>Rounds up, bumps the cursor, and asks the parent instead of failing when the buffer cannot cover the rounded size.</td></tr>
+  <tr><td><a href="deallocate.html"><code>Deallocate</code></a></td><td class="sig">void Deallocate(Pointer ptr, SizeType size) noexcept</td><td>Top of the stack only, with a matching size; a foreign pointer goes to the parent; a mismatch is logged and asserted, never silently rewound.</td></tr>
+  <tr><td><a href="getavailable.html"><code>GetAvailable</code></a></td><td class="sig">[[nodiscard]] size_t GetAvailable() const</td><td><code>capacity - cursor</code> — bytes left in the buffer, never counting the parent the overflow path can still reach.</td></tr>
+  <tr><td><a href="getusage.html"><code>GetUsage</code></a></td><td class="sig">[[nodiscard]] size_t GetUsage() const</td><td>Bytes charged against the buffer, at the rounded size — and a fully exhausted buffer trips its own assertion.</td></tr>
+  <tr><td><a href="getid.html"><code>GetID</code></a></td><td class="sig">[[nodiscard]] auto GetID() const</td><td>The registration id every <code>AllocatorScope</code> over this stack is opened with; the number is recycled once the object dies.</td></tr>
+  <tr><td><a href="ismine.html"><code>IsMine</code></a></td><td class="sig">bool IsMine(Pointer ptr) const</td><td>Private: a range test on the buffer, so any address inside it counts as this allocator's — including one in the middle of a block.</td></tr>
+</table>
+
+<h2 id="non-member">Non-member helper functions</h2>
+
+<p>
+  None. A stack is reached through its own object or through the <a href="../index.html#memorymanager"><code>MemoryManager</code></a>
+  registration its constructor created. The free functions in <code>Engine/Memory/Memory.h</code>
+  (<code>New</code>, <code>Delete</code>) and the <a href="../index.html#allocatorscope"><code>AllocatorScope</code></a> and
+  <code>ScopedAllocator</code> wrappers work on any allocator and belong to the
+  <a href="../index.html#functions">module page</a>.
+</p>
+
+<h2 id="coverage">Coverage</h2>
+
+<table>
+  <tr><th>Not documented here</th><th>Why, and where it belongs</th></tr>
+  <tr>
+    <td>Thread-safety, and whether one stack may be shared or moved between threads</td>
+    <td>The code does not answer it. <code>Engine/Memory/StackAllocator.cpp</code> takes no lock and reads and writes no atomic:
+        <code>cursor</code>, <code>capacity</code> and the registration id are plain members, so two threads allocating at once
+        race on the cursor. Against that: the <a href="../index.html#memorymanager"><code>MemoryManager</code></a> it calls into
+        holds its own <code>statsLock</code> and a <code>thread_local</code> scoped-allocator id, and the engine's shareable shape
+        is the multi-pool allocator the <a href="../index.html#allocators">allocator catalogue</a> names. No testlet runs either
+        allocator from two threads, and no assertion binds an allocator to the thread that constructed it
+        (<code>MEMORY_VERIFICATION_ENABLED</code> is 0), so whether sharing is "merely" racy or already checked somewhere is not
+        established here. The manager's own rules are owned by the
+        <a href="../index.html#memorymanager">Memory module page</a>.</td>
+  </tr>
+  <tr>
+    <td>Whether an implicit copy or move of <code>StackAllocator</code> compiles</td>
+    <td>A build claim, and this migration step runs no compiler. What is stated instead is the consequence: the destructor frees
+        the buffer and deregisters the id, so a second live object over the same buffer is a double free of both. The class
+        declares nothing about the matter, which is itself the finding —
+        <a href="../PoolAllocator/index.html"><code>PoolAllocator</code></a> declares its move operations explicitly, this class
+        does not.</td>
+  </tr>
+  <tr>
+    <td>The alignment a returned pointer actually carries</td>
+    <td>Only that block starts are 16 bytes apart, because every charge is rounded to <code>Config::DefaultAlign</code>. Whether
+        <code>buffer</code> itself is 16-byte aligned depends on the allocator that served the constructor's request — in this
+        configuration that is <code>SystemAllocator</code>'s <code>malloc</code> path
+        (<code>Engine/Memory/SystemAllocator.h</code>), which the code does not check or force. No test asserts an address
+        modulus, so anything beyond "16 bytes apart inside one buffer" is unnamed.</td>
+  </tr>
+  <tr>
+    <td>Every path behind <code>#if PROFILE_ENABLED</code>: <code>TSrcLoc</code>, <code>srcLocation</code>, the
+        <code>location</code> constructor parameter, the <code>ReportAllocation</code> and <code>ReportDeallocation</code> calls,
+        and the two-argument <code>DeregisterAllocator</code></td>
+    <td><code>Engine/Config/BuildConfig.h</code> defines <code>PROFILE_ENABLED</code> as 0, and <code>JOURNAL.md</code> (2026-10-05)
+        records that flipping it breaks the build before any Memory file is reached. Those paths are described from the source and
+        have never executed, so their accounting claims — for instance that <a href="allocate.html">Allocate</a> reports the
+        rounded size as both requested and allocated — are read, not observed.</td>
+  </tr>
+  <tr>
+    <td>Behaviour of a zero-capacity allocator, and of a failed construction</td>
+    <td>Read from the code, never exercised: no testlet constructs either of these allocators with a capacity of 0, and none makes
+        <code>MemoryManager::Allocate</code> fail. What the code says is that a capacity of 0 rounds to 0, that the manager returns
+        <code>nullptr</code> for a 0-byte request, and that a registration failure yields <code>InvalidAllocatorID</code> while the
+        object still holds a buffer — but the resulting state is untested, so it is named rather than documented as a contract.</td>
+  </tr>
+  <tr>
+    <td>What a mismatched or wrong-order release leaves behind in a Release build</td>
+    <td><a href="deallocate.html">Deallocate</a> documents what the code does — log, assert, return with the cursor unmoved — but
+        no testlet performs a mismatched release, so the size of the resulting leak and the exact conditions under which any
+        diagnostic survives to a shipped build are not demonstrated.</td>
+  </tr>
+  <tr>
+    <td><code>TAllocatorID</code>, <code>InvalidAllocatorID</code>, <code>MaxNumAllocators</code>, <code>PoolConfig</code> and the
+        other <code>AllocatorID.h</code> / <code>PoolConfig.h</code> surface these signatures mention</td>
+    <td>Owned by their own pages, which this wave does not write. Cited here by name and by file
+        (<code>Engine/Memory/AllocatorID.h</code>) only.</td>
+  </tr>
+  <tr>
+    <td>The <code>MemoryManager</code> contracts this class leans on: <code>RegisterAllocator</code>,
+        <code>DeregisterAllocator</code>, <code>FallbackAllocate</code>, the <code>AllocatorProxy</code> dispatch, the
+        thread-local scope stack</td>
+    <td>Owned by the <a href="../index.html#memorymanager">Memory module page</a>. This page states what a stack does with them,
+        not what they promise.</td>
+  </tr>
+  <tr>
+    <td><code>StackAllocatorTest</code></td>
+    <td>Test-only: declared in <code>Engine/Memory/StackAllocator.h</code> inside <code>#ifdef __UNIT_TEST__</code>, with the five
+        testlets <code>Vector Allocation</code>, <code>Allocation (2)</code>, <code>Deallocation</code>,
+        <code>Deallocation (2)</code> and <code>Nested Usage</code> defined in <code>Engine/Memory/StackAllocator.cpp</code>. It
+        owns no page; what each testlet proves is quoted where the claim is made. Note that all five exercise the stack through an
+        <a href="../index.html#allocatorscope"><code>AllocatorScope</code></a> and a container — none calls
+        <a href="allocate.html">Allocate</a> or <a href="deallocate.html">Deallocate</a> on the object, so the two-argument release
+        path this page documents most heavily is the one the tests reach least.</td>
+  </tr>
+</table>
