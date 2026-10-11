@@ -128,6 +128,7 @@ scheduled for deletion.
 | No method page missing | `../hb-standards/scripts/docs_methods.py <Module>` | no line for that class |
 | Entry documented and addressed | `../hb-standards/scripts/docs_coverage.py check-file Engine/<M>/<C>.h` | "documented, addressed from the header, method pages complete" |
 | HTML, links, CSS | `docs_page.py check <Module>` | `0 with problems` |
+| Quoted code equals the source | `quoted_blocks.py docs/<M>` | exit 0 — every block captioned with a file and a symbol is a contiguous run of that symbol's lines; each `STALE` line names page, symbol and diff |
 
 Only then add the header's one pointer line — `/// API reference: docs/<Module>/<Class>/index.html`
 immediately above the declaration — and give that class its row in `docs/<Module>/index.html`. The pointer
@@ -157,3 +158,49 @@ a module; a finished class is worth more than three started ones.
 Verify a worker's report against the tree before committing it. A report has previously claimed a gate
 passed when the command could not run, and counted 190 pages where the site held 467: run
 `htmlcheck.py`, `docs_methods.py` and `docs_pass.py signatures` yourself and paste their output lines.
+
+## Canonical page skeleton
+
+Derived from `docs/Core/TaskSystem/index.html` and its method pages, by reading their tables and section ids directly. Copy this
+shape; do not improvise a section order or invent a column. Everything above `<h2 id="description">` is chrome and comes from
+`docs_page.py` — never hand-write it.
+
+### Class page — `docs/<Module>/<Class>/index.html`
+
+**A class page embeds no code snippet: zero `<pre>` blocks.** The exemplar has none. What the class is, and what its methods are,
+reaches the reader through sections and tables, and the declaration facts — namespace, `final`, template-ness, header path — live
+in the `<span class="tag">`, in the description prose, and in the tables below.
+
+| Order | Section | Heading text | `id` | Content |
+|---|---|---|---|---|
+| 1 | Class description | `Class description` | `description` | Prose paragraphs, then the piece table: `Piece` \| `What it is` \| `Where the contract lives` |
+| 2 | Template parameters | `Template parameters` | `template` | Table when the class is a template; otherwise one sentence saying it is not |
+| 3 | Class properties | `Class properties` | `properties` | Table: `Type + Name` \| `Default Value` \| `Description` |
+| 4 | Class methods | `Class methods` | `methods` | `<table class="methods">`: `Name` \| `Signature` \| `What a caller depends on` |
+| 5 | Non-member helpers | `Non-member helper functions` | `non-member` | Table in the same three-column shape, or a sentence saying there are none |
+| 6 | Coverage | `Coverage` | `coverage` | Table: `Not documented here` \| `Why` |
+
+Two row shapes the method table requires, verbatim in form:
+
+```html
+<tr><td><a href="get-num-hardware-threads.html"><code>GetNumHardwareThreads</code></a></td><td class="sig">static TIndex GetNumHardwareThreads() noexcept</td><td>The standard library's concurrency hint cast to <code>int</code>, and the only figure that decides how many streams exist.</td></tr>
+```
+
+The `Name` cell is a link to the method page with the name in `<code>`; the `Signature` cell is `class="sig"` and holds the
+declaration exactly as the header spells it; the third cell says what a caller may rely on, which is not a restatement of the
+signature. A method that is not documented here appears in the Coverage table instead of silently missing from the method table.
+
+### Method page — `docs/<Module>/<Class>/<stem>.html`
+
+Sections in this order, all six present even when one says `None.`:
+
+| Order | Heading text | `id` | Content |
+|---|---|---|---|
+| 1 | `Signature` | `signature` | One `<pre><code>` holding the declaration byte-identical to the header — this is what `docs_pass.py signatures` diffs |
+| 2 | `Function description` | `description` | Prose. A source excerpt may be quoted here, captioned `<p class="meta">From &lt;file&gt;, &lt;Class&gt;::&lt;Method&gt;&lt;params&gt;</p>`; `quoted_blocks.py` checks the copy |
+| 3 | `Parameters` | `parameters` | Table `Parameter` \| `Type` \| `Requirement`, or `<p>None.</p>` |
+| 4 | `Return value` | `return` | Prose |
+| 5 | `Examples` | `example` | Prose and quoted blocks |
+
+Method pages may embed code; class pages may not. Filenames: `docs_methods.py` folds punctuation, so `get-usage.html` satisfies
+`GetUsage` exactly as `getusage.html` does — pick one stem style per folder and keep it, and do not rename another class's files.
