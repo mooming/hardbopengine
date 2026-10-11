@@ -10,9 +10,7 @@
 
 namespace hbe
 {
-/// @brief Monotonic allocator that allocates linearly from a buffer.
-/// @details Simple bump-pointer allocator. Memory is released all at once
-/// on destruction. Individual deallocations are ignored.
+/// API reference: docs/Memory/MonotonicAllocator/index.html
 class MonotonicAllocator final
 {
 public:
