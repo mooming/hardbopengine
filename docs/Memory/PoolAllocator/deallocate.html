@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PoolAllocator::Deallocate — Memory module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a class="current" href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Memory</a> /
+  <a href="index.html">PoolAllocator</a> / Deallocate
+</p>
+
+<h1><span class="fn">Deallocate</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::PoolAllocator</span>
+  <span class="tag">Engine/Memory/PoolAllocator.h</span>
+  Null is ignored, a pointer from elsewhere goes to the parent, and a block released twice is not detected.
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>void Deallocate(Pointer ptr, size_t size)</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  Defined in <code>Engine/Memory/PoolAllocator.cpp</code> as <code>PoolAllocator::Deallocate(Pointer ptr, size_t size)</code>.
+  Three exits before any block is touched: a null pointer is ignored, a pointer outside the pool's buffer goes to the parent, and a
+  free list that no longer makes sense is reported and left alone. Otherwise the block goes back on the free list.
+</p>
+
+<pre><code>if (unlikely(ptr == nullptr))
+{
+	return;
+}
+
+if (unlikely(!IsMine(ptr)))
+{
+	auto&amp; mmgr = MemoryManager::GetInstance();
+	mmgr.Deallocate(parentID, ptr, size);
+
+	return;
+}</code></pre>
+
+<p class="meta">From Engine/Memory/PoolAllocator.cpp, PoolAllocator::Deallocate(Pointer ptr, size_t size)</p>
+
+<pre><code>if (availables)
+{
+	const auto index = GetIndex(availables);
+	if (unlikely(index &gt; numberOfBlocks))
+	{
+		auto&amp; mmgr = MemoryManager::GetInstance();
+		mmgr.LogError([ptr](auto&amp; logStream) { logStream &lt;&lt; ptr &lt;&lt; " is not alloacted by this."; });
+
+		return;
+	}
+
+	WriteNextIndex(ptr, index);
+}
+else
+{
+	WriteNextIndex(ptr, numberOfBlocks);
+}
+
+availables = ptr;
+
+++numberOfFreeBlocks;
+
+Assert(numberOfFreeBlocks &lt;= numberOfBlocks);</code></pre>
+
+<p class="meta">From Engine/Memory/PoolAllocator.cpp, PoolAllocator::Deallocate(Pointer ptr, size_t size)</p>
+
+<div class="note">
+  <strong>A null pointer is a silent no-op, and <code>size</code> is not examined on that path.</strong>
+  There is no <code>Assert(size == 0)</code> here, unlike <code>MultiPoolAllocator::Deallocate()</code>, which asserts it. Releasing
+  null costs nothing and tells you nothing, whatever byte count came with it.
+</div>
+
+<div class="gap">
+  <strong>A pointer this pool never gave out is forwarded to the parent rather than rejected.</strong>
+  <code>IsMine</code> is a range test on the buffer (<a href="ismine.html">IsMine</a>), and a pointer outside it is handed to
+  <code>mmgr.Deallocate(parentID, ptr, size)</code> — where <code>size</code> is the byte count the caller just passed. This is the
+  other half of <a href="allocate.html">the oversized-request contract</a>, and it is what makes a request the pool could not serve
+  round-trip correctly through the pool it was asked of. It is also the reason a wild, stale or already-foreign pointer is not caught
+  here: it is passed up to the parent, which has no way to know it is not its own. A pool is not a checker for a pointer you are not
+  sure about.
+</div>
+
+<div class="gap">
+  <strong>Nothing detects a block released twice.</strong>
+  There is no "is this block already free" test, so a second release links the block again and counts it again. The second release of
+  the same block links it to itself, which leaves the pool answering two consecutive <a href="allocate.html">Allocate</a> calls with
+  one address, and the free count is inflated by one for the rest of the pool's life. The only witness is the closing
+  <code>Assert(numberOfFreeBlocks &lt;= numberOfBlocks)</code> printed above — real in Debug and Dev, an empty inline function in a
+  Release build (<code>Engine/Core/Debug.h</code>) — and it fires only once the inflated count passes the block count.
+  The two branches printed above make the missing test visible: each asks something about the free list — the index of its head in
+  the <code>if</code>, its emptiness in the <code>else</code> — and neither asks whether the block being released already sits on it.
+  No testlet performs a double release, so the whole of this claim is read from the code rather than demonstrated against the engine:
+  the testlets of <code>PoolAllocatorTest::Prepare</code> (<code>Engine/Memory/PoolAllocator.cpp</code>) release each block they
+  allocate exactly once, and <code>Reallocation After An Exhausted Free List</code> confirms that no address it receives is one still
+  held, so the path that would catch a block released twice is never walked.
+</div>
+
+<div class="note">
+  <strong>The one corruption check reports and returns.</strong>
+  If the free-list head names a block index past the end of the pool, the release is abandoned with a logged error and the block is
+  lost — not returned, not asserted. The message reads <code>" is not alloacted by this."</code>, misspelling included, which matters
+  when the only thing you have to search a log with is the word it used
+  (<code>Engine/Memory/PoolAllocator.cpp</code>, <code>PoolAllocator::Deallocate()</code>). Note what it does <em>not</em> test: the
+  index of the head, not the index of the block being released, so a damaged list is detected one release later than it happened.
+</div>
+
+<div class="note">
+  <strong><code>size</code> decides nothing inside the pool, and everything on the way out.</strong>
+  For a block the pool owns, the byte count is used only by the <code>PROFILE_ENABLED</code> assertion
+  <code>Assert(size &lt;= blockSize)</code> and by the profile report — neither of which runs in a build this tree compiles. For a
+  foreign pointer, that same number is what the parent is asked to release. So the pairing rule stands even though the pool itself
+  cannot check it: pass the size you allocated with, because the pool may be a pass-through to something that takes the number
+  seriously.
+</div>
+
+<div class="note">
+  <strong>A free-list link is a block index or the sentinel <code>numberOfBlocks</code>, and releasing into a completely full pool
+  writes the sentinel.</strong>
+  The constructor ends the list with the link value <code>numberOfBlocks</code>, and <a href="allocateblock.html">AllocateBlock</a>
+  reads a link below <code>numberOfBlocks</code> as "another block follows" and anything else as the end of the list — so
+  <code>numberOfBlocks</code> is the terminating sentinel, and nothing other than a block index or that sentinel is a legal link.
+  The <code>else</code> branch printed above, taken when the pool had no free block for the released one to link to, writes
+  <code>numberOfBlocks</code>, and <a href="writenextindex.html">WriteNextIndex</a> accepts it: its bound is
+  <code>Assert(index &lt;= numberOfBlocks, ...)</code>, the same bound <a href="readnextindex.html">ReadNextIndex</a> already applied
+  when reading a link back (<code>Engine/Memory/PoolAllocator.cpp</code>). Before that branch was corrected it wrote
+  <code>numberOfBlocks - 1</code> instead — an ordinary block index naming the pool's last block — which put a block some caller was
+  still holding back on the free list and handed it to a second caller two allocations later. The guard is the testlet
+  <code>Reallocation After An Exhausted Free List</code> in <code>PoolAllocatorTest::Prepare</code>: it exhausts a pool, returns half
+  the blocks, allocates again, and fails naming the colliding address if any address it receives is still held. Restore the previous
+  branch and that testlet fails, reporting a collision against the last block, and the collection reports <code>FAIL</code> with exit
+  code 1.
+  A checked build aborts before it can show you that collision, and which configuration you are debugging in decides whether the
+  failure is visible at all.
+  <code>Debug</code> and <code>Dev</code> abort at <code>Assert(numberOfFreeBlocks &gt; 0)</code> in
+  <a href="allocateblock.html">AllocateBlock</a>, which sits above that function's <code>return ptr;</code>, so the pool crashes
+  rather than passing the colliding address back to anyone. <code>Release</code> was the only configuration in which a caller
+  silently received the same address twice: <code>Assert</code> is an empty inline function there (<code>Engine/Core/Debug.h</code>,
+  live unless <code>RELEASE_BUILD</code>), and <code>MemoryManager::LogError</code> says nothing because
+  <code>MemoryManager::Log()</code> wraps its entire body in <code>#if MEMORY_LOGGING_ENABLED</code>, which
+  <code>Engine/Config/BuildConfig.h</code> defines as 0. How the free list is laid out — where in a block that link lives, and what a
+  block costs because of it — is mechanism, and is still owed to a Memory design document under <code>docs/</code>; see the
+  <a href="index.html#coverage">class Coverage section</a>.
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<table>
+  <tr><th>Parameter</th><th>Type</th><th>Requirement</th></tr>
+  <tr><td><code>ptr</code></td><td><code>Pointer</code></td><td>A block this pool handed out, a pointer the pool forwarded to its parent, or <code>nullptr</code>. Anything else is treated as the parent's.</td></tr>
+  <tr><td><code>size</code></td><td><code>size_t</code></td><td>The byte count the allocation was made with. Unused by the pool's own path outside the profile build; forwarded verbatim when the pointer is foreign.</td></tr>
+</table>
+
+<h2 id="return">Return value</h2>
+
+<p>
+  Nothing. Every failure mode this function has — foreign pointer, damaged free list, block counted twice — is reported by a log line
+  or by an assertion, never by a return value, because there is none.
+</p>
+
+<h2 id="example">Examples</h2>
+
+<pre><code>auto&amp; bank = banks[index];
+Assert(size &lt;= bank.GetBlockSize());
+
+bank.Deallocate(ptr, size);</code></pre>
+
+<p class="meta">From Engine/Memory/MultiPoolAllocator.cpp, MultiPoolAllocator::Deallocate()</p>
+
+<p>
+  The engine's only production-shaped release of a pool block: the multi-pool finds the bank by pointer
+  (<code>GetBankIndex(void*)</code>, which asks each bank <a href="ismine.html">IsMine</a>), asserts the size against the block size
+  itself — the check this function performs only in a profile build — and passes both arguments through.
+</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; PoolAllocator</a></span>
+  <span><a href="index.html#methods">All PoolAllocator methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

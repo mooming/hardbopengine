@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PoolConfig::operator&lt; — Memory module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a class="current" href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Memory</a> /
+  <a href="index.html">PoolConfig</a> / operator&lt;
+</p>
+
+<h1><span class="fn">operator&lt;</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::PoolConfig</span>
+  <span class="tag">Engine/Memory/PoolConfig.h</span>
+  the module's one ordering rule: ascending by block size, and by nothing else
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>bool operator&lt;(const PoolConfig&amp; rhs) const noexcept</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  Defined in the class body of <code>Engine/Memory/PoolConfig.h</code>, and its whole body is
+  <code>return blockSize &lt; rhs.blockSize;</code>. It compares block size and ignores
+  <code>numberOfBlocks</code> completely, which makes it a strict weak ordering over <em>sizes</em>: two entries
+  that differ only in count are equivalent under it.
+</p>
+
+<p>
+  That one line is the ordering rule for the entire pool-configuration surface, because every sort in the module
+  is <code>std::sort</code> over this comparator:
+</p>
+
+<ul>
+  <li><code>PoolConfigUtil::Normalize()</code> sorts the caller's list before it folds equal sizes together</li>
+  <li><code>PoolConfigUtil::MergeMax()</code> sorts both inputs, walks them as two ascending sequences, and sorts
+    the merged result again</li>
+  <li><code>MultiPoolConfigCache::Serialize()</code> calls <code>Normalize()</code> first, so the cache file is
+    written in this order and the next boot reads it back that way</li>
+</ul>
+
+<p>
+  The fold that depends on it is the run-detection in <code>PoolConfigUtil::Normalize()</code>: it advances to a
+  new size whenever <code>config.blockSize != blockSize</code>, which is correct only while equal sizes are
+  adjacent. Sorting guarantees that, and the trailing
+  <code>Assert(configs.size() == numUniqueBlocks)</code> is the check that they stayed that way.
+</p>
+
+<div class="note">
+  <p>
+    <strong>Equivalence here is not equality.</strong> Because the comparator ignores the count, a
+    <code>std::find_if</code> that matches on <code>item.blockSize == key</code>
+    (<code>MultiPoolAllocator::ReportConfiguration()</code>) and this comparator agree by coincidence of subject,
+    not by construction — and nothing in the type offers an <code>operator==</code> at all. Sorting a list of
+    configurations is therefore stable in size but free to reorder two same-size entries, which is harmless only
+    because their counts are summed.
+  </p>
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<table>
+  <tr><th>Parameter</th><th>Type</th><th>Requirement</th></tr>
+  <tr><td><code>rhs</code></td><td><code>const PoolConfig&amp;</code></td><td>Any other configuration; only its <code>blockSize</code> is read</td></tr>
+</table>
+
+<h2 id="return">Return value</h2>
+
+<table>
+  <tr><th>Type</th><th>What you get</th></tr>
+  <tr><td><code>bool</code></td><td><code>true</code> when this configuration's block size is strictly smaller than <code>rhs</code>'s. Two configurations of equal size return <code>false</code> in both directions, which is what "equivalent" means to <code>std::sort</code>.</td></tr>
+</table>
+
+<h2 id="example">Examples</h2>
+
+<p>The declaration order in a normalised list is this comparator's output:</p>
+
+<pre><code>std::sort(configs.begin(), configs.end());</code></pre>
+
+<p class="meta">From Engine/Memory/PoolConfigUtil.cpp, PoolConfigUtil::Normalize(TPoolConfigs&amp;)</p>
+
+<p>
+  The same call appears in <code>PoolConfigUtil::MergeMax()</code> and, through <code>Normalize()</code>, in
+  <code>MultiPoolConfigCache::Normalize()</code>. See
+  <a href="../PoolConfigUtil/normalize.html">Normalize</a> for what the sorted list is then folded into, and
+  <a href="index.html#description">the class page</a> for what a list that never got sorted costs downstream.
+</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; PoolConfig</a></span>
+  <span><a href="index.html#methods">All PoolConfig methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

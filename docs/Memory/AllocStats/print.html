@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AllocStats::Print — Memory module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a class="current" href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Memory</a> /
+  <a href="index.html">AllocStats</a> / Print
+</p>
+
+<h1><span class="fn">Print</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::AllocStats</span>
+  <span class="tag">Engine/Memory/AllocStats.h</span>
+  Six Verbose log lines: name, inline flag, usage, requested, fallback and count triples, with integer-division averages
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>void Print() noexcept</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  Defined at <code>Engine/Memory/AllocStats.cpp</code>. It opens one logger channel — category
+  <code>"AllocStats"</code>, level <code>Verbose</code> — and emits six lines: the name; the inline flag; the usage
+  triple <code>usage / maxUsage / capacity</code>; the requested triple (average, peak, cumulative); the fallback
+  triple in the same shape; and the count triple
+  <code>alloc/dealloc/fallback</code> with the fallback share as an integer percentage of <code>allocCount</code>.
+  Unlike <a href="report.html">Report</a>, this function is not compiled out by <code>PROFILE_ENABLED</code> — what
+  makes it silent in a shipped build is the logger's level filter, not the preprocessor.
+</p>
+
+<div class="note">
+  <strong>The averages are integer divisions with an inline guard, and the percentage can round a real fallback rate to
+  zero.</strong> The requested and fallback averages read
+  <code>allocCount &gt; 0 ? totalRequested / allocCount : totalRequested</code> and its sibling — when no allocation has
+  been counted, the "average" printed is the cumulative total, not zero. The percentage is
+  <code>fallbackCount * 100 / allocCount</code>, zero when <code>allocCount</code> is zero. The display is a debugging
+  aid with truncated arithmetic, not a figure to parse.
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<p>None.</p>
+
+<h2 id="return">Return value</h2>
+
+<p>None; output goes to the logger at <code>Verbose</code> level under category <code>"AllocStats"</code>.</p>
+
+<h2 id="example">Examples</h2>
+
+<pre><code>	static const StaticString moduleName("AllocStats");
+	auto log = Logger::Get(moduleName, ELogLevel::Verbose);
+
+	log.Out([this](auto&amp; ls) { ls &lt;&lt; "name = " &lt;&lt; name; });</code></pre>
+
+<p class="meta">From Engine/Memory/AllocStats.cpp, AllocStats::Print</p>
+
+<p>
+  The channel open and the first of the six lines. The engine's own driver of this function is
+  <code>SystemStatistics::PrintAllocatorProfiles</code> (<code>Engine/Core/SystemStatistics.cpp</code>), which walks
+  the reported copies under <code>PROFILE_ENABLED</code>; nothing outside that loop calls it.
+</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; AllocStats</a></span>
+  <span><a href="index.html#methods">All AllocStats methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

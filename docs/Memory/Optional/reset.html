@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Optional::Reset — Memory module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a class="current" href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Memory</a> /
+  <a href="index.html">Optional</a> / Reset
+</p>
+
+<h1><span class="fn">Reset</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::Optional</span>
+  <span class="tag">Engine/Memory/Optional.h</span>
+  empty the optional - destroy for a value type, clear the flag for a reference, nothing at all when already empty
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>void Reset()</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  Defined in the class body of <code>Engine/Memory/Optional.h</code>. It returns immediately when
+  <code>hasValue</code> is false, and otherwise calls
+  <code>Destroy(typename IsReferenceType&lt;TType&gt;::Result());</code> — the same call the
+  <a href="destructor.html">destructor</a> makes. After it, the optional is empty and the flag is false.
+</p>
+
+<p>
+  What "empty" costs depends on the element type, because <a href="destroy.html">Destroy</a> is overloaded on the
+  <code>True_t</code>/<code>False_t</code> trait result: for a reference type it clears the flag and touches nothing
+  else, and for a value type it runs <code>Value().~TType()</code> on the storage before clearing the flag. Either
+  way the bytes are left where they are — this class never frees, never zeroes and never returns anything to an
+  allocator.
+</p>
+
+<div class="note">
+  <p>
+    <strong>It is idempotent and unconditional about the caller's references.</strong> Calling it on an already-empty
+    optional is a no-op rather than an error. But nothing tracks the references handed out earlier by
+    <a href="operator-multiply.html">operator*</a> or <a href="value.html">Value</a>: after a reset, a value-type
+    reference points at a destroyed object and a reference-type reference still points at the original object —
+    which is alive, but no longer reachable through the optional that named it.
+  </p>
+</div>
+
+<div class="note">
+  <p>
+    <strong>Two ways to say it, one behaviour.</strong> <code>opt = nullptr;</code> selects
+    <a href="operator-assign.html"><code>operator=(std::nullptr_t)</code></a>, whose body is a call to this
+    function. Reaching an empty optional through the assignment form from an element type —
+    <a href="operator-assign.html"><code>operator=(TType&amp;)</code></a> on an empty optional — goes the other way
+    and <a href="emplace.html">Emplace</a>s instead.
+  </p>
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<p>None.</p>
+
+<h2 id="return">Return value</h2>
+
+<p>
+  None, and nothing is reported: an optional that was already empty and one that just released a value both return
+  the same way. <a href="hasvalue.html">HasValue</a> afterwards is the only observation available.
+</p>
+
+<h2 id="example">Examples</h2>
+
+<p>The early exit, before any destruction is considered:</p>
+
+<pre><code>if (!hasValue)</code></pre>
+
+<p class="meta">From Engine/Memory/Optional.h, Optional::Reset</p>
+
+<p>
+  It is what keeps <code>opt = nullptr;</code> cheap on an already-empty optional, and what makes the guard
+  unnecessary-but-harmless in the callers that do not have it: <a href="destroy.html">Destroy</a> tests the flag
+  again on the value path. The paired operation that goes the other way — empty, then filled — is
+  <a href="emplace.html">Emplace</a>.
+</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; Optional</a></span>
+  <span><a href="index.html#methods">All Optional methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

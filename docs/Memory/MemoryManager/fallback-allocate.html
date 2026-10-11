@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MemoryManager::FallbackAllocate — Memory module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a class="current" href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Memory</a> /
+  <a href="index.html">MemoryManager</a> / FallbackAllocate
+</p>
+
+<h1><span class="fn">FallbackAllocate</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::MemoryManager</span>
+  <span class="tag">Engine/Memory/MemoryManager.h</span>
+  Allocate from the parent, book the event to the child — one hop, no chain, and the block belongs to the parent.
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>void* FallbackAllocate(TId id, TId parentId, size_t requested)</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+Defined in <code>Engine/Memory/MemoryManager.cpp</code> as <code>MemoryManager::FallbackAllocate()</code>. The body is
+three lines and they are the whole contract: allocate from <code>parentId</code>, then, under
+<code>PROFILE_ENABLED</code>, report the event against <code>id</code> with
+<a href="report-fallback.html">ReportFallback</a>, and return the pointer.
+</p>
+
+<pre><code>auto ptr = Allocate(parentId, requestedSize);
+
+#if PROFILE_ENABLED
+	ReportFallback(id, ptr, requestedSize);
+#endif // PROFILE_ENABLED
+
+	return ptr;</code></pre>
+
+<p class="meta">From Engine/Memory/MemoryManager.cpp, MemoryManager::FallbackAllocate()</p>
+
+<p>
+This is the mechanism by which an allocator degrades instead of failing: a request it cannot serve is sent to the allocator
+that owns it, while the event is booked to the allocator that gave up, so the fallback counters belong to the child. The
+memory itself is the parent's from that moment on.
+</p>
+
+<div class="note">
+  <strong>Exactly one hop, and no chain.</strong>
+  There is no walk up a parent list and no retry: if <code>parentId</code> cannot serve the request either, whatever that
+  allocator's own failure behaviour is becomes this call's answer. Since the call goes through
+  <a href="allocate.html">Allocate</a>, that includes its <code>Assert(ptr != nullptr, "Allocation Failed")</code> — a trap
+  in Debug and Dev, a returned null in Release. Note that <code>id</code> is never validated on this path unless
+  <code>PROFILE_ENABLED</code> is on; only <code>parentId</code> is range-checked, by <code>Allocate</code>.
+</div>
+
+<div class="gap">
+  <strong>A fallback block is the parent's block, forever.</strong>
+  Nothing marks the pointer. Releasing it through the child means the child must recognise it as foreign and forward the
+  release, which is exactly what the call sites do: <code>PoolAllocator::Deallocate()</code> tests
+  <code>IsMine(ptr)</code> and, when it is not, calls <code>mmgr.Deallocate(parentID, ptr, size);</code>
+  (<code>Engine/Memory/PoolAllocator.cpp</code>). An allocator that adds a fallback path without a matching foreign-pointer
+  release hands the block to the parent and then corrupts its own free list with it.
+</div>
+
+<div class="note">
+  <strong>In practice this is an "too big for me" path, not an "I am empty" path.</strong>
+  <code>PoolAllocator::Allocate()</code> calls it on <code>size &gt; blockSize</code> — a request the pool could never satisfy
+  — and <code>StackAllocator::Allocate()</code> and <code>InlineMonotonicAllocator::Allocate()</code> use it for the same
+  purpose on exhaustion of a different kind. A pool that simply runs out of blocks is not automatically redirected; see
+  <a href="../PoolAllocator/allocate.html">PoolAllocator::Allocate</a> for what happens in that case.
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<table>
+  <tr><th>Parameter</th><th>Type</th><th>Requirement</th></tr>
+  <tr><td><code>id</code></td><td><code>TId</code></td><td>The requesting allocator's own id — used for attribution only, and only under <code>PROFILE_ENABLED</code>.</td></tr>
+  <tr><td><code>parentId</code></td><td><code>TId</code></td><td>The allocator that will actually serve the request. An out-of-range value is logged and redirected to slot 0 by <a href="allocate.html">Allocate</a>.</td></tr>
+  <tr><td><code>requested</code></td><td><code>size_t</code></td><td>Byte count. <code>0</code> returns <code>nullptr</code> before anything happens, and is still counted as a fallback when profiling is on.</td></tr>
+</table>
+
+<h2 id="return">Return value</h2>
+
+<table>
+  <tr><th>Type</th><th>What you get</th></tr>
+  <tr><td><code>void*</code></td><td>Storage owned by <code>parentId</code>'s allocator, or <code>nullptr</code> for a zero-size request or a failed parent allocation. The bytes the parent actually consumed may exceed <code>requested</code> — the fallback counters record the request, not the answer (<a href="report-fallback.html">ReportFallback</a>).</td></tr>
+</table>
+
+<h2 id="example">Examples</h2>
+
+<pre><code>Pointer PoolAllocator::Allocate(size_t size)
+{
+	if (unlikely(size &gt; blockSize))
+	{
+		auto&amp; mmgr = MemoryManager::GetInstance();
+
+		return mmgr.FallbackAllocate(GetID(), parentID, size);
+	}
+
+	auto ptr = AllocateBlock();
+	…</code></pre>
+
+<p class="meta">From Engine/Memory/PoolAllocator.cpp, PoolAllocator::Allocate()</p>
+
+<p>
+The clearest use: a block-size pool cannot serve anything larger than its block, so oversized requests go to the parent and
+the pool's own statistics still show that it declined them. <code>StackAllocator::Allocate()</code> and
+<code>InlinePoolAllocator::Allocate()</code> follow the same shape for requests they cannot fit.
+</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; MemoryManager</a></span>
+  <span><a href="index.html#methods">All MemoryManager methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PoolConfigUtil — Memory module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a class="current" href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This class</h3>
+  <ul>
+    <li><a href="#description">Class description</a></li>
+    <li><a href="#template">Template parameters</a></li>
+    <li><a href="#properties">Class properties</a></li>
+    <li><a href="#methods">Class methods</a></li>
+    <li><a href="#non-member">Non-member helper functions</a></li>
+    <li><a href="#coverage">Coverage</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Memory</a> /
+  PoolConfigUtil
+</p>
+
+<h1>PoolConfigUtil</h1>
+<p class="subtitle">
+  <span class="tag">Engine/Memory/PoolConfigUtil.h</span>
+  <span class="tag">namespace hbe::PoolConfigUtil</span>
+  <span class="tag">utility header</span>
+  the two algorithms a list of pool configurations has to pass through before the cache trusts it
+</p>
+
+<h2 id="description">Class description</h2>
+
+<p>
+  A namespace, not a class: <code>hbe::PoolConfigUtil</code> at <code>Engine/Memory/PoolConfigUtil.h</code> holds
+  the two algorithms a list of <a href="../PoolConfig/index.html"><code>PoolConfig</code></a> entries needs before
+  it can be trusted — <a href="normalize.html">Normalize</a>, which sorts a list and folds it down to one entry
+  per block size, and <a href="merge-max.html">MergeMax</a>, which reconciles two such lists by taking the larger
+  count for every size. Both are declared here and defined in <code>Engine/Memory/PoolConfigUtil.cpp</code>, so
+  unlike most of this module's small helpers they are real out-of-line calls.
+</p>
+
+<p>
+  The namespace also owns the list type itself: <code>using TPoolConfigs = std::vector&lt;PoolConfig&gt;;</code>
+  is the container every configuration path passes around. <code>MultiPoolAllocatorConfig</code> spells the same
+  list <code>MultiPoolAllocatorConfig::TPoolConfigs</code> over its own <code>TVector</code>, and
+  <code>MultiPoolConfigCache::Deserialize()</code> builds one as
+  <code>MemoryManager::TVector&lt;PoolConfig&gt;</code> — three names for one shape, and only this one carries the
+  algorithms.
+</p>
+
+<table>
+  <tr><th>Piece</th><th>What it is</th><th>Where the contract lives</th></tr>
+  <tr>
+    <td>The list type</td>
+    <td><code>std::vector&lt;PoolConfig&gt;</code>, sorted ascending by block size whenever these functions have
+      finished with it</td>
+    <td><a href="#properties">TPoolConfigs</a></td>
+  </tr>
+  <tr>
+    <td>Compaction</td>
+    <td>Sort, then one entry per distinct block size with the run's counts summed</td>
+    <td><a href="normalize.html">Normalize</a></td>
+  </tr>
+  <tr>
+    <td>Reconciliation</td>
+    <td>Merge two normalised lists, keeping the larger count per size and consuming the source</td>
+    <td><a href="merge-max.html">MergeMax</a></td>
+  </tr>
+</table>
+
+<div class="note">
+  <p>
+    <strong>Both functions have exactly one caller in the engine.</strong>
+    <code>MultiPoolConfigCache::Normalize()</code> in <code>Engine/Memory/MultiPoolConfigCache.cpp</code> is the
+    only code that calls either one: it normalises each bank configuration and then merges duplicates before the
+    cache is written. A configuration list assembled anywhere else — a caller building its own
+    <code>TPoolConfigs</code>, or the list
+    <a href="../MultiPoolAllocator/generate-banks-by-cache.html"><code>GenerateBanksByCache</code></a> replays —
+    reaches the allocators unnormalised unless something in that path happens to sort it first.
+  </p>
+</div>
+
+<h2 id="template">Template parameters</h2>
+
+<p>
+  None. The namespace declares one alias and two free functions; nothing in it is templated. The element type is
+  fixed to <code>PoolConfig</code>, so a list of anything else is a different type and a different problem.
+</p>
+
+<h2 id="properties">Class properties</h2>
+
+<table>
+  <tr><th>Type + Name</th><th>Default Value</th><th>Description</th></tr>
+  <tr><td><code>using TPoolConfigs = std::vector&lt;PoolConfig&gt;;</code> <span class="badge">alias</span></td><td><span class="muted">not applicable</span></td><td>The configuration list both functions take by reference, and the shape the cache file and <code>MultiPoolAllocatorConfig::configs</code> store</td></tr>
+</table>
+
+<h2 id="methods">Class methods</h2>
+
+<table class="methods">
+  <tr><th>Name</th><th>Signature</th><th>What a caller depends on</th></tr>
+  <tr>
+    <td><a href="normalize.html"><code>Normalize</code></a></td>
+    <td class="sig">void Normalize(TPoolConfigs&amp; configs)</td>
+    <td>The list ends sorted ascending by block size with at most one entry per size; counts of equal sizes are summed and zero totals are dropped.</td>
+  </tr>
+  <tr>
+    <td><a href="merge-max.html"><code>MergeMax</code></a></td>
+    <td class="sig">void MergeMax(TPoolConfigs&amp; dst, TPoolConfigs&amp; src)</td>
+    <td>Both lists are normalised first, equal sizes keep the larger count rather than the sum, and <code>src</code> is emptied when the merge finishes.</td>
+  </tr>
+</table>
+
+<h2 id="non-member">Non-member helper functions</h2>
+
+<p>
+  Both declared functions <em>are</em> free functions of <code>hbe::PoolConfigUtil</code>; there is no helper
+  beside them. <code>Engine/Memory/PoolConfigUtil.h</code> includes <code>&lt;vector&gt;</code> and
+  <a href="../PoolConfig/index.html"><code>PoolConfig.h</code></a>, and the implementation additionally pulls in
+  <code>&lt;algorithm&gt;</code> for <code>std::sort</code> and <code>std::max</code> and
+  <code>Engine/Core/Debug.h</code> for the assertion that closes <a href="normalize.html">Normalize</a>.
+</p>
+
+<h2 id="coverage">Coverage</h2>
+
+<table>
+  <tr><th>Not documented here</th><th>Why</th></tr>
+  <tr>
+    <td>Whether these two functions are thread-safe, or may be called on one list from two threads</td>
+    <td>Neither takes a lock and neither documents a rule, and the single caller runs on the shutdown path where
+      no concurrent registration is expected. Nothing in <code>Engine/</code> states the assumption, so it is not
+      asserted here</td>
+  </tr>
+  <tr>
+    <td>What a caller should do with a list that <a href="normalize.html">Normalize</a> shortened</td>
+    <td>The functions report nothing: entries vanish silently when their block size or their summed count is zero,
+      and the only witness is the assertion comparing the result size to the distinct-size count. There is no
+      return value, no log line and no error code in either function</td>
+  </tr>
+  <tr>
+    <td>Why <a href="merge-max.html">MergeMax</a> takes the maximum of two counts rather than their sum</td>
+    <td>The code is unambiguous — <code>dst[dstIndex].numberOfBlocks = std::max(dstNumBlocks, srcNumBlocks)</code>
+      — but the reason is a design choice about what a reported peak means, and no comment, test or document in
+      the tree states it</td>
+  </tr>
+</table>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; PoolConfigUtil</a></span>
+  <span><a href="index.html#methods">All PoolConfigUtil methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

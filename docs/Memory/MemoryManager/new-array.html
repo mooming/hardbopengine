@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MemoryManager::NewArray — Memory module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a class="current" href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Memory</a> /
+  <a href="index.html">MemoryManager</a> / NewArray
+</p>
+
+<h1><span class="fn">NewArray</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::MemoryManager</span>
+  <span class="tag">Engine/Memory/MemoryManager.h</span>
+  One block, then size constructions from the same argument list — and only the caller knows how many there were.
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>template &lt;typename Type, typename... Types&gt;
+	Type* NewArray(Index size, Types&amp;&amp;... args)</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+Defined in the class body of <code>Engine/Memory/MemoryManager.h</code>: one block big enough for <code>size</code> elements, then
+<code>size</code> constructions in ascending address order, then the block pointer.
+</p>
+
+<pre><code>auto ptr = AllocateByType&lt;Type&gt;(size);
+
+for (Index i = 0; i &lt; size; ++i)
+{
+	new (&amp;ptr[i]) Type(std::forward&lt;Types&gt;(args)...);
+}
+
+return ptr;</code></pre>
+
+<p class="meta">From Engine/Memory/MemoryManager.h, MemoryManager::NewArray()</p>
+
+<p>
+The allocation is one block, not one per element — which is the point of the array form, and the reason its release must name the
+count. Every element is constructed from the <em>same</em> argument list, so what is built is <code>size</code> copies of one
+value, not a sequence: <code>BufferUtil</code> uses exactly that: <code>mmgr.NewArray&lt;T&gt;(numElements, defaultValue)</code> inside
+<code>BufferUtil::GetMemoryBuffer()</code>, whose release side recovers the count as <code>size / sizeof(T)</code> — the only
+reason the count can be reconstructed later at all.
+</p>
+
+<div class="gap">
+  <strong>The count is an <code>Index</code>, and it is the caller's to remember.</strong>
+  <code>Index</code> is <code>TIndex</code> (<code>Engine/Core/Types.h</code>), and it is converted to <code>size_t</code> by
+  <a href="allocate-by-type.html">AllocateByType</a>, so a negative value becomes an enormous request whose
+  <code>n * sizeof(T)</code> product wraps like any other. Nothing stores the count with the block: <a href="delete-array.html">
+  DeleteArray</a> takes its own <code>size_t n</code>, and getting either number wrong skips destructors, runs extra ones, or
+  releases the wrong byte count — see <a href="deallocate.html">Deallocate</a> for what a size mismatch does.
+</div>
+
+<div class="gap">
+  <strong>A constructor that throws mid-loop leaves earlier elements constructed and the block unreclaimable.</strong>
+  There is no try, no rollback and no partially-built path: the loop simply stops, the earlier objects are never destructed and the
+  storage is never released, because the caller never receives the pointer. This engine does not run on exceptions at the
+  allocation boundary (<code>Engine/Memory/GlobalAllocation.cpp</code> reports and aborts rather than producing
+  <code>std::bad_alloc</code>), which makes the case theoretical — but the code itself offers no protection, and a constructor that
+  throws is a leak by construction.
+</div>
+
+<div class="note">
+  <strong>Construction order is ascending, and destruction order is not the reverse.</strong>
+  Elements are built at <code>ptr[0] … ptr[size-1]</code>, and <a href="delete-array.html">DeleteArray</a> destroys them in the
+  same ascending order. For types whose destructors depend on a neighbour's state, that is not the order a standard container
+  would give you — the pairing is a fact about this pair of templates, not about arrays.
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<table>
+  <tr><th>Parameter</th><th>Type</th><th>Requirement</th></tr>
+  <tr><td><code>Type</code></td><td><em>template parameter</em></td><td>Element type; must be constructible from the argument list, and copy-assignable from one set of arguments for every element to be meaningful.</td></tr>
+  <tr><td><code>Types</code></td><td><em>template parameter pack</em></td><td>Deduced from the arguments; a pack of forwarding references.</td></tr>
+  <tr><td><code>size</code></td><td><code>Index</code></td><td>Element count. <code>0</code> allocates nothing and returns <code>nullptr</code> (the zero-size rule in <a href="allocate.html">Allocate</a>), constructing nothing.</td></tr>
+  <tr><td><em>(function parameters)</em></td><td>—</td><td><code>args</code> is forwarded into every element's constructor — the same values <code>size</code> times.</td></tr>
+</table>
+
+<h2 id="return">Return value</h2>
+
+<table>
+  <tr><th>Type</th><th>What you get</th></tr>
+  <tr><td><code>Type*</code></td><td>The first of <code>size</code> constructed elements in one contiguous block from the scoped allocator, or <code>nullptr</code> for a zero count. There is no array-new cookie, so the block is exactly <code>size * sizeof(Type)</code> bytes and knows nothing about itself.</td></tr>
+</table>
+
+<h2 id="example">Examples</h2>
+
+<pre><code>auto ptr = mmgr.NewArray&lt;T&gt;(numElements, defaultValue);</code></pre>
+
+<p class="meta">From Engine/Resource/BufferUtil.h, BufferUtil::GetMemoryBuffer()</p>
+
+<p>
+One call per buffer, every element seeded with the same value, and the count carried by the caller — the surrounding
+<code>Buffer</code> tracks it and hands it back to <code>mmgr.DeleteArray&lt;T&gt;(ptr, numElements);</code> on the way out. A
+testlet of the same shape appears in <code>Engine/Resource/Buffer.cpp</code> as
+<code>mmgr.NewArray&lt;int&gt;(TestSize, -1)</code>.
+</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; MemoryManager</a></span>
+  <span><a href="index.html#methods">All MemoryManager methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

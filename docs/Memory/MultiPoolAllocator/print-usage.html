@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MultiPoolAllocator::PrintUsage — Memory module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a class="current" href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Memory</a> /
+  <a href="index.html">MultiPoolAllocator</a> / PrintUsage
+</p>
+
+<h1><span class="fn">PrintUsage</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::MultiPoolAllocator</span>
+  <span class="tag">Engine/Memory/MultiPoolAllocator.h</span>
+  Write the totals and one line per bank to the log - profiling builds only, and the owning thread only.
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>void PrintUsage() const</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  Writes the allocator's usage to the log under its own name: the manager's totals for this id, then one line per bank,
+  then the block-size histogram a cached configuration would be built from. The entire body sits inside
+  <code>#if PROFILE_ENABLED</code>, and <code>Engine/Config/BuildConfig.h</code> defines that macro to
+  <code>0</code>; neither the CMake files nor <code>build.sh</code> override it, so in every configuration this tree
+  builds the function returns without reading anything. That fact comes from the sources, not from a compiled probe.
+</p>
+
+<table>
+  <tr><th>Line</th><th>Where the figure comes from</th></tr>
+  <tr><td><code>Usage = usage / maxUsage</code>, <code>Capacity = capacity</code>, <code>Alloc: …, Dealloc: …, Fallback: …</code></td><td>One <code>AllocStats</code> snapshot copied out of the manager by <code>MemoryManager::GetAllocatorStat(GetID())</code></td></tr>
+  <tr><td><code>[blockSize] Memory = usage / capacity, Max Usage = …</code>, one per bank</td><td>Read from each <code>PoolAllocator</code> directly: <code>GetUsage()</code>, <code>GetCapacity()</code>, <code>GetUsedBlocksMax() * GetBlockSize()</code></td></tr>
+  <tr><td><code>Opt.{ {blockSize, peakBlocks}, … }</code></td><td>Per-block-size sum of the banks' peak block counts, accumulated in a <code>std::map</code> keyed on block size — the same aggregation <a href="report-configuration.html">ReportConfiguration</a> publishes</td></tr>
+</table>
+
+<p>
+  The redirect that decides who pays for the last of those lines opens late:
+</p>
+
+<pre><code>	std::map&lt;size_t, size_t&gt; usageMap;
+…
+	{
+		AllocatorScope scope(MemoryManager::SystemAllocatorID);
+
+		StringBuilder args;
+		args &lt;&lt; "Opt.{";</code></pre>
+
+<p class="meta">From Engine/Memory/MultiPoolAllocator.cpp, MultiPoolAllocator::PrintUsage()</p>
+
+<div class="note">
+  <strong>Only the <code>StringBuilder</code> is redirected, and that is the one container that would otherwise charge
+  this pool.</strong> <code>StringBuilder</code> is built on a <code>std::basic_string</code> over an engine allocator,
+  so its buffer is an engine allocation — and the real caller stands inside the pool it is reporting when it calls:
+  <code>TestCollection::RunTestAt</code> opens <code>AllocatorScope scope(alloc)</code> and calls
+  <code>alloc.PrintUsage()</code> before that scope closes (<code>Engine/Test/TestCollection.cpp</code>). Without the
+  inner scope, the report's own text would be allocated from the bank the report is measuring, and could generate a new
+  bank between printing a capacity and printing the histogram. The <code>std::map</code> above the scope needs no
+  redirect for a different reason: a standard allocator reaches the heap through the global allocation entry points this
+  engine replaces, so its nodes are counted as global heap and never charge this allocator's usage figures
+  (<a href="../index.html#global-allocation">global allocation accounting</a>).
+</div>
+
+<div class="note">
+  <strong>The twin redirects from its first statement and this one does not.</strong>
+  <code>ThreadSafeMultiPoolAllocator::PrintUsage</code> opens <code>AllocatorScope(SystemAllocatorID)</code> before it
+  touches a container; this member opens it around the <code>StringBuilder</code> only
+  (<code>Engine/Memory/ThreadSafeMultiPoolAllocator.cpp</code> against
+  <code>Engine/Memory/MultiPoolAllocator.cpp</code>). Nothing states whether the difference is intended, so this page
+  describes the code as it reads and the divergence is named as an open question on the
+  <a href="index.html#coverage">class page</a>. For this class the difference is not a deadlock risk: there is no lock held here,
+  which is the whole reason the class exists.
+</div>
+
+<div class="gap">
+  <strong>It reads every bank without a lock, so it belongs to the owning thread.</strong> The per-bank loop walks
+  <code>banks</code> while reading four counters each. Called concurrently with an allocation that generates a bank, it
+  is reading a vector another thread may be reallocating. Nothing here can detect that, and
+  <a href="../index.html#allocators">the shared variant</a> exists precisely because this call is not safe against a
+  concurrent <a href="allocate.html">Allocate</a>.
+</div>
+
+<div class="note">
+  <strong>Cost.</strong> One statistics copy, one log call per bank plus one per distinct block size, and a
+  <code>std::map</code> holding one entry per distinct block size. It never writes to this allocator's own state, and
+  the counters it reads are <code>maxUsage</code> and <code>GetUsedBlocksMax()</code> — high-water marks that no reset
+  clears, so the "Max Usage" figure is the peak of the instance's whole life.
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<p>None.</p>
+
+<h2 id="return">Return value</h2>
+
+<p>
+  <code>void</code>. Everything it learns goes to the log, under the allocator's own name as the log category, at
+  <code>Info</code> level. Nothing it prints can be read back programmatically; the machine-readable output of the same
+  numbers is <a href="report-configuration.html">ReportConfiguration</a>.
+</p>
+
+<h2 id="example">Examples</h2>
+
+<p class="meta">From Engine/Test/TestCollection.cpp, TestCollection::RunTestAt()</p>
+
+<pre><code>		alloc.PrintUsage();</code></pre>
+
+<p>
+  Every unit-testlet body ends with this call, on a <code>MultiPoolAllocator</code> constructed three statements earlier
+  and still holding its own <code>AllocatorScope</code>. It is the only call site outside the class's own unit tests, and
+  it is compiled to nothing in a configuration without <code>PROFILE_ENABLED</code>.
+</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; MultiPoolAllocator</a></span>
+  <span><a href="index.html#methods">All MultiPoolAllocator methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>
