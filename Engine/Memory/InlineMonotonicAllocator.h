@@ -14,6 +14,7 @@
 
 namespace hbe
 {
+/// API reference: docs/Memory/InlineMonotonicAllocator/index.html
 template <size_t Capacity>
 class InlineMonotonicAllocator final
 {
