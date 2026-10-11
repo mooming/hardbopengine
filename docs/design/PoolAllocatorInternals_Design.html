@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Pool allocator internals design — Memory module — HardBop Engine design document</title>
+<link rel="stylesheet" href="../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../Config/index.html">Config</a></li>
+    <li><a href="../Container/index.html">Container</a></li>
+    <li><a class="current" href="../Core/index.html">Core</a></li>
+    <li><a href="../Engine/index.html">Engine</a></li>
+    <li><a href="../HSTL/index.html">HSTL</a></li>
+    <li><a href="../Log/index.html">Log</a></li>
+    <li><a href="../Math/index.html">Math</a></li>
+    <li><a href="../Memory/index.html">Memory</a></li>
+    <li><a href="../OSAL/index.html">OSAL</a></li>
+    <li><a href="../Renderer/index.html">Renderer</a></li>
+    <li><a href="../Resource/index.html">Resource</a></li>
+    <li><a href="../String/index.html">String</a></li>
+    <li><a href="../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This document</h3>
+  <ul>
+<li><a href="#link">A free block has to hold the link</a></li>
+<li><a href="#members">Both operands of the capacity arithmetic are members</a></li>
+<li><a href="#stride">The stride the free list is laid out with</a></li>
+<li><a href="#twice">Walking the free list twice</a></li>
+<li><a href="#address">Check the address, not the stride</a></li>
+<li><a href="#seealso">Where else to look</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+  <div class="breadcrumb"><a href="../index.html">Docs</a> / <a href="../Memory/index.html">Memory</a> / Pool allocator internals</div>
+
+<h1>Pool allocator internals</h1>
+
+<p>
+  Implementation design for <code>Engine/Memory/PoolAllocator.cpp</code>. The caller-facing contract — what
+  <a href="../Memory/PoolAllocator/index.html"><code>PoolAllocator</code></a> hands out, when it refuses, and what the
+  free-list terminator means — lives on the reference pages; what is recorded here is the geometry those pages depend
+  on, and the reasoning behind the guard testlets.
+</p>
+
+<h2 id="link">A free block has to hold the link</h2>
+
+<p>
+  A free block stores the next-index link that keeps the free list threaded, so a block smaller than
+  <code>TSize</code> cannot be supported at all. That makes it a precondition rather than something to clamp away, and
+  the constructor treats it as an input error rather than a size worth probing. The block-size range a pool accepts
+  still covers every size above that floor, including the ones alignment rounds up.
+</p>
+
+<h2 id="members">Both operands of the capacity arithmetic are members</h2>
+
+<p>
+  <code>blockSize</code> is the aligned size every later path uses too — <code>AllocateBlock</code>,
+  <code>Deallocate</code> and <code>GetCapacity</code>. The parameters carry the <code>in</code> prefix precisely so no
+  unqualified name in that arithmetic can silently resolve to the unaligned request instead.
+</p>
+
+<h2 id="stride">The stride the free list is laid out with</h2>
+
+<p>
+  The constructor rounds <code>blockSize</code> up to <code>Config::DefaultAlign</code>, so a request that is not
+  already aligned is the case that matters: the pool used to lay its free list out with the <em>requested</em> stride
+  while walking it with the <em>aligned</em> one, which quietly handed the same block to two callers. The guard testlet
+  therefore probes three sizes. 32 is there because it needs no rounding and so proves the rounding is not
+  over-reaching; 24 is what <code>LinkedList</code> nodes ask for; and 100 lands mid-way between two multiples. Each
+  request in the testlet is 16 bytes, which fits every aligned size in that table, so what the guard exercises is the
+  pool's own block path and never a fallback.
+</p>
+
+<h2 id="twice">Walking the free list twice</h2>
+
+<p>
+  The guard walks the released blocks twice over. A mis-linked free list survives the first pass and only shows itself
+  once the released blocks are walked again.
+</p>
+
+<h2 id="address">Check the address, not the stride</h2>
+
+<p>
+  Rounding the stride to <code>Config::DefaultAlign</code> only buys aligned addresses if the pool buffer itself is
+  aligned, so the guard asserts on the address of each block rather than on the stride.
+</p>
+
+<h2 id="seealso">Where else to look</h2>
+
+<ul>
+  <li><a href="../Memory/PoolAllocator/index.html"><code>PoolAllocator</code></a> — the class page, whose properties describe the capacity and block size the geometry above derives from.</li>
+  <li><a href="../Memory/PoolAllocator/writenextindex.html">WriteNextIndex</a> and <a href="../Memory/PoolAllocator/deallocate.html">Deallocate</a> — the free-list terminator contract, which is the other half of the link rule.</li>
+  <li><a href="../Memory/MultiPoolAllocator/index.html"><code>MultiPoolAllocator</code></a> — the bank layer that sizes these pools, whose growth rule depends on the block size being the aligned one.</li>
+</ul>
+
+</main>
+</body>
+</html>

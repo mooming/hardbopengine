@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MemoryManager::GetMultiPoolConfigCacheFilePath — Memory module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a class="current" href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Memory</a> /
+  <a href="index.html">MemoryManager</a> / GetMultiPoolConfigCacheFilePath
+</p>
+
+<h1><span class="fn">GetMultiPoolConfigCacheFilePath</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::MemoryManager</span>
+  <span class="tag">Engine/Memory/MemoryManager.h</span>
+  The one cache-file name the multi-pool geometry is loaded from and saved to, as a StaticStringID.
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>static StaticStringID GetMultiPoolConfigCacheFilePath()</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+Defined in <code>Engine/Memory/MemoryManager.cpp</code> as <code>MemoryManager::GetMultiPoolConfigCacheFilePath()</code>.
+The body builds one function-local <code>static const StaticString path(MULTIPOOL_ALLOC_LOG);</code> and returns
+<code>path.GetID()</code>, so the string is hashed once per process and every later call is a
+<code>StaticStringID</code> copy.
+</p>
+
+<p>
+<code>MULTIPOOL_ALLOC_LOG</code> is defined in <code>Engine/Config/BuildConfig.h</code> as
+<code>".multiPoolConfig.dat"</code> — a bare file name with no directory component, so which file this names depends on
+the process's working directory at the moment the engine reads or writes it. It is one name for one file shared by
+both halves of the cache: <a href="load-multi-pool-configs.html">LoadMultiPoolConfigs</a> reads it in the constructor
+and <a href="save-multi-pool-configs.html">SaveMultiPoolConfigs</a> overwrites it at shutdown, which is the whole
+mechanism by which one run's measured pool geometry becomes the next run's starting geometry.
+</p>
+
+<div class="note">
+  <strong>The return value is an id, not a path.</strong>
+  A caller that wants to open the file has to turn the id back into text first — <code>StaticString path(pathStrID);</code>
+  in <code>SaveMultiPoolConfigs</code> is the shape — and that conversion only round-trips for a string that was
+  registered as a <code>StaticString</code>, which the function-local static in this very body is what guarantees.
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<p>None.</p>
+
+<h2 id="return">Return value</h2>
+
+<table>
+  <tr><th>Type</th><th>What you get</th></tr>
+  <tr><td><code>StaticStringID</code></td><td>The hash id of <code>".multiPoolConfig.dat"</code>. Never fails and never returns an empty id: the input is a literal.</td></tr>
+</table>
+
+<h2 id="example">Examples</h2>
+
+<pre><code>StaticString path(GetMultiPoolConfigCacheFilePath());
+if (!OS::Exist(path))
+{
+	Log(ELogLevel::Significant, [path](auto&amp; ls) { ls &lt;&lt; "Load MultiPoolConfig: Failed to find " &lt;&lt; path; });
+
+	return;
+}</code></pre>
+
+<p class="meta">From Engine/Memory/MemoryManager.cpp, MemoryManager::LoadMultiPoolConfigs()</p>
+
+<p>
+Both call sites in the tree are inside this class — <a href="load-multi-pool-configs.html">LoadMultiPoolConfigs</a>
+and <a href="save-multi-pool-configs.html">SaveMultiPoolConfigs</a> — and no allocator or application asks the manager
+where its configuration came from. That is deliberate: an allocator that wanted the file would still have to go
+through the manager to get its contents, because the loaded table is a private member
+(<a href="look-up-multi-pool-config.html">LookUpMultiPoolConfig</a> is the only window onto it).
+</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; MemoryManager</a></span>
+  <span><a href="index.html#methods">All MemoryManager methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

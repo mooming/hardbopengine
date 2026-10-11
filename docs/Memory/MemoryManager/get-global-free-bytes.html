@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MemoryManager::GetGlobalFreeBytes — Memory module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a class="current" href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Memory</a> /
+  <a href="index.html">MemoryManager</a> / GetGlobalFreeBytes
+</p>
+
+<h1><span class="fn">GetGlobalFreeBytes</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::MemoryManager</span>
+  <span class="tag">Engine/Memory/MemoryManager.h</span>
+  Cumulative bytes released globally — retention is this subtracted from the requested total, clamped at zero.
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>[[nodiscard]] static size_t GetGlobalFreeBytes() noexcept</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+Defined in <code>Engine/Memory/GlobalAllocation.cpp</code> as <code>MemoryManager::GetGlobalFreeBytes()</code>: one
+relaxed load of the <code>globalFreeBytes</code> atomic that <a href="record-global-free.html">RecordGlobalFree</a>
+grows. Cumulative bytes released through the engine's replacement <code>operator delete</code> over the life of the
+process.
+</p>
+
+<div class="gap">
+  <strong>This total can legitimately be larger than the one it is subtracted from.</strong>
+  The unsized <code>operator delete(void*)</code> carries no size, so the release path asks the system heap what the
+  block actually was — <code>RecordDeallocation(size != 0 ? size : OS::GetAllocSize(ptr), caller);</code> in
+  <code>Deallocate()</code> — and a block is never smaller than what was asked for. Retention is therefore derived,
+  never tracked: <a href="get-global-allocation-bytes.html">GetGlobalAllocationBytes</a> minus this, clamped at zero,
+  and the clamp exists precisely because the subtraction is unsigned and the two totals are not guaranteed to be
+  ordered.
+</div>
+
+<div class="note">
+  <strong>Nothing outside the replaced operators is counted here.</strong>
+  <code>std::free</code> called directly — which is what <code>SystemAllocator::DeallocateBytes()</code> does
+  (<code>Engine/Memory/SystemAllocator.h</code>) — never reaches this counter, and neither does a block released by an
+  allocator that owns it. This is the release-side mirror of the rule stated on
+  <a href="get-global-allocation-bytes.html">GetGlobalAllocationBytes</a>: the two global counters describe the
+  <code>operator new</code>/<code>operator delete</code> pair only, and the per-allocator statistics are a separate
+  measure entirely.
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<p>None.</p>
+
+<h2 id="return">Return value</h2>
+
+<table>
+  <tr><th>Type</th><th>What you get</th></tr>
+  <tr><td><code>size_t</code></td><td>Cumulative bytes released through the global deallocation entry points. Never decremented; not a live-usage figure, and not guaranteed to be ≤ the requested total.</td></tr>
+</table>
+
+<h2 id="example">Examples</h2>
+
+<pre><code>const auto engineBytesOverBody =
+		globalBytesOverBody &gt; osBytesOverBody ? globalBytesOverBody - osBytesOverBody : 0;
+const auto engineFreedBytesOverBody =
+		globalFreedBytesOverBody &gt; osFreedBytesOverBody ? globalFreedBytesOverBody - osFreedBytesOverBody : 0;
+
+const auto retainedBytesOverBody =
+		engineBytesOverBody &gt; engineFreedBytesOverBody ? engineBytesOverBody - engineFreedBytesOverBody : 0;</code></pre>
+
+<p class="meta">From Engine/Test/TestCollection.cpp, TestCollection::RunTestAt()</p>
+
+<p>
+Retention per testlet, computed from four clamped differences. It is the only quantity in this family that a ceiling
+is set against: a stress loop may request a great deal while holding almost none of it, and only the
+requested-minus-released difference separates that from a leak of the same size.
+</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; MemoryManager</a></span>
+  <span><a href="index.html#methods">All MemoryManager methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SystemAllocator::deallocate — Memory module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a class="current" href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Memory</a> /
+  <a href="index.html">SystemAllocator</a> / deallocate
+</p>
+
+<h1><span class="fn">deallocate</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::SystemAllocator</span>
+  <span class="tag">Engine/Memory/SystemAllocator.h</span>
+  Returns n elements through the byte layer; a null pointer is asserted against twice, in Debug and Dev only
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>void deallocate(T* ptr, std::size_t n) noexcept</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  Defined in the class body of <code>Engine/Memory/SystemAllocator.h</code>:
+  <code>Assert(ptr != nullptr);</code> then <code>DeallocateBytes(ptr, n * sizeof(T));</code>. The byte arithmetic
+  mirrors <a href="allocate.html">allocate</a> — element count in, bytes down — and <a href="deallocate-bytes.html">DeallocateBytes</a>
+  decides what "returning the bytes" means in the active build configuration: plain <code>free</code> in the shipped
+  configuration, base-pointer recomputation and either a page release or a guard-page protection step in an
+  investigation build.
+</p>
+
+<p>
+  The count is load-bearing only in investigation mode: the shipped path hands the pointer to <code>free</code> and the
+  size is used only by the profiling report, while the investigation path needs the requested byte count to recover the
+  block's base from the end-aligned pointer it was handed. A mismatched <code>n</code> is therefore invisible in one
+  build configuration and corrupting in the other, and nothing in the call can tell you which one you are in — pass
+  the count the allocation was made with.
+</p>
+
+<p>
+  The null check is a Debug-and-Dev guard: outside builds where <code>Assert</code> has teeth
+  (<code>Engine/Core/Debug.h</code>), a null pointer continues into the byte layer, where the same assert — with its own
+  message — stands again before the build-specific teardown. Two asserts guard the one precondition, and neither of
+  them ships.
+</p>
+
+<h2 id="parameters">Parameters</h2>
+
+<table>
+  <tr><th>Parameter</th><th>Type</th><th>Requirement</th></tr>
+  <tr><td><code>ptr</code></td><td><code>T*</code></td><td>Memory returned by <a href="allocate.html">allocate</a> of any <code>SystemAllocator</code> instantiation (all instances are one allocator) — non-null, because a null release is not ignored, only asserted against.</td></tr>
+  <tr><td><code>n</code></td><td><code>std::size_t</code></td><td>The element count the block was allocated with; see above for what a mismatch costs in each configuration.</td></tr>
+</table>
+
+<h2 id="return">Return value</h2>
+
+<p>None. After the call the block belongs to the system heap again — or, under the dangling-pointer investigation switch, stands protected so that touching it faults instead of silently succeeding.</p>
+
+<h2 id="example">Examples</h2>
+
+<pre><code>		Assert(ptr != nullptr, "[SysAlloc][Dealloc] Null Pointer Error");</code></pre>
+
+<p class="meta">From Engine/Memory/SystemAllocator.h, SystemAllocator::DeallocateBytes</p>
+
+<p>
+  The byte layer's own copy of the precondition, the one with the message — the public
+  <a href="deallocate.html">deallocate</a> asserts first, without one. Both stand in Debug and Dev; neither stops a
+  shipped build from continuing.
+</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; SystemAllocator</a></span>
+  <span><a href="index.html#methods">All SystemAllocator methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

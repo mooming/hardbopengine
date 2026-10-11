@@ -48,6 +48,10 @@
   <ul>
     <li><a href="../AllocatorGuide.md">Allocator guide</a></li>
     <li><a href="../MemoryManagement_Guide.md">Memory management</a></li>
+    <li><a href="../design/ThreadSafeMultiPoolLocking_Design.html">Thread-safe multi-pool locking</a></li>
+    <li><a href="../design/GlobalAllocationAccounting_Design.html">Global allocation accounting</a></li>
+    <li><a href="../design/MemoryInvestigation_Design.html">Memory investigation self-tests</a></li>
+    <li><a href="../design/PoolAllocatorInternals_Design.html">Pool allocator internals</a></li>
   </ul>
 </nav>
 
@@ -83,12 +87,12 @@
 
 <table>
   <tr><th>Name</th><th>Kind</th><th>Header</th><th>Role</th></tr>
-  <tr><td><a href="#memorymanager">MemoryManager</a></td><td>Class, singleton</td><td>MemoryManager.h</td><td>Registers allocators, routes allocation, owns typed New and Delete</td></tr>
+  <tr><td><a href="MemoryManager/index.html">MemoryManager</a></td><td>Class, singleton</td><td>MemoryManager.h</td><td>Registers allocators, routes allocation, owns typed New and Delete — <a href="#memorymanager">summary below</a></td></tr>
   <tr><td><a href="#allocators">Nine allocators</a></td><td>Classes and class templates</td><td>one each</td><td>The strategies a manager can register</td></tr>
   <tr><td><a href="#allocatorscope">AllocatorScope</a></td><td>Class, RAII</td><td>AllocatorScope.h</td><td>Temporarily change which allocator is current</td></tr>
   <tr><td><a href="#allocatorproxy">AllocatorProxy</a></td><td>Class</td><td>AllocatorProxy.h</td><td>Adapt any allocator to the manager's calling convention</td></tr>
   <tr><td><a href="#poolconfig">PoolConfig</a></td><td>Class</td><td>PoolConfig.h</td><td>Block size and count, ordered by block size</td></tr>
-  <tr><td><a href="#shareable">Shareable</a></td><td>Class template</td><td>Shareable.h</td><td>Reference-counted handle to one object</td></tr>
+  <tr><td><a href="Shareable/index.html">Shareable</a></td><td>Class template</td><td>Shareable.h</td><td>Reference-counted handle to one object — <a href="#shareable">summary below</a></td></tr>
 </table>
 
 <h2 id="variables">Module variables</h2>
@@ -201,14 +205,14 @@
 <table>
   <tr><th>Allocator</th><th>Strategy</th><th>Header</th><th>Releases a block on its own?</th></tr>
   <tr><td><code>SystemAllocator&lt;T&gt;</code></td><td>Wraps the OS allocator</td><td>SystemAllocator.h</td><td>Yes</td></tr>
-  <tr><td><code>DefaultAllocator&lt;T&gt;</code></td><td>Proxy to the current <a href="#memorymanager"><code>MemoryManager</code></a> allocator — the default of every engine container</td><td>DefaultAllocator.h</td><td>Yes</td></tr>
-  <tr><td><code>MonotonicAllocator</code></td><td>Linear bump pointer</td><td>MonotonicAllocator.h</td><td>No — reset only</td></tr>
-  <tr><td><code>StackAllocator</code></td><td>Stack-like linear allocation, LIFO release</td><td>StackAllocator.h</td><td>Only in reverse order</td></tr>
-  <tr><td><code>PoolAllocator</code></td><td>Fixed-size blocks with a free list</td><td>PoolAllocator.h</td><td>Yes, same size class</td></tr>
-  <tr><td><code>MultiPoolAllocator</code></td><td>Several pools covering different size classes</td><td>MultiPoolAllocator.h</td><td>Yes</td></tr>
-  <tr><td><code>ThreadSafeMultiPoolAllocator</code></td><td>The same with internal synchronisation</td><td>ThreadSafeMultiPoolAllocator.h</td><td>Yes, from any thread</td></tr>
-  <tr><td><code>InlineMonotonicAllocator&lt;Capacity&gt;</code></td><td>Bump allocation inside a fixed inline buffer</td><td>InlineMonotonicAllocator.h</td><td>No</td></tr>
-  <tr><td><code>InlinePoolAllocator&lt;T, BlockSize, NumBlocks&gt;</code></td><td>Fixed-size pool inside the object — what <a href="../HSTL/index.html#hstring"><code>HInlineString</code></a> and <a href="../HSTL/index.html#hvector"><code>HInlineVector</code></a> are built on</td><td>InlinePoolAllocator.h</td><td>Yes</td></tr>
+  <tr><td><a href="DefaultAllocator/index.html"><code>DefaultAllocator</code></a></td><td>Proxy to the current <a href="#memorymanager"><code>MemoryManager</code></a> allocator — the default of every engine container</td><td>DefaultAllocator.h</td><td>Yes</td></tr>
+  <tr><td><a href="MonotonicAllocator/index.html"><code>MonotonicAllocator</code></a></td><td>Linear bump pointer</td><td>MonotonicAllocator.h</td><td>No — reset only</td></tr>
+  <tr><td><a href="StackAllocator/index.html"><code>StackAllocator</code></a></td><td>Stack-like linear allocation, LIFO release</td><td>StackAllocator.h</td><td>Only in reverse order</td></tr>
+  <tr><td><a href="PoolAllocator/index.html"><code>PoolAllocator</code></a></td><td>Fixed-size blocks with a free list</td><td>PoolAllocator.h</td><td>Yes, same size class</td></tr>
+  <tr><td><a href="MultiPoolAllocator/index.html"><code>MultiPoolAllocator</code></a></td><td>Several pools covering different size classes</td><td>MultiPoolAllocator.h</td><td>Yes</td></tr>
+  <tr><td><a href="ThreadSafeMultiPoolAllocator/index.html"><code>ThreadSafeMultiPoolAllocator</code></a></td><td>The same with internal synchronisation</td><td>ThreadSafeMultiPoolAllocator.h</td><td>Yes, from any thread</td></tr>
+  <tr><td><a href="InlineMonotonicAllocator/index.html"><code>InlineMonotonicAllocator</code></a></td><td>Bump allocation inside a fixed inline buffer</td><td>InlineMonotonicAllocator.h</td><td>No</td></tr>
+  <tr><td><a href="InlinePoolAllocator/index.html"><code>InlinePoolAllocator</code></a></td><td>Fixed-size pool inside the object — what <a href="../HSTL/index.html#hstring"><code>HInlineString</code></a> and <a href="../HSTL/index.html#hvector"><code>HInlineVector</code></a> are built on</td><td>InlinePoolAllocator.h</td><td>Yes</td></tr>
 </table>
 
 <h3>Template parameters</h3>
@@ -598,17 +602,40 @@ DoWork();
 <table>
   <tr><th>Gap</th><th>Detail</th></tr>
   <tr>
-    <td>Headers with no entry</td>
-    <td><code>AllocatorID.h</code>, <code>AllocStats.h</code>, <code>MultiPoolAllocatorConfig.h</code>,
-        <code>MultiPoolConfigCache.h</code>, <code>Optional.h</code>, <code>PoolConfigUtil.h</code>,
-        <code>ScopedAllocator.h</code>. The first two are types every signature here mentions —
-        <code>TAllocatorID</code> and the statistics record — and they are the first two worth documenting.</td>
+    <td>Sources with no design document</td>
+        <td>Every <code>.cpp</code> in this module is now free of comments, which is the half of the migration that
+        can be proven by a count. What it cannot prove is whether the reasoning survived: four documents carry what the
+        sources used to hold, <a href="../design/PoolAllocatorInternals_Design.html">pool allocator internals</a>,
+        <a href="../design/GlobalAllocationAccounting_Design.html">global allocation accounting</a>,
+        <a href="../design/MemoryInvestigation_Design.html">the investigator self-tests</a>, and
+        <a href="../design/MemoryManagerInternals_Design.html">the manager's internals</a>. The other sources held no
+        prose to migrate, so they have no document and need none — a design document earns its place by holding a claim
+        that was in danger, not by matching a file count.</td>
   </tr>
   <tr>
     <td>Per-allocator API</td>
-    <td>The <a href="#allocators">catalogue</a> says what each strategy is and which header holds it, not each
-        class's constructor arguments and reset semantics. That is nine classes' worth of reading, and a
-        constructor guessed wrongly is worse than a gap stated plainly.</td>
+    <td>All nine allocators named in the <a href="#allocators">catalogue</a> now carry a folder, and
+        <a href="SystemAllocator/index.html"><code>SystemAllocator</code></a> was the last of them: it says what
+        <code>FORCE_USE_SYSTEM_MALLOC</code> changes about it, which the catalogue row could not.
+        The identity and configuration entries documented the same way are
+        <a href="AllocatorID/index.html"><code>AllocatorID</code></a>, which carries the 256 allocator ceiling and the
+        invalid-id sentinel every other signature is written against,
+        <a href="AllocStats/index.html"><code>AllocStats</code></a>,
+        <a href="MultiPoolAllocatorConfig/index.html"><code>MultiPoolAllocatorConfig</code></a>,
+        <a href="MultiPoolConfigCache/index.html"><code>MultiPoolConfigCache</code></a>,
+        <a href="Optional/index.html"><code>Optional</code></a>,
+        <a href="PoolConfigUtil/index.html"><code>PoolConfigUtil</code></a> and
+        <a href="ScopedAllocator/index.html"><code>ScopedAllocator</code></a>.</td>
+  </tr>
+  <tr>
+    <td>Entries with a section here but no folder</td>
+    <td><a href="AllocatorScope/index.html"><code>AllocatorScope</code></a>,
+        <a href="AllocatorProxy/index.html"><code>AllocatorProxy</code></a>,
+        <a href="PoolConfig/index.html"><code>PoolConfig</code></a> and <a href="Memory/index.html"><code>Memory.h</code></a>
+        all have folders now, and this page keeps its sections as the module-level view rather than deleting them.
+        <a href="Memory/index.html"><code>Memory.h</code></a> is the thinnest of them: one page covers the allocation
+        function aliases and the templated <code>New</code> and <code>Delete</code>, where the rest of the module has one
+        page per name. That is the shape to revisit first if a caller ever reports the free-function contract unclear.</td>
   </tr>
   <tr>
     <td>Allocation failure</td>

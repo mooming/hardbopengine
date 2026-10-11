@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Memory — Memory module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a class="current" href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This class</h3>
+  <ul>
+    <li><a href="#description">Class description</a></li>
+    <li><a href="#template">Template parameters</a></li>
+    <li><a href="#properties">Class properties</a></li>
+    <li><a href="#methods">Class methods</a></li>
+    <li><a href="#non-member">Non-member helper functions</a></li>
+    <li><a href="#coverage">Coverage</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Memory</a> /
+  Memory
+</p>
+
+<h1>Memory</h1>
+<p class="subtitle">
+  <span class="tag">Engine/Memory/Memory.h</span>
+  <span class="tag">namespace hbe</span>
+  The free-function layer over the allocator system: New and Delete in two forms each - one driving an allocator object the caller holds, one delegating to the MemoryManager and the calling thread's allocator scope - plus two std::function allocation shapes
+</p>
+
+<h2 id="description">Class description</h2>
+
+<p>
+  <code>Engine/Memory/Memory.h</code> is not a class: it is the engine's free-function layer over the allocator
+  system, and this page is the folder the coverage ledger demands for it. The file declares two aliases and four
+  function templates, in two matched pairs. The <code>allocator</code> pair — <code>New(TAllocator&amp;, ...)</code>
+  and <code>Delete(TAllocator&amp;, TType*)</code> — works on any allocator object the caller holds: anything with a
+  <code>value_type</code> and <code>allocate</code>/<code>deallocate</code> in STL shape, including
+  <code>SystemAllocator</code> (<code>docs/Memory/SystemAllocator/</code>). The pair without an allocator —
+  <code>New(TTypes&amp;&amp;...)</code> and <code>Delete(TType*)</code> — is a one-line delegation to
+  <a href="../MemoryManager/index.html"><code>MemoryManager::New</code></a> and
+  <code>MemoryManager::Delete</code> (<code>Engine/Memory/Memory.h</code>), which means it allocates through
+  the calling thread's current allocator scope (<code>docs/Memory/AllocatorScope/</code>), exactly as
+  <a href="../MemoryManager/allocate.html"><code>AllocateByType</code></a> does.
+</p>
+
+<p>
+  The two pairs differ in more than the argument list. The allocator pair checks, at compile time, that the allocator's
+  <code>value_type</code> and the type being constructed have the same <code>sizeof</code> — sizes, not types — and then
+  asks the allocator for exactly one such element, placement-constructs, and hands back the live pointer; the release
+  calls the destructor and hands the pointer back with the element count <code>1</code>. The manager pair carries no
+  such assert, because the manager sizes by <code>sizeof(TType)</code> itself — and inherits the routing rule of the
+  id-free paths: the <code>Delete(ptr)</code> call is routed by whichever allocator is current when it runs, not by
+  whichever one answered the <code>New</code>. That is the same fact that forced the allocator-teardown fixes this
+  module records on the scope destructor page (<code>docs/Memory/AllocatorScope/destructor.html</code>), and inside a
+  <code>ScopedAllocator</code> (<code>docs/Memory/ScopedAllocator/</code>) it is the reason construct and destroy are
+  written in the same nesting level.
+</p>
+
+<table>
+  <tr><th>Piece</th><th>What it is</th><th>Where the contract lives</th></tr>
+  <tr><td><code>New(TAllocator&amp;, ...)</code></td><td>Construct one <code>TType</code> in memory from the given allocator object</td><td>This page, <a href="#methods">methods</a> and <a href="#template">template parameters</a></td></tr>
+  <tr><td><code>Delete(TAllocator&amp;, TType*)</code></td><td>Run the destructor and return the element to the given allocator object</td><td>This page, same sections</td></tr>
+  <tr><td><code>New(TTypes&amp;&amp;...)</code></td><td>Same construction through the manager and the thread's current scope</td><td><a href="../MemoryManager/new.html"><code>MemoryManager::New</code></a></td></tr>
+  <tr><td><code>Delete(TType*)</code></td><td>Same teardown through the manager, routed by the scope current at the release</td><td><a href="../MemoryManager/delete.html"><code>MemoryManager::Delete</code></a></td></tr>
+  <tr><td><code>TAllocFunc</code>, <code>TDeallocFunc</code></td><td>Owning <code>std::function</code> shapes for an allocate-one-block and a release operation</td><td>This page, <a href="#properties">properties</a></td></tr>
+</table>
+
+<div class="note">
+  <strong>All four functions are declared <code>noexcept</code> and construct objects inside themselves.</strong> A
+  constructor that throws cannot propagate through them: the exception reaches the function's own
+  <code>noexcept</code> specification and the process terminates. The types these helpers are for are types whose
+  construction does not throw — which is a caller-side condition, since nothing in the file tests it.
+</div>
+
+<div class="gap">
+  <strong>The allocator-taking <code>Delete</code> and the manager-taking <code>Delete</code> both call the destructor
+  through the pointer with no null test.</strong> <code>Delete(allocator, ptr)</code> is
+  <code>ptr-&gt;~TType(); allocator.deallocate(ptr, 1);</code> as written
+  (<code>Engine/Memory/Memory.h</code>): a null pointer is a crash, not a no-op. The manager form is the same call on
+  its <code>Delete(Type*)</code>, which likewise starts at <code>ptr-&gt;~Type()</code>
+  (<a href="../MemoryManager/delete.html">its page</a>).
+</div>
+
+<h2 id="template">Template parameters</h2>
+
+<p>
+  The class-shaped sections of this folder document function templates, because the file owns no class. One row per
+  declared template parameter, in header order.
+</p>
+
+<table>
+  <tr><th>Function</th><th>Parameter</th><th>Requirement</th></tr>
+  <tr><td><code>New</code> (allocator form)</td><td><code>TType, TTypes..., TAllocator</code></td><td><code>sizeof(TAllocator::value_type) == sizeof(TType)</code> is enforced by <code>static_assert</code>; <code>TAllocator</code> must offer <code>allocate(n)</code> returning a pointer and the nested <code>value_type</code>; <code>TTypes...</code> must satisfy a placement-<code>new</code> of <code>TType</code>.</td></tr>
+  <tr><td><code>Delete</code> (allocator form)</td><td><code>TType, TAllocator</code></td><td>The same <code>sizeof</code> assert; <code>TAllocator</code> must offer <code>deallocate(ptr, count)</code> taking an element count.</td></tr>
+  <tr><td><code>New</code> (manager form)</td><td><code>TType, TTypes...</code></td><td>Nothing beyond what <code>MemoryManager::New</code> needs: <code>TTypes...</code> forwarded to a placement-<code>new</code> of <code>TType</code>.</td></tr>
+  <tr><td><code>Delete</code> (manager form)</td><td><code>TType</code></td><td>Nothing beyond <code>MemoryManager::Delete</code>'s own: <code>TType</code> must be a complete type whose destructor is callable.</td></tr>
+</table>
+
+<h2 id="properties">Class properties</h2>
+
+<p>
+  The file's two aliases, declared at the top of <code>Engine/Memory/Memory.h</code>. They are owning, type-erased
+  shapes — <code>std::function</code> objects, not raw pointers, so unlike the function pointers inside an
+  <a href="../AllocatorProxy/index.html"><code>AllocatorProxy</code></a> they may themselves allocate and may
+  capture.
+</p>
+
+<table>
+  <tr><th>Type + Name</th><th>Default Value</th><th>Description</th></tr>
+  <tr><td><code>using TAllocFunc = std::function&lt;void*(size_t)&gt;;</code> <span class="badge">alias</span></td><td><span class="muted">not applicable</span></td><td>"allocate one block of this many bytes" as a callable. No declaration in <code>Engine/</code> or <code>Applications/</code> names either alias outside this header; see Coverage.</td></tr>
+  <tr><td><code>using TDeallocFunc = std::function&lt;void(void*, size_t)&gt;;</code> <span class="badge">alias</span></td><td><span class="muted">not applicable</span></td><td>"release this block of this many bytes" as a callable; same usage finding.</td></tr>
+</table>
+
+<h2 id="methods">Class methods</h2>
+
+<p>
+  One row per declared function name, in header order, both overloads of each name shown; the detail that a method
+  page would carry sits in the <a href="#template">template parameters</a> table and the paragraphs above, which is
+  complete for this file — the Coverage section records why these rows link nowhere.
+</p>
+
+<table class="methods">
+  <tr><th>Name</th><th>Signature</th><th>What a caller depends on</th></tr>
+  <tr><td><code>New</code><span class="badge">2 overloads</span></td><td class="sig">template &lt;typename TType, typename... TTypes, typename TAllocator&gt;<br>TType* New(TAllocator&amp; allocator, TTypes&amp;&amp;... args) noexcept<br>template &lt;typename TType, typename... TTypes&gt;<br>TType* New(TTypes&amp;&amp;... args) noexcept</td><td>One constructed object: the allocator form takes exactly one element of the named allocator and placement-constructs into it after a size-match <code>static_assert</code>; the manager form routes through the thread's current allocator scope.</td></tr>
+  <tr><td><code>Delete</code><span class="badge">2 overloads</span></td><td class="sig">template &lt;typename TType, typename TAllocator&gt;<br>void Delete(TAllocator&amp; allocator, TType* ptr) noexcept<br>template &lt;typename TType&gt;<br>void Delete(TType* ptr) noexcept</td><td>Destructor, then one-element release to the same destination the object came from — by named allocator in the first form, by the scope current at the call in the second; a null pointer is a crash in both.</td></tr>
+</table>
+
+<h2 id="non-member">Non-member helper functions</h2>
+
+<p>
+  None beyond the four functions above — the point of this file is that its whole surface is non-member. There are no
+  types to extend, no state in the file, and the state those four functions touch (the thread's scoped allocator id)
+  belongs to <a href="../MemoryManager/index.html"><code>MemoryManager</code></a>.
+</p>
+
+<h2 id="coverage">Coverage</h2>
+
+<table>
+  <tr><th>Not documented here</th><th>Why</th></tr>
+  <tr>
+    <td>No per-method pages exist for <code>New</code> and <code>Delete</code></td>
+    <td>Deliberate, and complete rather than partial: the generated method-page chrome would caption each of them
+      "member of hbe::Memory", a membership that does not exist — these are free functions in <code>hbe</code>,
+      documented here under the folder the coverage ledger names for this header. Everything a method page would carry
+      (signature, template requirements, parameters, return, example) is on this page.</td>
+  </tr>
+  <tr>
+    <td>A call site for the allocator-taking <code>New</code>/<code>Delete</code> pair</td>
+    <td>None was found under <code>Engine/</code> or <code>Applications/</code>; the contract above is read from the
+      definitions, not from usage. The manager-taking pair is exercised by testlets such as
+      <code>Nested Usage</code> in <code>Engine/Memory/StackAllocator.cpp</code>, whose lines are quoted on
+      <code>ScopedAllocator</code>'s pages (<code>docs/Memory/ScopedAllocator/</code>).</td>
+  </tr>
+  <tr>
+    <td>A consumer of <code>TAllocFunc</code> or <code>TDeallocFunc</code></td>
+    <td>No declaration outside the header names either alias (<code>Engine/CodingStandards.h</code> defines an unrelated
+      <code>TAllocFunc</code> of its own as a raw function-pointer shape). The aliases are documented as declared;
+      their intended consumer, if any, is not knowable from this tree.</td>
+  </tr>
+  <tr>
+    <td>The manager pair's internals — scope routing, the assert paths inside <code>MemoryManager::New</code> and
+      <code>MemoryManager::Delete</code></td>
+    <td>Owned by <a href="../MemoryManager/new.html">MemoryManager::New</a> and
+      <a href="../MemoryManager/delete.html">MemoryManager::Delete</a>; this page states the delegation and the
+      release-routing consequence a caller of <code>hbe::Delete</code> must plan around.</td>
+  </tr>
+</table>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; Memory</a></span>
+  <span><a href="index.html#methods">All Memory methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DefaultAllocator::operator!= — Memory module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a class="current" href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Memory</a> /
+  <a href="index.html">DefaultAllocator</a> / operator!=
+</p>
+
+<h1><span class="fn">operator!=</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::DefaultAllocator</span>
+  <span class="tag">Engine/Memory/DefaultAllocator.h</span>
+  The hand-written negation of the id comparison: it tells the caller the two registrations differ, and stops there.
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>template &lt;class TOther&gt;
+	bool operator!=(const DefaultAllocator&lt;TOther&gt;&amp; rhs) const noexcept</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  Defined inline in <code>Engine/Memory/DefaultAllocator.h</code> as
+  <code>DefaultAllocator::operator!=(const DefaultAllocator&lt;TOther&gt;&amp; rhs) const noexcept</code>: the negation of the same
+  one-int comparison, spelled out by hand rather than derived by the compiler from
+  <a href="operator-equal.html">operator==</a>. C++20 asks an allocator for <code>==</code> alone, so this declaration is the older half
+  of the requirement kept for consumers that still spell the question with <code>!=</code>; it is cross-type for the same reason its
+  partner is, and it is <code>const</code> and <code>noexcept</code> and not <code>[[nodiscard]]</code>.
+</p>
+
+<p>
+  What inequality is worth: the two allocators name different registration slots, so a block from one is not a block the other knows
+  how to release. The standard library uses that to protect itself — with <code>propagate_on_container_swap</code> synthesised as
+  false, as the probe on <a href="operator-equal.html">operator==</a> records, a swap of two containers whose allocators compare unequal
+  is not available, and a move assignment cannot take the source's buffer.
+</p>
+
+<div class="gap">
+  <strong>Inequality is a warning, not a guard.</strong>
+  Nothing in this class refuses a cross-allocator release: <a href="deallocate.html">deallocate</a> routes a pointer by the
+  <em>receiving</em> allocator's recorded id and never asks where the block came from — there is no
+  <a href="../InlineMonotonicAllocator/ismine.html">IsMine</a>-style range test here, because there is no buffer to range-test. Hand a
+  block allocated through one allocator to a second one whose <code>!=</code> says true and the call still runs: the pointer goes to the
+  second allocator's registration, and what it does with a block it never handed out is that allocator's own policy. The comparison is
+  information for the caller and for the containers that choose to ask it.
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<table>
+  <tr><th>Parameter</th><th>Type</th><th>Requirement</th></tr>
+  <tr><td><code>TOther</code></td><td><em>template parameter</em></td><td>The other allocator's element type, deduced from the argument.</td></tr>
+  <tr><td><code>rhs</code></td><td><code>const DefaultAllocator&lt;TOther&gt;&amp;</code></td><td>Any allocator instantiation; only its <code>allocatorID</code> is read, through <a href="getid.html">GetID</a>'s member.</td></tr>
+  <tr><td><em>(ordinary arguments)</em></td><td>—</td><td>One, above.</td></tr>
+</table>
+
+<h2 id="return">Return value</h2>
+
+<table>
+  <tr><th>Type</th><th>What you get</th></tr>
+  <tr><td><code>bool</code></td><td>True when the two hold different <code>TAllocatorID</code> values — which is to say, when they name different registrations, not when their memory provably differs.</td></tr>
+</table>
+
+<h2 id="example">Examples</h2>
+
+<p class="note">Illustrative — the standard library issues this comparison; no engine source does.</p>
+
+<pre><code>std::vector&lt;int, DefaultAllocator&lt;int&gt;&gt; a;
+std::vector&lt;int, DefaultAllocator&lt;int&gt;&gt; b;
+
+a.swap(b);	// legal and cheap only while the two allocators compare equal</code></pre>
+
+<p>
+  To make the two unequal, build one of them inside an
+  <a href="../index.html#allocatorscope"><code>AllocatorScope</code></a> over some other allocator: the captured ids then differ, the
+  containers can no longer exchange buffers, and the only remaining way to move their contents is element by element. That is the whole
+  cost of the inequality — a silent allocation-policy decision, not an error.
+</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; DefaultAllocator</a></span>
+  <span><a href="index.html#methods">All DefaultAllocator methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

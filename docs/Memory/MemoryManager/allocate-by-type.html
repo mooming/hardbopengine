@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MemoryManager::AllocateByType — Memory module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a class="current" href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Memory</a> /
+  <a href="index.html">MemoryManager</a> / AllocateByType
+</p>
+
+<h1><span class="fn">AllocateByType</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::MemoryManager</span>
+  <span class="tag">Engine/Memory/MemoryManager.h</span>
+  n elements, not n bytes, from this thread's scoped allocator — and the multiply is unchecked.
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>#endif
+
+	template &lt;typename T&gt;
+	T* AllocateByType(size_t n)</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+Defined in the class body of <code>Engine/Memory/MemoryManager.h</code>, so the body inlines into every includer. Its whole
+content is a unit conversion plus a dispatch:
+</p>
+
+<pre><code>const auto nBytes = n * sizeof(T);
+auto ptr = Allocate(GetScopedAllocatorID(), nBytes);
+
+return static_cast&lt;T*&gt;(ptr);</code></pre>
+
+<p class="meta">From Engine/Memory/MemoryManager.h, MemoryManager::AllocateByType()</p>
+
+<p>
+<code>n</code> is an <strong>element count</strong>, not a byte count — that is the only thing the template parameter buys, since
+<code>T</code> is used nowhere else in the body. The allocator is still chosen at run time by
+<a href="get-scoped-allocator-id.html">this thread's scoped id</a>; no template argument can pin one. The returned pointer is raw
+storage cast to <code>T*</code>: nothing is constructed, which is why <a href="new.html">New</a> and
+<a href="new-array.html">NewArray</a> are built on top of this rather than being alternatives to it.
+</p>
+
+<div class="gap">
+  <strong>The multiply is unchecked, and zero is indistinguishable from failure.</strong>
+  <code>n * sizeof(T)</code> wraps silently for a large <code>n</code>, and the wrapped product is what
+  <a href="allocate.html">Allocate</a> is asked for — a small number that will succeed and hand back too few elements, with no
+  diagnostic anywhere. A zero <code>n</code> takes the other path: <code>Allocate</code> answers <code>nullptr</code> before doing
+  anything else, so a caller cannot tell "you asked for nothing" from "the allocator refused", and this template performs no check
+  of its own before returning the cast pointer.
+</div>
+
+<div class="note">
+  <strong>The pair to release with is <a href="deallocate-types.html">DeallocateTypes</a>, with the same count.</strong>
+  Both halves recompute <code>n * sizeof(T)</code> and re-read the scoped id independently, so a release must match the count
+  <em>and</em> sit in the same scope. <a href="delete.html">Delete</a> and <a href="delete-array.html">DeleteArray</a> do exactly
+  that, which is why they exist; calling <a href="deallocate.html">Deallocate</a> by hand with a byte count instead is the mistake
+  this pairing prevents.
+</div>
+
+<div class="note">
+  <strong>Alignment and lifetime come from the allocator, not from the type.</strong>
+  There is no alignment parameter in the path, so <code>alignof(T)</code> beyond what the current allocator happens to give is not
+  served (<a href="allocate.html">Allocate</a> records what that means for the pool family). And because the block came from a
+  scope, the object's lifetime is bounded by that allocator's, not by the pointer's.
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<table>
+  <tr><th>Parameter</th><th>Type</th><th>Requirement</th></tr>
+  <tr><td><code>T</code></td><td><em>template parameter</em></td><td>The element type; only <code>sizeof(T)</code> is used, so the type need not be constructible, default-constructible or destructible for this call to compile.</td></tr>
+  <tr><td><code>n</code></td><td><code>size_t</code></td><td>Element count. Must be small enough that <code>n * sizeof(T)</code> does not wrap; <code>0</code> yields <code>nullptr</code>.</td></tr>
+</table>
+
+<h2 id="return">Return value</h2>
+
+<table>
+  <tr><th>Type</th><th>What you get</th></tr>
+  <tr><td><code>T*</code></td><td>Uninitialised storage for <code>n</code> elements, or <code>nullptr</code> for a zero count. Construct nothing into it without a release path that recomputes the same byte count.</td></tr>
+</table>
+
+<h2 id="example">Examples</h2>
+
+<pre><code>auto&amp; mmgr = MemoryManager::GetInstance();
+auto ptr = mmgr.AllocateByType&lt;T&gt;(n);</code></pre>
+
+<p class="meta">From Engine/Memory/DefaultAllocator.h, DefaultAllocator&lt;T&gt;::allocate()</p>
+
+<p>
+The one production call site outside the class itself: the STL-compatible adapter that feeds container memory through the scoped
+allocator, pairing it with <a href="deallocate-types.html">DeallocateTypes</a> in its <code>deallocate()</code>. Inside the class,
+<a href="new.html">New</a> is <code>AllocateByType&lt;Type&gt;(1)</code> followed by a placement constructor, and
+<a href="new-array.html">NewArray</a> is the same call with an element count.
+</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; MemoryManager</a></span>
+  <span><a href="index.html#methods">All MemoryManager methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

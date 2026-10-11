@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MemoryManager::GetCurrentAllocatorID — Memory module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a class="current" href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Memory</a> /
+  <a href="index.html">MemoryManager</a> / GetCurrentAllocatorID
+</p>
+
+<h1><span class="fn">GetCurrentAllocatorID</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::MemoryManager</span>
+  <span class="tag">Engine/Memory/MemoryManager.h</span>
+  This thread's current allocator id: what every allocator records as its parent.
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>static TId GetCurrentAllocatorID()</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+Defined in <code>Engine/Memory/MemoryManager.cpp</code> as <code>MemoryManager::GetCurrentAllocatorID()</code>: it
+returns the thread-local <a href="index.html#properties"><code>scopedAllocatorID</code></a> and nothing else. It is the public
+half of the same field the private
+<a href="get-scoped-allocator-id.html">GetScopedAllocatorID</a> reads — the two bodies are identical, and the
+difference is only who may call them.
+</p>
+
+<p>
+Its dominant use is not allocation at all but <em>adoption</em>: an allocator constructed inside someone else's scope
+records this value as the parent it forwards to and returns buffers to. Six constructors do exactly that
+(<code>Engine/Memory/MonotonicAllocator.cpp</code>, <code>MonotonicAllocator::MonotonicAllocator()</code>;
+<code>Engine/Memory/MultiPoolAllocator.cpp</code>, <code>MultiPoolAllocator::MultiPoolAllocator()</code>;
+<code>Engine/Memory/StackAllocator.cpp</code>; <code>Engine/Memory/PoolAllocator.cpp</code>;
+<code>Engine/Memory/InlineMonotonicAllocator.h</code>; <code>Engine/Memory/InlinePoolAllocator.h</code>), and
+<code>Engine/Container/LinkedList.cpp</code> shows the pairing it depends on — build the pool, open the scope, and
+the pool's own parent is whatever was current one level out.
+</p>
+
+<pre><code>parentID = hbe::MemoryManager::GetCurrentAllocatorID();
+bufferPtr = mmgr.Allocate(capacity);</code></pre>
+
+<p class="meta">From Engine/Memory/MonotonicAllocator.cpp, MonotonicAllocator::MonotonicAllocator()</p>
+
+<div class="gap">
+  <strong>It answers for this thread only, and a new thread starts at 0.</strong>
+  <code>scopedAllocatorID</code> is <code>static thread_local</code> and initialised to
+  <code>SystemAllocatorID</code> in <code>Engine/Memory/MemoryManager.cpp</code>. A worker thread that the task system
+  starts therefore reports 0 even while the thread that queued the work sits inside an
+  <code>AllocatorScope</code>, so anything it allocates lands on the system allocator and never on the pool the
+  caller believed it was using. Nothing in <code>Engine/</code> propagates a scope across a thread boundary, and
+  <a href="register-allocator.html">a registration</a> takes the parent with it, which is how
+  <a href="../PoolAllocator/index.html">PoolAllocator</a> guarantees its buffer returns to the right place regardless
+  of where the destructor runs.
+</div>
+
+<div class="note">
+  <strong>It is a snapshot, not a handle.</strong>
+  Two calls can disagree, and the engine relies on that being understood: <code>Engine/Core/TaskRegistry.cpp</code>
+  caches the value once at construction as <code>bankAllocatorID</code> and then allocates its record banks against
+  that stored id (<code>TaskRegistry::AllocateBank()</code>) rather than re-reading the ambient scope on every
+  growth. The typed entry points do the opposite — <a href="allocate-by-type.html">AllocateByType</a> and
+  <a href="deallocate-types.html">DeallocateTypes</a> each re-read the scope — so an allocation and its release must
+  sit in the same scope or the block goes to a stranger.
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<p>None.</p>
+
+<h2 id="return">Return value</h2>
+
+<table>
+  <tr><th>Type</th><th>What you get</th></tr>
+  <tr><td><code>TId</code> (<code>TAllocatorID</code>, an <code>int</code>)</td><td>This thread's current allocator id: 0 before any scope opens, the id the innermost open <code>AllocatorScope</code> installed, or whatever a caller wrote into the public field directly. It can legitimately be <code>InvalidAllocatorID</code>: <a href="set-scoped-allocator-id.html">SetScopedAllocatorID</a> exempts exactly that value from its range check, and <code>AllocatorScope</code>'s default constructor installs it (<code>Engine/Memory/AllocatorScope.cpp</code>, <code>AllocatorScope::AllocatorScope()</code>) — no call site in this tree opens a scope that way, but an unsized <a href="allocate.html">Allocate</a> inside one asserts in Debug and Dev and is redirected to slot 0 in Release.</td></tr>
+</table>
+
+<h2 id="example">Examples</h2>
+
+<pre><code>AllocatorScope scope(allocator);
+
+auto&amp; mmgr = MemoryManager::GetInstance();
+auto ptr = mmgr.Allocate(100);
+
+if (mmgr.GetCurrentAllocatorID() != allocator.GetID())
+{
+	ls &lt;&lt; "Current allocator ID is not the given allocator id(" &lt;&lt; allocator.GetID() &lt;&lt; ')' &lt;&lt; lferr;
+}
+
+mmgr.Deallocate(ptr, 100);</code></pre>
+
+<p class="meta">From Engine/Memory/AllocatorScope.cpp, AllocatorScopeTest::Prepare()</p>
+
+<p>
+The unit test for the scope mechanism, which is also the clearest statement of what this getter is for: after
+<code>AllocatorScope scope(allocator)</code> the current id is the allocator's own registration id, and an unnamed
+<a href="allocate.html">Allocate</a> therefore comes from it. The second production use is
+<code>Engine/Memory/DefaultAllocator.h</code>, <code>DefaultAllocator&lt;T&gt;::DefaultAllocator()</code>, which
+stores this id as the source a container's memory came from.
+</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; MemoryManager</a></span>
+  <span><a href="index.html#methods">All MemoryManager methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

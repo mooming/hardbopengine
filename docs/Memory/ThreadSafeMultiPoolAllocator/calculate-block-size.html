@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ThreadSafeMultiPoolAllocator::CalculateBlockSize — Memory module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a class="current" href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Memory</a> /
+  <a href="index.html">ThreadSafeMultiPoolAllocator</a> / CalculateBlockSize
+</p>
+
+<h1><span class="fn">CalculateBlockSize</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::ThreadSafeMultiPoolAllocator</span>
+  <span class="tag">Engine/Memory/ThreadSafeMultiPoolAllocator.h</span>
+  <span class="tag">private</span>
+  Round a request up to minBlock times a power of two — the whole set of block sizes an instance can ever have.
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>[[nodiscard]] size_t CalculateBlockSize(size_t requested) const</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  Private, defined in <code>Engine/Memory/ThreadSafeMultiPoolAllocator.cpp</code>, and called from
+  <a href="new-bank-allocate.html"><code>NewBankAllocate</code></a> alone. It is arithmetic on
+  <code>minBlock</code>, which the constructor fixes and nothing else assigns, so it needs no lock and no other
+  state:
+</p>
+
+<p class="meta">From Engine/Memory/ThreadSafeMultiPoolAllocator.cpp, ThreadSafeMultiPoolAllocator::CalculateBlockSize() const</p>
+
+<pre><code>size_t blockSize = (requested + minBlock - 1) / minBlock;
+blockSize = std::bit_ceil(blockSize);
+blockSize *= minBlock;
+blockSize = std::max(minBlock, blockSize);</code></pre>
+
+<p>
+  Read together, those four lines define the entire set of block sizes an instance can ever have:
+  <code>minBlock</code> times a power of two. The request is divided up in units of <code>minBlock</code> (rounded
+  up), that count is rounded up to a power of two by <code>std::bit_ceil</code>, and the product is floored at
+  <code>minBlock</code> once more for the case where the request is zero or smaller than the floor.
+</p>
+
+<table>
+  <tr><th>Request</th><th>Block size at <code>minBlock</code> = 16</th><th>Note</th></tr>
+  <tr><td><code>0</code> to <code>16</code></td><td><code>16</code></td><td>Requests below the floor are indistinguishable — this is why <a href="allocate.html"><code>Allocate</code></a> treats a zero-size request before ever reaching here</td></tr>
+  <tr><td><code>17</code> to <code>32</code></td><td><code>32</code></td><td>Two units</td></tr>
+  <tr><td><code>33</code> to <code>64</code></td><td><code>64</code></td><td>Three units rounds up to four</td></tr>
+  <tr><td><code>65</code> to <code>128</code></td><td><code>128</code></td><td>Five units rounds up to eight</td></tr>
+  <tr><td><code>129</code> to <code>256</code></td><td><code>256</code></td><td>Nine rounds up to sixteen</td></tr>
+</table>
+
+<div class="note">
+  <strong>This answer is not necessarily the bank's final block size.</strong> <code>PoolAllocator</code> rounds what
+  it is given through <code>OS::GetAligned(std::max(inBlockSize, sizeof(size_t)), Config::DefaultAlign)</code>
+  (<code>Engine/Memory/PoolAllocator.cpp</code>), so a bank's real block size is at least this result, at least
+  <code>sizeof(size_t)</code> and a multiple of 16. With the default <code>minBlock</code> of 16 the two agree; an
+  instance constructed with a smaller minimum block does not get the size class this function appears to promise, and
+  a caller working out which class its request falls into has to apply that floor too.
+</div>
+
+<div class="note">
+  <strong>It sets the size half of a bank; the count half belongs to
+  <a href="calculate-number-of-blocks.html"><code>CalculateNumberOfBlocks</code></a>.</strong> The pair together
+  decides how much memory one growth event takes from <code>parentID</code>, and the refusal rule in
+  <a href="get-bank-index.html"><code>GetBankIndex</code></a> — never serve a request from a bank whose block is more
+  than double it — is what keeps this rounding ladder from turning into waste: the ladder is the reason a 33-byte
+  request gets its own 64-byte class instead of riding on a 4,096-byte bank.
+</div>
+
+<div class="gap">
+  <strong>Nothing validates <code>minBlock</code> on the way in.</strong>
+  <a href="constructors.html">The constructor</a> stores whatever <code>minBlockSize</code> the caller passed. A value
+  below <code>sizeof(size_t)</code> is caught one step later — <code>PoolAllocator</code> asserts that a block can
+  hold the free-list link it has to store (<code>Engine/Memory/PoolAllocator.cpp</code>) — but a value of 0 divides by
+  zero in the first line of this function, before any bank exists to complain.
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<table>
+  <tr><th>Parameter</th><th>Type</th><th>Requirement</th></tr>
+  <tr><td><code>requested</code></td><td><code>size_t</code></td><td>Bytes needed. Rounded up in units of <code>minBlock</code>; there is no ceiling on the request and no clamp on the result, so the only bound is the multiplication by <code>minBlock</code></td></tr>
+</table>
+
+<h2 id="return">Return value</h2>
+
+<table>
+  <tr><th>Type</th><th>What you get</th></tr>
+  <tr><td><code>size_t</code></td><td>A block size at least <code>requested</code> and at least <code>minBlock</code>, written as <code>minBlock</code> times a power of two</td></tr>
+</table>
+
+<h2 id="example">Examples</h2>
+
+<p class="meta">From Engine/Memory/ThreadSafeMultiPoolAllocator.cpp, ThreadSafeMultiPoolAllocator::NewBankAllocate()</p>
+
+<pre><code>auto blockSize = CalculateBlockSize(size);
+auto numBlocks = CalculateNumberOfBlocks(bankSize, blockSize);
+
+GenerateBank(blockSize, numBlocks);</code></pre>
+
+<p>
+  The only call site, and the whole of what a growth event decides: the size comes from the request, the count from
+  <code>bankSize</code>, and the two are passed on together
+  (<code>Engine/Memory/ThreadSafeMultiPoolAllocator.cpp</code>).
+</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; ThreadSafeMultiPoolAllocator</a></span>
+  <span><a href="index.html#methods">All ThreadSafeMultiPoolAllocator methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

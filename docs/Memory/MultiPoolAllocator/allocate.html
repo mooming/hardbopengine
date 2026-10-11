@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MultiPoolAllocator::Allocate — Memory module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a class="current" href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Memory</a> /
+  <a href="index.html">MultiPoolAllocator</a> / Allocate
+</p>
+
+<h1><span class="fn">Allocate</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::MultiPoolAllocator</span>
+  <span class="tag">Engine/Memory/MultiPoolAllocator.h</span>
+  Take a block from the smallest bank that will hold the request, or grow the ladder and then take one.
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>void* Allocate(size_t size)</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  Asks the bank ladder for a block, and grows the ladder when nothing in it will do. It is the only public member that
+  can change the structure of the allocator, and the only route to
+  <a href="new-bank-allocate.html">NewBankAllocate</a>.
+</p>
+
+<pre><code>	if (unlikely(size &lt;= 0))
+	{
+		return nullptr;
+	}
+
+	auto index = GetBankIndex(size);
+	if (index &gt;= banks.size())
+	{
+…
+		return NewBankAllocate(size);
+	}
+
+	auto&amp; bank = banks[index];
+	if (unlikely(bank.GetAvailableBlocks() &lt;= 0))
+	{
+…
+		return NewBankAllocate(size);
+	}
+
+	auto ptr = bank.Allocate(size);</code></pre>
+
+<p class="meta">From Engine/Memory/MultiPoolAllocator.cpp, MultiPoolAllocator::Allocate()</p>
+
+<p>
+  <a href="get-bank-index.html">GetBankIndex</a> walks the banks from the smallest block size up and returns the first
+  one that is large enough, not full, and no more than double the request rounded up to
+  <code>minBlock</code>. Two different refusals both end at the same place: no bank fits, or the bank that fits is
+  exhausted. Both grow the ladder, so a size class that runs dry gets a second bank rather than a wait.
+</p>
+
+<p>
+  A profiling build reports the served block through <code>MemoryManager::ReportAllocation</code> with the
+  <em>bank's</em> block size, not the requested size
+  (<code>Engine/Memory/MultiPoolAllocator.cpp</code>) — the difference between the two is the allocator's internal
+  waste, and it is the figure <a href="print-usage.html">PrintUsage</a> prints per bank.
+</p>
+
+<div class="gap">
+  <strong>There is no allocation, only a block.</strong>
+  This signature cannot express an alignment, and the block it hands back is 16-byte aligned and nothing more: the
+  pool rounds a bank's block size up to <code>Config::DefaultAlign</code>
+  (<code>Engine/Config/EngineConfig.h</code>, <code>Engine/Memory/PoolAllocator.cpp</code>), and a type whose
+  <code>alignof</code> exceeds 16 is therefore silently under-aligned. The 2026-10-05 review recorded this as finding 9
+  and no code since has closed it, so treat it as a known gap in the interface rather than as a guarantee: over-aligned
+  types do not belong in a pool of this shape.
+</div>
+
+<div class="gap">
+  <strong>Exhaustion stops the process; it does not return null.</strong>
+  The only null this function returns for a non-zero request is unreachable: <a href="new-bank-allocate.html">the
+  growth path</a> ends in <code>FatalAssert(false)</code> before it can return one, and
+  <code>FatalAssert</code> is defined outside the <code>RELEASE_BUILD</code> guard, so it aborts in every configuration
+  (<code>Engine/Core/Debug.h</code>). Before that, a bank's own backing request goes through
+  <code>MemoryManager::Allocate</code>, whose <code>Assert(ptr != nullptr, "Allocation Failed")</code> fires first in a
+  Debug or Dev build (<code>Engine/Memory/MemoryManager.cpp</code>). A caller cannot ask this allocator to fail
+  politely, and cannot fall back to another source on its advice.
+</div>
+
+<div class="note">
+  <strong>A request for zero returns null and allocates nothing — but that guard is rarely what stops it.</strong>
+  <code>size &lt;= 0</code> on a <code>size_t</code> tests one value, zero, and behaves identically to the
+  <code>size == 0</code> spelling the thread-safe twin now uses; the journal entry at 2026-10-05 18:31 records the two
+  spellings and leaves this one alone. A request that arrives through
+  <code>MemoryManager::Allocate</code> is already answered with null before this function is reached
+  (<code>Engine/Memory/MemoryManager.cpp</code>), so the guard only matters to a caller holding the object directly.
+</div>
+
+<div class="note">
+  <strong>Nothing here is synchronised, and the two occupancy reads above are the reason it cannot be added later by
+  accident.</strong> <code>GetBankIndex</code> consults <code>GetAvailableBlocks()</code> while choosing, so the bank
+  that answers a size depends on who has taken what. One thread owns an instance for its whole life; the variant built
+  for sharing is named in the <a href="../index.html#allocators">allocator catalogue</a>.
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<table>
+  <tr><th>Parameter</th><th>Type</th><th>Requirement</th></tr>
+  <tr>
+    <td><code>size</code></td>
+    <td><code>size_t</code></td>
+    <td>Bytes wanted. Zero returns null. Anything from 1 to <code>minBlock</code> is treated as a request for
+      <code>minBlock</code>, and anything above the largest bank's block size creates that bank. The value is not
+      stored with the block: the matching <a href="deallocate.html">Deallocate</a> must be given it again</td>
+  </tr>
+</table>
+
+<h2 id="return">Return value</h2>
+
+<table>
+  <tr><th>Type</th><th>What you get</th></tr>
+  <tr>
+    <td><code>void*</code></td>
+    <td>A block inside one of this allocator's banks, at least <code>size</code> bytes and up to the bank's block size,
+      or null for a request of zero. The block size that served the request is not returned and cannot be recovered
+      from the pointer by any public member; only a profiling build records it, per bank, in
+      <code>MemoryManager</code>'s statistics</td>
+  </tr>
+</table>
+
+<h2 id="example">Examples</h2>
+
+<p>
+  No engine source calls <code>MultiPoolAllocator::Allocate</code> by name. The real route is the function pointer the
+  constructor installed: <code>MemoryManager::Allocate</code> calls
+  <code>allocProxy.allocate(allocProxy.allocator, nBytes)</code>, and that lambda is the one
+  <a href="constructors.html">the constructor</a> built out of this member
+  (<code>Engine/Memory/MemoryManager.cpp</code>, <code>Engine/Memory/MultiPoolAllocator.cpp</code>). Engine code
+  therefore allocates from an instance by standing in it.
+</p>
+
+<p class="meta">From Engine/Memory/MultiPoolAllocator.cpp, MultiPoolAllocatorTest::Prepare() — test-only code</p>
+
+<pre><code>		AllocatorScope scope(allocator);
+		mmgr.Allocate(0);</code></pre>
+
+<p>
+  The same testlet then issues <code>8, 16, 32, 97, 110, 140, 270, 4032, 5000, 8000</code> through the manager against
+  a ladder pre-built from <code>{64 … 4096}</code>, and expects exactly two of them to have generated a bank: 8,
+  because no bank is smaller than 64 and the 64-byte bank would waste more than double, and 5000, because it exceeds
+  the largest class. That expectation is a <code>#if PROFILE_ENABLED</code> assertion, so it is compiled out of every
+  configuration this tree builds.
+</p>
+
+<p class="meta">From Engine/Test/UnitTestCollection.cpp</p>
+
+<pre><code>		MultiPoolAllocator allocator("Testlet");
+		AllocatorScope scope(allocator);</code></pre>
+
+<p>
+  Everything the testlet body allocates through the manager reaches this function on its way to a bank.
+</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; MultiPoolAllocator</a></span>
+  <span><a href="index.html#methods">All MultiPoolAllocator methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

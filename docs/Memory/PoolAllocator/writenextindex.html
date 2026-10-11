@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PoolAllocator::WriteNextIndex — Memory module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a class="current" href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Memory</a> /
+  <a href="index.html">PoolAllocator</a> / WriteNextIndex
+</p>
+
+<h1><span class="fn">WriteNextIndex</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::PoolAllocator</span>
+  <span class="tag">Engine/Memory/PoolAllocator.h</span>
+  Private: writes that ordinal as a block is released, which is why a block you hold is never written.
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>void WriteNextIndex(Pointer ptr, TSize index)</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  Defined in <code>Engine/Memory/PoolAllocator.cpp</code> as
+  <code>PoolAllocator::WriteNextIndex(Pointer ptr, TSize index)</code>. Private, and the write half of the same word
+  <a href="readnextindex.html">ReadNextIndex</a> reads.
+</p>
+
+<pre><code>Assert(index &lt;= numberOfBlocks, "PoolAllocator: out of bounds index. The index ", index, " should be at most ",
+	   numberOfBlocks);
+
+SetAs&lt;TSize&gt;(ptr, index);</code></pre>
+
+<p class="meta">From Engine/Memory/PoolAllocator.cpp, PoolAllocator::WriteNextIndex(Pointer ptr, TSize index)</p>
+
+<div class="note">
+  <strong>The one consequence a caller can rely on: the pool writes into a block only when it takes the block back.</strong>
+  Its sole caller is <a href="deallocate.html">Deallocate</a>. Nothing in <a href="allocate.html">Allocate</a> or
+  <a href="allocateblock.html">AllocateBlock</a> writes to a block, so a block you hold is untouched — the whole stride is yours, the
+  first <code>sizeof(size_t)</code> bytes included, and no bookkeeping of the pool's is hidden in it while you have it. The moment you
+  release it, that word is the pool's.
+</div>
+
+<div class="note">
+  <strong>Both halves now accept the same set of values: a block index, or the terminator.</strong>
+  This helper asserts <code>index &lt;= numberOfBlocks</code>, the bound <a href="readnextindex.html">ReadNextIndex</a> has
+  always applied, and <a href="allocateblock.html">AllocateBlock</a> reads a link below <code>numberOfBlocks</code> as "another
+  block follows". A link is therefore a block index or <code>numberOfBlocks</code>, and nothing else.<br>
+  The two bounds used to disagree, and that disagreement is the reason this page matters. This helper asserted
+  <code>index &lt; numberOfBlocks</code>, which forbade the terminator the constructor itself lays down, so
+  <a href="deallocate.html">Deallocate</a> conformed to the wrong bound and wrote <code>numberOfBlocks - 1</code> — an ordinary
+  block index naming the pool's last block — when it had no free block to link to. The guard is the testlet
+  <em>Reallocation After An Exhausted Free List</em> in <code>PoolAllocatorTest::Prepare</code>, which fails with that branch
+  restored.<br>
+  Assertions aside, <code>SetAs&lt;TSize&gt;</code> itself asserts the destination is a multiple of <code>sizeof(TSize)</code>
+  (<code>Engine/Core/CommonUtil.h</code>), the same stride argument as on the read half.
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<table>
+  <tr><th>Parameter</th><th>Type</th><th>Requirement</th></tr>
+  <tr><td><code>ptr</code></td><td><code>Pointer</code></td><td>Address of the block being released. The write lands in its first <code>sizeof(TSize)</code> bytes, over whatever the holder left there.</td></tr>
+  <tr><td><code>index</code></td><td><code>TSize</code></td><td>A block ordinal below <code>numberOfBlocks</code>. Asserted in Debug and Dev, written unchecked in Release.</td></tr>
+</table>
+
+<h2 id="return">Return value</h2>
+
+<p>Nothing. The effect is one value written into a block, and no report of whether it was a sane one — that is the assertion's job, and only in a build that has assertions.</p>
+
+<h2 id="example">Examples</h2>
+
+<pre><code>	if (availables)
+	{
+		…
+		WriteNextIndex(ptr, index);
+	}
+	else
+	{
+		WriteNextIndex(ptr, numberOfBlocks);
+	}
+
+	availables = ptr;</code></pre>
+
+<p class="meta">From Engine/Memory/PoolAllocator.cpp, PoolAllocator::Deallocate(Pointer ptr, size_t size)</p>
+
+<p>
+  Both call sites, in their branches: link the released block to the current head, or — when there was no head — write the value
+  described above, then make the released block the head. <code>…</code> marks the corruption check elided between them
+  (<a href="deallocate.html">Deallocate</a> explains it).
+</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; PoolAllocator</a></span>
+  <span><a href="index.html#methods">All PoolAllocator methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>
