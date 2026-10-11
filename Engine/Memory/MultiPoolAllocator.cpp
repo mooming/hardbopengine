@@ -354,6 +354,7 @@ void* MultiPoolAllocator::NewBankAllocate(size_t size)
 #if PROFILE_ENABLED
 	{
 		auto& mmgr = MemoryManager::GetInstance();
+		mmgr.ReportFallback(GetID(), ptr, size);
 		mmgr.ReportAllocation(GetID(), ptr, size, bank.GetBlockSize());
 	}
 #endif // PROFILE_ENABLED
@@ -636,4 +637,4 @@ void MultiPoolAllocatorTest::Prepare()
 	});
 }
 } // namespace hbe
-#endif //TEST_ENABLED
+#endif // TEST_ENABLED
