@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ScopedAllocator::~ScopedAllocator — Memory module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a class="current" href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Memory</a> /
+  <a href="index.html">ScopedAllocator</a> / ~ScopedAllocator
+</p>
+
+<h1><span class="fn">~ScopedAllocator</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::ScopedAllocator</span>
+  <span class="tag">Engine/Memory/ScopedAllocator.h</span>
+  Defaulted, and the defaulting is the contract: reverse declaration order restores the outer id before the owned allocator dies
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>~ScopedAllocator() = default</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  Declared defaulted in the class body of <code>Engine/Memory/ScopedAllocator.h</code> — and the defaulting is the
+  entire contract. C++ destroys members in reverse declaration order, and the members are declared
+  <code>allocator</code> first, <code>scope</code> second; so teardown runs scope-restore, then allocator-death: the
+  thread's scoped id returns to the outer value through
+  <a href="../AllocatorScope/destructor.html"><code>AllocatorScope</code>'s destructor</a> while the allocator it names
+  is still fully alive, and only then does the allocator's own destructor release its buffer and deregister its id.
+</p>
+
+<p>
+  Read the hazard note on <a href="../AllocatorScope/destructor.html">the scope destructor page</a> first, because this
+  ordering exists to answer it: an allocator destroyed while its own scope is open releases its buffer through whatever
+  the ambient scope points at, and this module has already carried that bug once. Composing allocator and scope into one
+  object with one fixed member order removes the chance for callers to get that ordering wrong — which is what
+  <code>ScopedAllocator</code> is <em>for</em>.
+</p>
+
+<div class="gap">
+  <strong>Reverse-order destruction fixes the allocator's own teardown, not its customers'.</strong> An object the
+  subtree allocated from this allocator and failed to release before this object dies is released under the outer scope,
+  routed to the wrong allocator (the id-free release paths read the current value, not the pointer's history — see
+  <a href="../Memory/index.html">the free helpers</a>). Everything living inside the redirection must die inside it.
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<p>None.</p>
+
+<h2 id="return">Return value</h2>
+
+<p>None. After it returns, the thread allocates by the outer id and the owned allocator's registration is gone.</p>
+
+<h2 id="example">Examples</h2>
+
+<pre><code>			ScopedAllocator&lt;TAlloc&gt; scope1("NestedStack1", 512);</code></pre>
+
+<p class="meta">From Engine/Memory/StackAllocator.cpp, StackAllocatorTest::Prepare()</p>
+
+<p>
+  Each level is an inner block, so each
+  <code>ScopedAllocator</code> — scope restored first, allocator destroyed second — unwinds while the level outside it
+  is intact, and the
+  testlet reads the outer allocator's free space after each inner teardown to prove the restore happened.
+</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; ScopedAllocator</a></span>
+  <span><a href="index.html#methods">All ScopedAllocator methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

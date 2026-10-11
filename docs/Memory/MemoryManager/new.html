@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MemoryManager::New — Memory module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a class="current" href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Memory</a> /
+  <a href="index.html">MemoryManager</a> / New
+</p>
+
+<h1><span class="fn">New</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::MemoryManager</span>
+  <span class="tag">Engine/Memory/MemoryManager.h</span>
+  Allocate one element from the scoped allocator, then placement-construct — with no null check in between.
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>template &lt;typename Type, typename... Types&gt;
+	Type* New(Types&amp;&amp;... args)</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+Defined in the class body of <code>Engine/Memory/MemoryManager.h</code>: one element of storage from
+<a href="allocate-by-type.html">AllocateByType</a>, then a placement construction in it, then the same pointer returned.
+</p>
+
+<pre><code>auto ptr = AllocateByType&lt;Type&gt;(1);
+auto tptr = new (ptr) Type(std::forward&lt;Types&gt;(args)...);
+
+return tptr;</code></pre>
+
+<p class="meta">From Engine/Memory/MemoryManager.h, MemoryManager::New()</p>
+
+<p>
+Which allocator serves it is decided at run time by this thread's scope
+(<a href="get-scoped-allocator-id.html">GetScopedAllocatorID</a>), so the object lives and dies inside whoever's
+<code>AllocatorScope</code> was open at the call — a fact the caller has to respect at destruction time
+(<a href="delete.html">Delete</a>). The free function <code>hbe::New&lt;TType&gt;(args...)</code> in
+<code>Engine/Memory/Memory.h</code> is a thin wrapper onto this method and is how most engine code reaches it; the module page
+lists those wrappers under <a href="../index.html#functions">module functions</a>.
+</p>
+
+<div class="gap">
+  <strong>The allocation result is not tested before the constructor runs.</strong>
+  There is no null check between the two statements. A zero-size request is impossible here, since the count is the constant
+  <code>1</code> and <code>sizeof(Type)</code> is at least one, so the only null that can arrive is an allocator that failed —
+  caught by <code>Assert(ptr != nullptr, "Allocation Failed")</code> inside <a href="allocate.html">Allocate</a> in Debug and Dev,
+  and in Release reaching this body as a placement construction at address zero. The engine does not throw on exhaustion at the
+  global level (<code>Engine/Memory/GlobalAllocation.cpp</code> reports and aborts instead of producing
+  <code>std::bad_alloc</code>), and nothing here catches an exception from a constructor either — a throwing constructor leaves the
+  block allocated with no pointer in reach to release it.
+</div>
+
+<div class="note">
+  <strong>Arguments are forwarded, not copied twice.</strong>
+  <code>Types&&...</code> is a pack of forwarding references, so an lvalue argument binds to an lvalue constructor and an rvalue
+  moves. What constrains the call is <code>Type</code>'s own constructors: there is no static assert, no perfect-forwarding guard
+  and no check that the argument list is even valid before the allocation is taken.
+</div>
+
+<div class="gap">
+  <strong>Nothing here knows the object needs <a href="delete.html">Delete</a>.</strong>
+  The type is allocated from a scoped allocator, so ordinary <code>delete</code> would hand a pool-owned pointer to
+  <code>operator delete</code>, and a plain destructor call would leak the storage. The matching release is
+  <a href="delete.html">Delete</a>(ptr) — same type, same count of one, same scope — and the pairing is enforced by nothing but
+  discipline. <code>Engine/Memory/Shareable.h</code> shows the convention: create through
+  <code>mmgr.New&lt;Body&gt;(...)</code>, destroy through <code>mmgr.Delete&lt;Body&gt;(this)</code>.
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<table>
+  <tr><th>Parameter</th><th>Type</th><th>Requirement</th></tr>
+  <tr><td><code>Type</code></td><td><em>template parameter</em></td><td>The object type. It must be constructible from the argument list; nothing verifies that before storage is taken.</td></tr>
+  <tr><td><code>Types</code></td><td><em>template parameter pack</em></td><td>Deduced from the arguments; each becomes a forwarding reference.</td></tr>
+  <tr><td><em>(function parameters)</em></td><td>—</td><td><code>args</code> is forwarded straight into <code>Type</code>'s constructor. Zero arguments is fine, and so is any list <code>Type</code> accepts.</td></tr>
+</table>
+
+<h2 id="return">Return value</h2>
+
+<table>
+  <tr><th>Type</th><th>What you get</th></tr>
+  <tr><td><code>Type*</code></td><td>A constructed object inside scoped-allocator storage, ready to use and never null in a checked build. Release it with <a href="delete.html">Delete</a>, not with <code>delete</code>.</td></tr>
+</table>
+
+<h2 id="example">Examples</h2>
+
+<pre><code>auto&amp; mmgr = MemoryManager::GetInstance();
+auto newBody = mmgr.New&lt;Body&gt;(std::forward&lt;Types&gt;(args)...);</code></pre>
+
+<p class="meta">From Engine/Memory/Shareable.h, Shareable&lt;TType, RefCount&gt;::Body::Create()</p>
+
+<p>
+The dominant shape, and the pairing that matters: the same class's release path calls
+<code>mmgr.Delete&lt;Body&gt;(this);</code>, so construction and destruction both go through the manager and both see the same
+allocator. The second route in is <code>Engine/Memory/Memory.h</code>, where the free <code>New</code>/<code>Delete</code> pair
+fetches <a href="get-instance.html">GetInstance</a> and forwards, which is what most call sites use.
+</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; MemoryManager</a></span>
+  <span><a href="index.html#methods">All MemoryManager methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MemoryManager::GetAllocatorStat — Memory module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a class="current" href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Memory</a> /
+  <a href="index.html">MemoryManager</a> / GetAllocatorStat
+</p>
+
+<h1><span class="fn">GetAllocatorStat</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::MemoryManager</span>
+  <span class="tag">Engine/Memory/MemoryManager.h</span>
+  A copy of one allocator's statistics under PROFILE_ENABLED — the only stats accessor that takes a snapshot.
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>#if PROFILE_ENABLED
+	AllocStats GetAllocatorStat(TAllocatorID id)</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+Defined in <code>Engine/Memory/MemoryManager.cpp</code> as <code>MemoryManager::GetAllocatorStat()</code>, declared inside
+<code>#if PROFILE_ENABLED</code> — so in a build of this repository, where that macro is <code>0</code>, the method does not
+exist and neither does the <code>AllocStats</code> member it copies. Everything on this page is read from the source of a
+configuration the tree does not currently compile.
+</p>
+
+<p>
+It is the one accessor in the class that hands back a <em>value</em> rather than a reference into the manager, and that is the
+point: the copy is made while <code>statsLock</code> is held, so the twelve fields that come back
+(<code>name</code>, <code>isInline</code>, <code>capacity</code>, <code>usage</code>, <code>maxUsage</code>,
+<code>totalRequested</code>, <code>maxRequested</code>, <code>totalFallback</code>, <code>maxFallback</code>,
+<code>allocCount</code>, <code>deallocCount</code>, <code>fallbackCount</code> — see <code>Engine/Memory/AllocStats.h</code>)
+belong to one instant. Contrast <a href="get-usage.html">GetUsage</a> and
+<a href="get-inline-usage.html">GetInlineUsage</a>, which hand out live references and take nothing.
+</p>
+
+<div class="note">
+  <strong>An invalid id answers with a default record, not a failure.</strong>
+  The body logs <code>Error</code> and returns a copy of a function-local <code>static const AllocStats stats;</code> — the
+  all-zero record <code>AllocStats::AllocStats()</code> builds, whose <code>name</code> is the empty string. A caller cannot tell
+  that from an allocator that legitimately has done nothing except by comparing names, and every real registration has a
+  non-empty one.
+</div>
+
+<div class="note">
+  <strong>The lock is held for the copy only.</strong>
+  The scope covers the read of <code>allocators[id].stats</code> and nothing else, so a caller that then prints the twelve
+  fields is not holding anything — which is what makes this safe to call from a reporting path, and also why a caller must not
+  expect the numbers still to be true a statement later. It is a snapshot of the manager's view, and that view is only as good
+  as the allocators' own <a href="report-allocation.html">ReportAllocation</a>/<a href="report-deallocation.html">
+  ReportDeallocation</a> discipline.
+</div>
+
+<div class="gap">
+  <strong>Callers must be inside the same guard as the declaration.</strong>
+  Every call site in the module wraps itself in <code>#if PROFILE_ENABLED</code> for exactly this reason:
+  <code>MultiPoolAllocator::PrintUsage()</code>, <code>InlinePoolAllocator</code>'s testlet and the multi-pool testlets in
+  <code>Engine/Memory/MultiPoolAllocator.cpp</code> all keep their <code>GetAllocatorStat</code> calls out of the
+  non-profiled branch. Code that wants one figure in both configurations has to fall back to what the allocator itself tracks —
+  which is why the testlets print <code>"MultiPoolAllocator has been created"</code> in the <code>#else</code> branch instead of
+  a capacity.
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<table>
+  <tr><th>Parameter</th><th>Type</th><th>Requirement</th></tr>
+  <tr><td><code>id</code></td><td><code>TAllocatorID</code></td><td>The registration whose statistics are wanted. Out-of-range → an <code>Error</code> log and a zeroed copy (<a href="is-valid.html">IsValid</a> decides).</td></tr>
+</table>
+
+<h2 id="return">Return value</h2>
+
+<table>
+  <tr><th>Type</th><th>What you get</th></tr>
+  <tr><td><code>AllocStats</code></td><td>A consistent copy, taken under <code>statsLock</code>. It is a snapshot: no later allocation is reflected in it, and nothing about the allocator's live state can be inferred from it after the call returns.</td></tr>
+</table>
+
+<h2 id="example">Examples</h2>
+
+<pre><code>auto&amp; mmgr = MemoryManager::GetInstance();
+auto stats = mmgr.GetAllocatorStat(GetID());
+
+log.Out([&amp;stats](auto&amp; ls) { ls &lt;&lt; "Usage = " &lt;&lt; stats.usage &lt;&lt; " / " &lt;&lt; stats.maxUsage; });
+
+log.Out([&amp;stats](auto&amp; ls) { ls &lt;&lt; "Capacity = " &lt;&lt; stats.capacity; });
+
+log.Out([&amp;stats](auto&amp; ls)
+{
+	ls &lt;&lt; "Alloc: " &lt;&lt; stats.allocCount &lt;&lt; ", Dealloc: " &lt;&lt; stats.deallocCount
+	   &lt;&lt; ", Fallback: " &lt;&lt; stats.fallbackCount;
+});</code></pre>
+
+<p class="meta">From Engine/Memory/MultiPoolAllocator.cpp, MultiPoolAllocator::PrintUsage()</p>
+
+<p>
+The dominant use: take one snapshot, then print from it, so a multi-line report is internally consistent even though
+allocations are happening elsewhere. The <code>fallbackCount</code> in the last line is filled by
+<a href="report-fallback.html">ReportFallback</a>, which is what makes a non-zero value meaningful at all — see
+<a href="fallback-allocate.html">FallbackAllocate</a> for who triggers it.
+</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; MemoryManager</a></span>
+  <span><a href="index.html#methods">All MemoryManager methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

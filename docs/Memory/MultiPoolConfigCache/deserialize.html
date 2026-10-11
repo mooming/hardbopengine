@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MultiPoolConfigCache::Deserialize — Memory module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a class="current" href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Memory</a> /
+  <a href="index.html">MultiPoolConfigCache</a> / Deserialize
+</p>
+
+<h1><span class="fn">Deserialize</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::MultiPoolConfigCache</span>
+  <span class="tag">Engine/Memory/MultiPoolConfigCache.h</span>
+  read a cache file back, refusing the whole thing on a tag or version mismatch and appending whatever a truncation leaves
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>bool Deserialize(const Buffer&amp; buffer)</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  Reads a buffer written by <a href="serialize.html">Serialize</a> back into <code>data</code>, through a
+  <code>BufferInputStream</code>, field for field and in the same order: class-name tag, version, allocator-record
+  count, then per record a name, a configuration count and that many pairs of block size and block count. Each
+  record becomes one <a href="../MultiPoolAllocatorConfig/index.html"><code>MultiPoolAllocatorConfig</code></a>,
+  constructed in place from the name interned through <code>GetID()</code> and the configurations moved in.
+</p>
+
+<p>The gates it puts in front of the data, in the order they run:</p>
+
+<ol>
+  <li><strong>Tag.</strong> The first string must equal <a href="get-class-name.html">GetClassName</a>. A mismatch
+    logs both names and returns <code>false</code> having read nothing else.</li>
+  <li><strong>Version.</strong> The <code>TVersion</code> that follows must equal the private
+    <code>version</code> constant, which is <code>0</code>
+    (<a href="get-version.html">GetVersion</a>). A mismatch logs the number that was read and returns
+    <code>false</code>.</li>
+  <li><strong>Header stream state.</strong> After the record count is read, <code>bis.HasError()</code> is tested;
+    a failure logs "Input stream failure." and returns <code>false</code>. Only then is space reserved.</li>
+  <li><strong>Per record.</strong> The same stream test closes each record's loop, so a file truncated in the
+    middle stops there — with everything already read left appended to <code>data</code>.</li>
+</ol>
+
+<div class="gap">
+  <p>
+    <strong>A failed load is a partial load, and a second load is an append.</strong> The function never clears
+    <code>data</code>: it reserves and <code>emplace_back</code>s. So the "Input stream failure" path above leaves
+    the records it had already read sitting in the cache, and calling the function twice on one instance yields the
+    union of both files with duplicate allocator names — which
+    <a href="normalize.html">Normalize</a> would merge, but nothing between this call and the lookup at
+    <a href="../MemoryManager/look-up-multi-pool-config.html">LookUpMultiPoolConfig</a> ever does. In practice the
+    manager loads once, from its constructor
+    (<a href="../MemoryManager/load-multi-pool-configs.html">LoadMultiPoolConfigs</a>), which is the only thing
+    keeping this invisible.
+  </p>
+</div>
+
+<div class="gap">
+  <p>
+    <strong>The ordering check cannot reject anything, and only exists in a development build.</strong> After a
+    successful read, an <code>#if !RELEASE_BUILD</code> block walks each record's configurations and, for every
+    adjacent pair where <code>a &lt; b</code> is false, emits a fatal-level log line naming the allocator and both
+    block sizes — the message reads <code>"configs should be well-orddered"</code>. It does not stop, does not
+    clear, and does not change the return value: the function still answers <code>true</code>, and the out-of-order
+    list goes straight into the banks that
+    <a href="../MultiPoolAllocator/generate-banks-by-cache.html">GenerateBanksByCache</a> builds without sorting
+    them. A shipped build runs no check at all. See
+    <a href="../PoolConfig/index.html">PoolConfig</a> for what an unsorted bank list then costs.
+  </p>
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<table>
+  <tr><th>Parameter</th><th>Type</th><th>Requirement</th></tr>
+  <tr><td><code>buffer</code></td><td><code>const Buffer&amp;</code></td><td>A read-only buffer holding a whole cache file, obtained by the caller from <code>BufferUtil::GetReadOnlyFileBuffer(path)</code>. Its contents are untrusted: the tag, the version, both counts and every size pair is read before it is believed</td></tr>
+</table>
+
+<h2 id="return">Return value</h2>
+
+<table>
+  <tr><th>Type</th><th>What you get</th></tr>
+  <tr><td><code>bool</code></td><td><code>true</code> when the tag, the version and every record streamed correctly — <em>not</em> a statement that the data is ordered, complete or usable. <code>false</code> on a tag mismatch, a version mismatch or a stream error, in which case whatever was read before the failure has still been appended.</td></tr>
+</table>
+
+<h2 id="example">Examples</h2>
+
+<p>One record's worth of reading, and the way its name becomes an id in this process:</p>
+
+<pre><code>data.emplace_back(key.GetID(), std::move(configs));</code></pre>
+
+<p class="meta">From Engine/Memory/MultiPoolConfigCache.cpp, MultiPoolConfigCache::Deserialize</p>
+
+<p>
+  The allocator's name crossed the file as text and is interned here, so a record from last month's build matches
+  this run's <code>GetName().GetID()</code> as long as the spelling is the same — and a renamed allocator matches
+  nothing, leaving its old record unused rather than misapplied. The pair of integers read just above this line
+  comes from <a href="serialize.html">Serialize</a>; the caller that ignores a <code>false</code> return is
+  <a href="../MemoryManager/load-multi-pool-configs.html">LoadMultiPoolConfigs</a>, which logs the failure and
+  carries on with an empty cache.
+</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; MultiPoolConfigCache</a></span>
+  <span><a href="index.html#methods">All MultiPoolConfigCache methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

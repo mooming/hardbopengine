@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MemoryManager::PostEngineInit — Memory module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a class="current" href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Memory</a> /
+  <a href="index.html">MemoryManager</a> / PostEngineInit
+</p>
+
+<h1><span class="fn">PostEngineInit</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::MemoryManager</span>
+  <span class="tag">Engine/Memory/MemoryManager.h</span>
+  An empty hook with one caller — the manager's post-start-up seam, and today it does nothing.
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>void PostEngineInit() noexcept</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+Defined in <code>Engine/Memory/MemoryManager.cpp</code> as <code>MemoryManager::PostEngineInit()</code>, and the body is
+empty — a pair of braces and nothing else. The <code>noexcept</code> is therefore trivially satisfied, and the call has
+no observable effect in any configuration, because there is no preprocessor branch inside it either.
+</p>
+
+<p>
+What it owns is a position in the start-up order. <code>Engine::PostInitialize()</code> calls it, and that is the only
+call site, so the manager is given one hook that runs after construction
+(<a href="constructors.html">MemoryManager</a>) and after <code>Engine::Initialize()</code> has brought the other
+subsystems up. Everything the manager actually needs for its own setup it performs in the constructor:
+<a href="register-system-allocator.html">slot 0</a> and
+<a href="load-multi-pool-configs.html">the configuration cache</a>. Nothing has yet needed a second phase.
+</p>
+
+<div class="note">
+  <strong>It is a seam, not a no-op bug.</strong>
+  The two hooks this class exposes to the engine's lifecycle are this method and
+  <a href="pre-engine-shutdown.html">PreEngineShutdown</a>, called from <code>Engine::PostInitialize()</code> and
+  <code>Engine::PreShutdown()</code> respectively. Anything the manager must do once a logger exists can only go here,
+  because the constructor runs while <code>Engine::logger</code> has not been constructed yet
+  (<a href="constructors.html">the constructor</a> says why that matters). No such work is written today.
+</div>
+
+<div class="gap">
+  <strong>Named omission: what this hook is for.</strong>
+  No source, comment or test states an intended use for an empty post-init beyond its position in the start-up order,
+  and no test asserts that it runs. The page says only what the code shows — an empty <code>noexcept</code> body with
+  one caller — and does not guess at the design intent.
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<p>None.</p>
+
+<h2 id="return">Return value</h2>
+
+<p><code>void</code>. No failure is possible and none is reported.</p>
+
+<h2 id="example">Examples</h2>
+
+<pre><code>void Engine::PostInitialize()
+{
+	using namespace StringUtil;
+	auto log = Logger::Get(ToCompactMethodName(__PRETTY_FUNCTION__));
+
+	log.Out("Engine PostInitialize [Start]");
+
+	memoryManager.PostEngineInit();
+
+	log.Out("Engine PostInitialize [Done]");
+}</code></pre>
+
+<p class="meta">From Engine/Engine/Engine.cpp, Engine::PostInitialize()</p>
+
+<p>
+The single caller. Because the log lines around it are unconditional, the hook is visible in an engine log even though
+it does nothing — the only observable trace of a call whose body is empty.
+</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; MemoryManager</a></span>
+  <span><a href="index.html#methods">All MemoryManager methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ThreadSafeMultiPoolAllocator::GetID — Memory module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a class="current" href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Memory</a> /
+  <a href="index.html">ThreadSafeMultiPoolAllocator</a> / GetID
+</p>
+
+<h1><span class="fn">GetID</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::ThreadSafeMultiPoolAllocator</span>
+  <span class="tag">Engine/Memory/ThreadSafeMultiPoolAllocator.h</span>
+  The registration id this instance was given, which is what AllocatorScope and every MemoryManager dispatch use.
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>[[nodiscard]] auto GetID() const</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  Declared and defined in <code>Engine/Memory/ThreadSafeMultiPoolAllocator.h</code>: the body is
+  <code>return id;</code>, so the deduced return type is <code>TAllocatorID</code> — <code>int</code>
+  (<code>Engine/Memory/AllocatorID.h</code>).
+</p>
+
+<p>
+  This is the id <a href="constructors.html">the constructor</a> receives from
+  <code>MemoryManager::RegisterAllocator</code>, and it is what makes the object addressable by the rest of the
+  memory system: the registration record holds the pointer to this instance and two trampolines into
+  <a href="allocate.html"><code>Allocate</code></a> and <a href="deallocate.html"><code>Deallocate</code></a>, so
+  <code>MemoryManager::Allocate(id, nBytes)</code> lands here. The engine never stores the id anywhere else — every
+  caller either holds the object or reached it through this accessor.
+</p>
+
+<p>
+  Three states, in order. During construction it is <code>InvalidAllocatorID</code>, which the member initialiser
+  list sets and the registration replaces with the last statement of the constructor body; that ordering is harmless
+  because a caller who has not finished constructing the object cannot have handed its address to anyone. After
+  construction it is stable, and this accessor reads it without taking <code>lock</code>. After
+  <a href="destructor.html">the destructor</a> it is <em>still the old number</em>: the destructor deregisters the
+  allocation but never clears <code>id</code>, while <code>MemoryManager</code> returns that registration slot to
+  the pool the next <code>RegisterAllocator</code> draws from (<code>Engine/Memory/MemoryManager.cpp</code>) — so a
+  stale id can name a different allocator by the time you ask.
+</p>
+
+<div class="note">
+  <strong>This is the accessor <code>AllocatorScope</code> is built on.</strong>
+  <code>AllocatorScope</code> carries a template constructor taking anything that answers
+  <code>GetID()</code> (<code>Engine/Memory/AllocatorScope.h</code>), which is how
+  <code>AllocatorScope inputAllocScope(inputAlloc)</code> makes this allocator the ambient one for a region
+  (<code>Engine/Log/Logger.cpp</code>). Scoping to an allocator whose id is still <code>InvalidAllocatorID</code>
+  scopes to that sentinel, and <code>MemoryManager</code> answers such a request with an error log and a redirect to
+  allocator 0 (<code>Engine/Memory/MemoryManager.cpp</code>) — with <code>MEMORY_LOGGING_ENABLED</code> 0 in this
+  tree, that redirect is silent.
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<p>None.</p>
+
+<h2 id="return">Return value</h2>
+
+<table>
+  <tr><th>Type</th><th>What you get</th></tr>
+  <tr><td><code>auto</code> deducing <code>TAllocatorID</code></td><td>The registration id; <code>InvalidAllocatorID</code> before the constructor finishes, and unchanged — but no longer this object's — after it is destroyed</td></tr>
+</table>
+
+<h2 id="example">Examples</h2>
+
+<p class="meta">From Engine/Log/Logger.cpp</p>
+
+<pre><code>AllocatorScope inputAllocScope(inputAlloc);</code></pre>
+
+<p>
+  The object is passed, not the number: the scope template calls <a
+  href="constructors.html"><code>GetID</code></a> on it (<code>Engine/Memory/AllocatorScope.h</code>), so the id this
+  page returns is what the allocator-selection thread-local holds for the duration of the region
+  (<code>Engine/Log/Logger.cpp</code>).
+</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; ThreadSafeMultiPoolAllocator</a></span>
+  <span><a href="index.html#methods">All ThreadSafeMultiPoolAllocator methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

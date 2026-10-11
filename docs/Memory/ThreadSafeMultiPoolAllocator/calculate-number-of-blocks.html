@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ThreadSafeMultiPoolAllocator::CalculateNumberOfBlocks — Memory module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a class="current" href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Memory</a> /
+  <a href="index.html">ThreadSafeMultiPoolAllocator</a> / CalculateNumberOfBlocks
+</p>
+
+<h1><span class="fn">CalculateNumberOfBlocks</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::ThreadSafeMultiPoolAllocator</span>
+  <span class="tag">Engine/Memory/ThreadSafeMultiPoolAllocator.h</span>
+  <span class="tag">private</span>
+  <span class="tag">static</span>
+  Blocks per new bank: bankSize divided by blockSize, floored at sixteen, or at one for a block above a megabyte.
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>static size_t CalculateNumberOfBlocks(size_t bankSize, size_t blockSize)</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  Private and static, defined in <code>Engine/Memory/ThreadSafeMultiPoolAllocator.cpp</code>, called from
+  <a href="new-bank-allocate.html"><code>NewBankAllocate</code></a> alone. Both inputs are arguments and no member is
+  read, so the function touches neither <code>bankSize</code> nor <code>minBlock</code> despite sharing their names —
+  the parameter shadows nothing, and the caller passes the members in.
+</p>
+
+<p class="meta">From Engine/Memory/ThreadSafeMultiPoolAllocator.cpp, ThreadSafeMultiPoolAllocator::CalculateNumberOfBlocks()</p>
+
+<pre><code>size_t numberOfBlocks = (bankSize + blockSize - 1) / blockSize;
+
+constexpr size_t megaBytes = 1024 * 1024;
+if (blockSize &lt; megaBytes)
+{
+        numberOfBlocks = std::max(MinNumberOfBlocks, numberOfBlocks);
+}
+else
+{
+        numberOfBlocks = std::max(static_cast&lt;size_t&gt;(1), numberOfBlocks);
+}</code></pre>
+
+<p>
+  The bank is sized to hold <code>bankSize</code> worth of blocks, with a floor: sixteen blocks for any class smaller
+  than a megabyte, one block for anything bigger. The floor is the engine's statement that a bank worth creating at
+  all should hold a useful number of small blocks, and the one-block branch is what stops a block larger than a
+  megabyte from producing an empty bank.
+</p>
+
+<table>
+  <tr><th><code>bankSize</code></th><th><code>blockSize</code></th><th>Blocks</th><th>Backing memory</th></tr>
+  <tr><td>1 MiB (the <a href="index.html#properties"><code>DefaultBankUnit</code></a>)</td><td>16</td><td>65,536</td><td>1 MiB</td></tr>
+  <tr><td>1 MiB</td><td>64</td><td>16,384</td><td>1 MiB</td></tr>
+  <tr><td>16 KiB</td><td>4 KiB</td><td>16 — floored</td><td>64 KiB, four times the requested unit</td></tr>
+  <tr><td>1 MiB</td><td>4 MiB</td><td>1</td><td>4 MiB — a bank larger than the unit</td></tr>
+</table>
+
+<div class="note">
+  <strong><code>bankSize</code> is an aim, not a ceiling.</strong> The table's last two rows are the consequence a
+  caller can observe: the sixteen-block floor can multiply the backing memory above the unit, and any block class at
+  or above the unit yields a one-block bank whose backing is the block size itself. A request larger than one
+  megabyte therefore reserves a whole bank of that size the first time it appears
+  (<a href="calculate-block-size.html"><code>CalculateBlockSize</code></a> sets the class, this function sets the
+  count) — which is the growth cost described on
+  <a href="allocate.html"><code>Allocate</code></a>, paid inside the mutex.
+</div>
+
+<div class="gap">
+  <strong>Unbounded growth is the design, not a bug to be handled.</strong> Each call adds one bank's worth to the
+  instance and nothing ever takes it back before
+  <a href="destructor.html">the destructor</a>. The engine's ceiling is elsewhere: banks register individually, and
+  <code>MaxNumAllocators</code> caps registrations at 256 (<code>Engine/Memory/AllocatorID.h</code>), so an
+  allocator driven through enough size classes and repeats eventually exhausts the engine's registration table
+  rather than this class. The review of 2026-10-05 records that as an open robustness item (<code>JOURNAL.md</code>).
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<table>
+  <tr><th>Parameter</th><th>Type</th><th>Requirement</th></tr>
+  <tr><td><code>bankSize</code></td><td><code>size_t</code></td><td>Backing bytes the bank should hold — the caller passes the instance's <code>bankSize</code>, normally <code>DefaultBankUnit</code></td></tr>
+  <tr><td><code>blockSize</code></td><td><code>size_t</code></td><td>Block size for the class, normally from <a href="calculate-block-size.html"><code>CalculateBlockSize</code></a>. Must not be 0: it is the divisor</td></tr>
+</table>
+
+<h2 id="return">Return value</h2>
+
+<table>
+  <tr><th>Type</th><th>What you get</th></tr>
+  <tr><td><code>size_t</code></td><td>Blocks for the new bank: at least sixteen for a class under a megabyte, at least one otherwise, and never fewer than <code>bankSize / blockSize</code> rounded up</td></tr>
+</table>
+
+<h2 id="example">Examples</h2>
+
+<p class="meta">From Engine/Memory/ThreadSafeMultiPoolAllocator.cpp, ThreadSafeMultiPoolAllocator::NewBankAllocate()</p>
+
+<pre><code>auto blockSize = CalculateBlockSize(size);
+auto numBlocks = CalculateNumberOfBlocks(bankSize, blockSize);
+
+GenerateBank(blockSize, numBlocks);</code></pre>
+
+<p>
+  The only call site, with the instance's own <code>bankSize</code> passed as the first argument
+  (<code>Engine/Memory/ThreadSafeMultiPoolAllocator.cpp</code>) — so an instance built with a 4 KiB allocation unit
+  gets banks of sixteen small blocks, and one built with the default gets banks of a megabyte.
+</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; ThreadSafeMultiPoolAllocator</a></span>
+  <span><a href="index.html#methods">All ThreadSafeMultiPoolAllocator methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

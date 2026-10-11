@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PoolAllocator::GetSize — Memory module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a class="current" href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Memory</a> /
+  <a href="index.html">PoolAllocator</a> / GetSize
+</p>
+
+<h1><span class="fn">GetSize</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::PoolAllocator</span>
+  <span class="tag">Engine/Memory/PoolAllocator.h</span>
+  <span class="tag">nodiscard</span>
+  The pool's block size, whatever pointer it is handed.
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>[[nodiscard]] size_t GetSize(Pointer) const</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  Defined in the class body of <code>Engine/Memory/PoolAllocator.h</code> as a one-line return of <code>blockSize</code>. The
+  parameter is declared and never named: this accessor answers a question about the pool, not about the pointer it is handed.
+</p>
+
+<div class="gap">
+  <strong>Whatever pointer you pass, the answer is the same.</strong>
+  A pointer the pool owns, a pointer it forwarded to its parent, a pointer into the middle of its buffer and a pointer from an
+  unrelated allocation all produce <a href="getblocksize.html">the same number</a>. A caller reading "how big is this block?" out of
+  the signature will get the pool's stride even when the pointer is not the pool's — pair it with
+  <a href="ismine.html">IsMine</a> if the pointer's provenance matters.
+</div>
+
+<div class="note">
+  <strong>It is the block's size, not the request that filled it.</strong>
+  A pool constructed with a 24-byte request reports 32 (<code>Config::DefaultAlign</code> rounding,
+  <a href="constructors.html">constructors</a>), and a caller that asked for 50 bytes out of a 4096-byte block is told 4096. That is
+  the honest figure for "how many bytes may I touch" — the whole block belongs to the holder
+  (<a href="allocate.html">Allocate</a>) — and the wrong figure for accounting, where the pool's own usage counters already charge
+  every block at this stride.
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<table>
+  <tr><th>Parameter</th><th>Type</th><th>Requirement</th></tr>
+  <tr><td><em>(unnamed)</em></td><td><code>Pointer</code></td><td>Ignored. The declaration gives it no name and nothing in this class reads it; <code>Engine/Memory/StackAllocator.h</code> declares the same shape, a <code>GetSize(Pointer)</code> that is indifferent to its argument as well.</td></tr>
+</table>
+
+<h2 id="return">Return value</h2>
+
+<table>
+  <tr><th>Type</th><th>What you get</th></tr>
+  <tr><td><code>size_t</code></td><td>The pool's block size in bytes, for any argument. Zero on a moved-from pool.</td></tr>
+</table>
+
+<h2 id="example">Examples</h2>
+
+<pre><code>auto ptr = pool.Allocate(allocSize);
+auto size = pool.GetSize(ptr);
+
+if (size != 4096)
+{
+	ls &lt;&lt; "The size is incorrect. " &lt;&lt; size &lt;&lt; ", but 4096 expected." &lt;&lt; lferr;
+	break;
+}</code></pre>
+
+<p class="meta">From Engine/Memory/PoolAllocator.cpp, PoolAllocatorTest::Prepare()</p>
+
+<p>
+  The test asks a pool built with a 4096-byte block size what it handed out, and the answer is the block size rather than the 50
+  bytes requested — which is the whole contract of this accessor in two lines.
+</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; PoolAllocator</a></span>
+  <span><a href="index.html#methods">All PoolAllocator methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>
