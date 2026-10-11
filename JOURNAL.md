@@ -492,6 +492,152 @@ touched: `TLogStream` is a 128 KiB stack object per call though `LogLine` trunca
 plus a hash lookup on every line for a one-entry map; `InlineStringBuilder` formats integers with `snprintf`
 (32.9 ns → 81.9 ns at twelve threads), which is the real dominant cost of a log line and belongs to *String*.
 Nothing was committed: the tree carries unrelated in-flight Container work.
+## 2026-10-12 02:20 — the PR #18 review is answered: 14 fixes in, 1 finding withdrawn
+
+**The reviewer directed a fix per comment; one comment was wrong and the code is better for refusing it.**
+Fifteen threads on #18 carried a directive. Fourteen were applied in `70ead88`
+(`fix(memory): the review findings on the allocator family`) across eight files: `explicit` on both
+`AllocatorScope` constructors, `Assert` between allocation and placement new in `MemoryManager::New`/`NewArray`,
+early returns in `Delete`/`DeleteArray`, checks that stop a call through a null proxy function in Release,
+Warnings where a null release used to vanish, the invalid-id proxy built once and asserted on, the wrapped
+`size_t` subtraction made unreachable, clamps that keep `minBlock` and `bankSize` from being zero, the
+coprime-stride `static_assert`, `inName` where the declarations disagreed with the definitions, and
+`MegaBytes`. The reviewer's own one-line fix — `allocProxy.allocator = this;` in the move constructor — was
+carried onto the branch as written.
+
+**The withdrawal.** My own finding said `NewBankAllocate` grew `banks` without a lock. It was read wrong:
+`Allocate` takes the mutex at `ThreadSafeMultiPoolAllocator.cpp:210` and calls `NewBankAllocate` from inside
+that guard (`:215`, `:221`), and `Deallocate` holds the same guard from `:263`. Implementing the directed
+lock would have deadlocked a non-recursive `std::mutex` on the first fallback allocation. The applied change
+is the real unlocked read the sweep found — `ReportConfiguration` reserved from `banks.size()` outside its
+own guard — and the retraction, with line evidence, is on the thread rather than in a comment.
+
+**Proof, at the new head.** Format layer clean apart from PR #19's `#endif //TEST_ENABLED`; greps, rule A,
+rule B and the comment ban at 0; member layout 14 findings, identical to the pre-fix tip; EngineTest 393
+testlets green in Debug, Dev and Release; `VulkanExample` links in all three; the rebased tip differs from
+the reviewed tip by those eight files and nothing else. Five descendant branches rebased and force-pushed,
+so #19-#23 still each show one diff. Recovery: `backup/pre-review-fixes`.
+
+## 2026-10-11 20:27 — `master`'s 47 commits become 12, and the messages fit the rule
+
+**A history change, not a content change.** `master` sat 47 commits above `origin/master` with six
+messages past the five-sentence limit — the longest at 23 sentences and 486 words — and bodies totalling
+about 5,300 words, while `AGENTS.md` asks for a one-line title and five sentences at most. The clearest
+redundancy was a run of six commits (`7f83312` `33cac23` `b6cc6cb` `9f9153b` `8ec8967` `1c08c1f`) that
+renamed `__TEST__`/`__UNIT_TEST__` to `__TEST__` across build files, generated CMake, 127 guards, the
+checkers and the reference, then renamed the result to `TEST_ENABLED` — and `1c08c1f`'s own body argued
+that a rename split across commits leaves every tree in between naming a macro no build defines. Its net
+effect is one atomic rename, so it is one commit now.
+
+| New commit | Absorbs | Kind |
+| --- | --- | --- |
+| pool free-list terminator | `43924ed` | fix |
+| borrowed buffer returns to its parent | `391b0fb` `bf8c5dd` | fix |
+| profiling compiles, asserts speak | `598b359` `bdd1960` | fix |
+| member order, dead union, misspelled name | `3883875` `aba2063` `0f97c5d` | refactor |
+| proxy slots return, cached blocks report | `33bbc1b` `a6fafd7` | fix |
+| one test macro | the six above | build |
+| the ledger counts what happened | `be5b586` `71565ea` `a5611cb` `e8f885f` `a228add` `1931cf6` `fb8a983` `0efeed3` | fix |
+| ignore scratch paths | the `.gitignore` half of `c41f36a` `9948c54` `5e4dbfa` | chore |
+| quoted-block checker, directory gate | `9cea149` `f8d56c5` | feat |
+| reference pages and design documents | the docs half of `2c7a643` `e0b5b02` `3bcbf5c` `359182a` `c6db17a` `9d00565` `283d243` `ea8e1f7` `c2fdb1a` `fd4f146` `49053dd` `5e4dbfa`, plus the 13 pages the macro commits could not have edited yet, plus `PLAN_lockfree-contention-benchmark.md` because the locking document cites it | docs |
+| headers stop carrying prose | `c41486c` `cfcc911`, engine half of `ea8e1f7` `c2fdb1a` `fd4f146` `49053dd` `5e4dbfa` | refactor |
+| journal, plans, and the old messages | the `.Plans`/`JOURNAL.md` half of ten commits, plus `.Plans/COMMIT_MESSAGES_before_regroup.md` and `.Plans/PLAN_regroup_master_history.md` | docs |
+
+**Two files carry what the messages no longer say.** Every one of the 47 messages is archived verbatim in
+`.Plans/COMMIT_MESSAGES_before_regroup.md`, and the old head is tagged `backup/pre-regroup-47`, so nothing
+depends on the trimmed prose surviving. Detail that mattered was already in this journal and in `docs/` —
+the bodies were written as reports of what those files recorded — so the cut moved nothing.
+
+**One decision, one shape.** The owner chose depth (one commit per deliverable, 8 to 12 commits) over
+keeping per-defect bisect granularity, `master` rewritten in place over a side branch, conventional
+`type(scope):` prefixes over the narrative titles this history had been using, and verification at the head
+plus every commit that touches engine or build code rather than at all twelve — no ccache here, so each
+commit built is a full rebuild of three configurations. Reported, not fixed: `43924ed` was kept whole, so
+the twelve comments it deleted from the three pool headers leave in the first commit while the pages that
+own those contracts arrive in the tenth, and `DefaultAllocator.h` and `InlinePoolAllocator.h` reached their
+comment-free state inside the ledger commit because the prose sat on code that commit deleted. The
+page-before-delete ordering `docs_coverage.py` exists to enforce therefore holds at the endpoints and not at
+every step, which is the price of twelve commits instead of forty-seven.
+
+**Verified, not asserted.** The load-bearing gate is content: `git diff backup/pre-regroup-47 HEAD` is
+three files and every one of them is an addition — the message archive, the plan, this entry — so no line
+of code, page or design document moved. The head and each of the eight commits that touch engine or build
+code build Debug, Dev and Release with the suite green: 60 collections throughout, 389 testlets at the
+first commit, 392 from the parent-release fix, 393 from the ledger fix on. A `PROFILE_ENABLED` tree, which
+is where several of those fixes live and which the three usual configurations never compile, builds clean
+and prints 60 of 60 at the head. `docs_coverage.py check Memory` and `docs_methods.py Memory` report 0, 544
+quoted blocks in `docs/Memory` with 0 stale, and `htmlcheck.py` reports 0 problems at every one of the 12
+commits — 566 pages before the pages commit and 805 after, which held only after the benchmark plan moved
+from the process-document commit to the one whose design document links it.
+
+**It went out as six stacked pull requests, #18 to #23.** `master` is linear with no merge commits and PR #17
+landed as two individual commits with fresh hashes, so this repository rebases: splitting the series costs
+nothing of the messages, which is what makes six PRs affordable where one would be a 40,000-line review.
+Merge in that order — #18 defects, #19 the macro rename, #20 the ledger, #21 the pages, #22 the strip, #23
+these records — and each bases on the branch before it, so each shows only its own diff. Local `master` went
+back to `origin/master` while they are open; `backup/regroup-12-v2` is the tip that was pushed, and
+`backup/pre-regroup-47` the 47 commits before any of it.
+
+
+## 2026-10-10 22:40 — profiling is 60 of 60, and the leak was a preprocessor typo
+
+**A byte count read back wrong, in a line that never compiled.** The residue the owner reported at
+deregistration was `SystemAllocator::DeallocateBytes` declaring its `allocated` under
+`#ifndef MEMORY_INVESTIGATION_ENABLED` — a macro `Engine/Config/BuildConfig.h` always *defines*, as `0` — so the
+shipped path fell through to `allocated = nBytes`, the caller's request, while `AllocateBytes` credited
+`OS::GetAllocSize(ptr)`, the `malloc` size. A probe in `MemoryManager` counted it: 829 allocation and 829
+deallocation events with 32884 bytes still credited, 36 distinct pointers, 7 of them reported differently on the
+way in and out, and those 7 summing to exactly the figure the assert printed. `outstanding = 0` — nothing had
+actually leaked. The fix is `#if !MEMORY_INVESTIGATION_ENABLED` plus the real size (`a5611cb`), and with it the
+ruling that `SystemAllocator` owns `malloc`-backed memory: `DefaultAllocator`'s id-0 bypass to `malloc`/`free` is
+gone, so the registration at id 0 is the one that reports the traffic its blocks come from (1018 events each way,
+0 mismatched, no abort). Deleting the bypass moved the zero-count rule onto every id, and a release of null then
+aborted on the adapter's own `Assert(ptr != nullptr)` — found by a scratch testlet before it shipped, and fixed to
+the manager's existing rule (`0efeed3`).
+
+**Four configurations, and the cost was measured rather than argued.** `#26`'s ownership test is now unconditional
+and `deallocate` passes `n * sizeof(T)` (`e8f885f`); the objection that this slows the one-slot cache route was
+answered with a 4M-pair micro-benchmark on that route exactly — 1.14 ns/op before, 1.09 after, the delta inside
+run-to-run spread, and the free-list route lost a second redundant test. `ReportFallback` became public with three
+call sites so a bank generation reports the fallback it is (`1931cf6`), `InlineMonotonicAllocator` reports under
+the macro that exists and no longer records a release of zero bytes per pointer (`a228add`), and
+`StackAllocatorTest`'s three testlets now test what their messages say (`fb8a983`) — two had inverted polarity, and
+the third's "retained 8 bytes" was a 16-byte `StaticStringTable` intern minus the 8 bytes of size-class padding an
+unsized `operator delete` records for a 56-byte object, i.e. a probe reading its own noise. Dev, Debug, Release and
+a `PROFILE_ENABLED` tree each print 60 of 60. The reference moved with the code (`9d00565`): `quoted_blocks.py
+docs/Memory` went from 5 stale quotation blocks to 0, two of them older than this work. Reading a value macro needs
+`#if`, not `#ifdef` — a repo sweep found no other instance, and the labels `#22`/`#25`/`#26` in the plan are not
+issues or PRs, only plan-file shorthand. Option C remains parked at `9c2d964`.
+
+
+## 2026-10-10 00:38 — profiling reaches 57 of 60 collections, and the trap was never a leak
+
+**Four hypotheses died by measurement, and each survivor was a real defect.** The trap the owner reported was
+`MemoryManager::ReportAllocation`'s `stats.usage > stats.capacity`, not the `!IsValid(id)` guard I had assumed —
+id 234 is inside the 256 ceiling — and it fired in `PoolAllocatorTest`'s "Reallocation After An Exhausted Free
+List" because `AllocateBlock()` returns `nullptr` on exhaustion while `Allocate` credited `blockSize` anyway: a
+failed claim is not an allocation (`be5b586`). Before that, `DeregisterAllocator`'s two early `return`s stranded
+one of 256 proxy slots per leak trip, so both detectors became `Assert` and the slot reaches `proxyPool.Push` on
+every path (`dcc376d`), and `InlinePoolAllocator`'s cached block now reports both ways with its ownership test
+ahead of the cache fill (`1de4b98`) — a foreign small block used to be swallowed and handed to a second owner,
+which is still open for shipping builds as `#26`. The last fix was to a test, not the engine: the pool-buffer
+testlet destroyed its pool with a block outstanding, so it releases it now (`71565ea`) rather than the detector
+losing its teeth. Collections surviving under `PROFILE_ENABLED`: 3, then 6, then **57 of 60**; Debug, Dev and
+Release held 60 of 60 throughout.
+
+**What the numbers, not the reasoning, said.** Nothing at the trap was readable — the detectors log through a
+buffered `std::cout` and `debugBreak()` kills the process before the next flush, so four runs gave four empty
+logs, and `lldb` cannot load objfiles for `libHEngine.a`, so line breakpoints and `frame variable` were useless;
+one explicit `std::cout` flush above the check produced `usage=1152 capacity=1024 name=TestPoolAllocatorExhausted`
+and then `name=SystemAllocator id=0 usage=21620 allocCount=829 deallocCount=829`. Counts that cancel with 21620
+bytes still credited is a size-reporting asymmetry, not a leak, and it is the same territory as the ruling that
+`SystemAllocator` must own the `malloc` fallback that `DefaultAllocator.h:48` still bypasses. Two further findings
+by reading: `InlineMonotonicAllocator` reports allocations under `__MEMOR_STATISTICS__`, a macro defined nowhere,
+so it can never show usage. The plan is `.Plans/PLAN_profiling_statistics_rootcause.md`, which supersedes the run
+section of `PROFILE_ENABLED_triage.md`; the owner's TaskSystem stash conflict was resolved to `HEAD` with the
+conflicted files copied to `.work/rescued/`, since the stashed side held header-inline bodies from before the
+commit that moved them into the source.
 
 ## 2026-10-09 18:42 — GLFW's orphaned submodule git directory is deleted
 
@@ -504,6 +650,586 @@ Nothing was committed: the tree carries unrelated in-flight Container work.
 **The declaration outlived its checkout.** `External/RapidJson` had no checkout, gitlink, git directory or
 config entry left; only `.gitmodules` and `External/.gitignore` still named it, and nothing in the tree
 referenced the library.
+
+## 2026-10-08 21:42 — the test macro is `TEST_ENABLED`, which is what the coding standard already asked for
+
+**The reason, not the cosmetics.** `__TEST__` and `__UNIT_TEST__` both began with a double underscore, and
+`[lex.name]` reserves every identifier containing one to the C++ implementation. `docs/CodingStandards.md:27` already
+says this in prose — "Use `SCREAMING_SNAKE_CASE` … Do not use a leading double underscore … reserved for the C++
+implementation" — so the macro the whole test suite is gated by was violating the rule the document states two
+hundred lines above the build section that names it. `61c6152` had already fixed this for `__DEBUG__`, renaming it to
+`DEBUG_BUILD` / `DEV_BUILD` / `RELEASE_BUILD`; this completes that cleanup for the test macro.
+
+**Third name, same numbers, which is the whole point.** `__UNIT_TEST__` to `__TEST__` measured 455 / 455 / 4 tokens for
+Debug / Dev / Release, and `__TEST__` to `TEST_ENABLED` measured 455 / 455 / 4 again. Debug and Dev ran 392 testlets in
+60 collections with 0 failures both times, Release without `-test` still exited 1 refusing to claim it had verified
+anything, and `grep -o 'D__TEST__\|D__UNIT_TEST__'` over the ninja files now reads 0. A rename that changes no count
+is a rename that changed no behaviour.
+
+**A near-miss worth recording: the existing macro sharing the suffix.** `MEMORY_INVESTIGATOR_TEST_ENABLED` already
+exists, so `TEST_ENABLED` is a live suffix of a live name. It is safe — `sed 's/__TEST__/TEST_ENABLED/'` provably
+cannot touch it, because that name contains `_TEST_` and not `__TEST__` — but it means a future `grep TEST_ENABLED`
+finds both, and a careless find-and-replace on the short form would corrupt the long one. Checked before editing,
+not after.
+
+**Two defects the previous rename had left behind, now fixed.** First, `scripts/hang.sh` still said `-D__TEST__`
+because that pass selected files by containing `__UNIT_TEST__`, so a file naming only the other macro was never in the
+set — a filter that silently drops a member is the classic way to report a complete sweep. Second, and worse, the
+prose in `docs/Memory/InlineMonotonicAllocator/index.html` had once listed two different macros, `__TEST__` and
+`__UNIT_TEST__`; after that blanket rename both halves became the same word, so the page claimed the Debug and Dev flag
+sets add "`__TEST__` and `__TEST__`". A rename applied to prose that was naming two things turns the sentence into
+nonsense while still looking fluent, so that one now names what the flag lines actually add.
+
+**The trap that had to survive a third time, and nearly didn't.** The history paragraph added to
+`docs/design/BuildMacros_Design.html` exists precisely to record that `__TEST__` was the dead macro. Running the rename
+over `docs/` rewrote that paragraph, so it came out asserting that `__UNIT_TEST__` and `TEST_ENABLED` had once been the
+dead pair — the rename had edited the account of itself. Caught by grepping the old names before declaring residue
+zero, and repaired: the paragraph now carries both renames in order, `__UNIT_TEST__` removed then `__TEST__` renamed,
+with the standard quoted as the reason for the second.
+
+**Not a correction, a correction to a correction.** An earlier note here and in PR #16 said the Renderer gets the macro
+from `Engine/Renderer/Vulkan/CMakeLists.txt`. It does not: `Engine/Renderer/CMakeLists.txt` contains no
+`add_subdirectory` at all, so that file is never included and its `add_compile_definitions` is inert. The ninja counts
+said so all along — Release's four tokens were `Engine/Test`'s own sources only — and the prose had overridden
+measurement that was already on screen. Renamed there anyway, so no stale name survives, but it changes no build.
+
+
+## 2026-10-08 17:21 — `__UNIT_TEST__` is gone, and `__TEST__` turns out to have been the dead half all along
+
+**What was asked, and what the measurement showed.** The request was to replace `__UNIT_TEST__` with `__TEST__` and
+remove `__UNIT_TEST__`. Auditing first showed the pair was not two questions but two names for one: both were defined
+together in every configuration that defined either, and `__TEST__` was asked about by no source anywhere in
+`Engine`, `Applications`, `Examples` or `External` — zero hits across every `.h`, `.cpp` and `.inl`. So `README.md`,
+`AGENTS.md`, `docs/RunningTests.md`, `docs/HelperScript.md` and a JOURNAL entry at `:3812` were all asserting that
+`-D__TEST__` "compiles the unit-test sources" while it in fact compiled nothing. The rename makes those pages true
+rather than editing them.
+
+**Where the definitions actually live.** Not in the `CMakeLists.txt`, which are generated: `.project.config`'s
+`precompileDefinitionsDebug` and `precompileDefinitionsDev` are the tree-wide source, `Engine/Test/.module.config`
+carries a plain `precompileDefinitions` that no configuration key limits, and
+`Engine/Renderer/Vulkan/CMakeLists.txt` is hand-written because Renderer's `ignoreSubdirectories` keeps the generator
+away from it. MakeBuild itself names neither macro and emits whatever token the config holds, so the submodule did not
+move. Editing the 19 generated files by hand would have been erased by the next `generate_cmake_files.sh`, silently.
+
+**The rename is provably behaviour-free.** The flag count moved name to name without any configuration's number
+changing: `grep -o` over the ninja files reads 455 in Debug, 455 in Dev and 4 in Release as `__TEST__`, which is what
+`__UNIT_TEST__` read before, and the Release four are still exactly `Engine/Test`'s own sources. That preserves the
+link trap `docs/BuildSystem.md` warns about — in Release `libTest.a` gets the macro while the engine modules do not,
+and it links only because `TestMain.cpp`'s `#else` branch never names `Test::RegisterSuite`. Debug and Dev still run
+392 testlets in 60 collections with 0 failures, and Release without `-test` still exits 1 saying it verified nothing.
+The trap held because `Engine/Test/.module.config` was renamed rather than re-scoped.
+
+**Nothing behind the macro changes an object layout.** All 127 regions were classified: 126 end their file, the single
+exception being the in-function guard in `TestMain.cpp` that `docs/CodingStandards.md` already waives. 110 hold only
+`#include "Test/TestCollection.h"` plus a `<Class>Test : public TestCollection` declaration, and 17 hold the matching
+definition. No production class gains a member, a base or a virtual behind the macro, so a mismatched define across
+targets yields a link error and never corruption — which is what made a macro of this reach safe to touch at all.
+
+**The silent-breakage surface was the tooling, not the compiler.** 54 literals across seven checkers matched the old
+name, and a regex that stops matching reports success: `prove_regroup.py` would have answered `[NONE]` and let a
+regrouping move test code, and `includes.py` would have probed guarded files without the macro and offered live
+includes for deletion. Three sites needed reasoning instead of substitution, because the substitution left them
+saying something untrue — `layout.py` blamed Dev for a macro it now defines, when the real reason it must still add
+the flag is that the `compile_commands.json` the checkers read is generated without it.
+
+**Left deliberately undone.** Two A4/A5 blank-line findings in `Engine/Test/UnitTestCollection.cpp` at `:119` and
+`:226` are untouched: they reproduce at those line numbers against the original file and the original checker, and
+`:226` is the known A14-versus-A5 tension over a trailing region's closing brace, which is a rule-table decision.
+The user's uncommitted `PROFILE_ENABLED 1` in `Engine/Config/BuildConfig.h` stayed out of every commit.
+
+**A defect found beside the task, not caused by it.** With `PROFILE_ENABLED 1` the suite aborts with `Trace/BPT trap`
+at `PoolAllocatorTest` TC2 after 26 passes and 3 failures, in both Debug and Dev; at `0` the same tree runs all 392
+testlets clean. Every parity number in this entry was therefore taken at `0`, and remains comparable only while that
+flag stays there.
+
+## 2026-10-07 22:34 — the sharded allocator takes its extents from whatever allocator happens to be in scope
+
+**The call site.** `GrowBank` in the sharded allocator obtains its backing memory with
+`mmgr.Allocate(extentBytes)`, and the two-argument `MemoryManager::Allocate` routes through
+`GetScopedAllocatorID()`. So an extent is a loan from whichever allocator is ambient at the moment the pool decides to
+grow, and inside the benchmark testlets that is one of the `MultiPoolAllocator` baselines, whose banks are
+`PoolAllocator` objects.
+
+**Why that produces exactly the assert we saw.** The redesign writes 64-bit tagged free-list links into its extents.
+Those bytes are simultaneously a live `PoolAllocator`'s blocks, because nobody told the lender the range left its
+ownership — `ReleaseState` hands the memory back, but while both owners are alive the range is claimed twice. The
+lender's free-list field therefore receives the borrower's packed tag, and `PoolAllocator::ReadNextIndex` aborts with
+a link of `0x122d6c000`: an address-shaped value, which is what a tagged 64-bit link looks like to code expecting a
+block index. This also explains the two negative sanitizer results, since every write is into valid in-use heap
+serialized by the redesign's own locks, and the timing dependence, since which pool is ambient changes with the
+schedule.
+
+**The fix is the one already made once in this module.** Commit `044c575` stopped the monotonic allocators from
+releasing their backing buffer to the ambient scope, for the same reason: an allocator's own memory must not depend on
+whoever happens to own the current scope. The extent allocation, the two `mmgr.New` and `mmgr.NewArray` sites beside it,
+and the matching release in `ReleaseState` all need a fixed owner — the default allocator, or a parent id recorded at
+construction. That is a small change, and it is the first thing to try; it does not by itself settle whether the design
+scales, which the 0.170 efficiency at four threads still leaves open.
+## 2026-10-07 22:24 — the sanitizer is the wrong instrument, and that narrows the sharded allocator's bug
+
+**Two scratch builds, both kept.** `build-asan/` and `build-tsan/` are configured and built and now ignored by Git, so
+the next reader rebuilds incrementally instead of paying two full compiles. AddressSanitizer reported nothing at all
+and ThreadSanitizer's 13 races contain no `Engine/Memory` frame, so the failing access is neither an overflow of an
+allocation nor a race on a shared variable that the sanitizer can see.
+
+**The number that changes the reading.** The instrumented assert now prints its own evidence:
+`PoolAllocator: free-list link 4879466496 is out of bounds for 16384 blocks`. That value is `0x122d6c000` — larger
+than a 32-bit index could ever be, and page-aligned. A free-list link that holds an address-shaped, page-aligned value
+is not a corrupted counter and not an off-by-one: it is a pointer written into a slot another owner believes is its
+own block. Two owners hold the same memory, which is what you get when extents and still-live pool banks describe the
+same range, or when a cross-thread free is routed to the wrong owner.
+
+**What to read first, therefore.** Not the atomics. Read how an extent is obtained and handed back, and whether the
+redesign can return memory to the default allocator while a `PoolAllocator` bank still spans part of it. The abort
+site also moves with timing — Dev stopped in M1, the sanitizer builds reached M4 — so reproduce with the thread counts
+pinned rather than trusting one run.
+
+## 2026-10-07 17:42 — the sharded allocator fails, and the reason is not the testlets
+
+**Measured, not assumed.** Option C was committed as work in progress on `wip/option-c-sharded` at `72e56ee`.
+With it in the tree the Dev suite dies; with the previous allocator restored two consecutive runs finish 60 of 60.
+So the redesign is the cause, and the tree on `master` is the allocator that works.
+
+**Where it dies, and what that rules out.** The abort first appeared as a message-less `FatalAssert` at
+`MultiPoolAllocator.cpp` in `NewBankAllocate`, then, once that assert could speak, as `PoolAllocator`'s free-list
+bound assert inside the M1 shared-instance contention testlet. M1 and M2 are byte-identical between `master` and the
+branch, and `MultiPoolAllocator.cpp` and `PoolAllocator.cpp` were unchanged by the redesign, so the failing asserts
+are not the testlets and not the pools' own logic. The out-of-bounds link value is garbage rather than an off-by-one,
+which is the signature of something writing outside its own memory. The redesign replaced `banks` with extents, a
+range table and stream slots, so the prime suspect is an extent or stream slot write landing inside a live
+`PoolAllocator`'s block, and the next step is to reproduce M1 alone under a sanitizer rather than guess further.
+
+**It does not yet earn its keep.** Even before the assert, the branch's own benchmark prints efficiency 0.733 at two
+threads and 0.170 at four, against the design's claim of near-linear scaling. The sharding as written has not bought
+the contention fix, so correctness and performance both remain open.
+
+**Landed on `master` regardless, because it stands alone.** `29f4d34`: `NewBankAllocate` asserted `false` with no
+message at all at the exact moment a reader needs the size, index and block count; `PoolAllocator::ReadNextIndex`
+passed printf conversions to a logger that concatenates rather than substitutes, so the abort printed the format
+string literally and the numbers as unreadable digits; `TaskSystem.cpp` had the same printf mistake. All three now
+speak in the engine's own style. Debug, Dev and Release each pass 60 of 60 with it.
+
+
+## 2026-10-07 07:30 — profiling compiles: the profiler names the source-location type that actually exists
+
+**What was broken.** `.Plans/PROFILE_ENABLED_triage.md` found the engine could not be built with `PROFILE_ENABLED` 1:
+117 `error:` lines, 52 of 133 translation units dead, 111 of them from one phantom type — `MemoryManager.h` forward-declared
+`struct source_location;` and nothing defined it, while `Engine/OSAL/SourceLocation.h` owns the real class `hbe::SourceLocation`.
+Naming an incomplete type in a reference parameter is legal, which is why the shipping build survived and the profiling build did
+not: the instant `PROFILE_ENABLED` declared `TSrcLoc srcLoc;` as a field, every unit reaching `ScopedLock.h` — all of the task
+system, and via `Logger.h` nearly everything — lost the build. Three further shapes sat behind it: three `SystemStatistics`
+reporters dropped the `noexcept` their header declares, and `InlinePoolAllocatorTest` named four members an earlier rename had
+removed.
+
+**The fix is the eight-file repair, now committed.** `MemoryManager.h`, `PoolAllocator.{h,cpp}`, `StackAllocator.h`,
+`ScopedLock.h` and `MemoryManager.cpp` spell the type `SourceLocation` (the two headers now include `OSAL/SourceLocation.h`, the
+phantom forward declaration goes); the three reporters gain `noexcept`; the testlet reports `inlineTimeDuration`,
+`stdTimeDuration`, `maxAllocSize`. 14 insertions, 13 deletions, no comment added to any `.h` or `.cpp` — the eight files carry the
+same 126 `//`-bearing lines before and after, and `comments.py` reports the identical 20-violation set.
+
+**Proofs, each measured with a redirect and its own exit code.** Shipping path untouched: `./build.sh Applications/EngineTest
+-dev -debug -release -test` then the three binaries — Dev, Debug, Release each exit 0, 60 collections `SUCCESS`, 391 testlets,
+13 `M1`-`M4` lines. Profiling on: the switch is `Engine/Config/BuildConfig.h:38`, a bare `#define PROFILE_ENABLED 0` — no CMake
+option, no `.project.config` `precompileDefinitions` entry, no `customCMake.txt` hook, and a `-DPROFILE_ENABLED=1` command line
+cannot win because the header redefines it afterwards and `-Wmacro-redefined` makes even that fatal under `-Werror`. So the probe
+ran outside the checkout: two `git archive HEAD` copies under `/tmp/hbe-probe/{before,after}`, the flag flipped there only, each
+with its own CMake binary directory — the shared `./build` never saw profiling on, and the checkout's `BuildConfig.h` stayed at 0.
+`before` (HEAD unrepaired, profiling on): 119 `error:` lines, build exit 1. `after` (HEAD + this repair, profiling on):
+**0 errors in Dev, Debug and Release**, only the pre-existing `ld: ignoring duplicate libraries` note. Gates on the eight files,
+HEAD against working tree: `comments.py` 20 → 20, `blank_lines.py` 0 → 0, `includes.py` 0 → 0, `layout.py` 10 `MEMBER-LAYOUT` +
+1 `ACCESS-REDUNDANT` advice → identical set, with `ScopedLock.h` moving `[SKIP]` (clang rejected the phantom type outright) to
+`[PASS]`.
+
+**Open item, and it is not this commit's to close.** The suite still cannot share a process with profiling: the profiling-on
+EngineTest traps — exit 133 `Trace/BPT trap: 5` at 0.64 s, 1 of 60 collections finished — inside `BaseAllocatorTest`, on
+`MemoryManager::DeregisterAllocator`'s leak branch, which logs a Warning and then `#if !RELEASE_BUILD` calls `debugBreak()` =
+`__builtin_trap()`. The warning is itself compiled away (`MemoryManager::Log`'s body is `#if MEMORY_LOGGING_ENABLED`), so the
+detector aborts in silence, and the accounting it aborts on is wrong rather than strict: `InlinePoolAllocator::DeallocateBytes`
+returns at its immediate-block fast path before `ReportDeallocation`, so usage ratchets up and never drains. Nothing here was
+weakened to buy a green run. Getting both profiling and the suite is a design decision — make the two profiling-only detectors
+report instead of trap, then fix the unpaired `ReportDeallocation` — and it belongs to the owner, not to a compile fix.
+
+**Consequence for every profiling number.** Until this commit no `PROFILE_ENABLED` statistic had ever been compiled, so every
+value that path produces is unexercised history: `AllocStats` usage and peaks, `MemoryManager::GetAllocatorStat`,
+`SystemStatistics::PrintAllocatorProfiles`, per-pool and per-bank peaks, the shutdown memory configuration, and the contended-lock
+hold-time report. They now compile; none of them has yet run green.
+
+## 2026-10-07 05:30 — the half-finished Memory strip is closed: 7 orphan blanks repaired, every claim re-measured
+
+**What was actually left broken.** The previous agent's `comments.py --strip` deletions were complete and correct (0 violations
+on all seven headers), but its blank-line pass never ran. `blank_lines.py` reported 6 findings in `InlinePoolAllocator.h` and
+1 in `Shareable.h`, and both files were **0 findings at HEAD**, so all seven were the strip's own residue: three deleted
+comments left a blank where the prose had stood (`:55` A16 double blank, `:185` A4 blank after `{`, `:192` A11 double blank),
+one deletion also removed a blank that A11 requires (`:210`), the `/// @brief` at the test class left a blank after the
+`__UNIT_TEST__` namespace brace (`:265` A4), and both files had lost A3's second preamble blank. Repaired by the table, not by
+the formatter, and no `clang-format` run followed — a later `--apply` re-collapses A3 and re-opens this layer.
+
+**Proofs, each measured with a redirect and its own exit code.** `comments.py` 0, `blank_lines.py` 0 (0 across every
+`Engine/Memory` header), `includes.py` 0, `layout.py` 16 `MEMBER-LAYOUT` + 2 `ACCESS-REDUNDANT` advice. The layout number is
+not taken on trust: HEAD's seven headers were swapped in, measured, and restored byte-identical (`cmp` per file), and the
+symbol-keyed finding sets are identical — same 16, no data member moved. `comments.py code_tokens` against HEAD is identical
+for both repaired files (1161 and 600 tokens), which proves the whole session moved comments and whitespace only.
+`htmlcheck.py` 740 pages 0 problems (it takes page paths, not a directory — `htmlcheck.py docs` dies with `IsADirectoryError`).
+`docs_methods.py Memory` 0 missing. `docs_coverage.py check-file` passes all seven. Build `EXIT=0` on a forced recompile
+(403 steps, zero `no work to do`); Dev/Debug/Release each 60 collections `SUCCESS`, 0 `FAILURE`, 391 testlets, `EXIT=0`,
+M1-M4 `Result [PASS]`. In one Release run the closing line read as missing only because the async logger interleaved a banner
+between `EngineTest: all ` and `60 collections passed` at 3999-4000 — output interleaving on one fd, not a failure.
+
+**Re-verified rather than trusted.** `docs/Memory/index.html` was already correct: all seven catalogue links present in wave 1's
+shape, and Coverage reads "Eight of the nine allocators" naming `SystemAllocator` as the sole undocumented one — the true count
+against the ten class folders on disk. No `.cpp` lost a comment (`comments.py` count identical to HEAD for all 18);
+`git diff --stat` shows only the two defect-fix/benchmark files. `AllocatorScope.h` holds only its member-order move; the
+`ReportMultiPoolConfigutation` misspelling is unrename and the docs say so out loud. Nothing committed, nothing pushed.
+
+## 2026-10-06 16:33 — the monotonic destructor leak is reproduced, guarded and fixed; the slot-0 shutdown claim is refuted
+
+**Hazard one, proven.** `MonotonicAllocator::~MonotonicAllocator` released its backing buffer through
+`MemoryManager::Deallocate(void*, size_t)` — the ambient scope — while the constructor had recorded the true owner in
+`parentID`. Destroying the allocator while its own `AllocatorScope` is open therefore routes the release into the
+allocator's own inert `Deallocate` (`IsMine` is true, individual releases are ignored) before `DeregisterAllocator`
+clears the slot, so nothing asserts and the buffer never returns to its parent. Reproduced in the suite by a new
+testlet `Destroy In Own Scope` in `Engine/Memory/MonotonicAllocator.cpp`: a fixture parent allocator registered over
+`::operator new`/`::operator delete` backs a 131072-byte monotonic buffer, and destroying it inside its own scope
+retained exactly 131072 bytes against the 65536-byte ceiling (`retained 130728 bytes of engine-owned global heap`,
+collection `FAILED`, exit 1 — measured pre-fix and again with the fix reverted). The repair is one line, symmetric
+with the constructor: `mmgr.Deallocate(parentID, bufferPtr, capacity)`. After the fix both new testlets pass in
+Debug, Dev and Release; the suite reports all 60 collections passed, 391 testlets (389 before, +2), exit 0.
+
+**Hazard one, refuted half.** `InlineMonotonicAllocator` was named in the same claim but its destructor releases no
+buffer at all — the buffer is an inline member with no owner, and the destructor only calls `DeregisterAllocator`.
+Refuted by observation: a second `Destroy In Own Scope` testlet in `Engine/Memory/InlineMonotonicAllocator.cpp`
+measures global bytes across construct-and-destroy-inside-own-scope and sees the retained direction stay at zero.
+`StackAllocator` was confirmed to behave as claimed — the assert is `StackAllocator::Deallocate`'s `Assert(cursor >=
+size)` (cursor 0 versus size = capacity) in Debug/Dev; in Release that assert is empty and the release is dropped the
+same silent way, which the owner has not been asked to change here.
+
+**Hazard two, refuted.** The claim: after shutdown `proxyPool` holds slot 0, whose `id` is never written, so a
+re-registration hands out an identity built on uninitialised or stale state. Verdict: unreachable, and the
+uninitialised half is factually wrong. `AllocatorProxy::AllocatorProxy()` writes `id = InvalidAllocatorID` for every
+element of `allocators[MaxNumAllocators]` including slot 0 — the seeding loop skipping slot 0 leaves it `-1`, not
+uninitialised. The slot-0 push happens inside `~MemoryManager`, whose `proxyPool` is a per-instance
+`AtomicStackView` (a single `std::atomic<T*> top` member, no global node backing), so the pushed entry dies with the
+destroyed instance. A `RegisterAllocator` reached after shutdown cannot exist: `MemoryManager::GetInstance()` opens
+with `FatalAssert(mmgrInstance != nullptr)` and `FatalAssert` is defined outside the `RELEASE_BUILD` guard in
+`Engine/Core/Debug.h`, so it aborts in all three configurations before any id is handed out. A second `MemoryManager`
+(second Engine in one process) seeds its own fresh free list with slots 1…255 only, and during any live instance's
+lifetime nothing pushes slot 0 — `DeregisterAllocator(SystemAllocatorID)` has exactly one caller, the destructor.
+Nothing in a normal run, and no testlet in this suite, is close to that path: `EngineTest` shuts the engine down after
+the last testlet, and `Engine`'s member order (`memoryManager` before `taskSystem`) joins the worker streams before
+`~MemoryManager` begins. Recorded as refuted so nobody re-files it; no guard added, no `MemoryManager` change.
+
+**Verification.** Models first under `/tmp/hbe_hazard_models/` (`monotonic_allocator_dtor_model.cpp`,
+`memory_manager_slot0_model.cpp`) reproduced both behaviours before any engine edit. Then: testlet added first,
+failure captured against unfixed code, fix applied, pass captured, fix reverted, failure captured again, fix
+restored. `./build.sh Applications/EngineTest -dev -debug -release -test` then all three binaries: exit 0 each, 60
+`Collection Result: [SUCCESS]` each, 391 testlets each, `M1`…`M4` benchmark lines present and `PASS` in every log.
+Style gates on the two touched files unchanged from baseline: `blank_lines.py` 0, `includes.py` 0, `comments.py` 0
+violations, `layout.py` 0 findings. `clang-format --dry-run` on `MonotonicAllocator.cpp` reports one residual
+violation, the pre-existing A3 double blank after the include preamble that clang-format deletes and rule A3 demands
+— identical to HEAD; my added lines are formatter-clean.
+
+**Left to the owner.** `StackAllocator::~StackAllocator` keeps the same ambient-scope release
+(`mmgr.Deallocate(bufferPtr, capacity)`); Debug/Dev assert their way out of the silent leak, Release drops the
+release, and the one-line parent-naming fix used here would apply identically — deliberately not widened to it, the
+claim named only the monotonic pair. Not committed, not pushed, nothing under `docs/` touched.
+
+## 2026-10-06 15:09 — `StackAllocator` and `MonotonicAllocator` own their pages; the Memory tree is `htmlcheck` clean
+
+**What landed.** Two class folders under `docs/Memory/`, 19 pages: `StackAllocator` 10 (its class page predated this run),
+`MonotonicAllocator` 9. Both headers now carry their one `/// API reference:` line; no other `Engine/` edit, no comment deleted,
+no build, no commit.
+
+**Gates.** `docs_pass.py signatures` 9 and 8 pages verbatim, 0 problems; `docs_coverage.py check-file` reports each header
+`1 entry documented, addressed from the header, method pages complete`; `docs_methods.py Memory` 0 methods without a page;
+`docs_page.py check Memory` 145 pages, 0 with problems — the StackAllocator dead-link red item is closed.
+
+**What the pages assert that no one had written down.** Neither class declares a reset, so destruction is the only mass release and it
+invalidates every pointer still held; the stack's release is last-in-first-out and a mismatch leaks silently in `Release`
+(`Assert` empty, `MEMORY_LOGGING_ENABLED` 0); a stale handle to a reused offset can rewind a live block; the monotonic class ignores
+releases of its own bytes entirely. New finding recorded on the monotonic destructor page: both destructors release the buffer through
+the *ambient* scope, so destroying one while its own `AllocatorScope` is open routes the release back into its own `Deallocate` — the
+stack asserts, the monotonic allocator ignores it and loses the buffer with no diagnostic at all. Nine named omissions per class page
+(thread-safety, implicit copy or move, returned alignment, every `PROFILE_ENABLED` path, zero-capacity and failed construction,
+Release-build leak size, undetectable stale handles, `AllocatorID.h` surface, `MemoryManager` contracts, the test collections).
+
+**For the integrator.** `docs/Memory/index.html`'s catalogue row still reads `MonotonicAllocator` … "No — reset only"; no reset
+method exists. The catalogue also hides that these two destructors dispatch through the ambient scope while
+`PoolAllocator`'s dispatches through its recorded parent.
+
+## 2026-10-06 06:40 — wave 1 of the Memory comment migration closed: three headers hold no comments, three refuse the gate
+
+**What landed.** Three class folders under `docs/Memory/`, 53 pages: `PoolAllocator` 23, `MultiPoolAllocator` 15,
+`ThreadSafeMultiPoolAllocator` 15. The module page's allocator catalogue now links all three, and its Coverage row says three of
+nine allocators are documented instead of none. Twelve prose comments deleted from those three headers, each one checked against
+its page before deletion, all `/// API reference:` pointer lines kept.
+
+**Why the other three headers were left alone.** `MemoryManager.h` (19 comments), `AllocatorProxy.h` (5) and `PoolConfig.h` (1)
+refuse `docs_coverage.py check-file` with `BLOCKS STRIP`, so their prose stays. That is the rule working, not a gap: a comment
+whose content has no second home is the one deletion you cannot undo, and a leftover comment is debt someone else can see.
+No comment survived because a claim went missing — the strip found every claim on its page.
+
+**Verified by running, not by report.** Three headers at 0 `comments.py` findings with their pointer lines intact; `blank_lines.py`
+and `includes.py` clean on all three; `layout.py` reports 2 findings in `MultiPoolAllocator.h` and 2 in
+`ThreadSafeMultiPoolAllocator.h`, which are the same four pre-existing `MEMBER-LAYOUT` findings as before the strip, and no data
+member moved. `ninja` had no work to do, so the binaries matched the stripped sources, and all three configurations ran: 60
+collections `SUCCESS`, 389 testlets, exit 0, `M1` to `M4` still printing. `htmlcheck.py` clean.
+
+**Also closed in the same pass.** The `MultiPoolAllocator` class page's Coverage row still said a comment the strip had just
+deleted was left in place for `hb-standards` to delete; it now says the comment is gone and points at the
+`NewBankAllocate` method page instead. A page that describes a comment which no longer exists is the same rot as a page that
+describes code which no longer exists, and nothing mechanical catches either — the proposed quoted-block checker in
+`.Plans/PLAN_wave1_memory_pages.md` would have caught the second class automatically. **It is a proposal, not built; the owner
+has not approved it.**
+
+## 2026-10-06 05:53 — `PoolAllocator`'s empty free list stopped pointing at a block that was still handed out
+
+**Cause.** `PoolAllocator::Deallocate` terminated the free list by writing `numberOfBlocks - 1` when the list was
+empty. The constructor lays the list out as `i + 1`, so `numberOfBlocks` - not `numberOfBlocks - 1` - is the value
+`AllocateBlock` reads as "no block follows"; the value the empty-list branch wrote is the index of the *last* block,
+which after an exhaust-then-refill is almost always still owned by a caller. The sequence exhaust the pool, return
+one block, allocate twice therefore handed the last block to a second owner. Confirmed by the owner before the work
+started, and reproduced by the revert probe described below.
+
+**The root cause was an assertion, not the branch.** `WriteNextIndex` asserted `index < numberOfBlocks`, so writing
+the real terminator tripped it and the caller conformed to the wrong bound instead of the bound being corrected.
+Two edits in `Engine/Memory/PoolAllocator.cpp`: `WriteNextIndex` now asserts `index <= numberOfBlocks` - the bound
+`ReadNextIndex` already used - and `Deallocate`'s empty-list branch writes `numberOfBlocks`. The third bound, the
+head check `index > numberOfBlocks` in `Deallocate`, already agreed, so all three now state one rule: a link is a
+valid block index or the sentinel, nothing else.
+
+**The regression test.** `PoolAllocatorTest` TC3 `Reallocation After An Exhausted Free List`: an 8-block pool,
+all blocks allocated so `GetAvailableBlocks()` really reaches zero, a strict subset returned that deliberately
+excludes the last block, then `returnedCount + 1` allocations - the extra one is the probe that walks the
+terminating link. Every non-null result is compared against the still-held set and against the re-acquired set.
+The fixed build returns `nullptr` for the probe and passes; the reverted build hands out the live block.
+
+| Configuration | Reverted build (defect present) | Fixed build |
+|---|---|---|
+| Debug | `[Assert] PoolAllocator.cpp:305 failed` (`numberOfFreeBlocks > 0` in `AllocateBlock`), `debugBreak` + `abort`, exit 133 - the duplicate is never returned | PASS |
+| Dev | same abort, exit 133 | PASS |
+| Release | `exhaustion: allocation 4 of the 4 returned blocks handed 0x7959700380, the address still held by block 7 0x7959700380.`, testlet FAIL, collection FAIL, exit 1 | PASS |
+
+So Debug and Dev mask the symptom - their `Assert` traps the over-allocation one step before the corrupted link is
+followed - and Release, which defines `RELEASE_BUILD=1` and compiles `Assert` away, is the only configuration where
+a caller can actually observe the double hand-out. Note `MemoryManager::LogError` is compiled out entirely while
+`MEMORY_LOGGING_ENABLED` is 0, so the correct empty-pool path is silent: in Release the fixed pool returns a plain
+`nullptr`, and before the fix it returned a live duplicate with nothing printed at all.
+
+**Verification.** `./build.sh Applications/EngineTest -test -debug -dev -release` clean; all three binaries exit 0
+with `all 60 collections passed (389 testlets)` (388 before, the new testlet is the 389th) and the M1-M4 benchmark
+testlets still print. `blank_lines.py`, `includes.py`, `comments.py`, `layout.py` on the file are byte-identical to
+`/tmp/base2_PoolAllocator.cpp_*.txt`, so the 20 pre-existing comment findings stay 20 and no new one was added. The
+testlet retains 0 bytes of global heap against the 64 KiB ceiling and captures only `this`.
+
+**Independently reproduced afterwards**, because a testlet that has never been seen to fail is a claim and not a guard. The
+one line was reverted in place and all three configurations rebuilt: `Dev` died with `Trace/BPT trap: 5` (exit 133) at the
+`Assert(numberOfFreeBlocks > 0)` in `AllocateBlock`, and `Release` exited 1 with
+`handed 0x7bb2f00380, the address still held by block 7 0x7bb2f00380` — the last block, which is what the arithmetic model in
+`/tmp/fl/probe.cpp` had predicted hours earlier without seeing the engine. The source was then restored, all three
+configurations rebuilt, and the suite returned to exit 0 with 389 testlets. The pages that documented the old behaviour were
+corrected next: `deallocate.html`, the class `index.html` Coverage row, and `writenextindex.html`, whose quoted source block and
+"the assertion permits a strictly smaller set of values than the reader accepts" note both described the pre-fix bound. Three
+citations to probe files under `/tmp` were deleted from `docs/` in the process, because a citation to a directory that is
+rebooted away is not a citation; the durable witness is the testlet's name and `PoolAllocatorTest::Prepare`.
+
+
+## 2026-10-05 18:31 — prerequisite 0 landed: the four allocator defects are fixed, and the profiling build turned out not to compile
+
+**Cause.** The four correctness defects recorded at 10:08 today (`F1` doubled cached block counts, `F2` released pool
+memory through the ambient allocator, `F3` logged from inside its own lock, `F4` touched a `std::map` under
+`PrintUsage`'s lock) had to be correct before the option C locking redesign starts on this base.
+
+**The fixes.** `F1`: the accumulate is now the `else` branch of the not-found test in both
+`ThreadSafeMultiPoolAllocator::ReportConfiguration` and `MultiPoolAllocator::ReportConfiguration`, and the `reserve`
+that made the bug silent stays; each function now asserts the reported block sum equals the summed bank peak.
+`F2`: `PoolAllocator::~PoolAllocator` releases with `mmgr.Deallocate(parentID, buffer, totalSize)`, and both
+multi-pool destructors open `AllocatorScope scope(parentID);` as their first statement. `F3`: `Deallocate` records
+`foreignPointer` under the lock and logs after the scope ends; `GenerateBank` no longer logs at all - it records
+`(blockSize, numberOfBlocks)` into a file-scope `BankGenerationLog` guard owned by `Allocate`'s frame, whose destructor
+emits the same message once the mutex is released; the guard nests through a `thread_local` pointer the way
+`AllocatorScope` nests the ambient id, so a parent allocator generating a bank inside a child's bank generation logs
+under its own category. `F4`: `AllocatorScope scope(MemoryManager::SystemAllocatorID);` is the first statement of
+`PrintUsage`, `using namespace std;` is gone, and the per-bank lines are snapshotted into a `HVector<BankUsageRecord>`
+under the lock and logged after it, because a `log.Out` call is itself allocation-capable.
+
+| Slip | Status |
+|---|---|
+| `#ifdef PROFILE_ENABLED` in `NewBankAllocate` of both multi-pools | ✅ now `#if PROFILE_ENABLED`, matching the other 14 guards |
+| header names `std::mutex` / `std::initializer_list` without including them | ✅ `<initializer_list>`, `<mutex>` added to the `<...>` block of `ThreadSafeMultiPoolAllocator.h` |
+| `unlikely(requested <= 0)` on a `size_t` | ✅ `requested == 0`. `MultiPoolAllocator::Allocate` carries the identical `size <= 0`; left alone because the plan names only the thread-safe `Allocate` and the two spellings behave the same |
+
+**The profiling configuration of this tree does not compile, and that is new information.** Setting
+`PROFILE_ENABLED` to 1 breaks the build in three unrelated places before any Memory file is reached:
+`PoolAllocator.h`'s profiling member is of type `hbe::source_location`, which is only ever *forward declared* in
+`MemoryManager.h` and defined nowhere (`OSAL/SourceLocation.h` defines `SourceLocation`, capital S);
+`SystemStatistics.cpp` defines `Report`, `ReportSysMemAlloc` and `ReportSysMemDealloc` without the `noexcept` their
+header declares; `InlinePoolAllocator.cpp:145` names `inlineTimeAvg`, `stdTimeAvg` and `loopLength`, which no longer
+exist. Repairing that is its own task - every `#if PROFILE_ENABLED` path in the Memory module is currently unverified -
+so the requested before/after probe on the real binary could not be run, and `F1`'s numbers came from the standalone
+model the plan itself cites instead (`/tmp/f1_model/f1_model.cpp`, both variants of the `InsertItem` lambda copied
+literally from the source).
+
+| Bank set (blockSize, peakBlocks) | true peak | cached before the fix | cached after the fix |
+|---|---|---|---|
+| one bank per class `{64,2} {128,1} {256,4} {1024,1} {8192,1}` | 9 | **18** - every entry doubled | 9 |
+| one class grew a second bank `{1024,5} {256,5} {1024,5}` | 15 | **25** - the plan's own figure, reproduced | 15 |
+| Logger input pool shape `{16,31} {64,7} {256,2}` | 40 | **80** | 40 |
+
+**Two new testlets in `ThreadSafeMultiPoolAllocator.cpp`, 388 testlets total.**
+`Pool Buffer Returns To Its Recorded Parent` builds a `PoolAllocator` whose recorded parent is one allocator, destroys
+it while a second allocator holds the ambient scope, and is a real guard: with `~PoolAllocator` reverted the run stops
+inside that testlet, its last line
+`[Main][TC4 Pool Unrelated][FatalError] 0x7555b00000 is allocated by another allocator.` followed by
+`Trace/BPT trap: 5` (exit 133). It tests `PoolAllocator` rather than the multi-pool on purpose: the `AllocatorScope(parentID)` line in
+`~ThreadSafeMultiPoolAllocator` masks the `~PoolAllocator` defect, which a first draft of the testlet proved by passing
+against a reverted `PoolAllocator`. That destructor scope line, and `~MultiPoolAllocator`'s, have no observable effect
+once `~PoolAllocator` is right - the `banks` vector's own storage is freed after locals are destroyed, so no scope
+reaches it - and are therefore unfalsifiable by test today.
+`Print Usage Under Its Own Allocator Scope` calls `PrintUsage` with the allocator under test as the ambient scope. It
+**cannot fail in any configuration that currently builds**: `PrintUsage`'s whole body is `#if PROFILE_ENABLED`, which
+the tree cannot compile, and the plan's claim that it hangs before the fix does not survive measurement (below).
+
+**F3 stays structural, and the reason is now measured, not assumed.** `Logger::TLogStream` is
+`InlineStringBuilder<Config::LogOutputBuffer>`, so building a log message allocates nothing, and the only allocation a
+log call performs is `inputBuffer.emplace_back` under `AllocatorScope(inputAlloc)` - `Logger`'s own pool. A probe with
+`Deallocate`'s `OutFatalError` put back inside the lock, plus a testlet making the allocator under test both the
+ambient scope and the foreign-pointer target, therefore did **not** deadlock: it logged
+`[F3PROBE Foreign][FatalError] ... is allocated by another allocator.` and trapped in `debugBreak` as designed. Only
+the instance the logger allocates from - `Logger::inputAlloc`, private and unreachable from a testlet - can close the
+cycle, exactly as the plan stated. The structural claim holds file-wide: no `Logger::` call and no call that can reach
+this instance's `Allocate` sits inside any `lock_guard` scope in `ThreadSafeMultiPoolAllocator.cpp`. `Assert` calls
+stay inside the lock deliberately - they abort, and hoisting one would let the call it guards run unchecked first.
+
+**The deferred-log guard costs nothing measurable on the benchmark path.** Dev, three runs each, M1 one thread:
+with the guard 23.2 / 23.8 / 24.6 ns per operation, without it 23.4 / 23.6 / 23.9. At eight threads 118-127 against
+120-126. M1 to M4 output lines are present and unchanged in shape in all three configurations.
+
+| Gate | Result |
+|---|---|
+| `./build.sh Applications/EngineTest -dev -debug -release -test` | ✅ exit 0, no compiler warnings |
+| Dev / Debug / Release runs | ✅ 60 collections `SUCCESS`, 388 testlets, exit 0 in all three |
+| Four style scripts versus `/tmp/base_*` and `/tmp/base2_*` | ✅ 0 new findings each. `ThreadSafeMultiPoolAllocator.cpp` layout moves from `[NONE] no class or struct defined here` to `[PASS]`, still 0 violations, because the file now owns two checked structs; the header keeps its 2 pre-existing violations and its comment counts are untouched |
+| `git status --porcelain` | ✅ four Memory files plus `JOURNAL.md` and the two `docs/` files already dirty from the benchmark task; `Engine/Config/BuildConfig.h`, `MemoryManager.h`, `SourceLocation.h`, `SystemStatistics.cpp` reverted and `git diff` empty on them |
+
+**Left for the owner, in this order.** (1) A profiling-build repair task, which is what stands between `F1`'s assert and
+any real evidence, and between `F4`'s testlet and ever failing. (2) Reference-page updates that this task deliberately
+did not write: `docs/Memory/PoolAllocator/` must say the destructor returns its buffer to the recorded parent, and
+`docs/Memory/ThreadSafeMultiPoolAllocator/` must say that no diagnostic is issued while the mutex is held and that
+bank-generation logging is deferred to the caller - the locking-protocol half belongs in
+`docs/design/ThreadSafeMultiPoolLocking_Design.html`. (3) If a runtime guard for `F3` is ever wanted, the shape exists:
+make the allocator under test the ambient scope and drive it to the foreign-pointer path, accepting that the testlet
+traps by design.
+
+## 2026-10-05 15:56 — the contention benchmark ran, and the mutex rather than the pool is what the engine is paying for
+
+**Cause.** Five candidate replacements for the single mutex in `ThreadSafeMultiPoolAllocator` were on the table
+(`docs/design/ThreadSafeMultiPoolLocking_Design.html`), and the only figure in existence was single-threaded. Choosing
+between a lock-free shared stack, thread sharding, a wait-free lease and a cheaper lock on the strength of one
+uncontended number is opinion, so the benchmark in `.Plans/PLAN_lockfree-contention-benchmark.md` ran first.
+
+**What the numbers say.** Workload: 20,000 operations per thread over eight fixed block sizes, one allocate plus one
+free per operation, direct calls on the allocator object so `MemoryManager`'s proxy dispatch is excluded. **The table
+below is the Dev build**, one representative run.
+
+| Measurement | Result | What it settles |
+|---|---|---|
+| M1 one shared instance, 1 / 2 / 4 / 8 threads | 24.6, 29.7, 91.4, 127.0 ns per operation. Efficiency **0.414, 0.067, 0.024** | The lock is the cost. Efficiency at four threads is one sixth of the one-over-N ideal, which no pool logic explains |
+| M2 shared against a private pool per thread | 2.1x at one thread, 5.8x at two, 21.1x at four, **67.5x at eight** | Thread sharding has enormous headroom, so option C earns its risk and option B does not |
+| M2 shared against `std::malloc` | 0.86x at one thread, then 1.9x, 3.5x, **6.7x slower** | The shared instance loses to the platform allocator as soon as more than one thread exists |
+| M3 free performed by a non-allocating thread | 10.6 ns against 12.2 ns same-thread, ratio 0.87 | Cross-thread returns are affordable, which is what C's inbound list needs |
+| M4 latency while another thread grows a bank | typical 42 ns, p99 27,916 ns, worst **189,542 ns** | Growth has to leave the critical section under every option, including A and E |
+
+**Two results that cut against the convenient reading, kept in the record.** The M2 private-pool pass was deliberately
+pre-sized to 5,000 blocks per class so no bank grows inside its timed region, while the shared column grows banks
+during measurement - and M4 shows growth is expensive - so part of that 67.5x is the absence of growth rather than the
+presence of sharding, and the split between the two is not yet known. M3 is counter-intuitive in the wrong direction: a
+foreign free should cost *more* because it touches lines another core warmed, so 0.87 is more likely an ordering
+effect between the passes than a real absence of cost. Both are reported as measured and treated as unexplained, and
+the design document states them in a caveat block rather than quietly.
+
+**Delegated, then verified independently.** Implementation went to a subagent to keep this session's context free, and
+its claims were checked against the tree rather than accepted: the diff is **627 pure insertions with zero deletions,
+all of them after the `#ifdef __UNIT_TEST__` at line 469**, so no production line moved; the scaling-efficiency
+formula was recomputed by hand from the printed `nsPerOp` values and matches `(nsPerOp(1)/nsPerOp(N))/N` on all three
+contended points; `blank_lines.py`, `includes.py`, `comments.py` and `layout.py` each report the same zero findings as
+the pre-change baseline in `/tmp/base_*.txt`; the suite is 60 collections, `SUCCESS`, exit 0, at 386 testlets where the
+count was 382.
+
+| Gate | Result |
+|---|---|
+| Dev build and run, four new testlets | all `PASS`, suite 60/60 `SUCCESS`, exit 0, 386 testlets |
+| Scope: production code untouched | ✅ 627 insertions, 0 deletions, all inside `__UNIT_TEST__` |
+| Four style scripts versus baseline | ✅ zero new findings on each |
+| Design document HTML validity | ✅ `htmlcheck.py` 567 pages, 0 with problems |
+| Release build and run, twice | ✅ exit 0 both runs, 60/60 `SUCCESS`, 386 testlets, all four testlets `PASS`, retained 0 bytes each, suite wall clock 13.3 s and 12.7 s |
+
+**Grade of the result, which is the part that matters for the decision.** Repeating the Release run moved the
+throughput columns a lot: M1 at one thread 41.8 then 30.3 ns (27.5 percent), M1 efficiency at two threads 0.306 then
+0.448 (46.4 percent), M2 sharded at eight threads 1.4 then 2.2 ns (57.1 percent, 0.8 ns in absolute terms), M2 shared
+over sharded at eight threads 77.2 then 47.9 (38.0 percent). What stayed put is the **shared-instance column** - 110.2
+then 106.1 ns, 3.7 percent - and M4, at typical 0 percent, p99 1.1 percent, worst 19.2 percent. The ratios move because
+their denominators are 1 to 3 nanoseconds, so the honest statement of this benchmark is that *efficiency collapses and a
+private pool is far faster than a shared one* reproduces in every run of both configurations, while **no individual
+ratio value is decision-grade**. Absolute nanoseconds are also not comparable across configurations: Dev measured 24.6
+ns uncontended where Release measured 41.8 then 30.3, so only ratios taken within one configuration mean anything.
+
+M3 also reads differently in Release, and the difference resolves the oddity rather than deepening it: Dev reported a
+cross-thread free at 0.87 of a same-thread free, Release at 0.98, so the finding is **parity**, and the Dev figure was
+noise inside a 47 percent spread rather than a real advantage.
+
+**Consequence for the design.** Option C (thread-sharded chunks, foreign blocks returned to the owner) is the chosen
+direction, with two prerequisites that are not optional under any option: bank growth leaves the critical section, and
+the four correctness defects from the 10:08 entry are fixed first, because removing the mutex converts that deadlock
+into recursion, which is not the same as being correct. The choice rests on the reproduced shape, not on the magnitudes:
+no ratio in the table above should be quoted as a number to hit, and the post-redesign benchmark must be the same testlets
+run the same way, or the comparison is not a comparison.
+
+## 2026-10-05 10:08 — ThreadSafeMultiPoolAllocator reviewed: the lock is held across the logger, and the logger allocates from the allocator
+
+**Cause.** The class advertises thread safety in one header comment and owns nothing but a `std::mutex` and a
+`HVector<PoolAllocator>`, so the only question worth asking is whether that lock covers everything the class touches
+*while it holds the lock*. It does not. `Logger` owns a `ThreadSafeMultiPoolAllocator` as a member
+(`Engine/Log/Logger.h:98`, `inputAlloc`), and `Logger::Out` allocates its input buffer from that same member under
+`AllocatorScope(inputAlloc)` (`Engine/Log/Logger.cpp:478-479`). The allocator logs from inside its own locked region
+at `ThreadSafeMultiPoolAllocator.cpp:203-206` and `:457-458`, so allocate, log, allocate, re-lock the mutex this
+thread already owns, deadlock. No code was changed; the owner closed the session at "the review is enough".
+
+**How the two arithmetic claims were settled.** Reading C++ semantics is not evidence, so both were modelled as
+standalone programs in `/tmp/rv/`, outside the repository. `ReportConfiguration` at `:291-299` is confirmed wrong:
+`configs.reserve(banks.size())` at `:284` prevents reallocation, so `emplace_back` constructs the new element *at the
+very address `found` already held*, and the following `found->numberOfBlocks += value` adds the value twice. Measured:
+a true peak of 15 blocks is cached as **25**, and 7 as **14**. The scarier hypothesis was refuted: `PoolAllocator`'s
+destructive move assignment (`this->~PoolAllocator()` then placement new, `PoolAllocator.cpp:112-118`) looked able to
+release a live bank's buffer mid-`std::sort`, but libc++'s shift always move-assigns into an element the destructive
+move has just vacated, and the measured result was zero releases for an out-of-order insert. **Safe by luck, not by
+contract**, so the finding survives on the narrower ground: the move constructor refreshes `allocProxy.allocate`,
+`.deallocate` and `stats.capacity` but never `allocProxy.allocator` (`:85-120`), while dispatch is
+`allocProxy.allocate(allocProxy.allocator, nBytes)` (`MemoryManager.cpp:632`, `:668`).
+
+| # | Finding | Severity |
+|---|---|---|
+| 1 | `ReportConfiguration` doubles every block size it introduces, so the next run boots from a cache that over-sizes every pool by one bank's peak | Critical, proven |
+| 2 | Destructor frees bank buffers through the *ambient* scoped allocator, not the recorded `parentID`: `banks.clear()` at `:136` runs `~PoolAllocator`'s `mmgr.Deallocate(buffer, totalSize)` (`PoolAllocator.cpp:131`) while `:120-139` opens no `AllocatorScope(parentID)`, unlike the allocating half at `:446`. `IsMine` is true for a bank's own base address, so the worst case is a bank pushing its own buffer onto its own free list | Critical |
+| 3 | Self-deadlock: logging while holding the lock, where the logger allocates from the same non-recursive mutex. The `Verbose` bank-creation log is saved only by the level filter at `Logger.cpp:398`; the `FatalError` path is never filtered, so the diagnostic for a foreign pointer is the path that hangs | Critical |
+| 4 | `PrintUsage` allocates `std::map` nodes under the lock at `:232`/`:251`, and its `AllocatorScope(SystemAllocatorID)` opens later at `:258` so it guards only the `StringBuilder` | Critical |
+| 5 | Moving a bank leaves `AllocatorProxy::allocator` stale; after `std::sort` (`:454`) it addresses a live but *different* bank, after vector growth a freed buffer. `banks.reserve` at `:91` guarantees the first generated bank reallocates | Latent, lands the moment anything scopes to a bank |
+| 6 | Out of memory calls `FatalAssert(false)` at `:329` instead of returning null, and a bank whose backing allocation failed still reports `GetAvailableBlocks() > 0` | Robustness |
+| 7 | Unbounded bank growth against `MaxNumAllocators = 256` (`AllocatorID.h:12`); `RegisterAllocator` failure is caught only by an `Assert` | Robustness |
+| 8 | The initializer-list constructor validates nothing, so `{64, 0}` reaches `PoolAllocator`, whose `totalSize <= 0` early return (`PoolAllocator.cpp:41-44`) leaves `availables` **uninitialized** — absent from the initializer list, no default member initializer (`PoolAllocator.h:30`) | Robustness |
+| 9 | `Allocate(size_t)` cannot serve `alignof(T) > Config::DefaultAlign` (16); only `blockSize` is aligned, so over-aligned types are silently under-aligned | Interface gap |
+| 10 | Measured single-thread cost: 0.020381 s against `std::malloc` 0.019169 s, **6.3% slower**, while the single-thread twin `MultiPoolAllocator` is 6.7% *faster*. The mutex plus the O(banks) scan in both `GetBankIndex` overloads costs 8.6% relative, uncontended | Performance |
+| 11 | `#ifdef PROFILE_ENABLED` at `:337` where the other 13 guards are `#if` against a macro `BuildConfig.h:38` defines to `0`, so the block compiles always. Same slip at `MultiPoolAllocator.cpp:328`. Header names `std::mutex` and `std::initializer_list` without including either | Standards |
+
+**The evidence gap is the real headline.** `ThreadSafeMultiPoolAllocatorTest` runs four testlets green and starts no
+second thread anywhere in `Engine/Memory/*.cpp`, and the fallback assertion in `TC2` is compiled out because it sits
+inside `#if PROFILE_ENABLED`. `Engine/Memory/ReviewNote.txt:37` records "No critical issues found in Memory module",
+which the tests cannot support rather than contradict.
+
+**Open decision recorded.** The owner wants the locking redesigned, either fully lock-free or with lock usage
+minimized. The proposal is in this session's reply; the prerequisite for every option is making `size` to bank a pure
+function, because today the bank chosen depends on which banks still have blocks (`:156-163`), which is why the free
+path must scan every bank by pointer range (`:362-375`). Fixes 1 to 4 are orthogonal to the locking model and stand
+regardless of which design is chosen.
 
 ## 2026-10-05 00:18 — OS allocations get their own bucket, so the ceiling measures what the engine owns
 
