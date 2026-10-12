@@ -2,7 +2,7 @@
 
 #include "RingQueue.h"
 
-#ifdef __UNIT_TEST__
+#ifdef TEST_ENABLED
 #include <queue>
 
 #include "Core/ScopedTime.h"
@@ -244,4 +244,4 @@ void RingQueueTest::Prepare()
 }
 } // namespace hbe
 
-#endif //__UNIT_TEST__
+#endif //TEST_ENABLED

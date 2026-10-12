@@ -483,7 +483,7 @@ void MultiPoolAllocator::GenerateBank(size_t blockSize, size_t numberOfBlocks)
 }
 } // namespace hbe
 
-#ifdef __UNIT_TEST__
+#ifdef TEST_ENABLED
 #include "AllocatorScope.h"
 #include "Core/ScopedTime.h"
 
@@ -636,4 +636,4 @@ void MultiPoolAllocatorTest::Prepare()
 	});
 }
 } // namespace hbe
-#endif //__UNIT_TEST__
+#endif //TEST_ENABLED
