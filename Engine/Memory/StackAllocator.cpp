@@ -181,18 +181,35 @@ void StackAllocatorTest::Prepare()
 	using namespace std;
 	AddTest("Destroy In Own Scope", [this](auto& ls)
 	{
+		static void* claimedPtr = nullptr;
+		static size_t claimedSize = 0;
+		static void* releasedPtr = nullptr;
+		static size_t releasedSize = 0;
+		claimedPtr = nullptr;
+		claimedSize = 0;
+		releasedPtr = nullptr;
+		releasedSize = 0;
+
+		auto globalAlloc = [](void*, const size_t n) -> void*
+		{
+			claimedPtr = ::operator new(n);
+			claimedSize = n;
+
+			return claimedPtr;
+		};
+
+		auto globalFree = [](void*, void* ptr, const size_t n)
+		{
+			releasedPtr = ptr;
+			releasedSize = n;
+			::operator delete(ptr, n);
+		};
+
 		auto& mmgr = MemoryManager::GetInstance();
-
-		auto globalAlloc = [](void*, const size_t n) -> void* { return ::operator new(n); };
-
-		auto globalFree = [](void*, void* ptr, const size_t n) { ::operator delete(ptr, n); };
 
 		constexpr size_t capacity = 128 * 1024;
 		const auto parentID =
 				mmgr.RegisterAllocator(nullptr, "Test::GlobalBackedParent", false, capacity, globalAlloc, globalFree);
-
-		const auto allocBytesBefore = MemoryManager::GetGlobalAllocationBytes();
-		const auto freeBytesBefore = MemoryManager::GetGlobalFreeBytes();
 		{
 			AllocatorScope parentScope(parentID);
 
@@ -203,17 +220,19 @@ void StackAllocatorTest::Prepare()
 			}
 		}
 
-		const auto allocBytes = MemoryManager::GetGlobalAllocationBytes() - allocBytesBefore;
-		const auto freedBytes = MemoryManager::GetGlobalFreeBytes() - freeBytesBefore;
+		if (releasedPtr != claimedPtr)
+		{
+			ls << "destroying the allocator while its own AllocatorScope is open returned " << releasedPtr
+			   << " to its parent, which had handed out " << claimedPtr
+			   << ": the backing buffer went to whichever allocator is current, not to the one that owns it" << lferr;
+		}
+		else if (releasedSize != claimedSize)
+		{
+			ls << "the parent got its buffer back but was told " << releasedSize << " bytes for the " << claimedSize
+			   << " it handed out" << lferr;
+		}
 
 		mmgr.DeregisterAllocator(parentID);
-
-		if (freedBytes < allocBytes)
-		{
-			ls << "Destroying StackAllocator while its own AllocatorScope is open retained "
-			   << (allocBytes - freedBytes) << " bytes: the backing buffer was released to the allocator's own inert"
-			   << " Deallocate instead of its parent." << lferr;
-		}
 	});
 
 	using namespace hbe;
@@ -228,7 +247,7 @@ void StackAllocatorTest::Prepare()
 			a.push_back(0);
 
 #if PROFILE_ENABLED
-			if (stack.GetUsage() > 0)
+			if (stack.GetUsage() == 0)
 			{
 				ls << "Allocation Failed. Usage should not be zero, but " << stack.GetUsage() << lferr;
 			}
@@ -258,7 +277,7 @@ void StackAllocatorTest::Prepare()
 			b.push_back(1);
 
 #if PROFILE_ENABLED
-			if (stack.GetUsage() > 0)
+			if (stack.GetUsage() == 0)
 			{
 				ls << "Allocation Failed. Usage should not be zero, but " << stack.GetUsage() << lferr;
 			}
@@ -401,4 +420,4 @@ void StackAllocatorTest::Prepare()
 }
 } // namespace hbe
 
-#endif //TEST_ENABLED
+#endif // TEST_ENABLED

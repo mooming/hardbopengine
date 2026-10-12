@@ -66,3 +66,8 @@ External
 .pi/logs/
 
 __pycache__/
+
+.work
+build-asan/
+build-tsan/
+.multiPoolConfig.dat

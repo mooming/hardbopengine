@@ -137,12 +137,9 @@ private:
 #endif // MEMORY_INVESTIGATION_ENABLED
 
 #if PROFILE_ENABLED
-
-#ifndef MEMORY_INVESTIGATION_ENABLED
-		auto allocated = OS::GetAllocSize(ptr);
-#else
-		const std::size_t allocated = nBytes;
-#endif // MEMORY_INVESTIGATION_ENABLED
+#if !MEMORY_INVESTIGATION_ENABLED
+		const auto allocated = OS::GetAllocSize(ptr);
+#endif // !MEMORY_INVESTIGATION_ENABLED
 
 #if MEMORY_VERIFICATION_ENABLED
 		Assert(nBytes <= allocated);
@@ -184,4 +181,4 @@ protected:
 	void Prepare() override;
 };
 } // namespace hbe
-#endif //TEST_ENABLED
+#endif // TEST_ENABLED

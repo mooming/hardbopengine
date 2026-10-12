@@ -5,7 +5,9 @@
 #ifdef TEST_ENABLED
 #include <vector>
 
+#include "AllocatorScope.h"
 #include "Core/ScopedTime.h"
+#include "MemoryManager.h"
 
 namespace
 {
@@ -76,6 +78,67 @@ void hbe::InlinePoolAllocatorTest::Prepare()
 
 		auto ptr = allocator.allocate(0);
 		allocator.deallocate(ptr, 0);
+	});
+
+	AddTest("Foreign Block Returns To Its Own Parent", [this](auto& ls)
+	{
+		static void* receivedPtr = nullptr;
+		static size_t receivedSize = 0;
+		receivedPtr = nullptr;
+		receivedSize = 0;
+
+		auto claim = [](void*, const size_t n) -> void* { return ::operator new(n); };
+
+		auto release = [](void*, void* ptr, const size_t n)
+		{
+			receivedPtr = ptr;
+			receivedSize = n;
+		};
+
+		auto& mmgr = MemoryManager::GetInstance();
+		constexpr size_t foreignCount = 2;
+		constexpr size_t foreignSize = foreignCount * sizeof(int);
+		constexpr size_t parentCapacity = 1024;
+
+		const auto parentID =
+				mmgr.RegisterAllocator(nullptr, "Test::InlinePoolForeignParent", false, parentCapacity, claim, release);
+		{
+			AllocatorScope parentScope(parentID);
+
+			InlinePoolAllocator<int, 16, 2> pool;
+			auto foreign = static_cast<int*>(mmgr.Allocate(parentID, foreignSize));
+
+			pool.deallocate(foreign, foreignCount);
+
+			auto taken = pool.allocate(foreignCount);
+			const bool captured = (taken == foreign);
+			if (!captured)
+			{
+				pool.deallocate(taken, foreignCount);
+			}
+
+			if (receivedPtr != foreign)
+			{
+				ls << "a foreign block of " << foreignSize << " bytes was kept by a pool that does not own it"
+				   << " - its parent was never told, so the pool now holds an address somebody else owns" << lferr;
+			}
+
+			if (captured)
+			{
+				ls << "the released address " << static_cast<void*>(taken)
+				   << " was handed out again while its owner still owns it: one block, two owners" << lferr;
+			}
+
+			if (receivedSize != foreignSize)
+			{
+				ls << "its parent was told " << receivedSize << " bytes for a block its child allocated " << foreignSize
+				   << " of: the release routes an element count where a byte count is needed" << lferr;
+			}
+
+			::operator delete(foreign, foreignSize);
+		}
+
+		mmgr.DeregisterAllocator(parentID);
 	});
 
 	auto AllocDeallocTestFunc = [](auto& allocator, auto& ls, auto& lf, int maxAllocSize) -> float

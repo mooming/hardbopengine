@@ -123,6 +123,7 @@ public:
 
 	void ReportAllocation(TId id, void* ptr, size_t requested, size_t allocated);
 	void ReportDeallocation(TId id, void* ptr, size_t requested, size_t allocated);
+	void ReportFallback(TId id, void* ptr, size_t requested);
 
 	void* SysAllocate(size_t nBytes);
 	void SysDeallocate(void* ptr, size_t nBytes);
@@ -262,7 +263,6 @@ private:
 		return scopedAllocatorID;
 	}
 
-	void ReportFallback(TId id, void* ptr, size_t requested);
 	void RegisterSystemAllocator();
 	void DeregisterSystemAllocator();
 	void LoadMultiPoolConfigs();
