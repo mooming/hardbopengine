@@ -12,6 +12,10 @@ namespace hbe
 /// Used to temporarily redirect allocations to a specific allocator within a scope.
 class AllocatorScope final
 {
+private:
+	TAllocatorID previous;
+	TAllocatorID current;
+
 public:
 	AllocatorScope(const AllocatorScope&) = delete;
 	AllocatorScope(AllocatorScope&&) = delete;
@@ -20,19 +24,15 @@ public:
 
 public:
 	AllocatorScope() noexcept;
-	AllocatorScope(TAllocatorID id) noexcept;
+	explicit AllocatorScope(TAllocatorID id) noexcept;
 
 	template <typename T>
-	AllocatorScope(const T& allocator) noexcept
+	explicit AllocatorScope(const T& allocator) noexcept
 		: AllocatorScope(allocator.GetID())
 	{
 	}
 
 	~AllocatorScope() noexcept;
-
-private:
-	TAllocatorID previous;
-	TAllocatorID current;
 };
 } // namespace hbe
 

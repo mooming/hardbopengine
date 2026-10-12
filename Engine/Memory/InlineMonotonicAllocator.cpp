@@ -82,6 +82,27 @@ void InlineMonotonicAllocatorTest::Prepare() noexcept
 			   << " Usage should not be zero, but " << alloc.GetUsage() << lferr;
 		}
 	});
+
+	AddTest("Destroy In Own Scope", [this](auto& ls)
+	{
+		const auto allocBytesBefore = MemoryManager::GetGlobalAllocationBytes();
+		const auto freeBytesBefore = MemoryManager::GetGlobalFreeBytes();
+		{
+			auto alloc = new Allocator("InlineMonotonicAllocator");
+			AllocatorScope scope(alloc->GetID());
+			delete alloc;
+		}
+
+		const auto allocBytes = MemoryManager::GetGlobalAllocationBytes() - allocBytesBefore;
+		const auto freedBytes = MemoryManager::GetGlobalFreeBytes() - freeBytesBefore;
+
+		if (freedBytes < allocBytes)
+		{
+			ls << "Destroying InlineMonotonicAllocator while its own AllocatorScope is open retained "
+			   << (allocBytes - freedBytes) << " bytes; its destructor owns no buffer to release and shall start "
+			   << "releasing one." << lferr;
+		}
+	});
 }
 } // namespace hbe
 
