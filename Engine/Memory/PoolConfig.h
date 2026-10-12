@@ -7,7 +7,7 @@
 
 namespace hbe
 {
-/// @brief Configuration for a memory pool block.
+/// API reference: docs/Memory/PoolConfig/index.html
 class PoolConfig final
 {
 public:

@@ -9,7 +9,7 @@
 
 namespace hbe
 {
-/// @brief Utility functions for pool configuration management.
+/// API reference: docs/Memory/PoolConfigUtil/index.html
 namespace PoolConfigUtil
 {
 using TPoolConfigs = std::vector<PoolConfig>;

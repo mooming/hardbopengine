@@ -7,9 +7,7 @@
 
 namespace hbe
 {
-/// @brief Wrapper that ties an allocator to an allocation scope.
-/// @details RAII wrapper that sets the current allocator on construction
-/// and restores the previous scope on destruction.
+/// API reference: docs/Memory/ScopedAllocator/index.html
 template <typename TAlloc>
 class ScopedAllocator final
 {
