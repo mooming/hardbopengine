@@ -12,6 +12,7 @@
 #include "AllocatorProxy.h"
 #include "Config/BuildConfig.h"
 #include "Container/AtomicStackView.h"
+#include "Core/Debug.h"
 #include "Core/Types.h"
 #include "Log/LogLevel.h"
 #include "MultiPoolConfigCache.h"
@@ -185,6 +186,8 @@ public:
 	Type* New(Types&&... args)
 	{
 		auto ptr = AllocateByType<Type>(1);
+		Assert(ptr != nullptr, "MemoryManager::New: the allocation failed, so the object cannot be constructed.");
+
 		auto tptr = new (ptr) Type(std::forward<Types>(args)...);
 
 		return tptr;
@@ -194,6 +197,7 @@ public:
 	Type* NewArray(Index size, Types&&... args)
 	{
 		auto ptr = AllocateByType<Type>(size);
+		Assert(ptr != nullptr, "MemoryManager::NewArray: the allocation failed, so the array cannot be constructed.");
 
 		for (Index i = 0; i < size; ++i)
 		{
@@ -206,6 +210,11 @@ public:
 	template <typename Type>
 	void Delete(Type* ptr)
 	{
+		if (ptr == nullptr)
+		{
+			return;
+		}
+
 		ptr->~Type();
 		DeallocateTypes<Type>(ptr, 1);
 	}
@@ -213,6 +222,11 @@ public:
 	template <typename Type>
 	void DeleteArray(Type* ptr, size_t n)
 	{
+		if (ptr == nullptr)
+		{
+			return;
+		}
+
 		for (size_t i = 0; i < n; ++i)
 		{
 			ptr[i].~Type();

@@ -172,8 +172,9 @@ AllocatorProxy& MemoryManager::GetAllocatorProxy(TId id)
 		Log(ELogLevel::Error, [funcName = __func__, id](auto& ls)
 		{ ls << "[" << funcName << "] Invalid allocator id(" << id << ") is provided."; });
 
-		static AllocatorProxy dummy;
-		new (&dummy) AllocatorProxy();
+		FatalAssert(false, '[', __func__, "] Invalid allocator id(", id, ") is provided.");
+
+		static AllocatorProxy dummy{};
 
 		return dummy;
 	}
@@ -429,6 +430,8 @@ void MemoryManager::ReportDeallocation(TId id, void* ptr, size_t requested, size
 #if !RELEASE_BUILD
 		debugBreak();
 #endif // !RELEASE_BUILD
+
+		return;
 	}
 
 	stats.usage -= allocated;
@@ -597,8 +600,12 @@ void* MemoryManager::Allocate(TId id, size_t nBytes)
 	}
 
 	AllocatorProxy& allocProxy = allocators[id];
-	Assert(allocProxy.allocate != nullptr, "[", GetName(), "::", __func__, "][Error] ",
-		   "No allocate function, ID = ", id);
+	if (unlikely(allocProxy.allocate == nullptr))
+	{
+		Assert(false, "[", GetName(), "::", __func__, "][Error] ", "No allocate function, ID = ", id);
+
+		return nullptr;
+	}
 
 	auto ptr = allocProxy.allocate(allocProxy.allocator, nBytes);
 	Assert(ptr != nullptr, "Allocation Failed");
@@ -634,7 +641,12 @@ void MemoryManager::Deallocate(TId id, void* ptr, size_t nBytes)
 	}
 
 	auto& allocProxy = allocators[id];
-	Assert(allocProxy.deallocate != nullptr, "[MemoryManager::Allocate][Error] No allocate function, ID = ", id);
+	if (unlikely(allocProxy.deallocate == nullptr))
+	{
+		Assert(false, "[", GetName(), "::", __func__, "][Error] ", "No deallocate function, ID = ", id);
+
+		return;
+	}
 
 	allocProxy.deallocate(allocProxy.allocator, ptr, nBytes);
 }
@@ -701,7 +713,7 @@ const MultiPoolAllocatorConfig& MemoryManager::LookUpMultiPoolConfig(StaticStrin
 		auto& item = data[mid];
 		if (uniqueName == item.uniqueName)
 		{
-			Log(ELogLevel::Warning, [&item](auto& ls)
+			Log(ELogLevel::Verbose, [&item](auto& ls)
 			{
 				StaticString name(item.uniqueName);
 				for (auto& config : item.configs)
@@ -896,8 +908,8 @@ void MemoryManager::SetScopedAllocatorID(TId id)
 
 	if (unlikely(dVarScopedAllocLogging))
 	{
-		Log(ELogLevel::Error, [funcName = __func__, id](auto& ls)
-		{ ls << '[' << funcName << "] Previous ID = " << id << ", New ID = " << id; });
+		Log(ELogLevel::Error, [funcName = __func__, prevID = scopedAllocatorID, id](auto& ls)
+		{ ls << '[' << funcName << "] Previous ID = " << prevID << ", New ID = " << id; });
 	}
 
 	scopedAllocatorID = id;

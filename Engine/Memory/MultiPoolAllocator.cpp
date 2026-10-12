@@ -170,6 +170,14 @@ void MultiPoolAllocator::Deallocate(void* ptr, size_t size)
 {
 	if (unlikely(ptr == nullptr))
 	{
+		if (unlikely(size != 0))
+		{
+			const auto logName = name;
+			auto log = Logger::Get(logName);
+			log.Out(ELogLevel::Warning, [logName, size](auto& ls)
+			{ ls << "Deallocate(nullptr) is called with size " << size << " on " << logName << '.'; });
+		}
+
 		Assert(size == 0);
 
 		return;
@@ -334,8 +342,8 @@ void* MultiPoolAllocator::NewBankAllocate(size_t size)
 	if (unlikely(index >= banks.size()))
 	{
 		FatalAssert(false, "MultiPoolAllocator: bank generated for ", size, " bytes cannot be used: index ", index,
-				  " of ", banks.size(), ", proposed block ", blockSize, " by ", numBlocks, ", allocation unit ",
-				  bankSize);
+					" of ", banks.size(), ", proposed block ", blockSize, " by ", numBlocks, ", allocation unit ",
+					bankSize);
 
 		return nullptr;
 	}
@@ -435,8 +443,8 @@ size_t MultiPoolAllocator::CalculateNumberOfBlocks(size_t bankSize, size_t block
 {
 	size_t numberOfBlocks = (bankSize + blockSize - 1) / blockSize;
 
-	constexpr size_t megaBytes = 1024 * 1024;
-	if (blockSize < megaBytes)
+	constexpr size_t MegaBytes = 1024 * 1024;
+	if (blockSize < MegaBytes)
 	{
 		numberOfBlocks = std::max(MinNumberOfBlocks, numberOfBlocks);
 	}

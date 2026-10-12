@@ -44,6 +44,9 @@ PoolAllocator::PoolAllocator(const char* inName, TSize inBlockSize, TSize inNumb
 
 	auto& mmgr = MemoryManager::GetInstance();
 	buffer = static_cast<Byte*>(mmgr.Allocate(totalSize));
+	Assert(buffer != nullptr, "PoolAllocator: the backing allocation of ", totalSize,
+		   " bytes failed, so the free list cannot be built.");
+
 	availables = &buffer[0];
 
 	for (TSize i = 0; i < numberOfBlocks; ++i)
@@ -120,6 +123,7 @@ PoolAllocator::PoolAllocator(PoolAllocator&& rhs) noexcept
 	stats.capacity = blockSize * numberOfBlocks;
 #endif // PROFILE_ENABLED
 
+	allocProxy.allocator = this;
 	allocProxy.allocate = allocFunc;
 	allocProxy.deallocate = deallocFunc;
 }
@@ -265,7 +269,7 @@ PoolAllocator::TSize PoolAllocator::ReadNextIndex(Pointer ptr) const
 {
 	auto index = GetAs<TSize>(ptr);
 	Assert(index <= numberOfBlocks, "PoolAllocator: free-list link ", index, " is out of bounds for ", numberOfBlocks,
-			   " blocks.");
+		   " blocks.");
 
 	return index;
 }

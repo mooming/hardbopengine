@@ -2,6 +2,8 @@
 
 #pragma once
 
+#include <initializer_list>
+
 #include "Config/BuildConfig.h"
 #include "HSTL/HVector.h"
 #include "PoolAllocator.h"
@@ -29,14 +31,15 @@ private:
 	TAllocatorID id;
 	TAllocatorID parentID;
 	StaticString name;
+
 	hbe::HVector<PoolAllocator> banks;
 	size_t bankSize;
 	size_t minBlock;
 
 public:
-	explicit MultiPoolAllocator(const char* name, size_t allocationUnit = DefaultBankUnit,
+	explicit MultiPoolAllocator(const char* inName, size_t allocationUnit = DefaultBankUnit,
 								size_t minBlockSize = DefaultMinBlock);
-	MultiPoolAllocator(const char* name, TInitializerList initialConfigurations,
+	MultiPoolAllocator(const char* inName, TInitializerList initialConfigurations,
 					   size_t allocationUnit = DefaultBankUnit, size_t minBlockSize = DefaultMinBlock);
 	~MultiPoolAllocator();
 

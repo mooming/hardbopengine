@@ -37,9 +37,9 @@ private:
 	size_t minBlock;
 
 public:
-	explicit ThreadSafeMultiPoolAllocator(const char* name, size_t allocationUnit = DefaultBankUnit,
+	explicit ThreadSafeMultiPoolAllocator(const char* inName, size_t allocationUnit = DefaultBankUnit,
 										  size_t minBlockSize = DefaultMinBlock);
-	ThreadSafeMultiPoolAllocator(const char* name, TInitializerList initialConfigurations,
+	ThreadSafeMultiPoolAllocator(const char* inName, TInitializerList initialConfigurations,
 								 size_t allocationUnit = DefaultBankUnit, size_t minBlockSize = DefaultMinBlock);
 	~ThreadSafeMultiPoolAllocator();
 

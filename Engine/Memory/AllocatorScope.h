@@ -24,10 +24,10 @@ public:
 
 public:
 	AllocatorScope() noexcept;
-	AllocatorScope(TAllocatorID id) noexcept;
+	explicit AllocatorScope(TAllocatorID id) noexcept;
 
 	template <typename T>
-	AllocatorScope(const T& allocator) noexcept
+	explicit AllocatorScope(const T& allocator) noexcept
 		: AllocatorScope(allocator.GetID())
 	{
 	}

@@ -27,7 +27,7 @@ private:
 
 public:
 	explicit BankGenerationLog(const ThreadSafeMultiPoolAllocator& inAllocator) noexcept;
-	~BankGenerationLog() noexcept;
+	~BankGenerationLog();
 	BankGenerationLog(const BankGenerationLog&) = delete;
 	BankGenerationLog& operator=(const BankGenerationLog&) = delete;
 
@@ -46,7 +46,7 @@ BankGenerationLog::BankGenerationLog(const ThreadSafeMultiPoolAllocator& inAlloc
 	activeBankGenerationLog = this;
 }
 
-BankGenerationLog::~BankGenerationLog() noexcept
+BankGenerationLog::~BankGenerationLog()
 {
 	activeBankGenerationLog = previous;
 
@@ -74,8 +74,8 @@ ThreadSafeMultiPoolAllocator::ThreadSafeMultiPoolAllocator(const char* inName, s
 	: id(InvalidAllocatorID)
 	, parentID(InvalidAllocatorID)
 	, name(inName)
-	, bankSize(allocationUnit)
-	, minBlock(minBlockSize)
+	, bankSize(std::max(allocationUnit, sizeof(size_t)))
+	, minBlock(std::max(minBlockSize, sizeof(size_t)))
 {
 	using namespace hbe;
 
@@ -112,8 +112,8 @@ ThreadSafeMultiPoolAllocator::ThreadSafeMultiPoolAllocator(const char* inName, T
 	: id(InvalidAllocatorID)
 	, parentID(InvalidAllocatorID)
 	, name(inName)
-	, bankSize(allocationUnit)
-	, minBlock(minBlockSize)
+	, bankSize(std::max(allocationUnit, sizeof(size_t)))
+	, minBlock(std::max(minBlockSize, sizeof(size_t)))
 {
 	using namespace hbe;
 
@@ -242,6 +242,14 @@ void ThreadSafeMultiPoolAllocator::Deallocate(void* ptr, size_t size)
 {
 	if (unlikely(ptr == nullptr))
 	{
+		if (unlikely(size != 0))
+		{
+			const auto logName = name;
+			auto log = Logger::Get(logName);
+			log.Out(ELogLevel::Warning, [logName, size](auto& ls)
+			{ ls << "Deallocate(nullptr) is called with size " << size << " on " << logName << '.'; });
+		}
+
 		Assert(size == 0);
 
 		return;
@@ -358,7 +366,6 @@ void ThreadSafeMultiPoolAllocator::PrintUsage()
 void ThreadSafeMultiPoolAllocator::ReportConfiguration()
 {
 	MemoryManager::TPoolConfigs configs;
-	configs.reserve(banks.size());
 
 	auto InsertItem = [&configs](const PoolAllocator& alloc)
 	{
@@ -383,6 +390,7 @@ void ThreadSafeMultiPoolAllocator::ReportConfiguration()
 	{
 		std::lock_guard lockGuard(lock);
 
+		configs.reserve(banks.size());
 		for (auto& bank : banks)
 		{
 			InsertItem(bank);
@@ -417,7 +425,8 @@ void* ThreadSafeMultiPoolAllocator::NewBankAllocate(size_t size)
 	auto index = GetBankIndex(size);
 	if (unlikely(index >= banks.size()))
 	{
-		FatalAssert(false);
+		FatalAssert(false, "[", GetName(), "::", __func__, "] Failed to find a bank for the block size(", blockSize,
+					") after bank generation.");
 
 		return nullptr;
 	}
@@ -517,8 +526,8 @@ size_t ThreadSafeMultiPoolAllocator::CalculateNumberOfBlocks(size_t bankSize, si
 {
 	size_t numberOfBlocks = (bankSize + blockSize - 1) / blockSize;
 
-	constexpr size_t megaBytes = 1024 * 1024;
-	if (blockSize < megaBytes)
+	constexpr size_t MegaBytes = 1024 * 1024;
+	if (blockSize < MegaBytes)
 	{
 		numberOfBlocks = std::max(MinNumberOfBlocks, numberOfBlocks);
 	}
@@ -568,6 +577,7 @@ void ThreadSafeMultiPoolAllocator::GenerateBank(size_t blockSize, size_t numberO
 #include <cstdlib>
 #include <deque>
 #include <initializer_list>
+#include <numeric>
 #include <optional>
 #include <span>
 #include <thread>
@@ -586,6 +596,8 @@ static constexpr size_t ContentionBlockSizes[ContentionBlockSizeCount] = {16, 24
 static constexpr size_t ContentionFreeStride = 7;
 static constexpr std::uint32_t ContentionStartSignalTimeoutMilliSecs = 5000;
 static constexpr std::uint32_t ContentionWorkerTimeoutMilliSecs = 30000;
+static_assert(std::gcd(ContentionFreeStride, ContentionOpsPerThread) == 1,
+			  "the free stride must be coprime with the op count or slots are freed twice");
 
 struct ContentionWorkerRecord final
 {
