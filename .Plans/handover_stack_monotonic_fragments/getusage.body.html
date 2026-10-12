@@ -1,0 +1,87 @@
+<h2 id="signature">Signature</h2>
+
+<pre><code>[[nodiscard]] size_t GetUsage() const</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  Defined in <code>Engine/Memory/StackAllocator.cpp</code> as <code>StackAllocator::GetUsage() const</code>. Two lines: an assertion
+  about the cursor, then the cursor itself.
+</p>
+
+<pre><code>Assert(cursor &lt; capacity);
+
+return cursor;</code></pre>
+
+<p class="meta">From Engine/Memory/StackAllocator.cpp, StackAllocator::GetUsage() const</p>
+
+<p>
+  The number is bytes <em>charged</em> against the buffer, so it counts the rounding as well as the request: five allocations of 20
+  bytes report 160, not 100, because each was charged 32. That is what makes it a faithful picture of the buffer's state and an
+  unfaithful picture of what the caller asked for.
+</p>
+
+<div class="gap">
+  <strong>The assertion is strict, so a fully-exhausted buffer trips it.</strong>
+  The condition is <code>cursor &lt; capacity</code>, not <code>&lt;=</code>. A stack that has handed out its last byte has
+  <code>cursor == capacity</code>, and asking it how much it is using then fires <code>Assert</code> — which aborts in
+  <code>Debug</code> and <code>Dev</code> (<code>hbe::Assert</code>, <code>Engine/Core/Debug.h</code>) and does nothing in
+  <code>Release</code>, where the function returns <code>capacity</code> as if nothing had happened. The same strict form fires for a
+  zero-capacity allocator, where <code>0 &lt; 0</code> is false from the moment it is constructed. Derived from the source; no testlet
+  fills a buffer or constructs a zero-capacity stack, so this is stated as a hazard and named in
+  <a href="index.html#coverage">Coverage</a>, not as observed behaviour.
+</div>
+
+<div class="gap">
+  <strong>It counts buffer bytes only, so it under-reports what a caller is actually holding.</strong>
+  Blocks that arrived through <a href="allocate.html">Allocate</a>'s overflow path belong to <code>parentID</code> and never touched
+  <code>cursor</code>. A stack can report usage 0 while its caller holds live memory. The one thing this figure does tell you, and the
+  thing the class's own testlets check, is whether the rewind happened: the testlets in
+  <code>Engine/Memory/StackAllocator.cpp</code> assert <code>GetUsage() == 0</code> after a scope closes, which is precisely the check
+  a <a href="../MonotonicAllocator/index.html">monotonic allocator</a> would fail — its test requires the opposite.
+</div>
+
+<div class="note">
+  <strong>Nothing here is the manager's accounting.</strong>
+  Under <code>PROFILE_ENABLED</code> the manager keeps its own per-registration figures, fed by
+  <code>ReportAllocation</code> and <code>ReportDeallocation</code>; this function reads <code>cursor</code> and is independent of
+  them. That macro is 0 in <code>Engine/Config/BuildConfig.h</code>, so in this tree <code>GetUsage</code>() is the only usage number
+  that exists at all.
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<p>None.</p>
+
+<h2 id="return">Return value</h2>
+
+<table>
+  <tr><th>Type</th><th>What you get</th></tr>
+  <tr><td><code>size_t</code></td><td><code>cursor</code>: bytes charged against the backing buffer at their rounded size. Excludes every block the parent supplied. Meaningless on a destroyed object — <a href="destructor.html">the destructor</a> ends this allocator's life, and reading a dead member is not a query. The attribute is <code>[[nodiscard]]</code>.</td></tr>
+</table>
+
+<h2 id="example">Examples</h2>
+
+<pre><code>StackAllocator stack("Test::StackAllocator::Deallocation", 1024 * 1024);
+AllocatorScope scope(stack.GetID());
+{
+	String a = "0";
+
+	if (stack.GetUsage() &lt;= 0)
+	{
+		ls &lt;&lt; "Allocation Failed. Usage should not be zero, but " &lt;&lt; stack.GetUsage() &lt;&lt; lferr;
+	}
+}
+
+if (stack.GetUsage() != 0)
+{
+	ls &lt;&lt; "Deallocation Failed. Usage should be zero, but " &lt;&lt; stack.GetUsage() &lt;&lt; lferr;
+}</code></pre>
+
+<p class="meta">From Engine/Memory/StackAllocator.cpp, StackAllocatorTest::Prepare(), Deallocation testlet</p>
+
+<p>
+  Both readings are needed to say anything: non-zero inside the scope proves the container allocated through the stack, and zero after
+  it proves the release rewound the cursor. Note the comparison style — the test compares a <code>size_t</code> against
+  <code>&lt;= 0</code>, which for an unsigned type tests only the "is zero" half.
+</p>

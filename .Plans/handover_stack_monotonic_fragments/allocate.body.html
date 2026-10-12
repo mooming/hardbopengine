@@ -1,0 +1,116 @@
+<h2 id="signature">Signature</h2>
+
+<pre><code>[[nodiscard]] Pointer Allocate(size_t size)</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  Defined in <code>Engine/Memory/StackAllocator.cpp</code> as <code>StackAllocator::Allocate(const size_t requested)</code>. Round
+  the request, compare it against what is left, then either hand out the head of the buffer or ask the parent.
+</p>
+
+<pre><code>size_t size = requested;
+{
+	constexpr auto AlignUnit = Config::DefaultAlign;
+	const auto multiplier = (size + AlignUnit - 1) / AlignUnit;
+	size = multiplier * AlignUnit;
+}
+
+const auto freeSize = GetAvailable();
+if (unlikely(size &gt; freeSize))
+{
+	auto&amp; mmgr = MemoryManager::GetInstance();
+
+	return mmgr.FallbackAllocate(GetID(), parentID, requested);
+}
+
+auto ptr = reinterpret_cast&lt;void*&gt;(buffer + cursor);
+cursor += size;</code></pre>
+
+<p class="meta">From Engine/Memory/StackAllocator.cpp, StackAllocator::Allocate()</p>
+
+<p>
+  A block is <code>size</code> bytes at <code>buffer + cursor</code>, charged at the rounded size, and the cursor is the only
+  bookkeeping: there is no header, no footer and no per-block record anywhere in the class, which is what makes
+  <a href="deallocate.html">Deallocate</a> need a byte count.
+</p>
+
+<div class="gap">
+  <strong>Exhaustion does not fail — it silently changes which allocator owns the answer.</strong>
+  When the rounded request exceeds <a href="getavailable.html">GetAvailable</a>(), the call becomes
+  <code>mmgr.FallbackAllocate(GetID(), parentID, requested)</code>, and the memory arrives from <code>parentID</code>. Three
+  consequences: the pointer is outside this buffer, so <a href="ismine.html">IsMine</a> says no and a later release is forwarded to
+  <code>parentID</code> rather than rewinding the cursor; the number the parent was charged is <code>requested</code>, not the
+  rounded <code>size</code>, so that is the number that must come back; and nothing is logged, so an overflow is invisible in a log
+  and invisible in <a href="getusage.html">GetUsage</a>, which counts buffer bytes only. The block also does not die with this
+  object — <a href="destructor.html">the destructor</a> frees the buffer and nothing else.
+</div>
+
+<div class="note">
+  <strong>The comparison is made against the rounded size, so a nearly-full buffer can refuse a request it could physically
+  satisfy.</strong> With 10 bytes left, a request of 10 rounds to 16, 16 is greater than 10, and the request goes to the parent —
+  the last partial <code>Config::DefaultAlign</code> of the buffer is unreachable for anything but a request that already fits in
+  it. A request of 0 is the degenerate case: it rounds to 0, the comparison never favours the fallback path, and the call returns
+  <code>buffer + cursor</code> without moving the cursor — so two zero-sized requests in a row answer with the same address, and
+  neither owns anything.
+</div>
+
+<div class="note">
+  <strong>Alignment is a stride, not a promise.</strong> Every charge is a multiple of 16, so consecutive blocks are exactly 16
+  bytes apart and the class can never return an address that is misaligned relative to its own buffer. What it cannot promise is
+  that the buffer itself is 16-byte aligned: that is inherited from the allocator that answered the constructor, whose default path
+  is <code>SystemAllocator</code>'s <code>malloc</code> (<code>Engine/Memory/SystemAllocator.h</code>), and nothing here checks or
+  forces it. There is no aligned-allocation entry point on this class at all. See
+  <a href="index.html#coverage">Coverage</a>.
+</div>
+
+<div class="note">
+  <p>
+    <strong>A null answer means the parent failed, and only a checked build says so before the caller does.</strong>
+    <code>MemoryManager::Allocate</code> ends with <code>Assert(ptr != nullptr, "Allocation Failed")</code>:
+  </p>
+
+<pre><code>auto ptr = allocProxy.allocate(allocProxy.allocator, nBytes);
+Assert(ptr != nullptr, "Allocation Failed");</code></pre>
+
+<p class="meta">From Engine/Memory/MemoryManager.cpp, MemoryManager::Allocate(TId id, size_t nBytes)</p>
+
+  <p>
+    which aborts in <code>Debug</code> and <code>Dev</code>; in <code>Release</code> the assertion is empty and the null comes back
+    through <a href="allocate.html">Allocate</a> to a caller holding a <code>[[nodiscard]]</code> pointer.
+  </p>
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<table>
+  <tr><th>Parameter</th><th>Type</th><th>Requirement</th></tr>
+  <tr><td><code>size</code></td><td><code>size_t</code></td><td>Bytes wanted. Rounded up to a multiple of <code>Config::DefaultAlign</code> (16) before anything is compared or charged — so pass the size you actually need and keep the number, because <a href="deallocate.html">Deallocate</a> must be given a count that rounds to the same value.</td></tr>
+</table>
+
+<h2 id="return">Return value</h2>
+
+<table>
+  <tr><th>Type</th><th>What you get</th></tr>
+  <tr><td><code>Pointer</code></td><td>Useful bytes, or <code>nullptr</code> if the parent's answer was <code>nullptr</code>. Which allocator owns the block depends on whether the buffer could cover it: inside the buffer, this stack owns it and a rewind frees it; from the fallback path, <code>parentID</code> owns it and only a release can free it. The attribute is <code>[[nodiscard]]</code> — a discarded pointer cannot be recovered, because the stack keeps no record of what it handed out.</td></tr>
+</table>
+
+<h2 id="example">Examples</h2>
+
+<pre><code>auto allocFunc = [](void* allocatorPtr, size_t n) -&gt; void*
+{
+	auto allocator = static_cast&lt;StackAllocator*&gt;(allocatorPtr);
+
+	return allocator-&gt;Allocate(n);
+};</code></pre>
+
+<p class="meta">From Engine/Memory/StackAllocator.cpp, StackAllocator::StackAllocator()</p>
+
+<p>
+  No engine or application source calls <code>Allocate</code> on a stack allocator by name; this lambda, handed to
+  <code>MemoryManager::RegisterAllocator</code>, is the call site. Anything allocating under an
+  <a href="../index.html#allocatorscope"><code>AllocatorScope</code></a> over <a href="getid.html">GetID</a>() reaches the function
+  through the manager's proxy dispatch — which is exactly how the <code>StackAllocatorTest</code> testlets in
+  <code>Engine/Memory/StackAllocator.cpp</code> fill a stack with an <code>HVector&lt;int&gt;</code> and a
+  <code>String</code> without naming the allocator once.
+</p>
