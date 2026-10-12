@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ThreadSafeMultiPoolAllocator::ThreadSafeMultiPoolAllocator — Memory module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a class="current" href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Memory</a> /
+  <a href="index.html">ThreadSafeMultiPoolAllocator</a> / ThreadSafeMultiPoolAllocator
+</p>
+
+<h1><span class="fn">ThreadSafeMultiPoolAllocator</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::ThreadSafeMultiPoolAllocator</span>
+  <span class="tag">Engine/Memory/ThreadSafeMultiPoolAllocator.h</span>
+  Records the ambient allocator as the bank backing store, boots from the configuration cache or from a brace list, and registers one allocator id.
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>explicit ThreadSafeMultiPoolAllocator(const char* name, size_t allocationUnit = DefaultBankUnit,
+										  size_t minBlockSize = DefaultMinBlock)
+
+ThreadSafeMultiPoolAllocator(const char* name, TInitializerList initialConfigurations,
+								 size_t allocationUnit = DefaultBankUnit, size_t minBlockSize = DefaultMinBlock)</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  Both constructors are defined in <code>Engine/Memory/ThreadSafeMultiPoolAllocator.cpp</code> and do the same four
+  things in the same order: record where the backing memory should come from, build the initial bank list, add up
+  the banks' capacities, and register the object with
+  <a href="../index.html#memorymanager"><code>MemoryManager</code></a>. They differ only in step two.
+</p>
+
+<p class="meta">From Engine/Memory/ThreadSafeMultiPoolAllocator.cpp, ThreadSafeMultiPoolAllocator::ThreadSafeMultiPoolAllocator()</p>
+
+<pre><code>parentID = MemoryManager::GetCurrentAllocatorID();</code></pre>
+
+<p>
+  <code>MemoryManager::scopedAllocatorID</code> is a thread-local that starts at <code>0</code>, which is
+  <code>MemoryManager::SystemAllocatorID</code> (<code>Engine/Memory/MemoryManager.cpp</code>), so an allocator
+  constructed with no <a href="../index.html#allocatorscope"><code>AllocatorScope</code></a> open banks on the system
+  allocator. That recorded id, not the scope open at any later moment, is what every bank buffer is taken from and
+  returned to — see <a href="destructor.html">the destructor</a>.
+</p>
+
+<p>
+  The single-argument form takes no banks from the caller. It asks
+  <a href="generate-banks-by-cache.html"><code>GenerateBanksByCache</code></a> for the configuration a previous run
+  saved under this name and, on a name miss, starts with an empty list and grows on demand through
+  <a href="new-bank-allocate.html"><code>NewBankAllocate</code></a>. The brace-list form ignores the cache: it
+  copies the list into an inline vector, asserts <code>initialConfigurations.size() &lt;= 128</code>, sorts it by
+  block size and builds one bank per entry named <code>&lt;name&gt;_&lt;blockSize&gt;_&lt;numberOfBlocks&gt;</code>.
+</p>
+
+<p>
+  Registration is the last statement, and it publishes the object: the registration record holds
+  <code>this</code> plus two trampolines that cast that pointer back and call
+  <a href="allocate.html"><code>Allocate</code></a> and <a href="deallocate.html"><code>Deallocate</code></a>.
+  Neither constructor acquires <code>lock</code>, which is safe only because the pointer is not reachable until that
+  final call.
+</p>
+
+<div class="gap">
+  <strong>Nothing here validates a bank entry, and a failed registration is not reported.</strong> A list entry such
+  as <code>{64, 0}</code> reaches <code>PoolAllocator</code>, whose constructor returns before initialising its free
+  list when <code>blockSize * numberOfBlocks</code> is not positive (<code>Engine/Memory/PoolAllocator.cpp</code>),
+  leaving that bank's <code>availables</code> holding no value at all. And <code>RegisterAllocator</code> answers
+  with <code>InvalidAllocatorID</code> once the engine's <code>MaxNumAllocators</code> registration slots are
+  exhausted; this constructor stores that value without asserting it, unlike <code>PoolAllocator</code>, which
+  asserts its own id (<code>Engine/Memory/PoolAllocator.cpp</code>). Both are recorded as open robustness findings
+  in <code>JOURNAL.md</code>, 2026-10-05, and described under
+  <a href="index.html#coverage">Coverage</a>.
+</div>
+
+<div class="note">
+  <strong>An instance stays where it was built.</strong> The class declares no copy and no move, and the
+  <code>std::mutex lock</code> member is neither copyable nor movable, so all four of
+  <code>std::is_copy_constructible_v</code>, <code>std::is_move_constructible_v</code>,
+  <code>std::is_copy_assignable_v</code> and <code>std::is_move_assignable_v</code> are false for it — a
+  <code>static_assert</code> probe over the header passes on all four, and a copy attempt reports
+  <em>call to implicitly-deleted copy constructor of 'hbe::ThreadSafeMultiPoolAllocator'</em> with the note
+  <em>implicitly deleted because field 'lock' has a deleted copy constructor</em>. That is the stability the
+  registration record requires: it stores the address, not a copy.
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<table>
+  <tr><th>Parameter</th><th>Type</th><th>Requirement</th></tr>
+  <tr><td><code>name</code></td><td><code>const char*</code></td><td>Becomes <code>StaticString name</code> on construction and is used three ways: the answer of <a href="get-name.html"><code>GetName</code></a>, the log category passed to <code>Logger::Get</code>, and the prefix of every bank name. It is also the cache key, so two instances with one name read and write one cached configuration. <code>MemoryManager::RegisterAllocator</code> substitutes <code>"None"</code> for a null name in its own record only</td></tr>
+  <tr><td><code>initialConfigurations</code></td><td><code>TInitializerList</code> — <code>std::initializer_list&lt;PoolConfig&gt;</code></td><td>Second overload only. At most 128 entries, and nothing checks an entry's values; <code>{blockSize, numberOfBlocks}</code> pairs are sorted by block size, not merged, so a repeated block size becomes two banks</td></tr>
+  <tr><td><code>allocationUnit</code></td><td><code>size_t</code></td><td>Bytes a bank generated later aims to hold; stored as <code>bankSize</code>. Defaults to <code>DefaultBankUnit</code>, one megabyte. No effect on the banks this constructor builds</td></tr>
+  <tr><td><code>minBlockSize</code></td><td><code>size_t</code></td><td>Stored as <code>minBlock</code>: the floor of any block size and the quantum of <a href="calculate-block-size.html"><code>CalculateBlockSize</code></a>. Defaults to <code>DefaultMinBlock</code>, 16. Below <code>sizeof(size_t)</code> it collides with the free-list link a block must hold, which <code>PoolAllocator</code> asserts on instead of clamping</td></tr>
+</table>
+
+<h2 id="return">Return value</h2>
+
+<p>
+  A constructor has no return value. The observable results are <a href="get-id.html"><code>GetID</code></a> — the
+  registration id, or <code>InvalidAllocatorID</code> if the engine had no slot left — and <a
+  href="get-name.html"><code>GetName</code></a>, together with the line <code>RegisterAllocator</code> logs as
+  <code>[RegisterAllocator] &lt;name&gt;(&lt;id&gt;)</code>.
+</p>
+
+<h2 id="example">Examples</h2>
+
+<p class="meta">From Engine/Log/Logger.cpp, Logger::Logger()</p>
+
+<pre><code>, inputAlloc("LoggerInputPool")</code></pre>
+
+<p>
+  The only production instance: name only, so both the bank unit and the minimum block size take their defaults and
+  the bank list comes from the configuration cache if one was ever saved
+  (<code>Engine/Log/Logger.cpp</code>, <code>Engine/Log/Logger.h</code>).
+</p>
+
+<p class="meta">From Engine/Memory/ThreadSafeMultiPoolAllocator.cpp</p>
+
+<pre><code>ThreadSafeMultiPoolAllocator sharedAllocator(allocatorName, {{16, 16}, {32, 16}, {64, 16}, {128, 16}, {256, 16}});</code></pre>
+
+<p>
+  The form the test suite uses everywhere: a fixed block-size ladder, so a measured request lands in a known bank
+  instead of triggering growth mid-measurement. A local of this kind is the norm precisely because the type cannot
+  be moved.
+</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; ThreadSafeMultiPoolAllocator</a></span>
+  <span><a href="index.html#methods">All ThreadSafeMultiPoolAllocator methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

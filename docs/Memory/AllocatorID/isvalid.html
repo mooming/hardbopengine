@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AllocatorID::IsValid — Memory module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a class="current" href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Memory</a> /
+  <a href="index.html">AllocatorID</a> / IsValid
+</p>
+
+<h1><span class="fn">IsValid</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::AllocatorID</span>
+  <span class="tag">Engine/Memory/AllocatorID.h</span>
+  <span class="tag">free function in namespace hbe</span>
+  the range test every indexed access into the allocator table runs first - and the only thing it can prove about an id
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>[[nodiscard]] inline bool IsValid(TAllocatorID id) noexcept</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  Declared at namespace scope in <code>Engine/Memory/AllocatorID.h</code> and defined in the header, so it is
+  available to every translation unit that includes the id type and is reachable unqualified. It answers one
+  question: is this value inside the array the manager keeps its proxies in. The body is the range test
+  <code>id &gt;= 0 &amp;&amp; id &lt; MaxNumAllocators</code>, and nothing else.
+</p>
+
+<p>
+  That makes it a memory-safety check, not a liveness check. A valid id may name a slot that holds no
+  registration, a registration that has already retired, or a registration of an entirely different allocator
+  that took the slot after it was recycled — see the class page for what an id's lifetime actually is
+  (<a href="index.html">AllocatorID</a>). <code>InvalidAllocatorID</code> is <code>-1</code>, so it fails this
+  test, which is what lets every allocator use <code>IsValid(GetID())</code> and <code>GetID() !=
+  InvalidAllocatorID</code> interchangeably for the "am I registered" question.
+</p>
+
+<div class="note">
+  <strong>The manager holds a private copy of this rule rather than calling it.</strong>
+  <code>MemoryManager::IsValid</code> is a static member whose body repeats
+  <code>id &gt;= 0 &amp;&amp; id &lt; MaxNumAllocators</code> verbatim
+  (<a href="../MemoryManager/is-valid.html"><code>MemoryManager::IsValid</code></a>). Almost every call in
+  <code>Engine/Memory/MemoryManager.cpp</code> uses the member; the free function here is the one allocators and
+  callers outside the manager see. The two can only disagree if one of the two expressions is edited.
+</div>
+
+<div class="gap">
+  <strong>Passing the test does not mean the slot is usable.</strong> Where an id is used as an index after a
+  check, the code still handles the case that the slot is empty:
+  <a href="../MemoryManager/get-allocator-proxy.html"><code>MemoryManager::GetAllocatorProxy</code></a> answers a
+  failed check by logging an error and returning a freshly constructed static proxy whose function pointers are
+  null, and a <a href="../MemoryManager/deregister-allocator.html">deregistered</a> proxy keeps its slot with
+  exactly those null pointers. So a stale-but-in-range id walks straight past this function and reaches a proxy
+  that cannot allocate.
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<table>
+  <tr><th>Parameter</th><th>Type</th><th>Requirement</th></tr>
+  <tr><td><code>id</code></td><td><code>TAllocatorID</code></td><td>Any value, including <code>InvalidAllocatorID</code> and values above the table — there is no precondition, the value is simply compared</td></tr>
+</table>
+
+<h2 id="return">Return value</h2>
+
+<table>
+  <tr><th>Type</th><th>What you get</th></tr>
+  <tr><td><code>bool</code></td><td><code>true</code> when <code>0 &lt;= id &lt; MaxNumAllocators</code>, i.e. when indexing <code>MemoryManager::allocators</code> with this value is in bounds. <code>false</code> for <code>-1</code> and for anything at or above 256.</td></tr>
+</table>
+
+<h2 id="example">Examples</h2>
+
+<p>The bounds test is the guard in front of every indexed access the manager makes:</p>
+
+<pre><code>return allocators[id];</code></pre>
+
+<p class="meta">From Engine/Memory/MemoryManager.cpp, MemoryManager::GetAllocatorProxy(TId id)</p>
+
+<p>
+  The line above is the fall-through of that function: it is reached only once <code>IsValid(id)</code> has
+  passed, and it is the reason the check exists at all — <code>allocators</code> is a fixed array of
+  <code>MaxNumAllocators</code> proxies, so an unchecked index is an out-of-bounds reference into the manager
+  itself. Allocators use the same function on their own stored id to decide whether they ever got registered;
+  <a href="../PoolAllocator/getid.html"><code>PoolAllocator::GetID</code></a> is where such an id is read back.
+</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; AllocatorID</a></span>
+  <span><a href="index.html#methods">All AllocatorID methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

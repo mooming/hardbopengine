@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Optional::MoveValue — Memory module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a class="current" href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Memory</a> /
+  <a href="index.html">Optional</a> / MoveValue
+</p>
+
+<h1><span class="fn">MoveValue</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::Optional</span>
+  <span class="tag">Engine/Memory/Optional.h</span>
+  <span class="tag">private</span>
+  the copy that empties the source - which is what makes a moved-from optional empty rather than duplicated
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>void MoveValue(True_t, Optional&amp; rhs)
+
+void MoveValue(False_t, Optional&amp; rhs)</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  Private, and reached only from the <a href="constructors.html">move constructor</a> and
+  <a href="operator-assign.html"><code>operator=(Optional&amp;&amp;)</code></a>, always under
+  <code>if (rhs.hasValue)</code>. Each overload does the work of its <a href="copyvalue.html">CopyValue</a> twin and
+  then empties the source, which is the one thing that makes a moved-from optional empty rather than a duplicate of
+  the value that moved out of it.
+</p>
+
+<table>
+  <tr><th>Overload</th><th>Body</th><th>Source afterwards</th></tr>
+  <tr>
+    <td><code>MoveValue(True_t, Optional&amp;)</code></td>
+    <td><code>memcpy</code> of <code>sizeof(TType)</code> bytes, then <code>rhs.hasValue = false;</code></td>
+    <td>Empty. Both optionals still hold the same address, but only this one will report it — the alias was
+      duplicated, not transferred</td>
+  </tr>
+  <tr>
+    <td><code>MoveValue(False_t, Optional&amp;)</code></td>
+    <td><code>Value() = std::move(rhs.Value());</code>, then <code>rhs.hasValue = false;</code></td>
+    <td>Empty by the flag, and moved-from by <code>TType</code>'s own move assignment — which is a state
+      <code>TType</code> defines, not this class</td>
+  </tr>
+</table>
+
+<p>
+  Both start with <code>hasValue = rhs.hasValue;</code> — under the call site's guard that is always
+  <code>true</code> — so this function also decides the destination's flag without consulting its own previous
+  state.
+</p>
+
+<div class="gap">
+  <p>
+    <strong>Neither overload destroys what the destination already held.</strong> The value-type path assigns into
+    the existing element, and the reference-type path overwrites the stored address, both without running anything
+    on the old contents. The move <em>constructor</em> is fine — it is constructing. The move
+    <em>assignment</em> is where the pairing matters:
+    <a href="operator-assign.html"><code>operator=(Optional&amp;&amp;)</code></a> calls
+    <a href="destroy.html">Destroy</a> first, and if the source is the same object the element has been destroyed
+    before this function reads it. That is the self-move case, and nothing here detects it.
+  </p>
+</div>
+
+<div class="note">
+  <p>
+    <strong>The reference form leaves the source's address in place.</strong> Only the flag is cleared, so the bytes
+    of the source still contain the address of the object now also aliased by the destination — harmless while the
+    flag is false, and visible if anything ever sets the flag again without filling
+    (<a href="constructors.html">the empty-source constructor hole</a> is exactly that).
+  </p>
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<table>
+  <tr><th>Parameter</th><th>Type</th><th>Requirement</th></tr>
+  <tr><td><code>True_t</code> / <code>False_t</code></td><td>the trait's <code>Result</code></td><td>Selects the overload from <code>TType</code></td></tr>
+  <tr><td><code>rhs</code></td><td><code>Optional&amp;</code></td><td>The source. Must hold a value (the call sits under a <code>rhs.hasValue</code> test) and must not be <code>*this</code>, since the destination is destroyed before this runs</td></tr>
+</table>
+
+<h2 id="return">Return value</h2>
+
+<p>
+  None. Afterwards the destination holds the value and <code>rhs</code> reports empty through
+  <a href="hasvalue.html">HasValue</a>; nothing says whether the destination had to be vacated first.
+</p>
+
+<h2 id="example">Examples</h2>
+
+<p>The value path, and the line that empties the source:</p>
+
+<pre><code>Value() = std::move(rhs.Value());
+rhs.hasValue = false;</code></pre>
+
+<p class="meta">From Engine/Memory/Optional.h, Optional::MoveValue(False_t, Optional&amp; rhs)</p>
+
+<p>
+  The two lines are adjacent in the header, which is what guarantees the source is never left holding a value the
+  destination also claims. Contrast <a href="copyvalue.html">CopyValue</a>, which leaves the source filled — and
+  note that the destination's flag is set from the source <em>before</em> either of these lines runs.
+</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; Optional</a></span>
+  <span><a href="index.html#methods">All Optional methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

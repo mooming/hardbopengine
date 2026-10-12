@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MemoryManager::RegisterAllocator — Memory module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a class="current" href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Memory</a> /
+  <a href="index.html">MemoryManager</a> / RegisterAllocator
+</p>
+
+<h1><span class="fn">RegisterAllocator</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::MemoryManager</span>
+  <span class="tag">Engine/Memory/MemoryManager.h</span>
+  Pops a free slot, writes the dispatch pointers and returns its permanent id — 255 available, then InvalidAllocatorID.
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>TId RegisterAllocator(void* allocator, const char* name, bool isInline, size_t capacity, TAllocBytes allocFunc,
+						  TDeallocBytes deallocFunc)</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+Defined in <code>Engine/Memory/MemoryManager.cpp</code> as <code>MemoryManager::RegisterAllocator()</code>. A
+registration is nothing but a slot in <code>allocators</code>, and this method fills one: it pops a free slot from
+<code>proxyPool</code>, writes the three things needed to route an allocation, and returns the slot's permanent id.
+</p>
+
+<table>
+  <tr><th>Argument</th><th>Where it lands</th></tr>
+  <tr><td><code>allocator</code></td><td><code>allocProxy.allocator</code> — an untyped userData pointer, passed back as the first argument of every dispatch: <code>allocProxy.allocate(allocProxy.allocator, nBytes)</code></td></tr>
+  <tr><td><code>allocFunc</code>, <code>deallocFunc</code></td><td><code>allocProxy.allocate</code> / <code>allocProxy.deallocate</code> — function pointers, so a capturing lambda will not compile; every call site passes a captureless one</td></tr>
+  <tr><td><code>name</code>, <code>isInline</code>, <code>capacity</code></td><td>Only under <code>PROFILE_ENABLED</code>: <code>AllocStats::OnRegister</code> plus one capacity total. Without profiling the recording lambda does not even capture them, and <code>name</code> survives only in the <code>Info</code> log line.</td></tr>
+</table>
+
+<p>
+A null <code>name</code> becomes <code>"None"</code> rather than an error, so registration never fails on the name alone.
+Under <code>PROFILE_ENABLED</code> the name is interned by <code>AllocStats::OnRegister</code>
+(<code>name = StaticString(inName);</code>), which means the string need only be readable during the call; without
+profiling it is not retained at all. The capacity is <em>recorded</em>, never enforced here — enforcement is
+<a href="report-allocation.html">ReportAllocation</a> comparing usage against it.
+</p>
+
+<div class="note">
+  <strong>No parent allocator is recorded, and that omission is the design.</strong>
+  The registration has no parent parameter. The hierarchy the module relies on — a pool returning its buffer to whoever
+  owned it — lives in the allocator object itself, which captures
+  <a href="get-current-allocator-id.html">GetCurrentAllocatorID</a> in its own constructor and later calls
+  <a href="allocate.html">Allocate</a>(parentID, …) or <a href="fallback-allocate.html">FallbackAllocate</a>(own id,
+  parent id, …). The manager only ever learns the child.
+</div>
+
+<div class="gap">
+  <strong>255 registrations, then <code>InvalidAllocatorID</code> — and the caller is expected to stop.</strong>
+  <code>MaxNumAllocators</code> is 256 and slot 0 is never in <code>proxyPool</code>, so the 256th registration is the
+  one that fails: the null pop logs at <code>FatalError</code> and returns <code>InvalidAllocatorID</code>. Nothing in the
+  manager prevents the caller from ignoring that. Production call sites do not — <code>InlinePoolAllocator</code> follows
+  the call with <code>FatalAssert(id != InvalidAllocatorID);</code> and <code>FatalAssert(id != 0);</code>
+  (<code>Engine/Memory/InlinePoolAllocator.h</code>, <code>InlinePoolAllocator::RegisterAllocator()</code>) — but an
+  allocator that does not check goes on to allocate through an invalid id, which
+  <a href="allocate.html">Allocate</a> silently redirects to the system allocator. Unbounded bank growth in a
+  multi-pool is the known route to this ceiling; see <a href="../MultiPoolAllocator/index.html">MultiPoolAllocator</a>.
+</div>
+
+<div class="note">
+  <strong>The id is an array index, so it is reused.</strong>
+  Each proxy's <code>id</code> field is written once, by the constructor's seeding loop, and never cleared; popping the
+  same slot again after a <a href="deregister-allocator.html">deregistration</a> hands the same number to the next
+  allocator. Nothing version-tags a registration, so an id is only meaningful while its registrant is alive — the
+  property <code>PoolAllocator::GetID()</code> is documented around, and the reason a stored id must not outlive the
+  object that obtained it.
+</div>
+
+<div class="note">
+  <strong>What the call is safe to make concurrently.</strong>
+  <code>proxyPool</code> is an <code>AtomicStackView</code>, so two threads cannot be handed the same slot, and the
+  statistics half of the update takes <a href="acquire-stats-lock.html">the same lock the rest of the class uses</a> in
+  a nested scope that closes before the <code>Info</code> line is emitted. That ordering is deliberate: logging inside a
+  held lock is the deadlock shape recorded in <code>JOURNAL.md</code> for
+  <a href="../ThreadSafeMultiPoolAllocator/index.html">ThreadSafeMultiPoolAllocator</a>. What the method does not
+  serialise is the caller's own setup around the call — two allocators racing to register is fine, two threads mutating
+  one slot through <a href="get-allocator-proxy.html">GetAllocatorProxy</a> is not.
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<table>
+  <tr><th>Parameter</th><th>Type</th><th>Requirement</th></tr>
+  <tr><td><code>allocator</code></td><td><code>void*</code></td><td>The allocator object, passed back untouched on every dispatch. It must outlive the registration: the manager holds no reference count and will keep calling through these pointers until <a href="deregister-allocator.html">DeregisterAllocator</a> says otherwise.</td></tr>
+  <tr><td><code>name</code></td><td><code>const char*</code></td><td>May be null, which becomes <code>"None"</code>. Retained only under <code>PROFILE_ENABLED</code>, and then interned.</td></tr>
+  <tr><td><code>isInline</code></td><td><code>bool</code></td><td><code>true</code> when the allocator's storage lives inside the allocator object itself, which decides whether its capacity and usage land in <a href="get-inline-usage.html">GetInlineUsage</a> or <a href="get-usage.html">GetUsage</a>.</td></tr>
+  <tr><td><code>capacity</code></td><td><code>size_t</code></td><td>The total bytes this allocator intends to serve. Added to the corresponding usage record's <code>totalCapacity</code>; an over-estimate makes the overflow diagnostic in <a href="report-allocation.html">ReportAllocation</a> useless, an under-estimate makes it fire on correct code.</td></tr>
+  <tr><td><code>allocFunc</code></td><td><code>TAllocBytes</code></td><td><code>void* (*)(void* userData, size_t allocSize)</code>. Its first argument is the <code>allocator</code> pointer above, so the usual body is a cast and a member call.</td></tr>
+  <tr><td><code>deallocFunc</code></td><td><code>TDeallocBytes</code></td><td><code>void (*)(void* userData, void* pointer, size_t allocSize)</code>. The size must be the one the block was allocated with — see <a href="deallocate.html">Deallocate</a>.</td></tr>
+</table>
+
+<h2 id="return">Return value</h2>
+
+<table>
+  <tr><th>Type</th><th>What you get</th></tr>
+  <tr><td><code>TId</code> (<code>TAllocatorID</code>)</td><td>The slot number, in <code>1 … MaxNumAllocators-1</code> — never <code>0</code>, which is
+  <a href="index.html#properties">SystemAllocatorID</a> and is written only by
+  <a href="register-system-allocator.html">RegisterSystemAllocator</a> — or <code>InvalidAllocatorID</code> when no free slot
+  remains. The id names the array element forever, so the same number will be given to the next registrant after a
+  deregistration.</td></tr>
+</table>
+
+<h2 id="example">Examples</h2>
+
+<pre><code>const auto capacity = ActualBlockSize * ActualNumBlocks * sizeof(T);
+id = mmgr.RegisterAllocator(this, "InlinePoolAllocator", true, capacity, allocFunc, deallocFunc);
+
+FatalAssert(id != InvalidAllocatorID);
+FatalAssert(id != 0);</code></pre>
+
+<p class="meta">From Engine/Memory/InlinePoolAllocator.h, InlinePoolAllocator::RegisterAllocator()</p>
+
+<p>
+The defensive form, and the only call site that treats the return value as a fact rather than a formality: an inline
+pool is <code>isInline == true</code>, so its capacity is accounted in the inline total, and its two assertions encode
+what the registration protocol guarantees. The plain form is
+<code>id = mmgr.RegisterAllocator(this, name, false, capacity, allocFunc, deallocFunc);</code> in
+<code>MonotonicAllocator::MonotonicAllocator()</code>, <code>MultiPoolAllocator</code>'s constructors,
+<code>StackAllocator::StackAllocator()</code> and <code>PoolAllocator::PoolAllocator()</code> — all of which assume a
+slot is available.
+</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; MemoryManager</a></span>
+  <span><a href="index.html#methods">All MemoryManager methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

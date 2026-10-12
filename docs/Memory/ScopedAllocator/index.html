@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ScopedAllocator — Memory module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a class="current" href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This class</h3>
+  <ul>
+    <li><a href="#description">Class description</a></li>
+    <li><a href="#template">Template parameters</a></li>
+    <li><a href="#properties">Class properties</a></li>
+    <li><a href="#methods">Class methods</a></li>
+    <li><a href="#non-member">Non-member helper functions</a></li>
+    <li><a href="#coverage">Coverage</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Memory</a> /
+  ScopedAllocator
+</p>
+
+<h1>ScopedAllocator</h1>
+<p class="subtitle">
+  <span class="tag">Engine/Memory/ScopedAllocator.h</span>
+  <span class="tag">final</span>
+  <span class="tag">class template</span>
+  <span class="tag">namespace hbe</span>
+  Owns an allocator by value and an AllocatorScope opened over it: one declaration routes a thread's allocations to a temporary allocator, and the member order guarantees the teardown that the module's history says hand-written pairs get wrong
+</p>
+
+<h2 id="description">Class description</h2>
+
+<p>
+  <code>template &lt;typename TAlloc&gt; class ScopedAllocator final</code> at
+  <code>Engine/Memory/ScopedAllocator.h</code> is the composition of the two pieces this module already has: it owns an
+  allocator object by value, and it owns an <a href="../AllocatorScope/index.html"><code>AllocatorScope</code></a>
+  opened over that object. One declaration — <code>ScopedAllocator&lt;StackAllocator&gt; scope("NestedStack0",
+  1024);</code> — constructs the allocator with the forwarded arguments, registers it however its own constructor
+  registers things, and routes the thread's default allocations to it until the declaration's scope ends. It is the
+  type for the common case "this subtree of code allocates from this temporary allocator and nothing else"; the engine's
+  uses of it are the nested-allocation testlets in <code>Engine/Memory/StackAllocator.cpp</code>, which stack five of
+  them to prove exactly the nesting behaviour described below.
+</p>
+
+<p>
+  The two members are declared in the only order that works — <code>TAlloc allocator;</code> before
+  <code>AllocatorScope scope;</code> — and both halves of this class's contract follow from that. Construction
+  initialises them in that order: the allocator first, so it is a complete object whose <code>GetID()</code> the scope's
+  template constructor can ask; the scope second, so the id it saves is the outer one and the id it installs is the
+  live allocator's. Destruction runs in reverse — C++ member order — so the scope's destructor restores the outer id
+  <em>before</em> the allocator's destructor releases its buffer and deregisters its slot. There is no instant in which
+  the thread is pointed at a dead id, which is precisely the failure the <code>AllocatorScope</code> pages document as
+  this module's recurring hazard.
+</p>
+
+<table>
+  <tr><th>Piece</th><th>What it is</th><th>Where the contract lives</th></tr>
+  <tr><td>The owned allocator</td><td><code>TAlloc allocator</code>, constructed in place from the forwarded constructor arguments</td><td><a href="constructors.html">constructors</a></td></tr>
+  <tr><td>The opened scope</td><td><code>AllocatorScope scope</code>, opened over <code>allocator</code> via its <code>GetID()</code></td><td><a href="../AllocatorScope/constructors.html">AllocatorScope constructors</a></td></tr>
+  <tr><td>Teardown order</td><td>Scope restores, allocator dies — declaration order reversed</td><td><a href="destructor.html">~ScopedAllocator</a></td></tr>
+  <tr><td>Access to the object</td><td><a href="get-allocator.html">GetAllocator</a> in two overloads, the only way callers reach the owned allocator</td><td><a href="get-allocator.html">GetAllocator</a></td></tr>
+</table>
+
+<div class="gap">
+  <strong>The composition protects the id, not the pointer.</strong> The destructor order guarantees that no
+  <em>allocation call</em> made after teardown routes through the dead allocator. It says nothing about pointers the
+  subtree handed out: memory allocated from this object and released after the object died is released by whatever
+  scope is current then — the id-free <code>Delete(ptr)</code> path reads the thread's current value, not the
+  pointer's history (<a href="../Memory/index.html">the free helpers</a>). Objects that outlive a
+  <code>ScopedAllocator</code> must be destroyed inside it, or released through the id-free paths never at all.
+</div>
+
+<div class="gap">
+  <strong>Copying and moving are deleted, and moving would break the registration the constructor just made.</strong>
+  Allocators in this module register the object's address with the manager — <code>MonotonicAllocator</code>, for one,
+  passes <code>this</code> to <a href="../MemoryManager/register-allocator.html"><code>RegisterAllocator</code></a>
+  (<code>Engine/Memory/MonotonicAllocator.cpp</code>; the pattern repeats across the linear
+  allocators). A move would leave the registration pointing at the source object's address while the buffer's ownership
+  sits in the destination — so the header deletes copy and move, constructor and assignment alike
+  (<a href="index.html#methods">the class table</a>), and a <code>ScopedAllocator</code> is a fixed point in the stack,
+  nothing more.
+</div>
+
+<h2 id="template">Template parameters</h2>
+
+<table>
+  <tr><th>Parameter</th><th>Requirement the code imposes</th></tr>
+  <tr><td><code>TAlloc</code></td><td>Default-constructible or constructible from the constructor's argument pack, and it must offer <code>GetID()</code> returning a <code>TAllocatorID</code> — the <code>AllocatorScope</code> template constructor calls it. In this tree that means the allocator classes of this module; the uses the engine shows pass <code>StackAllocator</code>.</td></tr>
+</table>
+
+<h2 id="properties">Class properties</h2>
+
+<table>
+  <tr><th>Type + Name</th><th>Default Value</th><th>Description</th></tr>
+  <tr><td><code>TAlloc allocator;</code> <span class="badge">private</span></td><td><span class="muted">none in the header</span></td><td>The owned allocator, constructed first and destroyed last; the registration the rest of the engine routes to lives or dies with it.</td></tr>
+  <tr><td><code>AllocatorScope scope;</code> <span class="badge">private</span></td><td><span class="muted">none in the header</span></td><td>The open scope over <code>allocator</code>; constructed second, destroyed first — the ordering declared <a href="destructor.html">here</a> and never re-declared anywhere else.</td></tr>
+</table>
+
+<h2 id="methods">Class methods</h2>
+
+<table class="methods">
+  <tr><th>Name</th><th>Signature</th><th>What a caller depends on</th></tr>
+  <tr><td><a href="constructors.html"><code>ScopedAllocator</code></a><span class="badge">3 overloads</span></td><td class="sig">ScopedAllocator(const ScopedAllocator&amp;) = delete<br>ScopedAllocator(ScopedAllocator&amp;&amp;) = delete<br>template &lt;typename... Types&gt;<br>ScopedAllocator(Types&amp;&amp;... args)</td><td>One forwarding constructor builds allocator and scope in that order; the deleted forms forbid duplicating the pair.</td></tr>
+  <tr><td><code>operator=</code></td><td class="sig">ScopedAllocator&amp; operator=(const ScopedAllocator&amp;) = delete<br>ScopedAllocator&amp; operator=(ScopedAllocator&amp;&amp;) = delete</td><td>Deleted — no page; neither form compiles, so a scope's restore obligation can never be moved to another address.</td></tr>
+  <tr><td><a href="destructor.html"><code>~ScopedAllocator</code></a></td><td class="sig">~ScopedAllocator() = default</td><td>Defaulted, and that is the contract: declaration order does the ordering work, hand-written code could only spoil it.</td></tr>
+  <tr><td><a href="get-allocator.html"><code>GetAllocator</code></a><span class="badge">2 overloads</span></td><td class="sig">[[nodiscard]] auto&amp; GetAllocator()<br>[[nodiscard]] auto&amp; GetAllocator() const</td><td>The owned object itself — for direct use, and for reading the very figures the scope testlets assert on.</td></tr>
+</table>
+
+<h2 id="non-member">Non-member helper functions</h2>
+
+<p>None. The composed parts each carry their own pages —
+<a href="../AllocatorScope/index.html"><code>AllocatorScope</code></a> for the redirection mechanism and the owning
+allocator class for everything the owned object can do.</p>
+
+<h2 id="coverage">Coverage</h2>
+
+<table>
+  <tr><th>Not documented here</th><th>Why</th></tr>
+  <tr><td>Nothing is documented as an omission of substance; one spelling note is recorded here</td>
+    <td>The deleted copy and move operations are declared <code>public</code> in this header (where
+      <a href="../AllocatorScope/index.html"><code>AllocatorScope</code></a> declares its deleted pair
+      <code>private</code>): the prohibition here comes from the deletion alone, not from access. The method table
+      quotes them exactly as declared; nothing beyond "they do not compile" is a caller-visible difference.</td></tr>
+  <tr><td>Whether <code>GetID()</code> can answer <code>InvalidAllocatorID</code> and what the scope then does</td>
+    <td>The scope accepts it — <code>AllocatorScope</code>'s setter treats it as the legitimate "refuse allocations"
+      value (<a href="../AllocatorScope/constructors.html">documented there</a>). Which allocator constructions in this
+      tree can produce it (a failed registration) belongs to each allocator class's own page.</td></tr>
+  <tr><td>The exact teardown of each <code>TAlloc</code> (buffer release, deregistration, leak warnings)</td>
+    <td>Owned by the allocator classes — <a href="../MonotonicAllocator/index.html">linear</a> and
+      <a href="../PoolAllocator/index.html">pool</a> pages carry their destructor contracts.</td></tr>
+</table>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; ScopedAllocator</a></span>
+  <span><a href="index.html#methods">All ScopedAllocator methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

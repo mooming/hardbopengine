@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PoolAllocator::GetUsedBlocksMax — Memory module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a class="current" href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Memory</a> /
+  <a href="index.html">PoolAllocator</a> / GetUsedBlocksMax
+</p>
+
+<h1><span class="fn">GetUsedBlocksMax</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::PoolAllocator</span>
+  <span class="tag">Engine/Memory/PoolAllocator.h</span>
+  <span class="tag">nodiscard</span>
+  <span class="tag">PROFILE_ENABLED only</span>
+  Peak blocks checked out at once — the figure a multi-pool caches into the next boot, in a configuration that does not compile.
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>#if PROFILE_ENABLED
+	[[nodiscard]] auto GetUsedBlocksMax() const</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  Declared in the class body of <code>Engine/Memory/PoolAllocator.h</code> inside <code>#if PROFILE_ENABLED</code>, returning
+  <code>maxUsedBlocks</code>: the largest number of blocks the pool has had checked out at one instant since it was constructed. The
+  peak is raised in <a href="allocateblock.html">AllocateBlock</a> and never lowered, never reset, and not raised by a release.
+</p>
+
+<pre><code>#if PROFILE_ENABLED
+	maxUsedBlocks = std::max(maxUsedBlocks, numberOfBlocks - numberOfFreeBlocks);
+#endif // PROFILE_ENABLED</code></pre>
+
+<p class="meta">From Engine/Memory/PoolAllocator.cpp, PoolAllocator::AllocateBlock()</p>
+
+<div class="gap">
+  <strong>This is a figure of a build that does not compile.</strong>
+  <code>JOURNAL.md</code> records on 2026-10-05 that setting <code>PROFILE_ENABLED</code> to 1 breaks this tree in three unrelated
+  places — including that <code>hbe::source_location</code>, the type of the sibling member <code>srcLocation</code>, is only ever
+  forward declared while <code>Engine/OSAL/SourceLocation.h</code> defines <code>SourceLocation</code>. Everything said here is read
+  from source that has never executed, and every claim about what the peak is used for inherits that caveat. See
+  <a href="index.html#coverage">Coverage</a>.
+</div>
+
+<div class="note">
+  <strong>Blocks the parent served are not in the peak.</strong>
+  Only <a href="allocateblock.html">AllocateBlock</a> raises it, and an oversized request never reaches that function
+  (<a href="allocate.html">Allocate</a> sends it to the parent). A pool whose peak reads low may still be the route by which large
+  allocations happened; the manager's fallback counter is the only witness of those, and it too is
+  <code>PROFILE_ENABLED</code>-only.
+</div>
+
+<div class="note">
+  <strong>The number decides how the next boot is sized.</strong>
+  <code>MultiPoolAllocator::ReportConfiguration()</code> keys each bank by its block size and takes this peak as the bank's block
+  count, writes the pairs to the multi-pool configuration cache, and asserts the reported total equals the summed peaks — the
+  assertion added when <code>JOURNAL.md</code> finding F1 showed every bank's count being doubled by an accumulate that
+  <code>reserve</code> had made silent. A wrong peak is therefore not a wrong report; it is the next run's pool sizing.
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<p>None.</p>
+
+<h2 id="return">Return value</h2>
+
+<table>
+  <tr><th>Type</th><th>What you get</th></tr>
+  <tr><td><code>size_t</code></td><td>Peak blocks checked out at once, over the pool's whole life. Multiply by <a href="getblocksize.html">GetBlockSize</a> for peak bytes, which is how the usage report prints it. Zero means never tracked, which under <code>PROFILE_ENABLED</code> would mean the pool never handed anything out.</td></tr>
+</table>
+
+<h2 id="example">Examples</h2>
+
+<pre><code>	auto InsertItem = [&amp;configs](const PoolAllocator&amp; alloc)
+	{
+		auto key = alloc.GetBlockSize();
+		auto value = alloc.GetUsedBlocksMax();</code></pre>
+
+<p class="meta">From Engine/Memory/MultiPoolAllocator.cpp, MultiPoolAllocator::ReportConfiguration()</p>
+
+<p>
+  Bank block size as the key, this peak as the value — the pair cached for the next boot. The same accessor appears in
+  <code>PrintUsage()</code> as <code>pool.GetUsedBlocksMax() * pool.GetBlockSize()</code>, and in the assertion that checks the two
+  totals agree after the accumulate.
+</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; PoolAllocator</a></span>
+  <span><a href="index.html#methods">All PoolAllocator methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

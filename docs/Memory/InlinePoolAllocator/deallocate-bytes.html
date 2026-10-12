@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>InlinePoolAllocator::DeallocateBytes — Memory module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a class="current" href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Memory</a> /
+  <a href="index.html">InlinePoolAllocator</a> / DeallocateBytes
+</p>
+
+<h1><span class="fn">DeallocateBytes</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::InlinePoolAllocator</span>
+  <span class="tag">Engine/Memory/InlinePoolAllocator.h</span>
+  Cache, free list, or parent: the release path, and the one place the pool decides what its own memory is.
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>void DeallocateBytes(void* ptr, size_t nBytes) noexcept</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+Private, defined inline in the class body of <code>Engine/Memory/InlinePoolAllocator.h</code>, and the counterpart of
+<a href="allocate-bytes.html">AllocateBytes</a>. It is reached from <a href="deallocate.html">deallocate</a> (which passes <code>n * sizeof(T)</code>, a byte count that
+agrees with <a href="allocate-bytes.html">AllocateBytes</a>) and from the deallocation lambda the pool registers with the
+manager in <a href="register-allocator.html">RegisterAllocator</a>, so every release the engine makes through an
+<a href="../index.html#allocatorscope">AllocatorScope</a> on this pool arrives here. Three branches, in this order:
+</p>
+
+<table>
+  <tr><th>Order</th><th>Guard</th><th>Result</th></tr>
+  <tr><td>1</td><td><code>!IsValidPointer(ptr)</code></td>
+      <td><code>MemoryManager::Deallocate(parentID, ptr, nBytes)</code> and return — a pointer outside the array belongs to the
+      allocator that was current when the pool was constructed, and it is that allocator's to be told about. This guard runs in
+      every configuration.</td></tr>
+  <tr><td>2</td><td><code>immediateBlock == nullptr &amp;&amp; nBytes &lt;= BlockSizeInBytes</code></td>
+      <td>Store <code>ptr</code> in the one-slot cache and return. The free list is not touched; under
+      <code>PROFILE_ENABLED</code> the release is reported with <code>BlockSizeInBytes</code> as the allocated figure.</td></tr>
+  <tr><td>3</td><td>otherwise</td>
+      <td><a href="write-pointer-to-next.html">WritePointerToNext</a>(<code>ptr</code>, <code>availableBlock</code>), then
+      <code>availableBlock = ptr</code>: the block becomes the head of the free list, reported the same way.</td></tr>
+</table>
+
+<div class="note">
+  <strong>Ownership is settled before anything else, in every configuration.</strong>
+  The order above is the fix, not the original shape. Branch 1 used to be compiled only under
+  <code>PROFILE_ENABLED</code>, so in a shipping build branch 2 came first and looked only at the size: a block the pool had
+  borrowed from its parent satisfied the size test, was parked in <code>immediateBlock</code>, and went back out to a caller as
+  if it were array storage. Nothing told the parent its block had returned, and the pool handed out the same address a second
+  time on the next release. That is the failure the testlet "Foreign Block Returns To Its Own Parent" in
+  <code>Engine/Memory/InlinePoolAllocator.cpp</code> measures — it fails against the old order and passes against this one, in
+  all four configurations. A null pointer still satisfies the size test of branch 2, but branch 1 now turns it away:
+  <a href="is-valid-pointer.html">IsValidPointer</a> is a range test, and null is below the array.
+</div>
+
+<div class="gap">
+  <strong>A block released twice is not detected, and it will be handed out twice.</strong>
+  Nothing compares <code>ptr</code> against the list it is about to join: branch 3 writes the current head into the block and makes the
+  block the head. Release the same address twice at different times and the address appears twice in the list, so two later allocations
+  receive the same pointer. <code>Engine/Memory/InlinePoolAllocator.cpp</code> has no double-release testlet, and
+  <a href="is-valid-pointer.html">IsValidPointer</a> cannot help — it answers "is this inside the array", never "is this already free".
+  The same absence covers <a href="allocate-bytes.html">AllocateBytes</a>'s cache: a block taken from <code>immediateBlock</code> and
+  released again while a copy of it is still held elsewhere follows the same path.
+</div>
+
+<div class="note">
+  <strong>The size argument routes nothing; the range decides, and the range has one soft edge.</strong>
+  <code>nBytes</code> now only gates entry to branch 2 and appears in the two reporting calls; the choice between "back to the
+  free list" and "back to the parent" is <a href="is-valid-pointer.html">IsValidPointer</a> alone. It compares
+  <code>block[0] &lt;= ptr &amp;&amp; ptr &lt;= block[LastBlockIndex]</code> — an address <em>inside</em> the final block reads as
+  outside it, because the upper bound is that block's start rather than the array's end. A block released from the last slot of
+  the array therefore travels to <code>parentID</code> instead of joining the free list: the memory is not lost, and the pool
+  simply never reuses it. That bound is recorded here rather than quietly corrected because changing it changes which allocator
+  a release is billed to.
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<table>
+  <tr><th>Parameter</th><th>Type</th><th>Meaning</th></tr>
+  <tr><td><code>ptr</code></td><td><code>void*</code></td><td>Storage to release. Not dereferenced unless it is being pushed onto the free
+      list, where its first <code>sizeof(void*)</code> bytes become the next-pointer.</td></tr>
+  <tr><td><code>nBytes</code></td><td><code>size_t</code></td><td>Byte count, and <code>deallocate</code> now really passes
+      one: <code>n * sizeof(T)</code>. It gates branch 2 and is the figure reported and forwarded to the manager. It is never
+      compared against the size the block was taken out with — routing is the range test's job, so a wrong count misreports but
+      cannot corrupt the free list.</td></tr>
+</table>
+
+<h2 id="return">Return value</h2>
+
+<p>None. Every branch is terminal, and the function reports nothing about which branch ran.</p>
+
+<h2 id="example">Examples</h2>
+
+<pre><code>if (immediateBlock == nullptr &amp;&amp; nBytes &lt;= BlockSizeInBytes)
+		{
+			immediateBlock = ptr;
+
+#if PROFILE_ENABLED
+			auto&amp; mmgr = MemoryManager::GetInstance();
+			mmgr.ReportDeallocation(id, ptr, nBytes, BlockSizeInBytes);
+#endif // PROFILE_ENABLED
+
+			return;
+		}</code></pre>
+
+<p class="meta">From Engine/Memory/InlinePoolAllocator.h, hbe::InlinePoolAllocator::DeallocateBytes()</p>
+
+<p>
+The vector-growth testlets in <code>Engine/Memory/InlinePoolAllocator.cpp</code> are built to land on exactly this branch: each iteration
+ends with <code>clear()</code> and <code>shrink_to_fit()</code>, which releases the buffer, and the next iteration's first
+<code>reserve()</code> asks for the same block again. One-slot caching is enough for that rhythm, which is the allocation pattern the class
+was shaped for.
+</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; InlinePoolAllocator</a></span>
+  <span><a href="index.html#methods">All InlinePoolAllocator methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

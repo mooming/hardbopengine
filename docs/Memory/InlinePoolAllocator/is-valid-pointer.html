@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>InlinePoolAllocator::IsValidPointer — Memory module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a class="current" href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Memory</a> /
+  <a href="index.html">InlinePoolAllocator</a> / IsValidPointer
+</p>
+
+<h1><span class="fn">IsValidPointer</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::InlinePoolAllocator</span>
+  <span class="tag">Engine/Memory/InlinePoolAllocator.h</span>
+  A byte-range test over the object's own array - the only thing that separates pool memory from parent memory.
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>[[nodiscard]] bool IsValidPointer(void* ptr) const</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+Private, defined inline in the class body of <code>Engine/Memory/InlinePoolAllocator.h</code>, and the class's only test of memory
+ownership: it answers "is this address somewhere inside my array", and that answer is what
+<a href="deallocate-bytes.html">DeallocateBytes</a> routes on. Two comparisons over a compile-time constant bound:
+</p>
+
+<pre><code>constexpr size_t LastBlockIndex = ActualNumBlocks - 1;
+
+return block[0] &lt;= ptr &amp;&amp; ptr &lt;= block[LastBlockIndex];</code></pre>
+
+<p class="meta">From Engine/Memory/InlinePoolAllocator.h, hbe::InlinePoolAllocator::IsValidPointer()</p>
+
+<p>
+<code>block[0]</code> and <code>block[LastBlockIndex]</code> are the addresses of the first byte of the first and last block, so the test is
+a byte-range comparison against the object's own array — not a lookup in a table of handed-out blocks, and not a query to the
+<a href="../MemoryManager/index.html"><code>MemoryManager</code></a>.
+</p>
+
+<table>
+  <tr><th>Address</th><th>Answer</th><th>Consequence in <a href="deallocate-bytes.html">DeallocateBytes</a></th></tr>
+  <tr><td>The start of any block</td><td><code>true</code></td><td>The block is pushed onto the free list — the normal return of a pool
+      block.</td></tr>
+  <tr><td>An interior address of any block except the last</td><td><code>true</code></td><td>Also pushed onto the free list, so a pointer
+      that is not a block start becomes a free-list entry whose next-pointer is read from that offset. The class itself never produces
+      such a pointer, so this is a caller-created case.</td></tr>
+  <tr><td>An interior address of the <em>last</em> block</td><td><code>false</code></td><td>Forwarded to
+      <code>MemoryManager::Deallocate(parentID, ...)</code>: memory that is unquestionably part of this object is released to the parent
+      allocator. The bound is the last block's first byte, not the end of the array.</td></tr>
+  <tr><td>Outside the array — including <code>nullptr</code></td><td><code>false</code></td><td>Forwarded to the parent. This is the path a
+      block that <a href="allocate-bytes.html">AllocateBytes</a> obtained from the parent normally takes back.</td></tr>
+</table>
+
+<div class="gap">
+  <strong>"Inside the array" is not "one of my free blocks", and the upper bound is the last block's first byte.</strong>
+  The test cannot distinguish a live block from a released one, so it never detects a double release (see
+  <a href="deallocate-bytes.html">the gap there</a>). And because the comparison ends at <code>block[ActualNumBlocks - 1]</code>, the accepted
+  span stops <code>BlockSizeInBytes - 1</code> bytes short of the end of the array. Every block the pool itself hands out is a block start,
+  so both flaws stay out of sight in ordinary use — which is why no testlet in
+  <code>Engine/Memory/InlinePoolAllocator.cpp</code> tests either bound.
+</div>
+
+<div class="note">
+  <strong>Why the class needs a range test at all.</strong>
+  Because a pool answers requests it cannot serve: <a href="allocate-bytes.html">AllocateBytes</a> sends an over-large request to the parent,
+  and the answer to that request is memory the pool must not put on its free list. The range test is how the release path tells the two
+  apart, at the cost of assuming that the only memory in that byte range is the pool's own.
+  <a href="../PoolAllocator/index.html"><code>PoolAllocator</code></a> solves the same problem with <code>IsMine</code>, a range test over its
+  separately allocated buffer; the difference between the two is only which allocation the range covers.
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<table>
+  <tr><th>Parameter</th><th>Type</th><th>Meaning</th></tr>
+  <tr><td><code>ptr</code></td><td><code>void*</code></td><td>The address to test. Never dereferenced; only its value is compared.</td></tr>
+</table>
+
+<h2 id="return">Return value</h2>
+
+<table>
+  <tr><th>Type</th><th>What you get</th></tr>
+  <tr><td><code>bool</code></td><td><code>true</code> when <code>ptr</code> lies between the first byte of <code>block[0]</code> and the first
+      byte of the last block, inclusive. It says nothing about whether that block is currently allocated, in use, or aligned.</td></tr>
+</table>
+
+<h2 id="example">Examples</h2>
+
+<p>
+The only caller is <a href="deallocate-bytes.html">DeallocateBytes</a>, which uses the answer as a two-way branch:
+</p>
+
+<pre><code>if (!IsValidPointer(ptr))
+{
+	auto&amp; mmgr = MemoryManager::GetInstance();
+	mmgr.Deallocate(parentID, ptr, nBytes);
+
+	return;
+}</code></pre>
+
+<p class="meta">From Engine/Memory/InlinePoolAllocator.h, hbe::InlinePoolAllocator::DeallocateBytes()</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; InlinePoolAllocator</a></span>
+  <span><a href="index.html#methods">All InlinePoolAllocator methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>
