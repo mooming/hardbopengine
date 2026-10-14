@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AtomicRingQueueMultiProviderSingleConsumer::AcquireBlock — Container module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a class="current" href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Container</a> /
+  <a href="index.html">AtomicRingQueueMultiProviderSingleConsumer</a> / AcquireBlock
+</p>
+
+<h1><span class="fn">AcquireBlock</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::AtomicRingQueueMultiProviderSingleConsumer</span>
+  <span class="tag">Engine/Container/AtomicRingQueueMultiProviderSingleConsumer.h</span>
+  extend the chain under the management mutex, or report the fuse reached
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>[[nodiscard]] LinkNode* AcquireBlock(LinkNode* inFullBlock) noexcept</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  The only path that grows the chain, and the only place this queue takes a lock on a producer's way through. It is called when
+  the tail block is full, or when no block exists yet.
+</p>
+
+<p>
+  Under the management mutex it first gives the deferred blocks another chance
+  (<a href="retrydeferredblocks.html"><code>RetryDeferredBlocks</code></a>), so a producer that arrives at a full tail is the one
+  most likely to be blocking a recycle, and it is also the one already holding the lock that would free it. It then re-reads the
+  caller's block, so a thread that arrived a moment late reuses the block the winner created instead of building a duplicate. It then applies the fuse: <code>maxBlocks</code> live blocks, and no more. A new
+  block is linked with one release store into the old tail's <code>next</code>, and <code>tail</code> is advanced by
+  compare-and-swap so that a thread whose block lost the race still ends up pointing at the block that won.
+</p>
+
+<p>
+  Lock order: <code>managementLock</code> is taken here and the allocator's own lock is taken inside it, by
+  <a href="allocateblock.html"><code>AllocateBlock</code></a>. That order is never reversed anywhere in this file, and it has to
+  hold, because <code>MemoryManager</code>'s allocator may be the thread-safe multi-pool, which takes an instance mutex per
+  allocation.
+</p>
+
+<p>
+  The first block of all goes into <code>chainRoot</code>, which is where the consumer looks when it has never had a block; the
+  producer that loses that race frees its own block and adopts the winner's.
+</p>
+
+<h2 id="parameters">Parameters</h2>
+
+<table>
+  <tr><th>Name</th><th>What the caller must supply</th></tr>
+  <tr>
+    <td><code>LinkNode* inFullBlock</code></td>
+    <td>The block that is full, or <code>nullptr</code> to ask for the very first block of the queue.</td>
+  </tr>
+</table>
+
+<h2 id="return">Return value</h2>
+
+<p>A block that is linked into the chain and safe to claim a slot from, or <code>nullptr</code> when the fuse is reached or
+the allocator refused. The caller reports those two cases the same way it reports a refused push.</p>
+
+<h2 id="example">Examples</h2>
+
+<p class="note">Illustrative &mdash; no call site for this exists in the repository.</p>
+
+<pre><code>LinkNode* next = block-&gt;next.<span class="fn">load</span>(std::memory_order_acquire);
+<span class="kw">if</span> (next == <span class="kw">nullptr</span>)
+{
+        next = <span class="fn">AcquireBlock</span>(block);
+        <span class="kw">if</span> (next == <span class="kw">nullptr</span>)
+        {
+                <span class="kw">return</span> EPushResult::Full;
+        }
+}</code></pre>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; AtomicRingQueueMultiProviderSingleConsumer</a></span>
+  <span><a href="index.html#methods">All AtomicRingQueueMultiProviderSingleConsumer methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

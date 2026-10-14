@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AtomicRingQueueMultiProviderSingleConsumer::destructor — Container module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a class="current" href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Container</a> /
+  <a href="index.html">AtomicRingQueueMultiProviderSingleConsumer</a> / destructor
+</p>
+
+<h1><span class="fn">destructor</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::AtomicRingQueueMultiProviderSingleConsumer</span>
+  <span class="tag">Engine/Container/AtomicRingQueueMultiProviderSingleConsumer.h</span>
+  destroy what is still queued and return every block, from the consumer thread after producers have stopped
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>~AtomicRingQueueMultiProviderSingleConsumer()</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  Destroys every element still queued and returns every block of memory. It is
+  <a href="destroyall.html"><code>DestroyAll</code></a> followed by the release of the producer slot array.
+</p>
+
+<p>
+  The contract is the same one that makes the single-consumer rule workable: destroy the queue from the consumer thread, after
+  the producer threads have stopped. There is no reclamation protocol protecting a producer that is inside
+  <a href="push.html"><code>Push</code></a> when the queue dies, and hazard slots are not a lifetime guard for the queue object
+  itself &mdash; they only keep individual <em>blocks</em> alive while the chain is turning over. Elements are destroyed in queue order,
+  oldest first, starting at the consumer's cursor, so a destructor never destroys an element the consumer already handed out.
+</p>
+
+<h2 id="parameters">Parameters</h2>
+
+<table>
+  <tr><th>Name</th><th>What the caller must supply</th></tr>
+  <tr><td><em>none</em></td><td>This method takes no argument.</td></tr>
+</table>
+
+<h2 id="return">Return value</h2>
+
+<p>Nothing. It is not noexcept-declared, because it runs the destructors of <code>T</code>, which the engine convention expects
+not to throw.</p>
+
+<h2 id="example">Examples</h2>
+
+<p class="note">Illustrative &mdash; no call site for this exists in the repository.</p>
+
+<pre><code><span class="cm">// Producers have been joined; the consumer has drained what it wanted.</span>
+queue.~<span class="ty">AtomicRingQueueMPSC</span>();</code></pre>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; AtomicRingQueueMultiProviderSingleConsumer</a></span>
+  <span><a href="index.html#methods">All AtomicRingQueueMultiProviderSingleConsumer methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

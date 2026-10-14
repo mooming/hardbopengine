@@ -1,0 +1,414 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AtomicRingQueueMultiProviderSingleConsumer — Container module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a class="current" href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This class</h3>
+  <ul>
+    <li><a href="#description">Class description</a></li>
+    <li><a href="#template">Template parameters</a></li>
+    <li><a href="#properties">Class properties</a></li>
+    <li><a href="#methods">Class methods</a></li>
+    <li><a href="#non-member">Non-member helper functions</a></li>
+    <li><a href="#coverage">Coverage</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Container</a> /
+  AtomicRingQueueMultiProviderSingleConsumer
+</p>
+
+<h1>AtomicRingQueueMultiProviderSingleConsumer</h1>
+<p class="subtitle">
+  <span class="tag">Engine/Container/AtomicRingQueueMultiProviderSingleConsumer.h</span>
+  <span class="tag">namespace hbe</span>
+  <span class="tag">final</span>
+  Lock-free multi-producer single-consumer FIFO over a chain of lock-free fixed-size rings, owning its elements and recycling its blocks
+</p>
+
+<h2 id="description">Class description</h2>
+
+<p>
+  A first-in first-out queue for the shape the engine was asking for: <strong>many threads enqueue, exactly one thread
+  dequeues</strong>, elements are values rather than caller-owned nodes, and the number of elements in flight is in the millions
+  rather than the dozens. It is a chain of fixed-size blocks. Each block is a ring: one atomic
+  <em>claim</em> counter hands out slots, and each slot carries a <em>tag</em> that says whether its payload has been written yet.
+  Producers never wait for each other and never allocate on the hot path; the consumer walks the slots in order.
+</p>
+
+<p>
+  That structure buys the two properties a linked-list MPSC cannot give at this scale. Memory is one allocation per
+  <code>BlockSlots</code> elements instead of one per element, and no element is ever lost because a producer stalled &mdash; a
+  slot that is claimed but not yet published is <em>seen</em> as such and reported as
+  <code><a href="pop.html">EPopResult::Blocked</a></code>, so the consumer can go and do something else instead of spinning, and
+  cannot skip past it either.
+</p>
+
+<p>
+  Two of the operations are deliberately single-threaded. The consumer's cursor is a plain pointer and a plain index, so
+  <a href="pop.html"><code>Pop</code></a> and <a href="isempty.html"><code>IsEmpty</code></a> belong to one thread; making them
+  safe for several would mean either a lock on the hot path or a second generation of indices. Pushing from many threads is the
+  whole point; draining from many is a different container.
+</p>
+
+<p>
+  Block memory comes from <code>MemoryManager</code> (<code>Engine/Memory/MemoryManager.h</code>) against the allocator
+  that was current when the queue was constructed, so a queue charged to a subsystem shows up under that subsystem in the ledger.
+  Recycling is enabled: a block the consumer has left is freed once no producer is standing inside it, and the memory comes back
+  into the same pool. Growth is capped by the constructor's fuse, so a queue with no consumer refuses work rather than eating the
+  heap.
+</p>
+
+<p>
+  Algorithm, invariants, the memory-ordering table and the cost model are in the design document:
+  <a href="../../design/MultiProviderSingleConsumerQueue_Design.html">Multi-provider single-consumer queue design</a>.
+</p>
+
+<h2 id="template">Template parameters</h2>
+
+<table>
+  <tr><th>Parameter</th><th>Kind</th><th>What it must satisfy</th></tr>
+  <tr>
+    <td><code>T</code></td>
+    <td>type</td>
+    <td>
+      A value type the queue can own. It must be copy-constructible from <code>const T&amp;</code> (that copy is what
+      <a href="push.html"><code>Push</code></a> performs inside the claimed slot), move-assignable (that is how
+      <a href="pop.html"><code>Pop</code></a> hands the element over) and destructible (the queue destroys the slot's object after
+      handing it over, and again for anything still queued at teardown). It must not be an lvalue-reference type and its destructor
+      must not throw. There is no compile-time check for the first three: they are diagnosed where the template is instantiated,
+      inside <code>Push</code>, <code>Pop</code> and <code>DestroyAll</code>.
+    </td>
+  </tr>
+  <tr>
+    <td><code>BlockSlots</code></td>
+    <td>non-type, <code>size_t</code>, default <code>1024</code></td>
+    <td>
+      Slots per block. Must be a power of two greater than one &mdash; a <code>static_assert</code> in the class enforces it, with
+      the reason in its message: the slot index is <code>index &amp; (BlockSlots - 1)</code> and nothing else. Being a power of two
+      is not a style preference; it is what keeps a division off the hot path. It is also the amortisation unit for every rare
+      operation, so a small value (<code>2</code>, <code>8</code>) makes growth, recycling and hazard scans frequent enough for a
+      testlet to hit them on purpose, which is exactly how the testlets in
+      <code>Engine/Container/AtomicRingQueueMultiProviderSingleConsumer.cpp</code> are built.
+    </td>
+  </tr>
+  <tr>
+    <td><code>TAllocator</code></td>
+    <td>type, default <code>DefaultAllocator&lt;T&gt;</code></td>
+    <td>An allocator for the queue's own storage, named as a template parameter for the same reason the other containers name
+      one: the queue's memory should be chargeable to a caller-chosen allocator without the queue knowing which one. It must
+      satisfy the standard allocator requirements and be rebindable, because the queue allocates no <code>T</code> objects with
+      it - the blocks and the producer slot array are raw bytes reached through
+      <code>TAllocator::rebind&lt;std::uint8_t&gt;</code>, and the deferred list is a <code>std::vector</code> over
+      <code>rebind&lt;LinkNode*&gt;</code>. The member is default-constructed, so the allocator decides its own target:
+      <code>DefaultAllocator</code> captures the constructing thread's allocator id, which is why a queue built inside an
+      <code>AllocatorScope</code> charges everything to that scope's node of the allocator tree. It is never copied into a block,
+      and nothing on the consumer path reads it.</td>
+  </tr>
+</table>
+
+<h2 id="properties">Class properties</h2>
+
+<table>
+  <tr><th>Type + Name</th><th>Default Value</th><th>Description</th></tr>
+  <tr>
+    <td><code>enum class EPushResult : unsigned char</code> <span class="badge">public nested</span></td>
+    <td><code>not applicable</code></td>
+    <td>What <a href="push.html"><code>Push</code></a> did: <code>Pushed</code>, <code>Full</code> against the fuse, or
+        <code>TooManyProducers</code> when the hazard array is exhausted.</td>
+  </tr>
+  <tr>
+    <td><code>enum class EPopResult : unsigned char</code> <span class="badge">public nested</span></td>
+    <td><code>not applicable</code></td>
+    <td>What <a href="pop.html"><code>Pop</code></a> found: <code>Element</code>, <code>Empty</code>, or <code>Blocked</code> for a
+        slot that is claimed but not yet published.</td>
+  </tr>
+  <tr>
+    <td><code>struct alignas(std::hardware_destructive_interference_size) LinkNode final</code> <span class="badge">private nested</span></td>
+    <td><code>not applicable</code></td>
+    <td>One ring: <code>claim</code>, the <code>next</code> link, a <code>tags</code> array of publication flags, the inline payload
+        storage, and the <a href="../../Memory/AlignedStorage/index.html"><code>AlignedStorage</code></a> pair that makes it freeable. Field-level detail is in the design document.</td>
+  </tr>
+  <tr>
+    <td><code>struct alignas(std::hardware_destructive_interference_size) ProducerSlot final</code> <span class="badge">private nested</span></td>
+    <td><code>not applicable</code></td>
+    <td>One producer's declaration of which block it is working on, plus the flag that reserves the slot. Own cache line, so two
+        producers never write the same line.</td>
+  </tr>
+  <tr>
+    <td><code>static constexpr size_t InvalidProducerToken = static_cast&lt;size_t&gt;(-1);</code> <span class="badge">private</span></td>
+    <td><code>static_cast&lt;size_t&gt;(-1)</code></td>
+    <td>The value of a thread's cached token before it has been given a hazard slot.</td>
+  </tr>
+  <tr>
+    <td><code>static constexpr size_t SlotMask = BlockSlots - 1;</code> <span class="badge">private</span></td>
+    <td><code>BlockSlots - 1</code></td>
+    <td>Claim index to slot index, in one <code>and</code>.</td>
+  </tr>
+  <tr>
+    <td><code>static inline thread_local size_t producerToken = InvalidProducerToken;</code> <span class="badge">private static</span></td>
+    <td><code>InvalidProducerToken</code></td>
+    <td>This thread's producer slot index, cached so that a push pays one relaxed load for the whole protocol. Defined out of line.</td>
+  </tr>
+  <tr>
+    <td><code>std::mutex managementLock;</code> <span class="badge">private</span></td>
+    <td><code>none in the header</code></td>
+    <td>Guards every rare operation: extending the chain, retiring a block, retrying deferred ones, and handing out producer
+        slots. Never held across a claim or a publish, so it is not on the hot path.</td>
+  </tr>
+  <tr>
+    <td><code>std::atomic&lt;LinkNode*&gt; chainRoot;</code> <span class="badge">private</span></td>
+    <td><code>nullptr (constructor)</code></td>
+    <td>The oldest block that still exists, and the block a consumer adopts the first time it pops. Advanced only by the consumer.</td>
+  </tr>
+  <tr>
+    <td><code>std::atomic&lt;LinkNode*&gt; tail;</code> <span class="badge">private</span></td>
+    <td><code>nullptr (constructor)</code></td>
+    <td>The block producers claim from. Advanced by compare-and-swap when a block fills, and a thread that finds it stale simply
+        retries against the value it just read.</td>
+  </tr>
+  <tr>
+    <td><code>LinkNode* head;</code> <span class="badge">private</span></td>
+    <td><code>nullptr (constructor)</code></td>
+    <td>The block the consumer is draining. Consumer-only, therefore not atomic.</td>
+  </tr>
+  <tr>
+    <td><code>size_t headCursor;</code> <span class="badge">private</span></td>
+    <td><code>0 (constructor)</code></td>
+    <td>The next claim index the consumer will look at, inside <code>head</code>. Consumer-only, therefore not atomic.</td>
+  </tr>
+  <tr>
+    <td><code>TAllocator allocator;</code> <span class="badge">private</span></td>
+    <td><code>default-constructed</code></td>
+    <td>The allocator every block, the producer slot array and the deferred list are charged to. Default-constructed, so its
+        target is the constructing thread's allocator context, and whichever thread later grows the chain allocates against the
+        same one. <code>DefaultAllocator</code> opens its own scope, so no call site needs to.</td>
+  </tr>
+  <tr>
+    <td><code>AlignedStorage&lt;ProducerSlot&gt; slotAllocation;</code> <span class="badge">private</span></td>
+    <td><code>raw = nullptr, aligned = nullptr, bytes = 0</code></td>
+    <td>The producer slot array's storage as one value: the unaligned base the allocator handed out, the aligned array the queue
+        uses, and the byte count both were obtained with, so the destructor frees exactly what was allocated. The pair type
+        is <a href="../../Memory/AlignedStorage/index.html"><code>AlignedStorage</code></a>.</td>
+  </tr>
+  <tr>
+    <td><code>ProducerSlot* producerSlots;</code> <span class="badge">private</span></td>
+    <td><code>nullptr (constructor)</code></td>
+    <td>The producer slot array, one entry per permitted producer thread, allocated once and never resized.</td>
+  </tr>
+  <tr>
+    <td><code>size_t producerSlotCount;</code> <span class="badge">private</span></td>
+    <td><code>0 (constructor)</code></td>
+    <td>How many producer slots exist &mdash; the length of every scan and the ceiling on distinct producer threads.</td>
+  </tr>
+  <tr>
+    <td><code>DeferredList deferredBlocks;</code> <span class="badge">private</span></td>
+    <td><code>empty (constructor)</code></td>
+    <td>Blocks the consumer has left that a producer still declared, so they could not be freed yet. Reserved to
+        <code>maxBlocks</code> at construction, touched only under the management mutex. Its allocator is rebound from
+        <code>allocator</code>, so the list's buffer is engine memory like everything else here.</td>
+  </tr>
+  <tr>
+    <td><code>size_t blockCount;</code> <span class="badge">private</span></td>
+    <td><code>0 (constructor)</code></td>
+    <td>Live blocks, the number the fuse is compared against. Mutex-guarded, never exposed directly.</td>
+  </tr>
+  <tr>
+    <td><code>size_t maxBlocks;</code> <span class="badge">private</span></td>
+    <td><code>the inMaxBlocks argument</code></td>
+    <td>The capacity fuse.</td>
+  </tr>
+  <tr>
+    <td><code>std::atomic&lt;size_t&gt; growCount;</code> <span class="badge">private</span></td>
+    <td><code>0 (constructor)</code></td>
+    <td>Blocks created; read by <a href="getgrowcount.html"><code>GetGrowCount</code></a>.</td>
+  </tr>
+  <tr>
+    <td><code>std::atomic&lt;size_t&gt; retireCount;</code> <span class="badge">private</span></td>
+    <td><code>0 (constructor)</code></td>
+    <td>Blocks recycled; read by <a href="getretirecount.html"><code>GetRetireCount</code></a>.</td>
+  </tr>
+  <tr>
+    <td><code>std::atomic&lt;size_t&gt; blockedCount;</code> <span class="badge">private</span></td>
+    <td><code>0 (constructor)</code></td>
+    <td>Pops that met an unpublished slot; read by <a href="getblockedcount.html"><code>GetBlockedCount</code></a>.</td>
+  </tr>
+</table>
+
+<h2 id="methods">Class methods</h2>
+
+<table class="methods">
+  <tr><th>Name</th><th>Signature</th><th>What a caller depends on</th></tr>
+  <tr>
+    <td><a href="constructors.html"><code>AtomicRingQueueMultiProviderSingleConsumer</code></a></td>
+    <td class="sig">AtomicRingQueueMultiProviderSingleConsumer(const AtomicRingQueueMultiProviderSingleConsumer&amp;) = delete<br>explicit AtomicRingQueueMultiProviderSingleConsumer(size_t inMaxBlocks = 64, size_t inMaxProducers = 64) noexcept</td>
+    <td>Allocates nothing for elements; reserves the hazard array and captures the current allocator. Not copyable.</td>
+  </tr>
+  <tr>
+    <td><a href="destructor.html"><code>~AtomicRingQueueMultiProviderSingleConsumer</code></a></td>
+    <td class="sig">~AtomicRingQueueMultiProviderSingleConsumer()</td>
+    <td>Destroys what is still queued and frees every block, from the consumer thread, after producers have stopped.</td>
+  </tr>
+  <tr>
+    <td><code>operator=</code></td>
+    <td class="sig">AtomicRingQueueMultiProviderSingleConsumer&amp; operator=(const AtomicRingQueueMultiProviderSingleConsumer&amp;) = delete</td>
+    <td>Deleted &mdash; no page; a queue owns memory and thread-affine state, so a copy would be a second owner of one chain.</td>
+  </tr>
+  <tr>
+    <td><a href="push.html"><code>Push</code></a></td>
+    <td class="sig">[[nodiscard]] EPushResult Push(const T&amp; inItem) noexcept</td>
+    <td>Any thread, no lock and no allocation on the hot path; refuses rather than blocking when the fuse is reached.</td>
+  </tr>
+  <tr>
+    <td><a href="pop.html"><code>Pop</code></a></td>
+    <td class="sig">[[nodiscard]] EPopResult Pop(T&amp; outItem) noexcept</td>
+    <td>The one consumer thread; distinguishes empty from blocked and never spins, never skips.</td>
+  </tr>
+  <tr>
+    <td><a href="isempty.html"><code>IsEmpty</code></a></td>
+    <td class="sig">[[nodiscard]] bool IsEmpty() const noexcept</td>
+    <td>The consumer thread; reads claim and cursor together, so a committed-but-unpublished element is not called absence.</td>
+  </tr>
+  <tr>
+    <td><a href="getgrowcount.html"><code>GetGrowCount</code></a></td>
+    <td class="sig">[[nodiscard]] size_t GetGrowCount() const noexcept</td>
+    <td>Blocks ever created, for a diagnostic of how often the chain turned over.</td>
+  </tr>
+  <tr>
+    <td><a href="getretirecount.html"><code>GetRetireCount</code></a></td>
+    <td class="sig">[[nodiscard]] size_t GetRetireCount() const noexcept</td>
+    <td>Blocks recycled; with the grow count it is the live-block count the fuse allows.</td>
+  </tr>
+  <tr>
+    <td><a href="getblockedcount.html"><code>GetBlockedCount</code></a></td>
+    <td class="sig">[[nodiscard]] size_t GetBlockedCount() const noexcept</td>
+    <td>How many pops met an in-flight slot &mdash; the visible cost of the FIFO boundary.</td>
+  </tr>
+  <tr>
+    <td><a href="slotat.html"><code>SlotAt</code></a> <span class="badge">private</span></td>
+    <td class="sig">[[nodiscard]] static T* SlotAt(LinkNode&amp; inBlock, size_t inIndex) noexcept</td>
+    <td>Claim index to payload address, one mask, no division.</td>
+  </tr>
+  <tr>
+    <td><a href="allocateblock.html"><code>AllocateBlock</code></a> <span class="badge">private</span></td>
+    <td class="sig">[[nodiscard]] LinkNode* AllocateBlock() noexcept</td>
+    <td>Allocates and aligns one block and zeroes its tags; links nothing.</td>
+  </tr>
+  <tr>
+    <td><a href="acquireblock.html"><code>AcquireBlock</code></a> <span class="badge">private</span></td>
+    <td class="sig">[[nodiscard]] LinkNode* AcquireBlock(LinkNode* inFullBlock) noexcept</td>
+    <td>The only growth path and the only lock a producer can take; enforces the fuse.</td>
+  </tr>
+  <tr>
+    <td><a href="acquireproducertoken.html"><code>AcquireProducerToken</code></a> <span class="badge">private</span></td>
+    <td class="sig">[[nodiscard]] size_t AcquireProducerToken() noexcept</td>
+    <td>This thread's hazard slot, cached in thread-local storage; refuses a thread it cannot track.</td>
+  </tr>
+  <tr>
+    <td><a href="freeblock.html"><code>FreeBlock</code></a> <span class="badge">private</span></td>
+    <td class="sig">void FreeBlock(LinkNode* inBlock) noexcept</td>
+    <td>Returns one block's raw allocation to the allocator it came from.</td>
+  </tr>
+  <tr>
+    <td><a href="retireblock.html"><code>RetireBlock</code></a> <span class="badge">private</span></td>
+    <td class="sig">void RetireBlock(LinkNode* inBlock, LinkNode* inSuccessor) noexcept</td>
+    <td>Moves <code>tail</code> off a drained block and frees it, or defers it while a producer still declares it.</td>
+  </tr>
+  <tr>
+    <td><a href="isblockshadowed.html"><code>IsBlockShadowed</code></a> <span class="badge">private</span></td>
+    <td class="sig">[[nodiscard]] bool IsBlockShadowed(LinkNode* inBlock) const noexcept</td>
+    <td>The one question recycling turns on: does any producer slot declare this block?</td>
+  </tr>
+  <tr>
+    <td><a href="retrydeferredblocks.html"><code>RetryDeferredBlocks</code></a> <span class="badge">private</span></td>
+    <td class="sig">void RetryDeferredBlocks() noexcept</td>
+    <td>Frees deferred blocks that nobody declares any more, which is what unsticks a queue at its fuse.</td>
+  </tr>
+  <tr>
+    <td><a href="destroyall.html"><code>DestroyAll</code></a> <span class="badge">private</span></td>
+    <td class="sig">void DestroyAll() noexcept</td>
+    <td>Destroys queued elements and frees the chain, oldest first.</td>
+  </tr>
+</table>
+
+<h2 id="non-member">Non-member helper functions</h2>
+
+<table>
+  <tr><th>Name</th><th>Declaration</th><th>What it is for</th></tr>
+  <tr>
+    <td><code>AtomicRingQueueMPSC</code> <span class="badge">alias template</span></td>
+    <td class="sig">template &lt;typename T, size_t BlockSlots = 1024&gt; using AtomicRingQueueMPSC = AtomicRingQueueMultiProviderSingleConsumer&lt;T, BlockSlots&gt;</td>
+    <td>The short name. The class spells out the ownership rule the type enforces; call sites that have already said it once per
+        file can use the alias without losing the meaning. It adds no behaviour and owns nothing.</td>
+  </tr>
+</table>
+
+<h2 id="coverage">Coverage</h2>
+
+<p>This page documents every entry the header declares, with one omission recorded rather than glossed: the three aliases (<code>StorageAllocator</code>, <code>DeferredAllocator</code> and <code>DeferredList</code>) have no
+  pages of their own - they name no runtime behaviour, and what they guarantee is stated in the <code>TAllocator</code> row of
+  the template-parameter table above. What follows are the claims the reference could not
+establish by testing, recorded rather than glossed.</p>
+
+<table>
+  <tr><th>Not established</th><th>Why, and what was done instead</th></tr>
+  <tr>
+    <td>That the block declaration is necessary, as opposed to merely argued for.</td>
+    <td>No testlet can schedule the interleaving it guards — the window is two instructions wide and holds no user code — and
+        deleting the declaration changed nothing: every testlet still passed, so the guard has no control demonstrating its
+        necessity in this form. ThreadSanitizer did catch the earlier version of this protocol, which is why the protocol is as it
+        is, and that history together with the ordering argument is recorded in the design document. Read that argument sceptically:
+        it is the whole case.</td>
+  </tr>
+  <tr>
+    <td>That a producer slot is ever given back.</td>
+    <td>It is not. A thread that pushes and then exits keeps its slot for the life of the queue, so the bound is on the number of
+        threads that ever push, not on the number pushing at once. Nothing in the engine cycles unbounded thread identities
+        through one queue; a caller that does must size <code>inMaxProducers</code> for it.</td>
+  </tr>
+  <tr>
+    <td>A measured throughput or a false-sharing figure.</td>
+    <td>Adjacent slots share tag cache lines, which is a deliberate trade for memory density. The trade has now been measured: adding one publication gate per slot to a bare claim-and-write ring is the largest single term in the cost of a push (4.3 ns to 24.1 ns per element at one producer), while moving the block's claim word off the first tag line and line-aligning the tag array changed end-to-end throughput by less than the run-to-run noise. The numbers and the method are in the design document. The design document records it as an open measurement rather than a number.</td>
+  </tr>
+  <tr>
+    <td>A call site.</td>
+    <td>Nothing in the engine uses this container yet, so every example on these pages is labelled illustrative.</td>
+  </tr>
+</table>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; AtomicRingQueueMultiProviderSingleConsumer</a></span>
+  <span><a href="index.html#methods">All AtomicRingQueueMultiProviderSingleConsumer methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>
