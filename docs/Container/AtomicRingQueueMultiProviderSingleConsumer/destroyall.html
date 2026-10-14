@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AtomicRingQueueMultiProviderSingleConsumer::DestroyAll — Container module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a class="current" href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Container</a> /
+  <a href="index.html">AtomicRingQueueMultiProviderSingleConsumer</a> / DestroyAll
+</p>
+
+<h1><span class="fn">DestroyAll</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::AtomicRingQueueMultiProviderSingleConsumer</span>
+  <span class="tag">Engine/Container/AtomicRingQueueMultiProviderSingleConsumer.h</span>
+  destroy every queued element and free the whole chain, oldest first
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>void DestroyAll() noexcept</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  Tears the whole chain down: every element that is still queued is destroyed, oldest first, from the consumer's cursor forward,
+  and every block is freed.
+</p>
+
+<p>
+  It starts at <code>head</code> when the consumer has ever popped, because everything before it has already been recycled; when
+  the consumer never ran it starts at <code>chainRoot</code> and destroys what the producers left. Elements the consumer already
+  handed out are not destroyed twice, because popping destroys the queue's copy.
+</p>
+
+<p>
+  Blocks that were retired but deferred because a producer still declared them are freed here as well: they are no longer
+  reachable from <code>head</code>, so the chain walk would miss them.
+</p>
+
+<p>
+  It takes no lock. That is sound only under the destructor's contract &mdash; the consumer thread, with producers quiesced &mdash;
+  and it is why that contract is stated on the <a href="destructor.html">destructor page</a> rather than left to a comment.
+</p>
+
+<h2 id="parameters">Parameters</h2>
+
+<table>
+  <tr><th>Name</th><th>What the caller must supply</th></tr>
+  <tr><td><em>none</em></td><td>This method takes no argument.</td></tr>
+</table>
+
+<h2 id="return">Return value</h2>
+
+<p>Nothing. On return the queue looks brand new (<code>chainRoot</code>, <code>tail</code>, <code>head</code> and the cursor all
+reset) but must not be used again.</p>
+
+<h2 id="example">Examples</h2>
+
+<p class="note">Illustrative &mdash; no call site for this exists in the repository.</p>
+
+<pre><code><span class="kw">while</span> (block != <span class="kw">nullptr</span>)
+{
+        <span class="ty">LinkNode</span>* next = block-&gt;next.<span class="fn">load</span>(std::memory_order_relaxed);
+        <span class="fn">FreeBlock</span>(block);
+        block = next;
+}</code></pre>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; AtomicRingQueueMultiProviderSingleConsumer</a></span>
+  <span><a href="index.html#methods">All AtomicRingQueueMultiProviderSingleConsumer methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

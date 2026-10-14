@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AtomicRingQueueMultiProviderSingleConsumer::FreeBlock — Container module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a class="current" href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Container</a> /
+  <a href="index.html">AtomicRingQueueMultiProviderSingleConsumer</a> / FreeBlock
+</p>
+
+<h1><span class="fn">FreeBlock</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::AtomicRingQueueMultiProviderSingleConsumer</span>
+  <span class="tag">Engine/Container/AtomicRingQueueMultiProviderSingleConsumer.h</span>
+  give one block's storage back to the allocator it came from
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>void FreeBlock(LinkNode* inBlock) noexcept</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  Hands one block's storage back through the queue's allocator by calling <code>Free</code> on the
+  <a href="../../Memory/AlignedStorage/index.html"><code>AlignedStorage&lt;LinkNode&gt;</code></a> the block carries, which holds the unaligned pointer and the byte count exactly as
+  <a href="allocateblock.html"><code>AllocateBlock</code></a> obtained them. It does not destroy the elements inside: whoever calls this owes that there are none left, or has
+  already destroyed them.
+</p>
+
+<p>
+  It is called from three places with three different guarantees &mdash; <a href="retireblock.html"><code>RetireBlock</code></a>
+  after the slot scan has cleared, <a href="retrydeferredblocks.html"><code>RetryDeferredBlocks</code></a> for a deferred block
+  that is no longer declared by anyone, and <a href="destroyall.html"><code>DestroyAll</code></a> during teardown where no
+  producer remains &mdash; and from all three with the management mutex held or the queue single-threaded.
+</p>
+
+<h2 id="parameters">Parameters</h2>
+
+<table>
+  <tr><th>Name</th><th>What the caller must supply</th></tr>
+  <tr>
+    <td><code>LinkNode* inBlock</code></td>
+    <td>A block this queue allocated, not yet freed, holding no live element.</td>
+  </tr>
+</table>
+
+<h2 id="return">Return value</h2>
+
+<p>Nothing.</p>
+
+<h2 id="example">Examples</h2>
+
+<p class="note">Illustrative &mdash; no call site for this exists in the repository.</p>
+
+<pre><code><span class="ty">StorageAllocator</span> storageAllocator{allocator};
+inBlock-&gt;allocation.<span class="fn">Free</span>(storageAllocator);</code></pre>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; AtomicRingQueueMultiProviderSingleConsumer</a></span>
+  <span><a href="index.html#methods">All AtomicRingQueueMultiProviderSingleConsumer methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

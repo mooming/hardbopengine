@@ -51,11 +51,13 @@
     <li><a href="#ringqueue">RingQueue</a></li>
     <li><a href="#boundedpriorityqueue">BoundedPriorityQueue</a></li>
     <li><a href="#atomicstackview">AtomicStackView</a></li>
+    <li><a href="#atomicringqueuemultiprovidersingleconsumer">AtomicRingQueueMultiProviderSingleConsumer</a></li>
   </ul>
 
   <h3>Design documents</h3>
   <ul>
     <li><a href="../AllocatorGuide.md">Allocator guide</a></li>
+    <li><a href="../design/MultiProviderSingleConsumerQueue_Design.html">Multi-provider single-consumer queue design</a></li>
   </ul>
 </nav>
 
@@ -74,8 +76,8 @@
 
 <p>
   The engine's data structures, written once and instantiated everywhere: contiguous storage where a resize is an
-  explicit call, rings where both ends are hot, open addressing where keys are hashed, and one atomic chain where threads
-  need a pool. Seven of the ten take an allocator as a template parameter and default to
+  explicit call, rings where both ends are hot, open addressing where keys are hashed, and atomic chains where threads need
+  a pool or a hand-off. Seven of the eleven take an allocator as a template parameter and default to
   <a href="../Memory/index.html#allocators"><code>DefaultAllocator</code></a>, so memory accounting follows the container
   rather than the call site and a container placed in a frame-scoped arena frees with the arena. For the standard
   containers rebound the same way, see <a href="../HSTL/index.html">HSTL</a>; the rule of thumb is that engine internals
@@ -90,7 +92,11 @@
   instance, allocating and freeing through two separate default-constructed objects;
   <a href="Queue/index.html"><code>Queue</code></a> takes the container it adapts rather than an allocator; and
   <a href="AtomicStackView/index.html"><code>AtomicStackView</code></a> has none at all, because it stores nothing but a
-  pointer.
+  pointer; and
+  <a href="AtomicRingQueueMultiProviderSingleConsumer/index.html"><code>AtomicRingQueueMultiProviderSingleConsumer</code></a>
+  takes no allocator argument but is the most allocation-hungry container in the module — it captures whichever allocator is
+  scoped on the thread that constructs it and charges every block to that id, so a queue belongs to the subsystem that built
+  it in the allocator ledger.
 </p>
 
 <h2 id="usage">Who uses what</h2>
@@ -147,6 +153,7 @@
   <tr id="ringqueue"><td><a href="RingQueue/index.html">RingQueue</a></td><td>Class template</td><td>RingQueue.h</td><td>Fixed-capacity ring, refuses rather than overwrites when full</td><td>1</td></tr>
   <tr id="boundedpriorityqueue"><td><a href="BoundedPriorityQueue/index.html">BoundedPriorityQueue</a></td><td>Class template</td><td>BoundedPriorityQueue.h</td><td>One deque per priority, highest number drained first</td><td>3</td></tr>
   <tr id="atomicstackview"><td><a href="AtomicStackView/index.html">AtomicStackView</a></td><td>Concept-constrained class template</td><td>AtomicStackView.h</td><td>Lock-free intrusive stack on compare-and-swap</td><td>2</td></tr>
+  <tr id="atomicringqueuemultiprovidersingleconsumer"><td><a href="AtomicRingQueueMultiProviderSingleConsumer/index.html">AtomicRingQueueMultiProviderSingleConsumer</a></td><td>Class template</td><td>AtomicRingQueueMultiProviderSingleConsumer.h</td><td>Lock-free queue of block rings: many threads push values, one thread pops them, the container owns both</td><td>17</td></tr>
 </table>
 
 <h2 id="conventions">Shared conventions</h2>
@@ -421,6 +428,58 @@
 
 <p>Method pages: <a href="AtomicStackView/push.html">Push</a>, <a href="AtomicStackView/pop.html">Pop</a>.</p>
 
+<h2 id="atomicringqueuemultiprovidersingleconsumer">AtomicRingQueueMultiProviderSingleConsumer (<code>Engine/Container/AtomicRingQueueMultiProviderSingleConsumer.h</code>)</h2>
+
+<p>
+  Lock-free FIFO for a different scale than the intrusive one it replaced: many threads enqueue <em>values</em>, exactly one
+  thread dequeues them, and the count in flight is in the millions. The queue is a chain of fixed-size blocks, and each block is
+  a ring — one atomic counter hands out slots, each slot has its own publication tag, and the payload lives inside the block
+  rather than in a node the caller owns. A push is therefore one compare-and-swap with no lock and no allocation, and the memory
+  cost is one request per block instead of one per element.
+</p>
+
+<p>
+  Three properties distinguish it from the rest of the module. The consumer's answer has three cases rather than two:
+  <a href="AtomicRingQueueMultiProviderSingleConsumer/pop.html"><code>Pop</code></a> reports
+  <code>EPopResult::Blocked</code> when the oldest slot has been claimed by a producer that has not finished writing it, because
+  calling that state empty loses an element that is already committed and stepping over it breaks FIFO.
+  <a href="AtomicRingQueueMultiProviderSingleConsumer/isempty.html"><code>IsEmpty</code></a> reads two words for the same reason.
+  And growth is capped by a fuse set at construction, so a queue nobody is draining reports
+  <code>EPushResult::Full</code> instead of growing without bound — which is also why block recycling and
+  <a href="AtomicRingQueueMultiProviderSingleConsumer/retireblock.html">the hazard slots</a> exist at all.
+</p>
+
+<p>
+  Like <a href="AtomicStackView/index.html"><code>AtomicStackView</code></a> it is strict about its one consumer:
+  <a href="AtomicRingQueueMultiProviderSingleConsumer/pop.html"><code>Pop</code></a> and
+  <a href="AtomicRingQueueMultiProviderSingleConsumer/isempty.html"><code>IsEmpty</code></a> belong to a single thread, and
+  <a href="AtomicRingQueueMultiProviderSingleConsumer/destructor.html">the destructor</a> expects that thread, with the producers
+  stopped. Algorithm, invariants, memory ordering, the recycling protocol and the control experiments: <a
+  href="../design/MultiProviderSingleConsumerQueue_Design.html">multi-provider single-consumer queue design</a>. Class page: <a
+  href="AtomicRingQueueMultiProviderSingleConsumer/index.html"><code>AtomicRingQueueMultiProviderSingleConsumer</code></a>,
+  reachable under the shorter alias <code>AtomicRingQueueMPSC</code>.
+</p>
+
+<p>
+  Method pages: <a href="AtomicRingQueueMultiProviderSingleConsumer/constructors.html">Constructors</a>,
+  <a href="AtomicRingQueueMultiProviderSingleConsumer/destructor.html">Destructor</a>,
+  <a href="AtomicRingQueueMultiProviderSingleConsumer/push.html">Push</a>,
+  <a href="AtomicRingQueueMultiProviderSingleConsumer/pop.html">Pop</a>,
+  <a href="AtomicRingQueueMultiProviderSingleConsumer/isempty.html">IsEmpty</a>,
+  <a href="AtomicRingQueueMultiProviderSingleConsumer/getgrowcount.html">GetGrowCount</a>,
+  <a href="AtomicRingQueueMultiProviderSingleConsumer/getretirecount.html">GetRetireCount</a>,
+  <a href="AtomicRingQueueMultiProviderSingleConsumer/getblockedcount.html">GetBlockedCount</a>,
+  <a href="AtomicRingQueueMultiProviderSingleConsumer/slotat.html">SlotAt</a>,
+  <a href="AtomicRingQueueMultiProviderSingleConsumer/allocateblock.html">AllocateBlock</a>,
+  <a href="AtomicRingQueueMultiProviderSingleConsumer/acquireblock.html">AcquireBlock</a>,
+  <a href="AtomicRingQueueMultiProviderSingleConsumer/acquireproducertoken.html">AcquireProducerToken</a>,
+  <a href="AtomicRingQueueMultiProviderSingleConsumer/freeblock.html">FreeBlock</a>,
+  <a href="AtomicRingQueueMultiProviderSingleConsumer/retireblock.html">RetireBlock</a>,
+  <a href="AtomicRingQueueMultiProviderSingleConsumer/isblockshadowed.html">IsBlockShadowed</a>,
+  <a href="AtomicRingQueueMultiProviderSingleConsumer/retrydeferredblocks.html">RetryDeferredBlocks</a>,
+  <a href="AtomicRingQueueMultiProviderSingleConsumer/destroyall.html">DestroyAll</a>.
+</p>
+
 <h2 id="coverage">Coverage</h2>
 
 <table>
@@ -434,9 +493,16 @@
       <a href="BoundedPriorityQueue/push.html"><code>Push</code></a></td>
   </tr>
   <tr>
-    <td>Six of ten containers have no production call site</td>
-    <td>Vector, HashMap, Map, LinkedList, Queue and RingQueue are instantiated only by unit-test fixtures. Their examples are
+    <td>Seven of eleven containers have no production call site</td>
+    <td>Vector, HashMap, Map, LinkedList, Queue, RingQueue and AtomicRingQueueMultiProviderSingleConsumer are instantiated
+      only by unit-test fixtures. Their examples are
       labelled illustrative; nothing on this site claims otherwise</td>
+  </tr>
+  <tr>
+    <td>One concurrency guarantee on
+      <a href="AtomicRingQueueMultiProviderSingleConsumer/index.html">the ring queue</a> is not testlet-proved</td>
+    <td>Deleting a producer's hazard-slot store changes no test outcome, because the window it protects is two instructions wide
+      and contains no user code. The class page's Coverage section records how that necessity was examined instead</td>
   </tr>
   <tr>
     <td>Internal helpers of the growth and rehash paths</td>

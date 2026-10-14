@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AlignedStorage — Memory — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a class="current" href="../index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This class</h3>
+  <ul>
+    <li><a href="#description">Class description</a></li>
+    <li><a href="#template">Template parameters</a></li>
+    <li><a href="#properties">Class properties</a></li>
+    <li><a href="#methods">Class methods</a></li>
+    <li><a href="#non-member">Non-member functions</a></li>
+    <li><a href="#coverage">Coverage</a></li>
+  </ul>
+
+  <h3><a href="index.html">AlignedStorage</a> methods</h3>
+  <ul class="methods">
+    <li><a href="allocate.html">Allocate</a></li>
+    <li><a href="free.html">Free</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Memory</a> / AlignedStorage
+</p>
+
+<h1>AlignedStorage</h1>
+<p class="subtitle">
+  <span class="tag">Engine/Memory/AlignedStorage.h</span>
+  <span class="tag">namespace hbe</span>
+  <span class="tag">template &lt;typename TObject&gt;</span>
+  <span class="tag">final</span>
+  one over-allocated buffer and the three facts a correct <code>deallocate</code> call needs about it — the
+  unaligned base, the aligned address, and the byte count
+</p>
+
+<h2 id="description">Class description</h2>
+
+<p>
+  An allocator hands back a pointer aligned for the bytes it manages, which is not necessarily aligned for the
+  object you intend to build there. The standard fix is the one this class implements: ask for more bytes than the
+  objects need, round the returned address up to the alignment the type wants, and build there. Doing it inline
+  costs the caller three pieces of bookkeeping — where the buffer really starts, where the objects live, and how
+  many bytes were requested — and all three must survive to the release call. Kept as separate fields at each use
+  site, they are three ways for a <code>deallocate</code> to disagree with its own allocation.
+</p>
+
+<p>
+  <code>AlignedStorage&lt;TObject&gt;</code> keeps them together as one value.
+  <a href="allocate.html"><code>Allocate</code></a> owns the padded request, the rounding and the failure check;
+  <a href="free.html"><code>Free</code></a> owns the release, and can only be given the pointer and the size that
+  <code>Allocate</code> recorded. Neither constructs nor destroys a <code>TObject</code>: the buffer is raw, and
+  placement-new plus an explicit destructor call belong to whoever asked for the space. That is deliberate — the
+  reason to over-allocate in this engine is to build something inside a larger structure, as
+  <a href="../../Container/AtomicRingQueueMultiProviderSingleConsumer/index.html"><code>AtomicRingQueueMultiProviderSingleConsumer</code></a>
+  does for its blocks and its producer slot array.
+</p>
+
+<p>
+  The rounding is the usual bit trick, and the padding is exactly <code>alignof(TObject)</code> bytes:
+</p>
+
+<pre><code>bytes   = sizeof(TObject) * count + alignof(TObject)
+aligned = (raw + alignof(TObject) - 1) &amp; ~(alignof(TObject) - 1)</code></pre>
+
+<p>
+  <code>alignof</code> is guaranteed a power of two by the language, so the mask is a genuine round-up. The worst
+  case advances the address by <code>alignof(TObject) - 1</code> bytes, one less than the slack that was requested,
+  so an aligned address for <code>count</code> objects always fits inside the buffer. The cost is one word of
+  padding per allocation, one mask, and one extra field — <code>bytes</code> — that a hand-written version would
+  have to recompute at the free site anyway.
+</p>
+
+<div class="note">
+  <strong>It aligns to the type's own requirement, not to a fixed size.</strong> A caller that wants a block on its
+  own cache line does not pass 64 to this class; it declares <code>alignas(64)</code> on the type, and
+  <code>alignof</code> then reports 64. That is how the queue gets cache-line-separated blocks — its
+  <code>LinkNode</code> is declared <code>alignas(AlignSize)</code> — and it is why this class never needs an
+  alignment argument: alignment is a property of the type, and the type is already a template parameter.
+</div>
+
+<h2 id="template">Template parameters</h2>
+
+<table>
+  <tr><th>Parameter</th><th>Kind</th><th>What it must satisfy</th></tr>
+  <tr>
+    <td><code>TObject</code></td>
+    <td><code>typename</code></td>
+    <td>
+      The type the buffer is meant to hold. Nothing is required of it — no constructor, destructor, move or default
+      construction is ever performed here, since nothing is constructed here. It must be a complete type at the call,
+      because <code>sizeof</code> and <code>alignof</code> are both evaluated
+    </td>
+  </tr>
+</table>
+
+<p>
+  The allocator is <em>not</em> a template parameter of the class, only of the two methods that need it. A storage
+  value records three numbers and holds no allocator, so a handle does not claim a dependency on a type it never
+  stores; the allocator is deduced at each call site, and its own byte-pointer type is deduced from what its
+  <code>allocate</code> returns.
+</p>
+
+<h2 id="properties">Class properties</h2>
+
+<table>
+  <tr><th>Type + Name</th><th>Default Value</th><th>Description</th></tr>
+  <tr>
+    <td><code>std::byte* raw;</code></td>
+    <td><code>nullptr</code></td>
+    <td>
+      The pointer the allocator returned, before rounding. This is what <a href="free.html"><code>Free</code></a>
+      hands back, and it is the field a hand-written version is most likely to lose — a caller who kept only the
+      aligned pointer cannot free the buffer at all. It is also the success flag: <code>Allocate</code> leaves it
+      null when the allocator returned nothing
+    </td>
+  </tr>
+  <tr>
+    <td><code>TObject* aligned;</code></td>
+    <td><code>nullptr</code></td>
+    <td>
+      <code>raw</code> rounded up to <code>alignof(TObject)</code> — the address to placement-new into, and the one
+      every element access goes through. Never null when <code>raw</code> is not: the padding is sized so the
+      rounding always fits
+    </td>
+  </tr>
+  <tr>
+    <td><code>size_t bytes;</code></td>
+    <td><code>0</code></td>
+    <td>
+      The padded byte count the allocator was asked for, <code>sizeof(TObject) * count + alignof(TObject)</code>.
+      Recorded, not recomputed, so the release cannot pass a count that differs from the request. Set even when the
+      allocation failed, which is why <code>raw</code> and not <code>bytes</code> is the field to test
+    </td>
+  </tr>
+</table>
+
+<h2 id="methods">Class methods</h2>
+
+<p>
+  A name set as a link has its own page. The default constructor is implicit and documented here and nowhere else,
+  and <a href="#coverage">Coverage</a> says so.
+</p>
+
+<table>
+  <tr><th>Method</th><th>Signature</th><th>What a caller depends on</th></tr>
+  <tr>
+    <td><code>default constructor</code></td>
+    <td class="sig">AlignedStorage() = default</td>
+    <td>
+      Yields <code>{ nullptr, nullptr, 0 }</code>, which is a handle that owns nothing. It is the right initial
+      value for a member that is filled in later, and <a href="free.html"><code>Free</code></a> on it is a no-op —
+      that guard is what makes the destructor of a partially-constructed owner safe
+    </td>
+  </tr>
+  <tr>
+    <td><a href="allocate.html">Allocate</a><span class="badge">static, [[nodiscard]]</span></td>
+    <td class="sig">template &lt;typename TAllocator&gt;<br>[[nodiscard]] static AlignedStorage Allocate(TAllocator&amp; inAllocator, const size_t inCount) noexcept</td>
+    <td>
+      Requests <code>sizeof(TObject) * inCount + alignof(TObject)</code> bytes, rounds the result, and returns the
+      whole triple. <code>[[nodiscard]]</code> because a dropped handle is an unfreeable buffer. Failure is a value,
+      not an exception: <code>raw</code> comes back null
+    </td>
+  </tr>
+  <tr>
+    <td><a href="free.html">Free</a></td>
+    <td class="sig">template &lt;typename TAllocator&gt;<br>void Free(TAllocator&amp; inAllocator) const noexcept</td>
+    <td>
+      Returns the buffer through the allocator, with the recorded base pointer and byte count. Does nothing on a
+      handle whose <code>raw</code> is null. Is <code>const</code>, so it does not clear the handle afterwards — see
+      the double-free note on its page
+    </td>
+  </tr>
+</table>
+
+<h2 id="non-member">Non-member functions</h2>
+
+<p>
+  None. <code>AlignedStorage.h</code> declares the one struct and nothing at namespace scope; there are no operators,
+  no swap, and no factory free function — <a href="allocate.html"><code>Allocate</code></a> is a static member
+  because the allocator it uses is an argument, not a default.
+</p>
+
+<h2 id="coverage">Coverage</h2>
+
+<table>
+  <tr><th>Gap</th><th>Detail</th></tr>
+  <tr>
+    <td>Overflow of the padded size</td>
+    <td><code>sizeof(TObject) * inCount + alignof(TObject)</code> is computed in <code>size_t</code> and is not
+      checked. A <code>count</code> large enough to wrap it produces a small allocation and an <code>aligned</code>
+      pointer inside it, so <code>count</code> is a precondition rather than a validated input — the same assumption
+      every other caller of <code>allocate</code> in this module makes</td>
+  </tr>
+  <tr>
+    <td>What the allocator guarantees</td>
+    <td>Which pool the bytes come from, whether they are already aligned for some types, and what
+      <code>deallocate</code> requires beyond pointer-plus-count: all in
+      <a href="../index.html#allocators">Memory: allocator catalogue</a>. This class assumes nothing beyond those
+      two operations existing</td>
+  </tr>
+  <tr>
+    <td>Nothing measures this class</td>
+    <td>No unit testlet exercises <code>AlignedStorage</code> directly; it is covered by whichever container uses
+      it. Today that is <a href="../../Container/AtomicRingQueueMultiProviderSingleConsumer/allocateblock.html"><code>AllocateBlock</code></a>
+      and the queue's constructor, whose testlets would fail loudly on a wrong rounding or a wrong release</td>
+  </tr>
+</table>
+
+<footer class="prevnext">
+  <span><a href="../index.html">&larr; Memory</a></span>
+  <span><a href="allocate.html">Allocate &rarr;</a></span>
+</footer>
+
+</main>
+</body>
+</html>

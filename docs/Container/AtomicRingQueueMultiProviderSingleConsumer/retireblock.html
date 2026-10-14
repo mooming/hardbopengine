@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AtomicRingQueueMultiProviderSingleConsumer::RetireBlock — Container module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a class="current" href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Container</a> /
+  <a href="index.html">AtomicRingQueueMultiProviderSingleConsumer</a> / RetireBlock
+</p>
+
+<h1><span class="fn">RetireBlock</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::AtomicRingQueueMultiProviderSingleConsumer</span>
+  <span class="tag">Engine/Container/AtomicRingQueueMultiProviderSingleConsumer.h</span>
+  recycle a drained block unless a producer is still standing inside it
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>void RetireBlock(LinkNode* inBlock, LinkNode* inSuccessor) noexcept</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  Recycles the block the consumer has just finished with: fully claimed, fully drained, and no longer the head, so no element can
+  still be waiting inside it.
+</p>
+
+<p>
+  It does two things in one critical section, and their order is the whole correctness argument. First it compares-and-swaps
+  <code>tail</code> from this block to its successor, so from that instant no producer can <em>acquire</em> the block afresh —
+  <code>tail</code> only ever moves forward. Then it scans the producer slots for a thread still declaring this block, and frees
+  it or defers it accordingly. Reversing those two steps is not a detail: retiring a block that <code>tail</code> still names
+  leaves producers reaching into freed memory, which is exactly the defect this order was introduced to close.
+</p>
+
+<p>
+  A deferred block goes on <code>deferredBlocks</code> and is retried by
+  <a href="retrydeferredblocks.html"><code>RetryDeferredBlocks</code></a> on the next advance and on every attempt to grow. The
+  scan is at most <code>inMaxProducers</code> words, on a path taken once per block.
+</p>
+
+<h2 id="parameters">Parameters</h2>
+
+<table>
+  <tr><th>Name</th><th>What the caller must supply</th></tr>
+  <tr>
+    <td><code>LinkNode* inBlock</code></td>
+    <td>The block the consumer just left. Called by the consumer only, with the cursor already moved off it.</td>
+  </tr>
+  <tr>
+    <td><code>LinkNode* inSuccessor</code></td>
+    <td>The block <code>inBlock</code> links to, which becomes the new tail if <code>tail</code> still names the block being retired. It must not be null: a block with no successor is never retired.</td>
+  </tr>
+</table>
+
+<h2 id="return">Return value</h2>
+
+<p>Nothing. Whether the block was freed is visible as <a href="getretirecount.html"><code>GetRetireCount</code></a> and as
+the live-block count the fuse enforces.</p>
+
+<h2 id="example">Examples</h2>
+
+<p class="note">Illustrative &mdash; no call site for this exists in the repository.</p>
+
+<pre><code><span class="kw">for</span> (<span class="ty">size_t</span> index = <span class="nu">0</span>; index &lt; hazardCount; ++index)
+{
+        <span class="kw">if</span> (hazards[index].block.<span class="fn">load</span>(std::memory_order_acquire) == inBlock)
+        {
+                <span class="kw">return</span>;
+        }
+}
+
+<span class="fn">FreeBlock</span>(inBlock);</code></pre>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; AtomicRingQueueMultiProviderSingleConsumer</a></span>
+  <span><a href="index.html#methods">All AtomicRingQueueMultiProviderSingleConsumer methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

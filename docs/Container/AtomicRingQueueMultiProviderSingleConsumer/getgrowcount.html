@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AtomicRingQueueMultiProviderSingleConsumer::GetGrowCount — Container module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a class="current" href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Container</a> /
+  <a href="index.html">AtomicRingQueueMultiProviderSingleConsumer</a> / GetGrowCount
+</p>
+
+<h1><span class="fn">GetGrowCount</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::AtomicRingQueueMultiProviderSingleConsumer</span>
+  <span class="tag">Engine/Container/AtomicRingQueueMultiProviderSingleConsumer.h</span>
+  report how many blocks the queue has created
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>[[nodiscard]] size_t GetGrowCount() const noexcept</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  A diagnostic counter over blocks this queue has created. Counters are relaxed atomics, so reading one never synchronises with anything and a reader can see
+  a value that is briefly stale. Written by any producer under the management mutex; the counter is atomic, so it may be read from any thread.
+</p>
+
+<p>
+  These three exist because the interesting failure modes of a blocked ring queue are invisible from the outside: a queue that
+  recycles nothing, or one that spends its life <em>blocked</em>, behaves correctly and merely costs.
+</p>
+
+<h2 id="parameters">Parameters</h2>
+
+<table>
+  <tr><th>Name</th><th>What the caller must supply</th></tr>
+  <tr><td><em>none</em></td><td>This method takes no argument.</td></tr>
+</table>
+
+<h2 id="return">Return value</h2>
+
+<p>The counter as of this call. It never decreases, except that the live-block count derived from the first two
+falls as blocks are recycled.</p>
+
+<h2 id="example">Examples</h2>
+
+<p class="note">Illustrative &mdash; no call site for this exists in the repository.</p>
+
+<pre><code><span class="kw">if</span> (queue.<span class="fn">GetGrowCount()</span>() - queue.<span class="fn">GetRetireCount</span>() &gt; maxBlocks)
+{
+        <span class="fn">log</span>(<span class="st">"ring queue passed its fuse"</span>);
+}</code></pre>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; AtomicRingQueueMultiProviderSingleConsumer</a></span>
+  <span><a href="index.html#methods">All AtomicRingQueueMultiProviderSingleConsumer methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AtomicRingQueueMultiProviderSingleConsumer::AcquireProducerToken — Container module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a class="current" href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Container</a> /
+  <a href="index.html">AtomicRingQueueMultiProviderSingleConsumer</a> / AcquireProducerToken
+</p>
+
+<h1><span class="fn">AcquireProducerToken</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::AtomicRingQueueMultiProviderSingleConsumer</span>
+  <span class="tag">Engine/Container/AtomicRingQueueMultiProviderSingleConsumer.h</span>
+  give a producer thread its hazard slot, cached in thread-local storage
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>[[nodiscard]] size_t AcquireProducerToken() noexcept</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  Gives the calling thread its producer slot: the index of the entry in <code>producerSlots</code> that this thread alone writes.
+  The
+  index is cached in a <code>static thread_local</code>, so the search costs one relaxed load on every push after the first and
+  the mutex is touched once per thread per queue. Each slot sits on its own cache line, so declaring a block never contends with
+  another producer's declaration. Caching a per-thread identity is the engine's own idiom for the same problem, used by
+  <code>MemoryManager</code> (<code>Engine/Memory/MemoryManager.h</code>) for its scoped allocator.
+</p>
+
+<p>
+  The slot declares which block the thread is working on. <a href="push.html"><code>Push</code></a> writes the address there,
+  re-reads <code>tail</code> to confirm nobody moved it, and only then dereferences the block; it clears the slot after its tag is
+  published. <a href="retireblock.html"><code>RetireBlock</code></a> will not free a block that any slot declares, and it will not
+  retire one until <code>tail</code> has been moved off it, which together is what makes the reclamation sound: declaring after
+  reading is only safe because the read is then repeated and the block's retirement is gated on the same pointer.
+</p>
+
+<p>
+  A slot is never released. A thread that finishes while holding one keeps it, so the number of distinct threads that ever push
+  must not exceed <code>inMaxProducers</code> over the life of the queue, not merely at one instant. That is a real limit and it
+  is stated here rather than hidden: on the engine it is comfortably satisfied, because producer threads are pool threads bounded
+  by <code>TaskSystem</code>'s hardware thread count.
+</p>
+
+<h2 id="parameters">Parameters</h2>
+
+<table>
+  <tr><th>Name</th><th>What the caller must supply</th></tr>
+  <tr><td><em>none</em></td><td>This method takes no argument.</td></tr>
+</table>
+
+<h2 id="return">Return value</h2>
+
+<p>The thread's producer slot index, or <code>InvalidProducerToken</code> when every slot is claimed. Reaching that value
+asserts once and then repeats, because it is a construction-size error rather than a runtime condition; the caller turns it into
+<code>EPushResult::TooManyProducers</code> rather than letting the thread run untracked.</p>
+
+<h2 id="example">Examples</h2>
+
+<p class="note">Illustrative &mdash; no call site for this exists in the repository.</p>
+
+<pre><code><span class="kw">const</span> <span class="ty">size_t</span> token = <span class="fn">AcquireProducerToken</span>();
+<span class="kw">if</span> (unlikely(token == InvalidProducerToken))
+{
+        <span class="kw">return</span> EPushResult::TooManyProducers;
+}
+
+hazards[token].block.<span class="fn">store</span>(block, std::memory_order_relaxed);</code></pre>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; AtomicRingQueueMultiProviderSingleConsumer</a></span>
+  <span><a href="index.html#methods">All AtomicRingQueueMultiProviderSingleConsumer methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

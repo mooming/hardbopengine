@@ -1,0 +1,603 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Multi-provider single-consumer queue design — Container module — HardBop Engine design document</title>
+<link rel="stylesheet" href="../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../Config/index.html">Config</a></li>
+    <li><a class="current" href="../Container/index.html">Container</a></li>
+    <li><a href="../Core/index.html">Core</a></li>
+    <li><a href="../Engine/index.html">Engine</a></li>
+    <li><a href="../HSTL/index.html">HSTL</a></li>
+    <li><a href="../Log/index.html">Log</a></li>
+    <li><a href="../Math/index.html">Math</a></li>
+    <li><a href="../Memory/index.html">Memory</a></li>
+    <li><a href="../OSAL/index.html">OSAL</a></li>
+    <li><a href="../Renderer/index.html">Renderer</a></li>
+    <li><a href="../Resource/index.html">Resource</a></li>
+    <li><a href="../String/index.html">String</a></li>
+    <li><a href="../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This document</h3>
+  <ul>
+    <li><a href="#why">Why this shape</a></li>
+    <li><a href="#structure">Structure</a></li>
+    <li><a href="#affinity">Who may touch what</a></li>
+    <li><a href="#invariants">Invariants</a></li>
+    <li><a href="#reclamation">Recycling a block without stealing it</a></li>
+    <li><a href="#boundary">The three answers, and why two are not enough</a></li>
+    <li><a href="#ordering">Memory order, one row per operation</a></li>
+    <li><a href="#cost">Cost model</a></li>
+    <li><a href="#evidence">What is proved, and how</a></li>
+    <li><a href="#open">Open items</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+  <div class="breadcrumb"><a href="../index.html">Docs</a> / <a href="../Container/index.html">Container</a> / Multi-provider single-consumer queue design</div>
+
+<h1>Multi-provider single-consumer queue design</h1>
+<div class="subtitle">How <em>Engine/Container/AtomicRingQueueMultiProviderSingleConsumer.h</em> gets a lock-free hot path,
+bounded memory and safe block recycling out of a chain of fixed-size rings</div>
+
+<div class="note">
+  <strong>Scope.</strong> This document owns the structure, the invariants, the memory ordering, the recycling protocol and the
+  evidence behind them. What a caller may depend on — who may call what, the meaning of each return value, what destruction does
+  — lives on the reference pages: <a href="../Container/AtomicRingQueueMultiProviderSingleConsumer/index.html">the class page</a>
+  and its <a href="../Container/AtomicRingQueueMultiProviderSingleConsumer/push.html">Push</a>,
+  <a href="../Container/AtomicRingQueueMultiProviderSingleConsumer/pop.html">Pop</a> and
+  <a href="../Container/AtomicRingQueueMultiProviderSingleConsumer/isempty.html">IsEmpty</a>.
+</div>
+
+<h2 id="why">Why this shape</h2>
+
+<p>
+  The requirement was a queue carrying on the order of millions of records between many producer threads and one consumer, where
+  a producer must never block and a stalled producer must not stall the queue. The engine already had an intrusive MPSC queue —
+  producers pushed a node they owned, the consumer reclaimed the whole producer stack with one exchange and reversed it — and that
+  design was the right answer to a different question. Here is where it stops answering this one.
+</p>
+
+<table>
+  <tr><th>Property</th><th>Intrusive view queue</th><th>Ring-blocked queue</th></tr>
+  <tr>
+    <td>Who owns the element</td>
+    <td>The caller; the queue links a node it was handed, which is why <code>Push</code> could not fail and why the destructor
+      released nothing</td>
+    <td>The queue; <code>Push</code> copies into its own storage and <code>Pop</code> destroys that copy, so the destructor owns
+      what is still queued</td>
+  </tr>
+  <tr>
+    <td>Memory requests</td>
+    <td>One per element at the call site — the caller's allocation, invisible to the queue, and the reason a "view" container
+      cannot batch</td>
+    <td>One per <code>BlockSlots</code> elements, from the allocator that was current at construction, charged to it in the
+      ledger</td>
+  </tr>
+  <tr>
+    <td>A producer that stalls mid-push</td>
+    <td>Invisible. The node does not exist in the queue until the pointer lands, so the consumer cannot know a value is coming and
+      cannot report it</td>
+    <td>Visible as <code>EPopResult::Blocked</code>. The slot is claimed before the payload is written, so the consumer sees a
+      commitment and can go and do something useful instead of spinning or losing the element</td>
+  </tr>
+  <tr>
+    <td>Reclamation</td>
+    <td>Not the queue's problem, because it never owned anything</td>
+    <td>The queue's problem, and the subject of most of this document — owning memory is what makes recycling, and therefore
+      proof, necessary</td>
+  </tr>
+  <tr>
+    <td>Batch FIFO reversal</td>
+    <td>Needed: a stack flipped into a queue has to be reversed, and the reversal is the trickiest part of that design</td>
+    <td>Not needed: a ring is traversed in order, so there is nothing to reverse</td>
+  </tr>
+</table>
+
+<h2 id="structure">Structure</h2>
+
+<p>
+  A queue is a chain of blocks. A block is a ring of <code>BlockSlots</code> slots with one claim counter in front of it. Producers
+  work at the tail of the chain, the consumer at the head, and the chain only ever grows at the tail.
+</p>
+
+<pre><code>        head (consumer, plain pointer)                     tail (producers, atomic)
+         |                                                        |
+         v                                                        v
+  +------------------+      +------------------+      +------------------+
+  |  block ordinal 0 | next |  block ordinal 1 | next |  block ordinal 2 |
+  +------------------+------+------------------+------+------------------+
+   claim: N of N          claim: N of N           claim: 3 of N
+   consumed by the        fully drained:          being claimed now
+   consumer, retired      freed, or deferred
+   (freed or deferred)    if a producer
+                          still declares it
+
+  inside one block
+
+  +--------+   +-----------------------------------+   +-----------------------------------+
+  | claim  |   | tags[0] tags[1] tags[2] ... tags[N]|   | storage: payload of slot 0, 1, 2  |
+  | atomic |   | one word each, 0 = unpublished     |   | BlockSlots * sizeof(T), inline     |
+  +--------+   +-----------------------------------+   +-----------------------------------+
+       ^                    ^                                      ^
+       |                    |                                      |
+   one CAS hands out    a release store here is the           plain writes, no atomic:
+   the next slot        <em>only</em> thing that publishes       ownership is the claim itself
+</code></pre>
+
+<p>
+  Slot addresses come from one mask, <code>index &amp; (BlockSlots - 1)</code>, so the slot count is a power of two by requirement
+  and a <code>static_assert</code> says so. Tags and payloads are two separate arrays, so a consumer draining a block walks one
+  contiguous run of tag words and then touches payloads; adjacent slots share cache lines, which is the deliberate trade for
+  keeping memory near <code>sizeof(T)</code> per element.
+</p>
+
+<h2 id="affinity">Who may touch what</h2>
+
+<table>
+  <tr><th>State</th><th>Written by</th><th>Read by</th></tr>
+  <tr><td><code>chainRoot</code></td><td>the producer that creates the first block, once</td><td>the consumer, until it first pops</td></tr>
+  <tr><td><code>tail</code></td><td>producers advancing a full block; the consumer, when it retires the block <code>tail</code> still names</td><td>producers</td></tr>
+  <tr><td><code>head</code>, <code>headCursor</code></td><td>the consumer only — deliberately non-atomic</td><td>the consumer only</td></tr>
+  <tr><td><code>claim</code> of a block</td><td>any producer, by compare-and-swap</td><td>producers and the consumer</td></tr>
+  <tr><td><code>tags[i]</code> of a block</td><td>the one producer that claimed slot <code>i</code></td><td>the consumer, and that producer</td></tr>
+  <tr><td>payload of slot <code>i</code></td><td>the one producer that claimed slot <code>i</code></td><td>the consumer, once the tag says so</td></tr>
+  <tr><td><code>producerSlots[t]</code></td><td>producer thread <code>t</code> alone</td><td>the consumer, under the management mutex</td></tr>
+  <tr><td><code>blockCount</code>, <code>deferredBlocks</code>, <code>maxBlocks</code></td><td>whoever holds the management mutex</td><td>the same</td></tr>
+</table>
+
+<p>
+  The single-consumer rule is not a limitation the design apologises for; it is the load-bearing element. Every "this is just a
+  plain pointer, it needs no atomic" in the table above rests on it, and the recycling protocol rests on there being exactly one
+  thread entitled to free a block.
+</p>
+
+<h2 id="invariants">Invariants</h2>
+
+<table>
+  <tr><th>#</th><th>Invariant</th><th>What leans on it</th></tr>
+  <tr><td>1</td><td>A slot is claimed at most once per block: <code>claim</code> runs 0 to <code>BlockSlots</code> and never wraps,
+      because a block is retired rather than reused.</td><td>Two producers cannot write one payload; no index arithmetic has to
+      distinguish generations of the same block.</td></tr>
+  <tr><td>2</td><td>An element is visible to the consumer exactly when its tag equals <code>claimIndex + 1</code>.</td><td>The
+      consumer never has to guess whether a payload is complete; it reads one word.</td></tr>
+  <tr><td>3</td><td><code>tail</code> and <code>chainRoot</code> only move forward, and a block with a successor is full
+      (<code>claim == BlockSlots</code>).</td><td>The consumer may retire a block it has left: no producer can claim into a block
+      that has a successor.</td></tr>
+  <tr><td>4</td><td>A block is freed only after <code>tail</code> has been moved off it and no producer slot declares it.</td>
+      <td>The absence of use-after-free, which is the whole subject of the next section.</td></tr>
+  <tr><td>5</td><td><code>blockCount</code> counts blocks allocated and not yet freed, and never exceeds
+      <code>maxBlocks</code>.</td><td>The capacity fuse, and the bound that lets <code>deferredBlocks</code> reserve its whole
+      capacity at construction and never allocate at runtime. That reserved buffer is engine memory, not a side allocation on
+      the global heap: the list's allocator is rebound from the queue's <code>TAllocator</code> member - the same allocator the
+      blocks and the producer slot array use - so a single allocator owns everything the container holds, and no allocator id is
+      stored beside it.</td></tr>
+</table>
+
+<h2 id="reclamation">Recycling a block without stealing it</h2>
+
+<p>
+  Owning block memory means deciding when a block may go back. It is the hardest part of this container, and the honest record is
+  that the first two protocols written for it were wrong. Both are recorded here because each failure is a general lesson about
+  hazard protocols, not a typo.
+</p>
+
+<h3>The first attempt, and what ThreadSanitizer said about it</h3>
+
+<p>
+  The first protocol stored the block into the producer's hazard slot immediately before touching the block, and the consumer's
+  retire path refused to free a block any slot named. That reads correctly and it is not enough. The dangerous read of
+  <code>tail</code> happens <em>before</em> the slot is written, so a producer can hold a pointer to a block that a reclaimer is
+  already entitled to free: announcing an intent that precedes the announcement cannot protect it.
+</p>
+
+<pre><code>  producer                                       consumer
+  --------                                       --------
+  B = tail.load()                                ...drains B, B has a successor...
+                                                 lock; scan slots: none names B
+  slot.store(B)        &lt;-- too late              free(B)
+  B-&gt;claim.load()      &lt;-- use-after-free</code></pre>
+
+<p>
+  ThreadSanitizer found this on the four-producer testlet without being told to look for it:
+</p>
+
+<pre><code>WARNING: ThreadSanitizer: data race
+  Write of size 4 at 0x... by thread T3330:
+    #0 hbe::AtomicRingQueueMultiProviderSingleConsumer&lt;unsigned int, 8ul&gt;::Push(unsigned int const&amp;)
+       AtomicRingQueueMultiProviderSingleConsumer.h:239
+  Previous read of size 4 at 0x... by thread T3331:
+    #0 hbe::AtomicRingQueueMultiProviderSingleConsumer&lt;unsigned int, 8ul&gt;::Pop(unsigned int&amp;)
+       AtomicRingQueueMultiProviderSingleConsumer.h:270
+  Location is heap block of size 2097152 at 0x... allocated by main thread:
+    #0 malloc &lt;null&gt;
+    #1 hbe::SystemAllocator&lt;unsigned char&gt;::AllocateBytes(unsigned long) SystemAllocator.h:102
+
+<p class="meta">From the ThreadSanitizer report against the first protocol. Line numbers belong to that revision of the
+header; the two frames are the point — a producer writing a payload into a block the consumer had already drained and recycled.
+The other races in the same run are in files this change does not touch, and are listed under open items.</p></code></pre>
+
+<h3>Two things had to change</h3>
+
+<ol>
+  <li>
+    <p><strong><code>tail</code> must be moved off a block before that block can be retired.</strong></p>
+    <p>
+      Retirement is decided by the consumer, but <code>tail</code> is a producer's variable, and a consumer that recycles a block
+      <code>tail</code> still names leaves every producer that reads it acquiring freed memory. So
+      <a href="../Container/AtomicRingQueueMultiProviderSingleConsumer/retireblock.html"><code>RetireBlock</code></a> begins by
+      comparing-and-swapping <code>tail</code> to the successor. That is a small change with a large consequence: from that
+      instant the block is <em>unreachable from the entry point</em>, and the only producers who can still touch it are the ones
+      already inside it.
+    </p>
+  </li>
+  <li>
+    <p><strong>A producer must declare the block, then read the entry point again and restart if it moved.</strong></p>
+    <p>
+      This is the standard revalidation step of a hazard protocol, and it is what makes declaring <em>after</em> reading safe:
+      the read is repeated after the declaration, so a producer that ends up dereferencing a block has, in the single total order
+      of sequential-consistency operations, declared that block before the reclaimer could have finished retiring it.
+    </p>
+  </li>
+</ol>
+
+<h3>The argument, in full</h3>
+
+<p>
+  Suppose a producer dereferences a block <code>B</code> that has already been freed. Call those two events
+  <em>D</em> and <em>F</em>.
+</p>
+
+<table>
+  <tr><th>Step</th><th>Operation</th><th>Order</th></tr>
+  <tr><td>P1</td><td><code>slot.store(B, seq_cst)</code> — declare</td><td>before P2</td></tr>
+  <tr><td>P2</td><td><code>tail.load(seq_cst) == B</code> — revalidate</td><td>before <em>D</em></td></tr>
+  <tr><td>C1</td><td><code>tail.CAS(B, successor)</code> — unreachable, under the management mutex</td><td>before C2</td></tr>
+  <tr><td>C2</td><td>scan every slot for <code>B</code>, under the same lock</td><td>before <em>F</em></td></tr>
+</table>
+
+<p>
+  <code>tail</code> is monotonic and never written back to <code>B</code>, so a sequential-consistency load that returns
+  <code>B</code> must precede C1 in the total order. That gives P1 &lt; P2 &lt; C1 &lt; C2. C1 and C2 are in one critical section
+  in that order, and <em>F</em> follows C2, so C2 comes after P1 — and a sequential-consistency load cannot miss a
+  sequential-consistency store that precedes it in the total order unless a later store overwrites it, which only the owning thread
+  does, and it does not until after <em>D</em>. So C2 observes <code>B</code>, the retire defers, and <em>F</em> does not happen
+  there. Contradiction: no such <em>D</em> exists.
+</p>
+
+<p>
+  Every premise is load-bearing, which is worth spelling out: drop the revalidation and P2 leaves the chain; drop the
+  <code>tail</code> CAS and C1 never happens, so nothing stops <code>tail.load()</code> from returning a freed block at any later
+  time; make the declaration relaxed and the total-order argument has nothing to appeal to.
+</p>
+
+<h3>Why the guard is not merely "a producer is busy"</h3>
+
+<p>
+  A tempting simplification is a per-producer flag meaning "inside the queue", which the reclaimer checks instead of comparing
+  identities. It is correct — announcing before the entry-point read is what the proof needs — but it is not usable, and the reason
+  is a livelock the flag version reached in testing: a producer that hits the fuse retries
+  <a href="../Container/AtomicRingQueueMultiProviderSingleConsumer/push.html"><code>Push</code></a> in a tight loop, so the flag is
+  set nearly always; and freeing a deferred block is the only thing that lowers the live-block count, so the count never drops, so
+  the queue stays full, so the producer keeps spinning. Identity-scoped declaration avoids it structurally: the block a spinning
+  producer declares is its own live tail block, which is not the block being retried, so
+  <a href="../Container/AtomicRingQueueMultiProviderSingleConsumer/retrydeferredblocks.html"><code>RetryDeferredBlocks</code></a>
+  run from <a href="../Container/AtomicRingQueueMultiProviderSingleConsumer/acquireblock.html"><code>AcquireBlock</code></a> frees
+  something and the queue unblocks.
+</p>
+
+<p>
+  A deferred block is not lost: it stays linked in the chain behind <code>head</code>, is retried on every retire and on every
+  growth attempt, and is freed unconditionally by
+  <a href="../Container/AtomicRingQueueMultiProviderSingleConsumer/destroyall.html"><code>DestroyAll</code></a>, whose contract is
+  that no producer remains.
+</p>
+
+<h2 id="boundary">The three answers, and why two are not enough</h2>
+
+<p>
+  A slot is claimed before its payload exists, so between those two instants the oldest element in the queue is neither present nor
+  absent. Returning <code>Empty</code> would let a caller shut down and lose a record that is already committed; skipping forward
+  to the next slot would hand out records out of order; spinning would make one slow copy constructor stall the consumer. So
+  <a href="../Container/AtomicRingQueueMultiProviderSingleConsumer/pop.html"><code>Pop</code></a> answers
+  <code>Blocked</code>, and the caller decides. That is a real cost, and it is stated as a cost: the boundary exists in any queue
+  where a producer may be interrupted mid-push, and only a design that refuses to publish until a record is complete — a lock, or
+  wait-free-by-per-record-copy with a bounded record — can hide it.
+</p>
+
+<p>
+  <a href="../Container/AtomicRingQueueMultiProviderSingleConsumer/isempty.html"><code>IsEmpty</code></a> inherits the same shape:
+  emptiness is <code>headCursor &gt;= claim</code> <em>and</em> <code>next == nullptr</code>. One word is wrong in each direction —
+  <code>claim</code> alone calls a drained queue non-empty forever, and the cursor alone calls a queue with a claim in flight
+  empty. The control experiment below shows both failures actually happening in the testlets.
+</p>
+
+<h2 id="ordering">Memory order, one row per operation</h2>
+
+<table>
+  <tr><th>Operation</th><th>Order</th><th>Why this and not weaker</th></tr>
+  <tr><td><code>Push</code>: read <code>tail</code>, declare the block, re-read <code>tail</code></td><td>all three
+      <code>seq_cst</code></td><td>The proof above is an argument about a single total order; a relaxed or acquire-release pair does
+      not participate in one for the store-load case that matters</td></tr>
+  <tr><td><code>Push</code>: claim a slot</td><td>compare-and-swap <code>acq_rel</code>, failure <code>relaxed</code></td>
+      <td>The release side orders the payload write of this push against the tag store that publishes it; the acquire side makes
+      earlier producers' claims visible; a failed CAS reads nothing</td></tr>
+  <tr><td><code>Push</code>: write the payload</td><td>plain</td><td>Nothing needs to see it until the tag store releases it</td></tr>
+  <tr><td><code>Push</code>: publish the tag</td><td>store <code>release</code></td><td>One-way: payload visible, then tag visible.
+      This is the publication edge of the whole container</td></tr>
+  <tr><td><code>Pop</code>: read a tag</td><td>load <code>acquire</code></td><td>Pairs with the publication edge; without it the
+      consumer could move out unconstructed bytes</td></tr>
+  <tr><td><code>Pop</code>: read <code>claim</code> and <code>next</code></td><td>load <code>acquire</code></td><td>A block with a
+      successor is full, and that implication is only sound if the successor was seen</td></tr>
+  <tr><td><code>Pop</code>: retire a tag</td><td>store <code>relaxed</code></td><td>Only the consumer reads tags in this block, and
+      it has already moved the cursor past it</td></tr>
+  <tr><td><code>RetireBlock</code>: move <code>tail</code> off the block</td><td>compare-and-swap
+      <code>seq_cst</code>/<code>relaxed</code></td><td>It publishes that the block is unreachable, and it is also the store half
+      of a store-load pair: <code>IsBlockShadowed</code> reads every declaration immediately after it, which is the same shape
+      the <code>Push</code> row above refuses to accept from an acquire-release pair. Both halves therefore have to be in the
+      single total order. Promotion costs no instruction on either supported ISA - measured <code>casal</code> on arm64 and
+      <code>lock cmpxchg</code> on x86-64 for both orderings - so what it buys is in the model, not in the machine. The failure
+      ordering stays <code>relaxed</code>: a CAS that fails reads nothing</td></tr>
+  <tr><td><code>IsBlockShadowed</code>: scan slots</td><td>load <code>seq_cst</code></td><td>See the proof; this is the load that
+      must not miss a declaration, and it is the load half of the pair with the <code>RetireBlock</code> compare-and-swap
+      directly above</td></tr>
+  <tr><td>Growth: link a new block</td><td>compare-and-swap <code>release</code>/<code>acquire</code>, then
+      <code>tail</code> store <code>release</code></td><td>A producer that finds the successor must also see the initialised block
+      it points at</td></tr>
+  <tr><td>Hazard identity clear</td><td>store <code>release</code></td><td>The producer's last access to the block must precede the
+      moment a reclaimer may legally free it</td></tr>
+</table>
+
+<p>Every store in this protocol was re-checked against the shape of the pair it forms, and one of them was wrong: the
+<code>RetireBlock</code> compare-and-swap was an acquire-release while the scan that follows it was sequentially consistent, so
+the argument the row above makes for <code>Push</code> did not hold on the reclaimer's side. The other <code>tail</code>
+compare-and-swap, in <code>AcquireBlock</code>, is deliberately <em>not</em> sequentially consistent: it advances the entry point
+towards a block that has just been grown, and nothing scans the declaration slots after it, so it is message passing and
+<code>acq_rel</code> is the whole of what it needs. Relaxing <code>RetireBlock</code>'s back to acquire-release would look like
+the same edit and not be the same thing.</p>
+
+<p>
+Both nested types carry a <code>hb-standards:ignore</code> directive, and this is the reason. The member-layout standard
+puts types ahead of data, but <code>LinkNode</code> and <code>ProducerSlot</code> are <code>alignas(AlignSize)</code> and
+<code>LinkNode::storage</code> is <code>alignas(AlignOfT)</code>, so both types name class constants declared above them -
+the order the rule wants does not compile. This is the case the standard anticipates for a type that needs a class
+constant: the constant stays directly above the type that consumes it, the declaration line carries the directive, and
+the checker reports each one as <code>MEMBER-WAIVED</code>, counted rather than silent.
+</p>
+
+<p>
+  Each block and the producer slot array are carved out of an over-allocated buffer, because both ask for
+  <code>AlignSize</code>-byte alignment that the allocator does not promise. The pair - the unaligned base, the aligned pointer and
+  the byte count - is one value, <a href="../Memory/AlignedStorage/index.html"><code>AlignedStorage&lt;T&gt;</code></a> in
+  <code>Engine/Memory/AlignedStorage.h</code>, rather than two fields at each site, so a free cannot be
+  written with a pointer or a size that disagrees with the allocation it belongs to; the cast between the allocator's byte type and
+  <code>std::byte</code> exists in exactly one place, and the size expression <code>sizeof(T) * n + alignof(T)</code> is spelled
+  once for both sites instead of twice each. That is all it costs and all it buys: the arithmetic, the failure check and the release
+  move inside the value that holds the two addresses.
+</p>
+
+<h2 id="cost">Cost model</h2>
+
+<table>
+  <tr><th>Quantity</th><th>Value</th><th>Where it comes from</th></tr>
+  <tr>
+    <td>Memory per element</td>
+    <td><code>sizeof(T) + 8</code> bytes, with <code>sizeof(T) % alignof(T) == 0</code> asserted so the
+      stride cannot misalign a slot</td>
+    <td>Inline payload plus one tag word; no per-element header, no next pointer</td>
+  </tr>
+  <tr>
+    <td>Memory per block</td>
+    <td>one claim word, one next pointer, alignment slack, plus the allocation the queue came back with</td>
+    <td>Amortised over <code>BlockSlots</code> elements, so a small slot count is what makes this term visible</td>
+  </tr>
+  <tr>
+    <td>Memory per permitted producer</td>
+    <td>one cache line, allocated once at construction</td>
+    <td><code>ProducerSlot</code> is <code>alignas(64)</code>, and the array is never resized</td>
+  </tr>
+  <tr>
+    <td>Lock acquisitions per element</td>
+    <td>zero, except one per block created and one per block retired</td>
+    <td>Growth and recycling take the management mutex; a claim never does. The claim is structural, not measured: the mutex is
+      reached from <code>AcquireBlock</code> and <code>RetireBlock</code> only</td>
+  </tr>
+  <tr>
+    <td>Atomics per element, pushed</td>
+    <td>one compare-and-swap, two sequential-consistency loads and one sequential-consistency store, plus one release store for the
+      tag and one to clear the declaration</td>
+    <td>The sequential-consistency pair is the price of recycling; a queue that never freed a block — the fuse as a high-water mark
+      — would not need it</td>
+  </tr>
+  <tr>
+    <td>Atomics per element, popped</td>
+    <td>one acquire load of <code>claim</code>, one acquire load of a tag, one relaxed store to clear it</td>
+    <td>The consumer never contends with a producer on a slot, only on the block's claim word it is reading</td>
+  </tr>
+  <tr>
+    <td>Scan cost per block retired</td>
+    <td>at most <code>inMaxProducers</code> words, on one cache line each</td>
+    <td>Amortised over <code>BlockSlots</code> elements, like growth</td>
+  </tr>
+</table>
+
+<div class="note">
+  <strong><h3>Measured cost model, and what the layout fixes did not buy</h3>
+<p>
+A standalone harness (four source variants, one process per variant, end-to-end timing from the first push until the
+last element has been consumed, seven interleaved repetitions with the run order counterbalanced) measured
+nanoseconds per element on Apple silicon, 256-byte <code>hardware_destructive_interference_size</code>. Each row is the
+median; the controls, which are identical code in both binaries, agreed between positions to within 2%, which is the
+floor on how small a difference this method can resolve.
+</p>
+<table>
+<thead><tr><th>Variant</th><th>1 producer</th><th>2</th><th>4</th><th>What the row isolates</th></tr></thead>
+<tbody>
+<tr><td>Claim index plus payload write, no publication</td><td>4.3</td><td>8.4</td><td>26.9</td><td>The floor: one RMW per element, plus the payload store.</td></tr>
+<tr><td>Same ring plus one publication gate per slot</td><td>24.1</td><td>37.0</td><td>64.2</td><td>The price of per-slot publication: roughly five times the floor, the largest single term.</td></tr>
+<tr><td>This queue</td><td>66.0</td><td>60.5</td><td>103.8</td><td>Everything the block chain adds: hazard declaration, tail revalidation, block acquire and retire.</td></tr>
+</tbody>
+</table>
+<p>
+Three layout fixes - producer slots spaced at the interference size instead of 64, the block's claim word moved onto a
+line of its own with the tag array line-aligned, and the queue's own fields grouped by which role writes them -
+measured <strong>neutral</strong>: every cell of the third row moved by less than 5% and none moved outside its own
+spread. Two conclusions follow. The false sharing this design worried about is real but it is not the dominant term;
+per-slot publication and the block machinery are. And a layout claim that reads as correct at 64 bytes can be wrong on
+a machine with a wider coherence granule, which is why the spacing now comes from the standard constant: keeping it is
+justified by the argument and by portability, not by a measured gain here.
+</p>
+<p>
+<p>
+Three properties of the layout were established by measurement rather than by rule, and all three are now
+<code>static_assert</code>, so a future edit breaks the build instead of quietly breaking the reasoning.
+</p>
+
+<p>
+The first is the payload stride itself. A slot is <code>sizeof(T)</code> bytes from the next, and the base of the payload
+array is <code>alignas(alignof(T))</code>, so every slot address is aligned only if <code>sizeof(T)</code> is a multiple
+of <code>alignof(T)</code>. An earlier form of this class derived the stride as <code>sizeof(T)</code> rounded up to
+<code>alignof(T)</code>, which makes that property true by construction and costs nothing, because the round-up never
+enlarges a slot: the multiple property is forced by <code>[expr.sizeof]</code>, which counts "any padding required for
+placing such an object in an array", and it held for every one of eleven type shapes tried, including
+<code>#pragma pack</code> and <code>__attribute__((packed))</code> combinations, which lower
+<code>alignof</code> rather than breaking the multiple. The stride is therefore written directly as
+<code>sizeof(T)</code> and the precondition it depends on is stated as an assertion, which keeps one spelling of the
+stride in the code and puts the claim where a compiler that ever disagreed would be told about it. Over-aligning
+<code>T</code> cannot produce a gap either: <code>alignas</code> inflates <code>sizeof</code> to a whole alignment unit,
+so <code>{ alignas(256) char; char; }</code> is 256 bytes, not 2.
+</p>
+
+<p>
+The second is that the producer slot spacing is a power of two, which is the only thing that makes "clear the low bits"
+mean "round up to the next multiple" in the allocation of the slot array. The third is that <code>ProducerSlot</code> is
+trivially destructible, which is what makes that array safe to reclaim by deallocating raw bytes - a type with a real
+destructor could also make the implementation plant an array-new cookie, and a cookie would shift the array off the
+alignment the whole layout argument assumes. Every alignment value in the language is a non-negative integral power of
+two, and <code>alignas</code> rejects anything else at compile time, so the second assertion cannot fire as this code is
+written; it is there because <code>std::hardware_destructive_interference_size</code> is implementation-defined and
+carries no such promise, so the day that constant reaches the rounding arithmetic instead of <code>alignas</code>, the
+language stops protecting us and only the assertion will.
+</p>
+Two caveats belong with the numbers. The harness ran more threads than the machine has performance cores, so the
+four-producer cell is bimodal and its median is only a summary of two modes. And at eight producers some runs were
+aborted by the harness's own bound, so that cell is reported nowhere above.
+</p>
+What is not claimed.</strong> No throughput figure is stated anywhere in this design, because none was measured. The
+  numbers above are counts of operations, which follow from the code, not timings. Adjacent slots sharing tag lines is the known
+  candidate for a false-sharing cost and remains an open measurement.
+</div>
+
+<h2 id="evidence">What is proved, and how</h2>
+
+<p>
+  The testlets are in <code>Engine/Container/AtomicRingQueueMultiProviderSingleConsumer.cpp</code> and each one instantiates the
+  template with a small <code>BlockSlots</code> — 2 or 4 — precisely so that growth, retirement and the blocked path are hit
+  thousands of times instead of never.
+</p>
+
+<table>
+  <tr><th>Testlet</th><th>What it pins down</th></tr>
+  <tr><td>Push and Pop Preserve FIFO Order</td><td>Order across block boundaries, the empty answer at the end, and both
+      <code>IsEmpty</code> transitions</td></tr>
+  <tr><td>Four Producers and One Consumer Lose Nothing</td><td>16 000 elements, four producers: the sorted multiset must equal the
+      input exactly, which is what a lost or a doubly-handed-out slot would break</td></tr>
+  <tr><td>Block Boundaries Grow the Chain and Recycle It</td><td>A fuse of four blocks carries 4 000 elements only if recycling
+      works; asserts growth past the fuse, at least one retirement, and that live blocks never passed the fuse</td></tr>
+  <tr><td>A Claimed but Unpublished Slot Reads as Blocked, Never as Empty</td><td>A producer parked inside its payload copy — the
+      claim-then-publish window, made real with a value type whose copy constructor waits — proves the consumer answers
+      <code>Blocked</code>, leaves the caller's object untouched, refuses to call the queue empty, and afterwards hands the parked
+      element out <em>first</em></td></tr>
+  <tr><td>A Producer Inside a Block Keeps That Block Alive</td><td>The same parking, then eight rounds of filling and draining: the
+      declaration must keep memory out of reuse and recycled memory must come back clean</td></tr>
+  <tr><td>The Block Fuse Stops Growth and Reports Full</td><td>Capacity is exactly <code>maxBlocks × BlockSlots</code>, growth stops
+      at the fuse, and a drained queue accepts again — which is the deferred-recycling path working</td></tr>
+</table>
+
+<h3>Controls: each defect re-injected</h3>
+
+<p>
+  A testlet that passes proves nothing until it is shown to fail when the thing it guards is broken. Each defect below was
+  re-injected into the header, the suite run against it, and the header restored. D1 to D4 were measured against the revision whose
+  reclamation protocol was the first one — none of the four touches reclamation, and the protocol fix did not edit the lines they
+  break — while D5 was measured against the shipped protocol. Re-running D1 to D4 against the shipped header is listed under open
+  items rather than assumed.
+</p>
+
+<table>
+  <tr><th>Defect re-injected</th><th>Observed outcome</th><th>Reading</th></tr>
+  <tr><td>D1 tag published before the payload is constructed</td><td>The suite stopped making progress: 16 000 elements moving
+      through blocks of 8 slots never finished, so the harness reached no verdict</td><td>The publication edge is what makes a
+      payload safe to read</td></tr>
+  <tr><td>D2 emptiness reads one word instead of two</td><td>The suite stopped making progress — a queue whose emptiness lies
+      never satisfies the drain condition a consumer is waiting on</td><td>Both halves of the emptiness test are load-bearing, in
+      different directions</td></tr>
+  <tr><td>D3 a claim increments without a compare-and-swap</td><td>The suite stopped making progress, which is what two producers
+      being handed one slot eventually becomes</td><td>Two producers can be handed the same slot and one element vanishes</td></tr>
+  <tr><td>D4 the consumer skips a blocked slot instead of waiting</td><td>The suite stopped making progress, having consumed fewer
+      than the four elements it was promised</td><td>The <code>Blocked</code> answer is not decoration; skipping it silently
+      reorders the queue</td></tr>
+  <tr><td>D5 the declaration and revalidation step deleted, ThreadSanitizer build</td><td><strong>Nothing failed.</strong> All six
+      ring testlets passed and not one of the 148 sanitizer warnings that run produced named this file; the suite later died of
+      <code>mutex lock failed: Invalid argument</code> in another module, which is not evidence about this one</td><td>The defect is
+      real but rare — a window two instructions wide with no user code in it — and one schedule did not hit it. So this control
+      establishes that a functional test cannot be written for the guard, and establishes nothing about whether the guard is
+      sufficient. That question rests on the ordering argument, and the argument is the only thing standing between this container
+      and a use-after-free</td></tr>
+</table>
+
+<p>
+  Four of the five outcomes are reported as "the suite stopped making progress" rather than as a named failing testlet, and that is
+  worth reading as what it is: with these defects the queue never reaches a state the harness can judge. A hang is a legitimate
+  observation but a poor test signal, and the testlets do not lean on it — the same defects are visible in the assertions when the
+  timing comes out differently, which is why the assertions are written as multiset and ordering checks rather than as timeouts.
+</p>
+
+<div class="note">
+  <strong>What the sanitizer did and did not settle.</strong> It settled one design question decisively and left another open. It
+  found the use-after-free in the first protocol by accident, on a full-suite run — which is why the protocol in this container is
+  the one it is. It has <em>not</em> reproduced the window in the shipped protocol: deleting the declaration step left every ring
+  testlet passing, so the guard has no control that demonstrates its necessity in this form, and the ordering argument earlier in
+  this document is doing all the work. A design justified only by an argument is a design that should be read sceptically, and a
+  schedule that reproduces the window is owed. The instrumented binary also stalls in another module's close path before the suite
+  ends, so no claim of the form "this file is clean under ThreadSanitizer" is made here either.
+</div>
+
+<h2 id="open">Open items</h2>
+
+<table>
+  <tr><th>Item</th><th>Detail</th></tr>
+  <tr><td>No throughput measurement</td><td>Nothing on this page is a timing. What the shape costs in cache-line contention between
+      adjacent tags, and what padding each slot to a line would buy, is unmeasured</td></tr>
+  <tr><td>No consumer of the container</td><td>Nothing in the engine enqueues into this queue yet, so every example on its pages is
+      labelled illustrative, and the single-consumer rule is unexercised by any real subsystem</td></tr>
+  <tr><td>Producer slots are never released</td><td>The bound is on distinct threads that ever push, not on threads pushing at once;
+      a caller that cycles thread identities must size <code>inMaxProducers</code> for it</td></tr>
+  <tr><td>A control that reproduces the recycling window</td><td>The declaration step is currently justified by an ordering
+      argument alone. A schedule that deletes it and actually observes the use-after-free — a targeted harness, repeated iterations,
+      or an injected delay between the entry-point read and the declaration — would turn that argument into a measurement</td></tr>
+  <tr><td>Controls D1 to D4 against this header</td><td>They were measured against the previous revision, which broke none of the
+      lines they attack; they should be re-run against the shipped header rather than assumed to carry over</td></tr>
+  <tr><td>Pre-existing races elsewhere on the test binary</td><td>The ThreadSanitizer build reports races in
+      <code>Logger::DriverLoop</code>, <code>TaskProvider</code>'s record drain and <code>AtomicStackView</code>'s pop path that
+      this change did not introduce and does not address. They are recorded here so that a later "clean" run is not mistaken for the
+      whole binary being clean</td></tr>
+</table>
+
+  <footer class="prevnext">
+    <span><a href="../Container/index.html">← Container module</a></span>
+    <span><a href="../index.html">Module index →</a></span>
+  </footer>
+</main>
+</body>
+</html>
