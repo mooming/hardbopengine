@@ -8,6 +8,7 @@
 #include "UnitTestCollection.h"
 
 #include "Container/Array.h"
+#include "Container/AtomicRingQueueMultiProviderSingleConsumer.h"
 #include "Container/AtomicStackView.h"
 #include "Container/BoundedPriorityQueue.h"
 #include "Container/Deque.h"
@@ -171,6 +172,7 @@ void RegisterSuite()
 	testEnv.AddTestCollection<ArrayTest>();
 	testEnv.AddTestCollection<BoundedPriorityQueueTest>();
 	testEnv.AddTestCollection<AtomicStackViewTest>();
+	testEnv.AddTestCollection<AtomicRingQueueMultiProviderSingleConsumerTest>();
 	testEnv.AddTestCollection<LinkedListTest>();
 	testEnv.AddTestCollection<VectorTest>();
 	testEnv.AddTestCollection<MapTest>();
