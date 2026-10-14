@@ -1,5 +1,107 @@
 # Journal
 
+## 2026-10-14 22:09 — the over-aligned allocation pair moved out of the queue and into `Engine/Memory`
+
+**Why.** The owner read the queue's allocation code and judged it not systemic: the unaligned base, the aligned
+pointer and the padded byte count sat as separate fields at two sites, with four casts and two size expressions to
+keep in step. `AlignedStorage<T>` in `Engine/Memory/AlignedStorage.h` now holds the three as one value, with
+`Allocate` and `Free` as its methods and the allocator passed per call, its byte-pointer type deduced from what
+that allocator's `allocate` returns.
+
+**Proof that nothing moved.** Same testlets, same numbers - 9 requests / 16,336 bytes / retained 0 for the block
+recycling case, 11 / 480 / retained 120 for the blocked-slot case - 388 passes and 0 failures, Debug, Dev and
+Release clean. `check.sh HEAD` reports 0 grep-rule failures and 0 advisories; the doc-coverage backlog it still
+prints is Container's and Memory's pre-existing debt, not this file's.
+
+**Two decisions, and one limit of the build gate.** `Allocate` is `[[nodiscard]]` because a dropped handle is a
+buffer nothing can free. `Free` stays `const`, so it cannot clear the handle - written on its page as the
+double-free caveat instead of papered over. And Release compiles neither header: the queue's only includers are
+unit-test sources, so a green Release build says nothing about either one.
+
+## 2026-10-13 07:07 — the queue's cache-line layout was wrong for this machine, and fixing it bought nothing measurable
+
+**Context.** The owner asked whether packing many atomics into one cache line is inefficient. Answering that needed
+numbers rather than a lecture about MESI, so the queue's real layout was measured with `offsetof` and its throughput
+benchmarked against the previous header. Record: the measured cost model in
+`docs/design/MultiProviderSingleConsumerQueue_Design.html`.
+
+**The machine disagrees with 64.** `hw.cachelinesize` is 128 and `std::hardware_destructive_interference_size` is 256,
+so spacing producer slots at 64 placed **two producers in one coherence line** while the reference page asserted each
+slot owns one. The block's `claim` word also shared line 0 with the first thirteen publication tags, and the consumer's
+private `head`/`headCursor` shared a line with the `tail` every producer reads. Spacing now comes from the standard
+constant, so the layout follows the target instead of this machine.
+
+**Measured neutral, and said out loud.** Ten interleaved runs of two binaries, run order counterbalanced, end-to-end
+timing from first push to last element consumed: the queue moved +1.6%, -4.3%, -2.7% at one, two and four producers,
+every cell inside its own spread, with three controls - code identical in both binaries - agreeing to within 2%. That
+2% is the method's noise floor and is now written next to the table, because a table without a noise floor invites
+someone to read 4% as a win.
+
+**Where the cost actually is.** A claim-and-write ring is 4.3 ns per element; adding one publication gate per slot
+takes it to 24.1; the block chain - hazard declaration, tail revalidation, acquire and retire - takes it to 66.0. So
+per-slot publication and block machinery dominate, and no amount of padding touches either. The hypothesis I stated
+before measuring was that false sharing was the hot term; it was a real property of the layout and not the cost driver.
+
+**Five harness defects, each of which had produced confident nonsense.** No inner loop, so a "push" happened once and
+reported 0.01 ns. A consumer thread that also pushed. A timed region covering only the producers, which let a starved
+consumer report 19.6 ns. A `static` cursor reused across cells. A queue shared across cells so the fuse carried over.
+Before counterbalancing, an *unchanged* control differed by 42% between the two run positions, which is how an earlier
+"27% improvement" was manufactured. Fix any one of these and the conclusion changes: a benchmark is code.
+
+**Kept anyway, on the argument.** The change is not a speedup here; it removes a layout that was objectively wrong for
+a wider granule and made a documented claim true. If throughput ever matters, the target is the 42 ns of block
+machinery - an `acq_rel` probe of the declare-and-revalidate path would size the fence cost, remembering that the
+`seq_cst` there is what ThreadSanitizer proved necessary.
+
+
+## 2026-10-12 20:40 — the ring queue lands; two reclamation protocols had to fail before the third was defensible
+
+**Context.** The reviewer asked for a queue carrying ~10⁷ records: many producers, one consumer, bounded memory,
+recycling enabled. PR #15's commit `65a8aa8` also mixed source with its pages, so it was split first
+(`980b150` source, `bef087b` pages) and the queue was then rewritten as a chain of lock-free fixed-size rings,
+one block per allocation, payload in the slot. Record: `.Plans/PLAN_block_ring_mpsc.md`,
+`docs/design/MultiProviderSingleConsumerQueue_Design.html`.
+
+**The slot count is a power of two because a mask has to be free.** `slot = idx & (N-1)`, and a `static_assert`
+carries that reason in its message. It is also the amortisation unit for every rare operation, which is why the
+testlets instantiate `BlockSlots` as 2 and 4 rather than the default 1024: at 2 the chain turns over thousands of
+times inside one testlet, so growth, recycling and the blocked path are exercised instead of commented about.
+
+**Three answers, not two.** A slot is claimed before its payload is written, so the oldest element can be
+committed and absent at once. Calling that *empty* loses a record; stepping past it breaks FIFO; spinning makes
+one slow copy constructor stall the consumer. `Pop` answers `Blocked`, and the testlet that proves it parks a
+producer inside its own copy constructor — a value type whose copy waits — which is the only way to occupy the
+claim-then-publish window from a test.
+
+**ThreadSanitizer caught the first reclamation protocol.** Storing the block into a producer's hazard slot
+*before* touching it looks right and is not: the dangerous read of `tail` happens before the store, so a producer
+can hold a pointer to a block a reclaimer is already entitled to free. The sanitizer reported it unprompted —
+`Push` writing a payload the consumer's `Pop` had read from recycled memory. Two things were missing: `tail` must
+be moved off a block before that block can be retired, and a producer must declare the block and then read `tail`
+again and restart if it moved. The shipped protocol states the ordering argument with each premise named.
+
+**A guard that blocks everything blocks the queue.** Replacing per-block identities with one "producer is inside
+the queue" flag is provable and unusable: a producer hitting the fuse retries with the flag nearly always set,
+and freeing a deferred block is the only thing that lowers the live-block count, so the count never drops. The
+testlet hung, which is the livelock, not a bug in the test. Identity-scoped declaration plus a deferred list run
+from the growth path is what unsticks it.
+
+**What is not proved.** Deleting the declaration step from the shipped protocol broke nothing observable: all six
+testlets passed and none of that run's 148 sanitizer warnings named this file. So the guard is justified by an
+argument, not by a reproduced failure, and the design document says so in its control table rather than implying
+a measurement it does not have. Owed: a schedule that reproduces the window, one completed sanitizer run of the
+shipped protocol, and controls D1–D4 re-run against this header.
+
+**The history was folded.** The branch first landed a different queue - an intrusive view queue, with its own pages
+and its own plan - and replaced it with this one two commits later, which meant a reviewer had to read a design that
+did not survive. Those six commits are now folded into one, so the discarded class leaves the branch entirely; it
+remains reachable at `backup/pr15-pre-split` and `backup/pr15-pre-fold`, and its plan file is gone from the tree
+because a plan for a class that does not exist is the redundancy it was.
+
+**Process, recorded because it cost someone else time.** Test binaries were launched in the background without a
+wall-clock guard; with the livelock above they spun for over an hour and the owner had to force-quit them. Every
+execution now carries `perl -e 'alarm shift; exec @ARGV' <seconds>`, which is kernel-enforced rather than polled.
+
 ## 2026-10-09 18:42 — GLFW's orphaned submodule git directory is deleted
 
 **The tracked removal had already happened, so only the data was left.** `8b3f854` deleted the gitlink and the
@@ -71,6 +173,63 @@ untouched defect noticed nearby: `operator delete(void*, align_val_t)` passes it
 expects a *size*, so aligned unsized frees record the wrong released byte count - pre-existing, out of this
 scope, on the record now.
 
+## 2026-10-04 23:04 — `AtomicQueueViewMultiProviderSingleConsumer` lands with six reference pages, and a negative control rewrites one of its own tests
+
+> Superseded on 2026-10-12 by the ring-blocked queue, which is what the branch now ships. The
+> measurements below stand as a record of how they were taken, not of a shipped class.
+
+**Context.** The owner asked for a lock-free queue in `Engine/Container`, chose the topology by naming the type, and asked
+for the algorithm comparison first. `docs/TaskSystemRedesign.md` §9 guardrail 3 was the binding constraint: lock-free
+enqueue is wanted where a single consumer is *provable by construction*, and a multi-consumer lock-free queue is forbidden
+until profiling asks for one. `MultiPoolAllocator` is not thread-safe and `ThreadSafeMultiPoolAllocator` is mutex-based, so a
+queue that allocated its own nodes would put a lock in the path built to avoid one — the nodes stay caller-owned, which is
+what the `View` in the name advertises.
+
+**The algorithm is not the one the plan named.** The plan first proposed the two-step publish (exchange to take the head, then
+write the *previous* head's link). Deriving it against the ownership rule before writing it turned up two consequences it
+cannot shed: the consumer's frontier is read through `tail->next` before the queue knows whether an item exists, so the queue
+must own a sentinel node it cannot allocate; and a node may be handed back only once its single link write is provably
+landed, which the newest node never is — a drain stops one item short until someone else pushes. Both are recorded in
+`.Plans/PLAN_lock_free_queue.md` §3 and on the design document. What shipped instead is the two-stack queue (Michael and
+Scott's AMQ shape) restricted to one consumer: producers push onto an atomic Treiber stack with the same
+`compare_exchange_weak` loop `AtomicStackView::Push` already runs, and the consumer claims the whole stack with
+`newest.exchange(nullptr, acquire)` and reverses it with plain pointer writes. A producer writes one field — the link inside
+the node it is pushing — and writes it **before** publishing, so nothing in the container ever touches a node that has been
+handed back. That single inversion is what makes the view ownership contract sound without hazard pointers, an epoch scheme,
+or a compare-and-swap on the pop side.
+
+**Five testlets, each checked against the defect it is meant to catch.** A test that has never failed is not evidence, so both
+defects were re-injected and the real `EngineTest` testlets were rebuilt and run against them.
+
+| Negative control | Observed |
+|---|---|
+| `IsEmpty` reading only `newest` | `TC1` fails: "an emptiness test that reads only the producer stack calls the queue empty while it still holds work" — a pop that refills has already moved the batch into `oldest` |
+| A late write to a published node (the two-step publish's hazard) | `TC0`, `TC1`, `TC2` and `TC3` all fail; ThreadSanitizer reports a race on the node's link field in `ReverseNewest`; `TC2` delivers 1 of 4,000 and `TC3` strands after one node |
+
+**The controls caught a defect in the tests themselves.** The first draft of the sole-ownership drain ran
+`while (returned < nodeCount)` with no deadline; the injected defect made it spin forever, so a lost node would have produced
+a *hung* test instead of a failed one — the exact failure mode `WaitUntil` exists to prevent, documented in
+`Engine/Test/TestCollection.h`. The loop is now bounded at 200 ms and names the round it stranded on. Two other defects the
+draft carried and the pass removed: an `atomic_flag` start gate that opened itself for the first thread that arrived, and a
+thread-creation loop that assigned to joinable threads, which is `std::terminate`.
+
+**Gate.** `EngineTest` built in Dev, Debug and Release with `-test`, 0 `error:`, and **59 of 60 collections pass in all three
+— the single failure is `WindowTest::TC0.Create Window` retaining 82,126 bytes over the 65,536-byte testlet ceiling**, which
+this journal carries as an owner-declared separate issue and which this change does not touch: the diff reaches four Container
+and Test files plus docs, and OSAL references no Container header. The new pair is clean on every layer that owns it —
+clang-format, include layout, `comments.py` 0 violations, `layout.py` member layout clean, `blank_lines.py` 0 findings,
+`docs_coverage.py check-file` reports "1 entry documented, addressed from the header, method pages complete",
+`docs_methods.py` reports nothing against it, and `htmlcheck.py` reports **92 pages, 0 with problems**. Six method pages are
+byte-verbatim against the header (`docs_pass.py signatures`: 6 pages, 0 problems).
+
+**Two things left as findings rather than fixed, and one flag raised.** `Engine/Test/UnitTestCollection.cpp` carries 8 comment
+findings and 2 blank-line findings, all of them present at `HEAD` (`git show HEAD:… | blank_lines.py` reproduces them, shifted
+by the two lines this change adds); sweeping the Test module's comments is a separate task and was not silently widened. The
+reference pages also record two honest gaps: nothing is benchmarked, so `newest` and `oldest` are left unpacked rather than
+padded on a hunch, and the class has no production call site yet. The owner chose *provider* in the type name, where the
+concurrency term is *producer* — `MPSC` abbreviates producer, and this engine already uses *provider* for the task-supplying
+`TaskProvider` — so `AtomicQueueViewMPSC` is the alias the reference page documents and a rename to `MultiProducer` remains a
+mechanical change to one file pair and one docs folder.
 
 ## 2026-10-04 22:10 — the `_MainThread` suffix is a rule now, and the naming conflict is closed
 
@@ -143,6 +302,7 @@ page path, which is why the source moved with the docs; `docs/Log/Logger/get.htm
 a table of contents that says "Signature" — the plural made the module's signature checker report a missing block,
 and the heading is now the singular house shape, which takes `docs_pass.py signatures docs/Log/Logger` to 19 pages
 verbatim, 0 problems.
+
 
 ## 2026-10-04 20:57 — every local branch except `master` is deleted; the four unique commits survive only as loose objects
 
@@ -6444,3 +6604,4 @@ judgement (single-arg `explicit`, `[[nodiscard]]` getters, log-before-return, `c
 magic numbers) are listed in `SKILL.md` for manual review, which is honest rather than faked.
 Use the tool as a fast mechanical filter plus build gate; conformance of behaviour still needs
 a reader.
+
