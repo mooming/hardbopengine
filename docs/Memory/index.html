@@ -40,6 +40,7 @@
     <li><a href="#allocatorproxy">AllocatorProxy</a></li>
     <li><a href="#poolconfig">PoolConfig</a></li>
     <li><a href="#shareable">Shareable</a></li>
+    <li><a href="AlignedStorage/index.html">AlignedStorage</a></li>
     <li><a href="#global-allocation">Global allocation accounting</a></li>
     <li><a href="#coverage">Coverage</a></li>
   </ul>
@@ -59,7 +60,7 @@
 <p class="subtitle">
   <span class="tag">namespace hbe</span>
   <span class="tag">Engine/Memory</span>
-  23 headers, 16 sources — allocators, the manager that registers them, and the typed helpers over both
+  24 headers, 16 sources — allocators, the manager that registers them, and the typed helpers over both
 </p>
 
 <h2 id="description">Module description</h2>
@@ -89,6 +90,7 @@
   <tr><td><a href="#allocatorproxy">AllocatorProxy</a></td><td>Class</td><td>AllocatorProxy.h</td><td>Adapt any allocator to the manager's calling convention</td></tr>
   <tr><td><a href="#poolconfig">PoolConfig</a></td><td>Class</td><td>PoolConfig.h</td><td>Block size and count, ordered by block size</td></tr>
   <tr><td><a href="#shareable">Shareable</a></td><td>Class template</td><td>Shareable.h</td><td>Reference-counted handle to one object</td></tr>
+  <tr><td><a href="AlignedStorage/index.html">AlignedStorage</a></td><td>Class template</td><td>AlignedStorage.h</td><td>An over-allocated buffer and the three facts needed to release it</td></tr>
 </table>
 
 <h2 id="variables">Module variables</h2>
@@ -609,6 +611,12 @@ DoWork();
     <td>The <a href="#allocators">catalogue</a> says what each strategy is and which header holds it, not each
         class's constructor arguments and reset semantics. That is nine classes' worth of reading, and a
         constructor guessed wrongly is worse than a gap stated plainly.</td>
+  </tr>
+  <tr>
+    <td>One class has its own page</td>
+    <td><a href="AlignedStorage/index.html"><code>AlignedStorage</code></a> is documented as a class page with a
+        page per method, because it was written after the per-class convention took hold. Everything else on this
+        page is a section of this page, and its contract still lives in the header's Doxygen block.</td>
   </tr>
   <tr>
     <td>Allocation failure</td>
