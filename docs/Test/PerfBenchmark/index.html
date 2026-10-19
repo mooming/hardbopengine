@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PerfBenchmark — Test module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a class="current" href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This class</h3>
+  <ul>
+    <li><a href="#description">Class description</a></li>
+    <li><a href="#properties">Class properties</a></li>
+    <li><a href="#methods">Class methods</a></li>
+    <li><a href="#coverage">Coverage</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Test</a> /
+  PerfBenchmark
+</p>
+
+<h1>PerfBenchmark</h1>
+<p class="subtitle">
+  <span class="tag">Engine/Test/PerfHarness.h</span>
+  <span class="tag">namespace hbe::Test</span>
+  <span class="tag">final</span>
+  one benchmark cell: arms, rounds, a claim, a colour
+</p>
+
+
+<h2 id="description">Class description</h2>
+
+<p>
+  A benchmark <em>cell</em>: one shape of queue traffic, every implementation of it, measured alternately so that
+  machine drift cannot favour one implementation. A cell is not a test. Its numbers and its colour are information
+  for a reader, and the suite&rsquo;s pass count does not move whatever they say &mdash; see
+  <a href="../EPerfGrade/index.html">EPerfGrade</a> for what each colour claims and
+  <a href="../../design/FixedRingBufferQueues_Design.html#harness">the design document</a> for why a performance suite that fails is worse than one that
+  reports.
+</p>
+<p>
+  The one exception is a broken invariant. A measure function returns the count of items it lost, duplicated or read
+  corrupted, and a winner with any such item grades <code>REJECTED</code>: a ratio measured on a queue that dropped
+  work is not a slow design, it is a measurement of nothing.
+</p>
+<p>
+  The unit of a measurement is a <em>round</em>. In one round every arm is measured exactly once, in an order that
+  rotates, and each measure function builds its queue from scratch and destroys it afterwards. Rotation is the whole
+  defence against drift: with arms in a fixed order the arm measured first each round wins a thermal and cache
+  headwind that has nothing to do with its design.
+</p>
+
+<h2 id="properties">Class properties</h2>
+
+<table>
+
+<tr><th>Type + Name</th><th>Default Value</th><th>Description</th></tr>
+<tr><td><code>struct PerfArm // hb-standards:ignore</code> <span class="badge">private nested</span></td><td><code>not applicable</code></td><td>One implementation under measurement: its name, the address its measure function receives, one figure per round and a violation total.</td></tr>
+<tr><td><code>static constexpr std::size_t MaxArms = 5;</code> <span class="badge">public</span></td><td><code>5</code></td><td>Ceiling on <a href="addarm.html">AddArm</a> calls; a sixth arm is dropped rather than growing the object.</td></tr>
+<tr><td><code>static constexpr std::size_t MaxRounds = 11;</code> <span class="badge">public</span></td><td><code>11</code></td><td>Ceiling on the round count passed to the constructor; it sizes <code>PerfArm::tenths</code>, so it is a bound and not a suggestion.</td></tr>
+<tr><td><code>PerfArm arms[MaxArms];</code> <span class="badge">private</span></td><td>empty</td><td>The arms in the order they were added; the rotation permutes the order of measurement, never this array.</td></tr>
+<tr><td><code>std::size_t armCount;</code> <span class="badge">private</span></td><td><code>0</code></td><td>How many of <code>arms</code> hold a real arm.</td></tr>
+<tr><td><code>std::size_t rounds;</code> <span class="badge">private</span></td><td>constructor argument</td><td>The constructor&rsquo;s argument clamped to <code>MaxRounds</code>.</td></tr>
+<tr><td><code>std::size_t runNanoseconds;</code> <span class="badge">private</span></td><td><code>0</code></td><td>Wall time of <a href="run.html">Run</a> across every arm and round, printed so a reader can check the cell against its time budget.</td></tr>
+<tr><td><code>const char* expectedWinner;</code> <span class="badge">private</span></td><td><code>nullptr</code></td><td>The arm the guide says is faster, or <code>nullptr</code> when the cell carries no claim.</td></tr>
+<tr><td><code>const char* expectedLoser;</code> <span class="badge">private</span></td><td><code>nullptr</code></td><td>The arm the claim is made against.</td></tr>
+<tr><td><code>const char* controlArm;</code> <span class="badge">private</span></td><td><code>nullptr</code></td><td>The arm that measures the machine rather than a design &mdash; normally a second copy of the winner.</td></tr>
+<tr><td><code>std::size_t expectedMinRatioPercent;</code> <span class="badge">private</span></td><td><code>100</code></td><td>The margin the claim demands, in percent: <code>200</code> means &ldquo;at least twice as fast&rdquo;.</td></tr>
+
+</table>
+
+<h2 id="methods">Class methods</h2>
+
+<table>
+
+<tr><th>Name</th><th>Signature</th><th>What a caller depends on</th></tr>
+<tr><td><a href="constructors.html">PerfBenchmark</a></td><td><code>explicit PerfBenchmark(std::size_t inRounds) noexcept</code></td><td>Zero arms, no claim, no control. The round count is clamped, not rejected.</td></tr>
+<tr><td><a href="addarm.html">AddArm</a></td><td><code>void AddArm(const char* inName, const void* inUserData, TPerfMeasure inMeasure) noexcept</code></td><td>Static-storage name and user data; the measure function runs once per round on a fresh state.</td></tr>
+<tr><td><a href="expect.html">Expect</a></td><td><code>void Expect(const char* inWinner, const char* inLoser, std::size_t inMinRatioPercent) noexcept</code></td><td>The cell&rsquo;s claim, as names and a percent margin. Without it the cell reports numbers and grades nothing.</td></tr>
+<tr><td><a href="control.html">Control</a></td><td><code>void Control(const char* inArmName) noexcept</code></td><td>Which arm&rsquo;s spread is the noise floor; without it the widest spread of the other arms is used instead.</td></tr>
+<tr><td><a href="run.html">Run</a></td><td><code>void Run() noexcept</code></td><td>Blocks for the whole cell; every measure call happens inside it.</td></tr>
+<tr><td><a href="report.html">Report</a></td><td><code>void Report(std::ostream&amp; ioOut) const</code></td><td>Plain text, no colour, aligned by <code>snprintf</code> so the caller&rsquo;s stream state cannot corrupt it.</td></tr>
+<tr><td><a href="getgrade.html">GetGrade</a></td><td><code>[[nodiscard]] EPerfGrade GetGrade() const noexcept</code></td><td>The colour a reader sees; <code>None</code> when the cell carries no claim.</td></tr>
+
+</table>
+
+<h3 id="private-helpers">Private helpers</h3>
+
+<table>
+
+<tr><th>Name</th><th>Signature</th><th>What it decides</th></tr>
+<tr><td><a href="indexof.html">IndexOf</a></td><td><code>[[nodiscard]] std::size_t IndexOf(const char* inName) const noexcept</code></td><td>Name to arm index, <code>MaxArms</code> when the name is absent or null.</td></tr>
+<tr><td><a href="bestof.html">BestOf</a></td><td><code>[[nodiscard]] std::size_t BestOf(const PerfArm&amp; inArm) const noexcept</code></td><td>The fastest round, which is the figure the report leads with.</td></tr>
+<tr><td><a href="worstof.html">WorstOf</a></td><td><code>[[nodiscard]] std::size_t WorstOf(const PerfArm&amp; inArm) const noexcept</code></td><td>The slowest round; with <code>BestOf</code> it forms the spread.</td></tr>
+<tr><td><a href="medianof.html">MedianOf</a></td><td><code>[[nodiscard]] std::size_t MedianOf(const PerfArm&amp; inArm) const noexcept</code></td><td>The middle round, which a claim must also clear to grade <code>GREEN</code>.</td></tr>
+<tr><td><a href="spreadpercent.html">SpreadPercent</a></td><td><code>[[nodiscard]] std::size_t SpreadPercent(const PerfArm&amp; inArm) const noexcept</code></td><td>Slowest over fastest minus one, as a percent.</td></tr>
+<tr><td><a href="controlspreadpercent.html">ControlSpreadPercent</a></td><td><code>[[nodiscard]] std::size_t ControlSpreadPercent() const noexcept</code></td><td>The noise floor the grade is allowed to trust.</td></tr>
+<tr><td><a href="gradeof.html">GradeOf</a></td><td><code>[[nodiscard]] EPerfGrade GradeOf(const PerfArm&amp; inWinner, const PerfArm&amp; inLoser) const noexcept</code></td><td>The whole grading rule, in one function.</td></tr>
+
+</table>
+
+<h2 id="coverage">Coverage</h2>
+
+<p>
+  Every member of <code>PerfBenchmark</code> is documented on this page or its own. Two things live in the source
+  rather than here and are named so that the omission is not silent: the tenths-of-a-nanosecond conversion
+  <code>Tenths</code>, which is a file-local arithmetic step rather than an API, and the arm table&rsquo;s column
+  widths, which are formatting constants rather than behaviour. The <code>hb-standards:ignore</code> marker on
+  <code>PerfArm</code> is the member-layout waiver recorded in
+  <a href="../../design/FixedRingBufferQueues_Design.html#layout">the design document</a>: the struct declares <code>tenths[MaxRounds]</code>, so it
+  cannot be declared before the constant it sizes.
+</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; PerfBenchmark</a></span>
+  <span><a href="index.html#methods">All PerfBenchmark methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

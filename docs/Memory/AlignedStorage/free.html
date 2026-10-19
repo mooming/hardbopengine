@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AlignedStorage::Free — Memory — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a class="current" href="../index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+
+  <h3><a href="index.html">AlignedStorage</a> methods</h3>
+  <ul class="methods">
+    <li><a href="allocate.html">Allocate</a></li>
+    <li><a class="current" href="free.html">Free</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Memory</a> /
+  <a href="index.html">AlignedStorage</a> / Free
+</p>
+
+<h1><span class="fn">Free</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::AlignedStorage</span>
+  <span class="tag">Engine/Memory/AlignedStorage.h</span>
+  <span class="tag">const</span>
+  <span class="tag">noexcept</span>
+  return the buffer through the allocator, with the base pointer and byte count <code>Allocate</code> recorded
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>template &lt;typename TAllocator&gt;
+	void Free(TAllocator&amp; inAllocator) const noexcept</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  Two statements and a guard. A handle whose <code>raw</code> is null owns nothing and returns immediately, which
+  makes this safe to call unconditionally from a destructor that may be running on a partially-constructed owner.
+  Otherwise the recorded base pointer — never <code>aligned</code> — is cast back to the allocator's own byte
+  pointer type and released with the recorded <code>bytes</code>:
+</p>
+
+<pre><code><span class="kw">using</span> <span class="ty">BytePointer</span> = std::remove_pointer_t&lt;<span class="kw">decltype</span>(std::declval&lt;TAllocator&amp;&gt;().allocate(1))&gt;;
+inAllocator.<span class="fn">deallocate</span>(<span class="kw">reinterpret_cast</span>&lt;<span class="ty">BytePointer</span>*&gt;(raw), bytes);</code></pre>
+
+<p>
+  The byte-pointer type is <em>deduced</em> from what the allocator's <code>allocate</code> returns, in an unevaluated
+  context, so no call site has to know that this module's allocators happen to trade in
+  <code>std::uint8_t*</code>. Both casts in the class are here or in
+  <a href="allocate.html"><code>Allocate</code></a>; a site that goes through the handle writes neither cast, nor the
+  padding arithmetic, nor the byte count.
+</p>
+
+<div class="gap">
+  <strong>It destroys nothing.</strong> <code>Free</code> releases raw memory. Every <code>TObject</code> built in the
+  buffer must already have had its destructor run — the handle knows the buffer's extent and so could in principle
+  destroy <code>bytes / sizeof(TObject)</code> elements, but it does not, because the usual caller built
+  <em>fewer</em> objects than the buffer could hold (a queue block's ring holds whatever was published into it, never a
+  predictable <code>BlockCapacity</code> of them) and guessing would be worse than refusing. The element lifetime is
+  the caller's, exactly as it was with a raw <code>deallocate</code>: the queue satisfies that duty by running its
+  <code>Block</code> destructor first — which runs the ring's, and so destroys what the ring still holds — and only then calls
+  <code>Free</code>.
+</div>
+
+<div class="gap">
+  <strong><code>const</code> means the handle is still full afterwards.</strong> <code>Free</code> cannot clear the
+  fields it reads, so calling it twice on the same handle frees the same memory twice. The engine's users avoid this
+  by construction — the queue frees a block only on the path that discards that block — but a hand-written second
+  call is not caught. Reset deliberately if a path can reach a second free:
+  <code>allocation = AlignedStorage&lt;Block&gt;{};</code>
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<table>
+  <tr><th>Parameter</th><th>Type</th><th>Requirement</th></tr>
+  <tr>
+    <td><code>inAllocator</code></td>
+    <td><code>TAllocator&amp;</code></td>
+    <td>
+      An lvalue allocator whose <code>deallocate(pointer, size_t bytes)</code> accepts the pointer and byte count
+      <a href="allocate.html"><code>Allocate</code></a> used. It need not be the same object — a rebound allocator of
+      the same type and target is fine, which is what the queue does, since it stores one allocator and constructs a
+      <code>StorageAllocator</code> at each call — but it must route to the same pool, or memory leaves through the
+      wrong accounting node
+    </td>
+  </tr>
+</table>
+
+<h2 id="return">Return value</h2>
+
+<p>
+  <code>void</code>. <code>deallocate</code> has nothing to report and the function adds nothing: it is
+  <code>noexcept</code>, allocation-free, and cannot fail. A handle that owned nothing and a handle that released a
+  buffer look identical afterwards, which is the one consequence of <code>const</code> a caller has to remember.
+</p>
+
+<h2 id="example">Examples</h2>
+
+<p class="note">These are the engine's two real call sites, from
+<a href="../../Container/RingBuffer/index.html"><code>RingBuffer</code></a>.</p>
+
+<p>Release one retired block, whose handle travelled with it — read out of the block first, because the destructor that runs next
+destroys the ring inside it:</p>
+
+<pre><code><span class="ty">StorageAllocator</span> storageAllocator{allocator};
+<span class="kw">const</span> <span class="ty">AlignedStorage</span>&lt;<span class="ty">Block</span>&gt; allocation = inBlock-&gt;<span class="fn">allocation</span>;
+
+inBlock-&gt;~<span class="fn">Block</span>();
+allocation.<span class="fn">Free</span>(storageAllocator);</code></pre>
+
+<p>Release the producer slot array from a destructor that must also survive a constructor that failed early:</p>
+
+<pre><code><span class="ty">StorageAllocator</span> storageAllocator{allocator};
+slotAllocation.<span class="fn">Free</span>(storageAllocator);              <span class="cm">// no-op when the constructor never got a buffer</span></code></pre>
+
+<footer class="prevnext">
+  <span><a href="allocate.html">&larr; Allocate</a></span>
+  <span><a href="index.html">All AlignedStorage members</a></span>
+</footer>
+
+</main>
+</body>
+</html>

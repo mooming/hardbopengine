@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>RingBufferPerfBenchmarkTest — Test module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a class="current" href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This class</h3>
+  <ul>
+    <li><a href="#description">Class description</a></li>
+    <li><a href="#properties">Class properties</a></li>
+    <li><a href="#methods">Class methods</a></li>
+    <li><a href="#coverage">Coverage</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Test</a> /
+  RingBufferPerfBenchmarkTest
+</p>
+
+<h1>RingBufferPerfBenchmarkTest</h1>
+<p class="subtitle">
+  <span class="tag">Engine/Test/RingBufferPerf.h</span>
+  <span class="tag">hbe</span>
+  <span class="tag">final</span>
+  the full ring-buffer sweep, registered only by the benchmark binary
+</p>
+
+
+<h2 id="description">Class description</h2>
+
+<p>
+  The full ring-buffer sweep: twenty-two cells covering both queue families, saturated and sparse, sixteen producers
+  deep, with the spin-cap comparison and the <code>fetch_add</code> experiment attached. It is an ordinary collection
+  with an ordinary <code>Prepare</code>, and it is registered by exactly one binary &mdash;
+  <code>Examples/RingBufferBenchmark</code>, through <code>hbe::Test::RegisterPerfBenchmarkSuite</code>.
+</p>
+<p>
+  That split, and not a command-line switch, is how the full sweep and the regression run stay honest. Both binaries
+  execute the same measure functions through the same <a href="../PerfBenchmark/index.html">PerfBenchmark</a>; the only
+  difference is which collection was registered before the run was scheduled. A sweep that computed its numbers
+  differently from the compact cells would be a sweep whose numbers could not be compared with the ones a regression run
+  prints.
+</p>
+<p>
+  Twenty-two cells at 0.20&nbsp;s to 2.37&nbsp;s each, about 16&nbsp;s in total, Release. No cell reaches the five-second
+  limit any testlet is held to; each prints its own wall time so the claim can be checked rather than trusted. The
+  budget is what decided the item counts, and <a href="../../design/FixedRingBufferQueues_Design.html#budget">the budget section</a> records which knob was
+  turned and why.
+</p>
+
+<h2 id="properties">Class properties</h2>
+
+<p>
+  None, for the same reason as the compact collection: the shapes live as file-local <code>constexpr</code> objects and
+  every measurement lives in the <a href="../PerfBenchmark/index.html"><code>PerfBenchmark</code></a> built inside the
+  testlet that runs it.
+</p>
+
+<h2 id="methods">Class methods</h2>
+
+<table>
+
+<tr><th>Name</th><th>Signature</th><th>What a caller depends on</th></tr>
+<tr><td><a href="constructors.html">RingBufferPerfBenchmarkTest</a></td><td><code>RingBufferPerfBenchmarkTest()</code></td><td>Names the collection, which is the log category every cell of it prints under.</td></tr>
+<tr><td><a href="prepare.html">Prepare</a></td><td><code>void Prepare() override</code></td><td>Registers the saturated and sparse curves for both families plus three spin-cap cells, one cell per testlet.</td></tr>
+
+</table>
+
+<h2 id="coverage">Coverage</h2>
+
+<p>
+  The constructor names the collection and nothing more, so it has no page; <code>Prepare</code> has its own. Which
+  cells exist, which of them carry a claim, and what each measured is
+  <a href="../../design/FixedRingBufferQueues_Design.html#claims">the claims table</a> and
+  <a href="../../design/FixedRingBufferQueues_Design.html#cost">the cost tables</a> of the design document rather than anything in this page, because they
+  change with the machine and not with the API.
+</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; RingBufferPerfBenchmarkTest</a></span>
+  <span><a href="index.html#methods">All RingBufferPerfBenchmarkTest methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

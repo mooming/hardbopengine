@@ -48,14 +48,23 @@
     <li><a href="#linkedlist">LinkedList</a></li>
     <li><a href="#deque">Deque</a></li>
     <li><a href="#queue">Queue</a></li>
-    <li><a href="#ringqueue">RingQueue</a></li>
+    <li><a href="#fixedringbuffer">FixedRingBuffer</a></li>
     <li><a href="#boundedpriorityqueue">BoundedPriorityQueue</a></li>
     <li><a href="#atomicstackview">AtomicStackView</a></li>
+    <li><a href="#ringbuffer">RingBuffer</a></li>
+    <li><a href="#atomicringbuffermpmc">AtomicFixedRingMPMC</a></li>
+    <li><a href="#atomicringbuffermpsc">AtomicFixedRingMPSC</a></li>
+    <li><a href="#ringbuffermpmc">FixedRingMPMC</a></li>
+    <li><a href="#ringbuffermpsc">FixedRingMPSC</a></li>
+    <li><a href="#epushresult">EPushResult</a></li>
+    <li><a href="#epopresult">EPopResult</a></li>
   </ul>
 
   <h3>Design documents</h3>
   <ul>
     <li><a href="../AllocatorGuide.md">Allocator guide</a></li>
+    <li><a href="../design/RingBuffer_Design.html">RingBuffer design</a></li>
+    <li><a href="../design/FixedRingBufferQueues_Design.html">Fixed-size ring buffers: MPMC, MPSC, and their mutex baselines</a></li>
   </ul>
 </nav>
 
@@ -67,15 +76,15 @@
 <p class="subtitle">
   <span class="tag">namespace hbe</span>
   <span class="tag">Engine/Container</span>
-  10 headers, 10 sources — the engine's own containers, each one documented on its own page
+  15 headers, 15 sources — the engine's own containers, each one documented on its own page
 </p>
 
 <h2 id="description">Module description</h2>
 
 <p>
   The engine's data structures, written once and instantiated everywhere: contiguous storage where a resize is an
-  explicit call, rings where both ends are hot, open addressing where keys are hashed, and one atomic chain where threads
-  need a pool. Seven of the ten take an allocator as a template parameter and default to
+  explicit call, rings where both ends are hot, open addressing where keys are hashed, and atomic chains where threads need
+  a pool or a hand-off. Seven of the eleven take an allocator as a template parameter and default to
   <a href="../Memory/index.html#allocators"><code>DefaultAllocator</code></a>, so memory accounting follows the container
   rather than the call site and a container placed in a frame-scoped arena frees with the arena. For the standard
   containers rebound the same way, see <a href="../HSTL/index.html">HSTL</a>; the rule of thumb is that engine internals
@@ -86,11 +95,15 @@
   The allocator story is not uniform, and the differences are contracts rather than details — see
   <a href="#conventions">Shared conventions</a> and each class page. In short:
   <a href="Array/index.html"><code>Array</code></a> is the only container with a constructor that accepts an allocator
-  <em>instance</em>; <a href="RingQueue/index.html"><code>RingQueue</code></a> accepts the <em>type</em> but stores no
+  <em>instance</em>; <a href="FixedRingBuffer/index.html"><code>FixedRingBuffer</code></a> accepts the <em>type</em> but stores no
   instance, allocating and freeing through two separate default-constructed objects;
   <a href="Queue/index.html"><code>Queue</code></a> takes the container it adapts rather than an allocator; and
   <a href="AtomicStackView/index.html"><code>AtomicStackView</code></a> has none at all, because it stores nothing but a
-  pointer.
+  pointer; and
+  <a href="RingBuffer/index.html"><code>RingBuffer</code></a>
+  takes no allocator argument but is the most allocation-hungry container in the module — it captures whichever allocator is
+  scoped on the thread that constructs it and charges every block to that id, so a queue belongs to the subsystem that built
+  it in the allocator ledger.
 </p>
 
 <h2 id="usage">Who uses what</h2>
@@ -125,7 +138,7 @@
   <tr>
     <td><a href="Vector/index.html"><code>Vector</code></a>, <a href="HashMap/index.html"><code>HashMap</code></a>,
       <a href="Map/index.html"><code>Map</code></a>, <a href="LinkedList/index.html"><code>LinkedList</code></a>,
-      <a href="Queue/index.html"><code>Queue</code></a>, <a href="RingQueue/index.html"><code>RingQueue</code></a></td>
+      <a href="Queue/index.html"><code>Queue</code></a>, <a href="FixedRingBuffer/index.html"><code>FixedRingBuffer</code></a></td>
     <td>No engine caller — unit-test fixtures only</td>
     <td>Each header is included by <code>Engine/Test/UnitTestCollection.cpp</code> and by nothing else. Note that
       <code>Math/Transform.h</code> does use a name <code>Vector</code>: it is <code>std::vector</code>, reached through
@@ -144,9 +157,16 @@
   <tr id="linkedlist"><td><a href="LinkedList/index.html">LinkedList</a></td><td>Class template</td><td>LinkedList.h</td><td>Doubly-linked list, nodes allocated singly</td><td>2</td></tr>
   <tr id="deque"><td><a href="Deque/index.html">Deque</a></td><td>Class template</td><td>Deque.h</td><td>Ring-buffer deque, power-of-two capacity, wrap-around indexing</td><td>4</td></tr>
   <tr id="queue"><td><a href="Queue/index.html">Queue</a></td><td>Class template</td><td>Queue.h</td><td>FIFO adapter over <a href="Deque/index.html">Deque</a></td><td>1</td></tr>
-  <tr id="ringqueue"><td><a href="RingQueue/index.html">RingQueue</a></td><td>Class template</td><td>RingQueue.h</td><td>Fixed-capacity ring, refuses rather than overwrites when full</td><td>1</td></tr>
+  <tr id="fixedringbuffer"><td><a href="FixedRingBuffer/index.html">FixedRingBuffer</a></td><td>Class template</td><td>FixedRingBuffer.h</td><td>Fixed-capacity ring, refuses rather than overwrites when full</td><td>1</td></tr>
   <tr id="boundedpriorityqueue"><td><a href="BoundedPriorityQueue/index.html">BoundedPriorityQueue</a></td><td>Class template</td><td>BoundedPriorityQueue.h</td><td>One deque per priority, highest number drained first</td><td>3</td></tr>
   <tr id="atomicstackview"><td><a href="AtomicStackView/index.html">AtomicStackView</a></td><td>Concept-constrained class template</td><td>AtomicStackView.h</td><td>Lock-free intrusive stack on compare-and-swap</td><td>2</td></tr>
+  <tr id="atomicringbuffermpmc"><td><a href="AtomicFixedRingMPMC/index.html">AtomicFixedRingMPMC</a></td><td>Class template</td><td>AtomicFixedRingMPMC.h</td><td>Lock-free fixed ring, many producers and many consumers, one ready index per slot</td><td>13</td></tr>
+  <tr id="atomicringbuffermpsc"><td><a href="AtomicFixedRingMPSC/index.html">AtomicFixedRingMPSC</a></td><td>Class template</td><td>AtomicFixedRingMPSC.h</td><td>Same ring with one consumer: no CAS on the dequeue side at all</td><td>12</td></tr>
+  <tr id="ringbuffermpmc"><td><a href="FixedRingMPMC/index.html">FixedRingMPMC</a></td><td>Class template</td><td>FixedRingMPMC.h</td><td>Mutex-guarded fixed ring, measured as the baseline for the lock-free pair</td><td>7</td></tr>
+  <tr id="ringbuffermpsc"><td><a href="FixedRingMPSC/index.html">FixedRingMPSC</a></td><td>Class template</td><td>FixedRingMPSC.h</td><td>The same mutex ring under a single-consumer name, kept as a measurement control</td><td>7</td></tr>
+  <tr id="ringbuffer"><td><a href="RingBuffer/index.html">RingBuffer</a></td><td>Concept-constrained class template</td><td>RingBuffer.h</td><td>Growable chain of fixed blocks, each holding a pluggable ring backend <code>U</code> that must satisfy <code>CFixedRing&lt;T, U&gt;</code>: many threads push values, one thread pops them, the container owns both</td><td>16</td></tr>
+  <tr id="epushresult"><td><a href="EPushResult/index.html">EPushResult</a></td><td>Enumeration</td><td>EPushResult.h</td><td>The one push answer of the ring family; <code>TooManyProducers</code> is the chain's third</td><td>0</td></tr>
+  <tr id="epopresult"><td><a href="EPopResult/index.html">EPopResult</a></td><td>Enumeration</td><td>EPopResult.h</td><td>The one pop answer of the ring family; <code>Blocked</code> is the chain's third</td><td>0</td></tr>
 </table>
 
 <h2 id="conventions">Shared conventions</h2>
@@ -192,7 +212,7 @@
     <td><strong>Construction and iteration have sharp corners.</strong></td>
     <td>
       <a href="Deque/index.html"><code>Deque</code></a> allocates in its default constructor — and so does moving one,
-      because the move constructor delegates to it; <a href="RingQueue/index.html"><code>RingQueue</code></a> has no default
+      because the move constructor delegates to it; <a href="FixedRingBuffer/index.html"><code>FixedRingBuffer</code></a> has no default
       constructor at all and refuses to size itself; and
       <a href="Deque/begin.html"><code>Deque::begin</code></a> to <a href="Deque/end.html"><code>end</code></a> is a valid
       range only while the ring is unwrapped, which a wrapped deque silently is not
@@ -209,7 +229,7 @@
   <a href="Map/index.html"><code>Map::DefaultCapacity</code></a> are each <code>4</code>;
   <a href="HashMap/index.html"><code>HashMap</code></a> carries <code>MinCapacity = 4</code> and
   <code>MaxLoadFactor = 0.7</code>; <a href="Array/index.html"><code>Array</code></a> has no default at all, which is the
-  point of it; <a href="RingQueue/index.html"><code>RingQueue</code></a> has no default capacity either and must be
+  point of it; <a href="FixedRingBuffer/index.html"><code>FixedRingBuffer</code></a> has no default capacity either and must be
   constructed with one; and
   <a href="BoundedPriorityQueue/index.html"><code>BoundedPriorityQueue</code></a>'s priority ceiling is a template argument.
   A container that sized itself from a global would couple every user of the module to one choice.
@@ -224,7 +244,9 @@
   <code>LinkedList</code>'s allocator must be sized for),
   <a href="HashMap/index.html#non-member"><code>EHashEntryState</code></a> (the per-slot state the table runs on) and
   <a href="AtomicStackView/index.html#non-member"><code>CNext</code></a> (the concept that constrains
-  <code>AtomicStackView</code>'s element type).
+  <code>AtomicStackView</code>'s element type) and
+  <a href="RingBuffer/index.html#template"><code>CFixedRing</code></a> (the concept that constrains which ring may be a
+  <code>RingBuffer</code> block).
 </p>
 
 <h2 id="array">Array (<code>Engine/Container/Array.h</code>)</h2>
@@ -358,17 +380,17 @@
 
 <p>Method page: <a href="Queue/pop.html">Pop</a>.</p>
 
-<h2 id="ringqueue">RingQueue (<code>Engine/Container/RingQueue.h</code>)</h2>
+<h2 id="fixedringbuffer">FixedRingBuffer (<code>Engine/Container/FixedRingBuffer.h</code>)</h2>
 
 <p>
   Fixed-capacity ring buffer: capacity is set by the only constructor, rounded up to a power of two, and never changes —
   which is what makes it safe where an allocation mid-frame would not be. Two corrections to the earlier description: there
   is <strong>no default constructor</strong>, and a push into a full ring does not overwrite the oldest entry and does not
-  return a failure — <a href="RingQueue/push.html"><code>Push</code></a> fatal-asserts, in every configuration. Class page:
-  <a href="RingQueue/index.html"><code>RingQueue</code></a>.
+  return a failure — <a href="FixedRingBuffer/push.html"><code>Push</code></a> fatal-asserts, in every configuration. Class page:
+  <a href="FixedRingBuffer/index.html"><code>FixedRingBuffer</code></a>.
 </p>
 
-<p>Method page: <a href="RingQueue/push.html">Push</a>.</p>
+<p>Method page: <a href="FixedRingBuffer/push.html">Push</a>.</p>
 
 <h2 id="boundedpriorityqueue">BoundedPriorityQueue (<code>Engine/Container/BoundedPriorityQueue.h</code>)</h2>
 
@@ -421,6 +443,109 @@
 
 <p>Method pages: <a href="AtomicStackView/push.html">Push</a>, <a href="AtomicStackView/pop.html">Pop</a>.</p>
 
+<h2 id="ringbuffer">RingBuffer (<code>Engine/Container/RingBuffer.h</code>)</h2>
+
+<p>
+  Lock-free FIFO for a different scale than the intrusive one it replaced: many threads enqueue <em>values</em>, exactly one
+  thread dequeues them, and the count in flight is in the millions. The queue is a chain of fixed-size blocks, and each block is a
+  ring the caller supplies as the template parameter <code>U</code> rather than a slot protocol hand-written inside the block: the
+  chain's counter hands out a place in the block, and the ring behind it reserves the slot, constructs the element and publishes
+  it. A push is therefore two reservations with no lock and no allocation, and the memory cost is one request per block instead of
+  one per element. A block is filled for exactly one lap of its ring and then handed over to the next, because retirement needs a
+  block that is finished forever and a recycling ring never is.
+</p>
+
+<p>
+  What <code>U</code> may be is settled by <a href="RingBuffer/index.html#template"><code>CFixedRing&lt;T, U&gt;</code></a>, a
+  concept, not by prose: the ring's <code>ValueType</code> must be exactly <code>T</code>, it must be default-constructible and
+  not copyable, its <code>GetCapacity()</code> must be a power of two greater than one, and it must answer
+  <code>Push</code> in both spellings, <code>Pop</code>, <code>IsEmpty()</code> and <code>GetSlotVersion()</code>. Four
+  containers here satisfy it — <a href="AtomicFixedRingMPSC/index.html"><code>AtomicFixedRingMPSC</code></a>, <a
+  href="AtomicFixedRingMPMC/index.html"><code>AtomicFixedRingMPMC</code></a>, <a
+  href="FixedRingMPSC/index.html"><code>FixedRingMPSC</code></a> and <a
+  href="FixedRingMPMC/index.html"><code>FixedRingMPMC</code></a> — so lock-free or mutex on the block's own ring is a call-site
+  decision. The chain itself still takes exactly one consumer whichever backend is chosen: its cursor, <code>head</code>, is a
+  plain pointer.
+</p>
+
+<p>
+  Three properties distinguish it from the rest of the module. The consumer's answer has three cases rather than two:
+  <a href="RingBuffer/pop.html"><code>Pop</code></a> reports
+  <code>EPopResult::Blocked</code> when an element has been committed but is not readable yet — either the chain reserved a place
+  in the block that the ring has not taken yet, or the ring reserved a slot whose payload is not published yet — because
+  calling that state empty loses an element that is already committed and stepping over it breaks FIFO.
+  <a href="RingBuffer/isempty.html"><code>IsEmpty</code></a> decides from the block's ring and the successor pointer instead of
+  from those two counters, which makes it the weaker test, and its page says exactly which state it cannot see.
+  And growth is capped by a fuse set at construction, so a queue nobody is draining reports
+  <code>EPushResult::Full</code> instead of growing without bound — which is also why block recycling and
+  <a href="RingBuffer/retireblock.html">the hazard slots</a> exist at all.
+</p>
+
+<p>
+  Like <a href="AtomicStackView/index.html"><code>AtomicStackView</code></a> it is strict about its one consumer:
+  <a href="RingBuffer/pop.html"><code>Pop</code></a> and
+  <a href="RingBuffer/isempty.html"><code>IsEmpty</code></a> belong to a single thread, and
+  <a href="RingBuffer/destructor.html">the destructor</a> expects that thread, with the producers
+  stopped. Algorithm, invariants, memory ordering, the recycling protocol and the control experiments: <a
+  href="../design/RingBuffer_Design.html">RingBuffer design</a>. Class page: <a
+  href="RingBuffer/index.html"><code>RingBuffer</code></a>,
+  reachable under the shorter alias <code>RingBufferMPSC</code>.
+</p>
+
+<p>
+  Method pages: <a href="RingBuffer/constructors.html">Constructors</a>,
+  <a href="RingBuffer/destructor.html">Destructor</a>,
+  <a href="RingBuffer/push.html">Push</a>,
+  <a href="RingBuffer/pop.html">Pop</a>,
+  <a href="RingBuffer/isempty.html">IsEmpty</a>,
+  <a href="RingBuffer/getgrowcount.html">GetGrowCount</a>,
+  <a href="RingBuffer/getretirecount.html">GetRetireCount</a>,
+  <a href="RingBuffer/getblockedcount.html">GetBlockedCount</a>,
+  <a href="RingBuffer/allocateblock.html">AllocateBlock</a>,
+  <a href="RingBuffer/acquireblock.html">AcquireBlock</a>,
+  <a href="RingBuffer/acquireproducertoken.html">AcquireProducerToken</a>,
+  <a href="RingBuffer/freeblock.html">FreeBlock</a>,
+  <a href="RingBuffer/retireblock.html">RetireBlock</a>,
+  <a href="RingBuffer/isblockshadowed.html">IsBlockShadowed</a>,
+  <a href="RingBuffer/retrydeferredblocks.html">RetryDeferredBlocks</a>,
+  <a href="RingBuffer/destroyall.html">DestroyAll</a>.
+</p>
+
+<h2 id="fixedringbuffers">AtomicFixedRingMPMC, AtomicFixedRingMPSC, FixedRingMPMC, FixedRingMPSC (<code>Engine/Container/AtomicFixedRing*.h</code>, <code>FixedRing*.h</code>)</h2>
+
+<p>
+  Four containers that answer one question with two answers: how much does a lock cost on a bounded queue, and what does
+  removing it take. The two <code>AtomicFixedRing</code> classes are a fixed ring of <code>Capacity</code> slots with one
+  publication index per slot and no allocation, no lock and no reclamation problem — <code>AtomicFixedRingMPSC</code> is the
+  single-consumer form, where the dequeue index is a plain member and the consumer's whole cost is one
+  <code>acquire</code> load plus an increment. The two <code>FixedRing</code> classes are the mutex baseline, and they
+  are not strawmen: in the registered cells the lock-free pair is never slower, and the one shape where an earlier
+  standalone driver measured the mutex ahead is written up as a disagreement rather than settled by keeping the
+  convenient number.
+</p>
+
+<p>
+  What a caller must know that the class names do not say. The rings never grow, so <code>EPushResult::Full</code> is a real
+  answer and the caller must have a plan for it. They answer <code>Empty</code> and <code>Full</code> only — there is no
+  <code>Blocked</code>, because a producer that has claimed a slot and not yet written its readyIndex is invisible, which is the
+  one capability <a href="RingBuffer/index.html">the block-chained queue</a> has and this one
+  does not. <code>AtomicFixedRingMPSC</code> takes <strong>exactly one</strong> consumer thread: its dequeue index is not
+  atomic, so a second consumer races rather than contending. And capacity is a power of two greater than one, enforced by
+  <code>static_assert</code> whose message carries the reason.
+</p>
+
+<p>
+  Protocol, invariants, the memory-ordering table, the four negative controls that prove it, the spin-cap measurement that
+  refutes its own default, and the five-arm benchmark with its noise floor: <a
+  href="../design/FixedRingBufferQueues_Design.html">fixed-size ring buffers</a>. Class pages: <a
+  href="AtomicFixedRingMPMC/index.html"><code>AtomicFixedRingMPMC</code></a>, <a
+  href="AtomicFixedRingMPSC/index.html"><code>AtomicFixedRingMPSC</code></a>, <a
+  href="FixedRingMPMC/index.html"><code>FixedRingMPMC</code></a>, <a
+  href="FixedRingMPSC/index.html"><code>FixedRingMPSC</code></a>. The fifth benchmark arm — an MPSC ring whose producer
+  reserves with <code>fetch_add</code> and turns fullness into latency instead of refusal — lives only in
+  <code>Applications/RingBufferBenchmark</code>, because an engine container that cannot refuse honestly is a worse API.
+</p>
+
 <h2 id="coverage">Coverage</h2>
 
 <table>
@@ -434,9 +559,23 @@
       <a href="BoundedPriorityQueue/push.html"><code>Push</code></a></td>
   </tr>
   <tr>
-    <td>Six of ten containers have no production call site</td>
-    <td>Vector, HashMap, Map, LinkedList, Queue and RingQueue are instantiated only by unit-test fixtures. Their examples are
-      labelled illustrative; nothing on this site claims otherwise</td>
+    <td>The four fixed rings carry a page for every declared name</td>
+    <td><code>AtomicFixedRingMPMC</code>, <code>AtomicFixedRingMPSC</code>, <code>FixedRingMPMC</code> and
+      <code>FixedRingMPSC</code> are the part of this module where the page-per-method rule is fully satisfied, private
+      accessors and helpers included; the gap above is the older containers'</td>
+  </tr>
+  <tr>
+    <td>Eleven of fifteen containers have no production call site</td>
+    <td>Vector, HashMap, Map, LinkedList, Queue, FixedRingBuffer and RingBuffer are instantiated
+      only by unit-test fixtures; the four fixed rings additionally run in
+      <code>Applications/RingBufferBenchmark</code>, which is a measurement harness rather than a product call site. Their
+      examples are labelled illustrative; nothing on this site claims otherwise</td>
+  </tr>
+  <tr>
+    <td>One concurrency guarantee on
+      <a href="RingBuffer/index.html">the block-chained queue</a> is not testlet-proved</td>
+    <td>Deleting a producer's hazard-slot store changes no test outcome, because the window it protects is two instructions wide
+      and contains no user code. The class page's Coverage section records how that necessity was examined instead</td>
   </tr>
   <tr>
     <td>Internal helpers of the growth and rehash paths</td>
@@ -446,13 +585,15 @@
   </tr>
   <tr>
     <td>Namespace-scope names</td>
-    <td><code>LinkedListNode</code>, <code>EHashEntryState</code> and <code>CNext</code> are documented on the class pages
-      that use them rather than as separate entries of <a href="#classes">Module classes</a> — recorded here because the
-      choice is a judgement, not a fact from the headers</td>
+    <td><code>LinkedListNode</code>, <code>EHashEntryState</code>, <code>CNext</code> and <code>CFixedRing</code> are documented
+      on the class pages that use them rather than as separate entries of <a href="#classes">Module classes</a> — recorded here
+      because the choice is a judgement, not a fact from the headers</td>
   </tr>
   <tr>
-    <td>Thread-safety of everything except <code>AtomicStackView</code></td>
-    <td>None of these containers synchronises; the real callers supply external locking
+    <td>Thread-safety of everything except the six concurrent containers</td>
+    <td><code>AtomicStackView</code>, <code>RingBuffer</code>, both
+      <code>AtomicFixedRing</code> rings and both <code>FixedRing</code> rings synchronise; their class pages say which
+      threads may call what. None of the others does &mdash;  the real callers supply external locking
       (<code>Engine/Core/MainThreadTaskQueue.h:17</code> states that arrangement). The locking itself is
       <a href="../Core/index.html">Core</a>'s subject</td>
   </tr>

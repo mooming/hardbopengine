@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>RingBufferPerfTest::Prepare — Test module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a class="current" href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Example</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Test</a> /
+  <a href="index.html">RingBufferPerfTest</a> / Prepare
+</p>
+
+<h1><span class="fn">Prepare</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::RingBufferPerfTest</span>
+  <span class="tag">Engine/Test/RingBufferPerf.h</span>
+  register this collection's performance cells
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>void Prepare() override</code></pre>
+
+
+<h2 id="description">Function description</h2>
+
+<p>
+  Registers three cells. The first two carry the MPSC claim &mdash; the atomic ring at least 2.00&times; the mutex ring at
+  one producer, and again at two &mdash; each with a same-code control arm, so the grade is checked against a measured
+  noise floor rather than against optimism. The third prints the MPMC cell at two producers and two consumers with no
+  claim on it: the claim this shape used to carry is what the registered cells now measure the other way round, and the
+  disagreement is written down in
+  <a href="../../design/FixedRingBufferQueues_Design.html#disagree">why the two measurements disagree</a> instead of being resolved by which number arrived
+  last.
+</p>
+<p>
+  Each cell runs five rotated rounds and prints its wall time; the three together cost about 0.75&nbsp;s. In an
+  unoptimised build the claim line reads <code>claim numbers only</code>, because the same cells measured spreads up to
+  66% in <code>Dev</code> where they measured 4% in <code>Release</code> &mdash; see
+  <a href="../../design/FixedRingBufferQueues_Design.html#noise">the noise floor</a>.
+</p>
+
+<h2 id="parameters">Parameters</h2>
+
+<table>
+  <tr><th>Name</th><th>What the caller must supply</th></tr>
+  <tr><td><em>none</em></td><td>Called by the framework once before the collection&rsquo;s testlets run.</td></tr>
+</table>
+
+<h2 id="return">Return value</h2>
+
+<p>None. Registration only: nothing is measured here, and no measurement is possible until the testlets run.</p>
+
+<h2 id="example">Example</h2>
+
+<pre><code><span class="fn">add</span>(<span class="st">"MPSC Atomic Ring Beats Mutex Ring While Saturated"</span>, MpscP1, ECellKind::Mpsc, <span class="kw">true</span>);
+<span class="fn">add</span>(<span class="st">"MPMC Mutex Ring Against Atomic Ring At Two Producers"</span>, MpmcP2, ECellKind::Mpmc, <span class="kw">false</span>);</code></pre>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; RingBufferPerfTest</a></span>
+  <span><a href="index.html#methods">All RingBufferPerfTest methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

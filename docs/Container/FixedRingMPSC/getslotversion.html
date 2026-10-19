@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FixedRingMPSC::GetSlotVersion — Container module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a class="current" href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Container</a> /
+  <a href="index.html">FixedRingMPSC</a> / GetSlotVersion
+</p>
+
+<h1><span class="fn">GetSlotVersion</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::FixedRingMPSC</span>
+  <span class="tag">Engine/Container/FixedRingMPSC.h</span>
+  Pushes this ring has accepted since construction &mdash; monotone, never decremented by <code>Pop</code>, and the only count that can tell a spent ring from a merely empty one.
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>[[nodiscard]] size_t GetSlotVersion() const</code></pre>
+
+<p class="note">Signature text is checked against the header by <code>docs_pass.py signatures</code>.</p>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  Counts the pushes this ring has <em>accepted</em> since construction. A successful <code>Push</code> reserves one slot
+  and the count grows by one; <code>Pop</code> never lowers it, so the number is monotone and its value at any moment is
+  the absolute index the next accepted push will receive. It is not a measure of how many elements are readable — that
+  is what <a href="pop.html"><code>Pop</code></a> answers — and it is not how many slots are free, which is
+  <code>GetCapacity()</code> minus what is in flight.
+</p>
+
+<p>
+  Taken under the same lock that guards the slot array, so the value it returns was true at some instant and may not be
+  true now: a peer producer can take the next slot the instant the lock is released. Only <code>Push</code>'s own answer
+  decides whether there was room. What the count <em>is</em> good for is a cap a caller imposes on itself. A container that reuses one ring as one node of a
+  chain — where every slot must be handed over exactly once before the node is retired — has to stop pushing at
+  <code>GetCapacity()</code>, because a ring whose consumer has lapped it silently accepts the next push into a recycled
+  slot. That caller needs this count to tell a <em>spent</em> ring from a merely <em>empty</em> one, which no other
+  member can tell it.
+</p>
+
+<h2 id="parameters">Parameters</h2>
+
+<table>
+  <tr><th>Name</th><th>What the caller must supply</th></tr>
+  <tr><td><em>none</em></td><td>The count belongs to the object.</td></tr>
+</table>
+
+<h2 id="return">Return value</h2>
+
+<p>
+  The number of accepted pushes, from <code>0</code> upward. Unlike <code>head</code>, which is a masked slot position
+  and therefore wraps, this count never wraps: it is a count of events, not a position. It may exceed
+  <code>GetCapacity()</code> when the ring is used as a ring — that is a lap, not an error — and a caller that wants one
+  lap only has to refuse the push that would cross the boundary.
+</p>
+
+<h2 id="example">Examples</h2>
+
+<pre><code><span class="kw">if</span> (ring.<span class="fn">GetSlotVersion</span>() &gt;= Ring::<span class="fn">GetCapacity</span>())
+{
+    <span class="cm">// every slot of this ring has already been handed to somebody;</span>
+    <span class="cm">// pushing now would recycle one, so the caller moves on</span>
+}
+<span class="kw">else</span>
+{
+    ring.<span class="fn">Push</span>(item); <span class="cm">// may still answer Full: a peer producer won the race</span>
+}</code></pre>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; FixedRingMPSC</a></span>
+  <span><a href="index.html#methods">All FixedRingMPSC methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

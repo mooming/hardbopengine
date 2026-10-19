@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PerfBenchmark::Control — Test module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a class="current" href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Example</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Test</a> /
+  <a href="index.html">PerfBenchmark</a> / Control
+</p>
+
+<h1><span class="fn">Control</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::PerfBenchmark</span>
+  <span class="tag">Engine/Test/PerfHarness.h</span>
+  say which arm measures the machine rather than the design
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>void Control(const char* inArmName) noexcept</code></pre>
+
+
+<h2 id="description">Function description</h2>
+
+<p>
+  Names the arm whose spread is the noise floor. In practice that is a second copy of the winning arm: same code, same
+  shape, different queue instance, so the difference between its fastest and slowest round is the machine talking
+  about itself.
+</p>
+<p>
+  <a href="gradeof.html">GradeOf</a> asks that floor how far the ratio could be wrong, and answers
+  <code>NOISE</code> when the margin fits inside it. Without a declared control the fallback is the widest spread
+  among the arms that are not the winner, which is weaker evidence &mdash; the spread of a rival design is partly that
+  design&rsquo;s own behaviour &mdash; and is printed under a different label so a reader can tell the two apart.
+</p>
+<p>
+  Measured spreads of a same-code control on a 12-CPU machine ran between 3% and 29% across the cells of this module,
+  which is why a 20% margin on a 1.20x claim is not supportable there and why
+  <a href="../../design/FixedRingBufferQueues_Design.html#noise">the noise measurements</a> come before any claim in the design document.
+</p>
+
+<h2 id="parameters">Parameters</h2>
+
+<table>
+  <tr><th>Name</th><th>What the caller must supply</th></tr>
+  <tr><td><code>inArmName</code></td><td>The name already passed to <a href="addarm.html">AddArm</a>. A name that was never added restores the fallback.</td></tr>
+</table>
+
+<h2 id="return">Return value</h2>
+
+<p>None.</p>
+
+<h2 id="example">Example</h2>
+
+<pre><code>bench.<span class="fn">AddArm</span>(<span class="st">"AtomicFixedRingMPSC (control)"</span>, &amp;shape, &amp;<span class="fn">RunPerfCell</span>&lt;TAtomicMPSC&gt;);
+bench.<span class="fn">Control</span>(<span class="st">"AtomicFixedRingMPSC (control)"</span>);</code></pre>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; PerfBenchmark</a></span>
+  <span><a href="index.html#methods">All PerfBenchmark methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

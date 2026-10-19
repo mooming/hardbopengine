@@ -112,8 +112,8 @@
 
   <div class="module-card">
     <h3><a href="Container/index.html">Container</a></h3>
-    <p>Core containers on engine allocators: fixed array, vector, map, hash map, linked list, deque, queues, bounded priority queue, lock-free stack view.</p>
-    <p class="meta">10 headers · 10 entries split into pages · 38 method pages</p>
+    <p>Core containers on engine allocators: fixed array, vector, map, hash map, linked list, deque, queues, bounded priority queue, lock-free stack view, lock-free multi-provider single-consumer queue, and four fixed-size rings — lock-free MPMC and MPSC with their mutex baselines.</p>
+    <p class="meta">15 headers · 15 entries split into pages · 94 method pages · <a href="design/RingBuffer_Design.html">RingBuffer design</a>, <a href="design/FixedRingBufferQueues_Design.html">fixed ring buffers design</a></p>
   </div>
 
   <div class="module-card">
@@ -149,7 +149,7 @@
   <div class="module-card">
     <h3><a href="Memory/index.html">Memory</a></h3>
     <p>Custom allocators and the <code>MemoryManager</code> that owns them: pool, stack, monotonic and multi-pool variants.</p>
-    <p class="meta">23 headers · 14 documented entries, nine of them allocators · <a href="AllocatorGuide.md">Allocator guide</a>, <a href="MemoryManagement_Guide.md">Memory management</a></p>
+    <p class="meta">24 headers · 15 documented entries, nine of them allocators · <a href="AllocatorGuide.md">Allocator guide</a>, <a href="MemoryManagement_Guide.md">Memory management</a></p>
   </div>
 
   <div class="module-card">
@@ -178,8 +178,8 @@
 
   <div class="module-card">
     <h3><a href="Test/index.html">Test</a></h3>
-    <p>The unit test framework: <code>TestCollection</code>, <code>UnitTestCollection</code>, and the test environment the suite runs in.</p>
-    <p class="meta">3 headers · 3 entries split into pages · 17 method pages · <a href="RunningTests.md">Running tests</a></p>
+    <p>The unit test framework: <code>TestCollection</code>, <code>UnitTestCollection</code>, and the test environment the suite runs in &mdash; plus <code>PerfBenchmark</code>, the cell harness that measures performance without ever failing a build.</p>
+    <p class="meta">7 headers, 6 sources · 11 entries split into pages · 49 method pages · <a href="RunningTests.md">Running tests</a> · <a href="design/FixedRingBufferQueues_Design.html">Fixed ring buffers, and what they cost</a></p>
   </div>
 
 </div>

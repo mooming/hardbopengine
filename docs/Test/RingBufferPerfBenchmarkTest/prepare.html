@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>RingBufferPerfBenchmarkTest::Prepare — Test module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a class="current" href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Example</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Test</a> /
+  <a href="index.html">RingBufferPerfBenchmarkTest</a> / Prepare
+</p>
+
+<h1><span class="fn">Prepare</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::RingBufferPerfBenchmarkTest</span>
+  <span class="tag">Engine/Test/RingBufferPerf.h</span>
+  register this collection's performance cells
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>void Prepare() override</code></pre>
+
+
+<h2 id="description">Function description</h2>
+
+<p>
+  Registers twenty-two cells, one testlet per shape: the saturated MPSC curve at one, two, four, eight and sixteen
+  producers (four of them carrying the <code>fetch_add</code> arm), the saturated MPMC curve at the same producer counts
+  with two consumers, both sparse curves at capacity&nbsp;64 with a 2&nbsp;µs arrival gap, and three spin-cap cells
+  comparing the default of 8 with yielding immediately.
+</p>
+<p>
+  One shape per testlet, rather than one testlet per regime. That is a time decision and a legibility decision at once:
+  grouping five producer counts into one testlet made a single 6&nbsp;s testlet whose report was a wall of tables, and a
+  regression in the middle of the curve was invisible in it. Grouping by regime also made the worst cell of the sweep
+  exceed the five-second limit any testlet is held to. Now each cell prints its own header, grade and wall time, and a
+  shape that changed names itself.
+</p>
+<p>
+  Item counts scale with the producer count, so that every saturated cell moves about 200,000 items and every sparse
+  cell 10,000 per producer. A cell at sixteen producers is therefore not longer than a cell at one, which is what keeps
+  the sweep inside its budget without shortening the runs that need length most.
+</p>
+
+<h2 id="parameters">Parameters</h2>
+
+<table>
+  <tr><th>Name</th><th>What the caller must supply</th></tr>
+  <tr><td><em>none</em></td><td>Called by the framework once before the collection&rsquo;s testlets run.</td></tr>
+</table>
+
+<h2 id="return">Return value</h2>
+
+<p>None. Registration only.</p>
+
+<h2 id="example">Example</h2>
+
+<pre><code><span class="fn">add</span>(<span class="st">"Saturated MPSC Sixteen Producers"</span>, MpscP16, ECellKind::Mpsc, <span class="kw">true</span>, <span class="kw">true</span>);
+<span class="fn">add</span>(<span class="st">"Sparse MPMC Eight Producers"</span>, SparseMpmcP8, ECellKind::Mpmc, <span class="kw">false</span>, <span class="kw">false</span>);</code></pre>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; RingBufferPerfBenchmarkTest</a></span>
+  <span><a href="index.html#methods">All RingBufferPerfBenchmarkTest methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

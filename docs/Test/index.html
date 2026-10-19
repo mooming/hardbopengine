@@ -8,20 +8,6 @@
 </head>
 <body>
 
-<div style="border-left:4px solid #b45309;background:#fffbeb;padding:10px 14px;margin:0 0 22px 0;font-size:0.94em;">
-  <strong>Lifecycle changed on 2026-09-28.</strong> The one-call run this page describes is gone. A test is now a
-  <a href="Testlet/index.html"><code>Testlet</code></a> and the unit the harness schedules, so
-  <a href="TestCollection/start.html"><code>TestCollection::Start</code></a> became
-  <code>PrepareTests</code> / <code>RunTestAt</code> / <code>Complete</code>,
-  <a href="TestEnv/start.html"><code>TestEnv::Start</code></a> became <code>PrepareTestlets</code> /
-  <code>RunTestlet</code> / <code>Finalize</code>, and <code>hbe::Test::RunTests</code> became
-  <a href="UnitTestCollection/suite-entry-points.html"><code>RegisterSuite</code> and
-  <code>ScheduleSuiteOnBaseStream</code></a>. The statements below that name the old lifecycle are history, not
-  reference; the replacements are documented: <a href="TestCollection/prepare-tests.html"><code>PrepareTests</code></a> / <a href="TestCollection/run-test-at.html"><code>RunTestAt</code></a> / <a href="TestCollection/complete.html"><code>Complete</code></a> on TestCollection and <a href="TestEnv/prepare-testlets.html"><code>PrepareTestlets</code></a> / <a href="TestEnv/run-testlet.html"><code>RunTestlet</code></a> / <a href="TestEnv/finalize.html"><code>Finalize</code></a> on TestEnv.
-</div>
-
-
-
 <nav class="sidebar">
   <a class="home" href="../index.html">HardBop Engine</a>
 
@@ -54,6 +40,11 @@
 
   <h3>Classes</h3>
   <ul>
+    <li><a href="EPerfGrade/index.html">EPerfGrade</a></li>
+    <li><a href="PerfBenchmark/index.html">PerfBenchmark</a></li>
+    <li><a href="PerfSample/index.html">PerfSample</a></li>
+    <li><a href="RingBufferPerfBenchmarkTest/index.html">RingBufferPerfBenchmarkTest</a></li>
+    <li><a href="RingBufferPerfTest/index.html">RingBufferPerfTest</a></li>
     <li><a href="TestCollection/index.html">TestCollection</a></li>
     <li><a href="TestEnv/index.html">TestEnv</a></li>
     <li><a href="Testlet/index.html">Testlet</a></li>
@@ -63,6 +54,7 @@
   <h3>Design documents</h3>
   <ul>
     <li><a href="../RunningTests.md">Running tests</a></li>
+    <li><a href="../design/FixedRingBufferQueues_Design.html">Fixed ring buffers, and what they cost</a></li>
     <li><a href="../design/UnitTestSelection_Design.html">Unit-test selection</a></li>
     <li><a href="../BuildSystem.md">Build system</a></li>
   </ul>
@@ -78,8 +70,21 @@
   <span class="tag">namespace hbe::Test</span>
   <span class="tag">namespace hbe::TestHelper</span>
   <span class="tag">Engine/Test</span>
-  5 headers, 4 sources — the framework every engine module's unit tests are written against
+  7 headers, 6 sources — the framework every engine module's unit tests are written against, plus the
+  cells that measure performance
 </p>
+
+<div style="border-left:4px solid #b45309;background:#fffbeb;padding:10px 14px;margin:0 0 22px 0;font-size:0.94em;">
+  <strong>Lifecycle changed on 2026-09-28.</strong> The one-call run this page describes is gone. A test is now a
+  <a href="Testlet/index.html"><code>Testlet</code></a> and the unit the harness schedules, so
+  <a href="TestCollection/start.html"><code>TestCollection::Start</code></a> became
+  <code>PrepareTests</code> / <code>RunTestAt</code> / <code>Complete</code>,
+  <a href="TestEnv/start.html"><code>TestEnv::Start</code></a> became <code>PrepareTestlets</code> /
+  <code>RunTestlet</code> / <code>Finalize</code>, and <code>hbe::Test::RunTests</code> became
+  <a href="UnitTestCollection/suite-entry-points.html"><code>RegisterSuite</code> and
+  <code>ScheduleSuiteOnBaseStream</code></a>. The statements below that name the old lifecycle are history, not
+  reference; the replacements are documented: <a href="TestCollection/prepare-tests.html"><code>PrepareTests</code></a> / <a href="TestCollection/run-test-at.html"><code>RunTestAt</code></a> / <a href="TestCollection/complete.html"><code>Complete</code></a> on TestCollection and <a href="TestEnv/prepare-testlets.html"><code>PrepareTestlets</code></a> / <a href="TestEnv/run-testlet.html"><code>RunTestlet</code></a> / <a href="TestEnv/finalize.html"><code>Finalize</code></a> on TestEnv.
+</div>
 
 <h2 id="description">Module description</h2>
 
@@ -118,6 +123,22 @@
   failing case records nothing and passes. The same weakness runs the other way: a collection whose
   <a href="TestCollection/prepare.html"><code>Prepare</code></a> registered nothing also passes.
 </div>
+
+
+<p>
+  A second concern shares this module: <em>how fast is it</em>, measured without ever turning a measurement into a test
+  failure. <a href="PerfBenchmark/index.html"><code>PerfBenchmark</code></a> is one cell of that — a shape of traffic,
+  every implementation of it, measured alternately in rotated rounds with a fresh queue each round — and
+  <a href="EPerfGrade/index.html"><code>EPerfGrade</code></a> is the colour it prints. A grade is information: no colour
+  reports an error or a warning, and none of them moves the suite's pass count. The one thing a cell can refuse is its
+  own number, and <code>REJECTED</code> exists for that.
+  <a href="RingBufferPerfTest/index.html"><code>RingBufferPerfTest</code></a> registers the three cells that belong in
+  every regression run; the full sweep lives in
+  <a href="RingBufferPerfBenchmarkTest/index.html"><code>RingBufferPerfBenchmarkTest</code></a> and is registered only by
+  <code>Examples/RingBufferBenchmark</code>. The <a href="../design/FixedRingBufferQueues_Design.html#harness">harness
+  section of the design document</a> carries the properties those cells exist to protect, the measured noise floor that
+  decides which claims are gradable, and the time budget every cell prints to prove it is keeping.
+</p>
 
 <h2 id="classes">Module classes</h2>
 
@@ -163,6 +184,54 @@
       all fourteen of its callers were test bodies and none of them was engine code
     </td>
   </tr>
+
+  <tr id="perfbenchmark">
+    <td><a href="PerfBenchmark/index.html">PerfBenchmark</a><span class="badge">13 method pages</span></td>
+    <td>Final class, <code>hbe::Test</code></td>
+    <td>PerfHarness.h</td>
+    <td>
+      One benchmark cell: up to five arms measured once per round in a rotating order, an optional claim, an optional
+      control arm, and the colour that comes out of <code>GetGrade</code>. Fixed arrays throughout, so it allocates
+      nothing and prints plain text
+    </td>
+  </tr>
+  <tr id="perfsample">
+    <td><a href="PerfSample/index.html">PerfSample</a><span class="badge">aggregate</span></td>
+    <td>Struct, <code>hbe::Test</code></td>
+    <td>PerfHarness.h</td>
+    <td>
+      One arm's round: wall nanoseconds, items moved, invariant violations. What a measure function returns, and the
+      only contract between a cell and the harness
+    </td>
+  </tr>
+  <tr id="eperfgrade">
+    <td><a href="EPerfGrade/index.html">EPerfGrade</a><span class="badge">scoped enum</span></td>
+    <td>Enumeration, <code>hbe::Test</code></td>
+    <td>PerfHarness.h</td>
+    <td>
+      <code>None</code>, <code>Green</code>, <code>Amber</code>, <code>Red</code>, <code>Noise</code>,
+      <code>Rejected</code>. Information for a reader, never a pass or a failure
+    </td>
+  </tr>
+  <tr id="ringbufferperftest">
+    <td><a href="RingBufferPerfTest/index.html">RingBufferPerfTest</a><span class="badge">1 method page</span></td>
+    <td>Final class, <code>hbe</code></td>
+    <td>RingBufferPerf.h</td>
+    <td>
+      The three performance cells that run inside every <code>EngineTest</code> run: the MPSC claim at one and two
+      producers, and the MPMC numbers at two producers and two consumers. About 0.7&nbsp;s of suite time
+    </td>
+  </tr>
+  <tr id="ringbufferperfbenchmarktest">
+    <td><a href="RingBufferPerfBenchmarkTest/index.html">RingBufferPerfBenchmarkTest</a><span class="badge">1 method page</span></td>
+    <td>Final class, <code>hbe</code></td>
+    <td>RingBufferPerf.h</td>
+    <td>
+      The full sweep: twenty-two cells over both queue families, saturated and sparse, plus the spin-cap comparison and
+      the <code>fetch_add</code> experiment. Registered only by <code>Examples/RingBufferBenchmark</code>
+    </td>
+  </tr>
+
 </table>
 
 <h2 id="variables">Module variables</h2>
@@ -209,6 +278,16 @@
       header does not reach every translation unit that waits
     </td>
   </tr>
+  <tr>
+    <td><a href="PerfPlatformHeader/perfplatformheader.html"><code>hbe::Test::PerfPlatformHeader</code></a></td>
+    <td><code>std::ostream&amp;</code></td>
+    <td><code>void</code></td>
+    <td>
+      Prints the machine, the cache-line spacing, the build configuration and what the report's columns mean, because a
+      performance number without its configuration is not a measurement anyone can reuse
+    </td>
+  </tr>
+
 </table>
 
 <p>

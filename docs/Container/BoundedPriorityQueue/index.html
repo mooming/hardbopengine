@@ -245,7 +245,7 @@ and its access section opens only at the constructor.</p>
     <td>
       Empty answers <code>std::nullopt</code> — no assert, no crash, unlike
       <a href="../Queue/pop.html"><code>Queue::Pop</code></a> and
-      <a href="../RingQueue/index.html"><code>RingQueue::Pop</code></a>, which is why <code>Engine/Core/TaskSystem.cpp:155</code>
+      <a href="../FixedRingBuffer/index.html"><code>FixedRingBuffer::Pop</code></a>, which is why <code>Engine/Core/TaskSystem.cpp:155</code>
       can test <code>IsEmpty()</code> and still handle a missing value. Takes the front of the most urgent level, releases the level
       if it drained, and walks the tracked maximum down
     </td>

@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AtomicFixedRingMPSC — Container module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a class="current" href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This class</h3>
+  <ul>
+    <li><a href="#template">Template parameters</a></li>
+    <li><a href="#properties">Class properties</a></li>
+    <li><a href="#methods">Class methods</a></li>
+    <li><a href="#coverage">Coverage</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Container</a> /
+  AtomicFixedRingMPSC
+</p>
+
+<h1>AtomicFixedRingMPSC</h1>
+<p class="subtitle">
+  <span class="tag">Engine/Container/AtomicFixedRingMPSC.h</span>
+  <span class="tag">namespace hbe</span>
+  <span class="tag">final</span>
+  Lock-free bounded MPSC FIFO over one fixed-size ring; the single-consumer specialization, with no CAS on the pop side
+</p>
+
+<p>
+  The same ring as <a href="../AtomicFixedRingMPMC/index.html">AtomicFixedRingMPMC</a> with one deletion: exactly one
+  thread drains it, so the dequeue index has a single owner and the CAS on it is not merely unnecessary but
+  meaningless. This is the <strong>Vyukov bounded MPSC queue</strong> &mdash; the single-consumer specialization of the
+  bounded MPMC queue, which <code>libcds</code> likewise names <code>VyukovMPSCCycleQueue</code>.
+</p>
+<p>
+  Every slot owns one <code>std::atomic&lt;size_t&gt;</code> named readyIndex holding the
+<strong>absolute index</strong> of the element it refers to, so <em>free for lap L</em> is <code>readyIndex == L</code> and
+<em>published</em> is <code>readyIndex == L + 1</code>. No lap counter exists, no ABA window exists, and a false match would
+need 2<sup>64</sup> items.
+</p>
+<p>
+  The consumer's whole cost is one <code>acquire</code> load of the frontier readyIndex plus one plain increment. That is the
+  floor for any MPSC consumer: one atomic read of the frontier is the minimum on which a correct <em>is there anything
+  I may take</em> answer depends, and this queue pays exactly that.
+</p>
+<p>
+  Any number of threads may push, but <strong>exactly one</strong> may pop. <code>readIndex</code> is a plain <code>size_t</code> owned by that thread, so a second consumer is a data race and not a slow path.
+  Pushing from many threads is what the claim loop is for; draining from many is a different container, and the
+  difference is not performance &mdash; <code>readIndex</code> is not atomic, so a second consumer races rather than
+  contending.
+</p>
+<p>
+  The queue yields the remainder of its time slice once a retry loop has failed
+<code>MaxSpinAttempts</code> times, so a bounded busy-wait replaces an unbounded one. The measured right value for
+that constant is small: on a 12-CPU machine running 17 runnable threads, yielding immediately beat spinning eight
+times by 1.5&times; to 2.2&times;, because the thread that can unblock a producer is another thread. See
+<a href="../../design/FixedRingBufferQueues_Design.html#spin">the spin cap</a>. <code>Capacity</code> must be a power of two greater than one, enforced by <code>static_assert</code> whose
+  message carries the reason. Protocol, ordering and measurements:
+  <a href="../../design/FixedRingBufferQueues_Design.html">the design document</a>.
+</p>
+
+<h2 id="template">Template parameters</h2>
+
+<table>
+  <tr><th>Parameter</th><th>Kind</th><th>What it must satisfy</th></tr>
+  <tr><td><code>T</code></td><td>element type</td><td>Must satisfy <code>sizeof(T) % alignof(T) == 0</code>, so a stride of <code>sizeof(T)</code> keeps every slot aligned; must be movable-assignable and constructible from a copy or a move.</td></tr>
+  <tr><td><code>Capacity</code></td><td>non-type <code>size_t</code>, default <code>1024</code></td><td>A power of two greater than one. It is the ring&rsquo;s exact capacity: no element is refused while fewer than <code>Capacity</code> are held, and the ring never grows.</td></tr>
+  <tr><td><code>MaxSpinAttempts</code></td><td>non-type <code>size_t</code>, default <code>8</code></td><td>How many failed claims a retry loop attempts before it starts yielding between attempts. Read <a href="../../design/FixedRingBufferQueues_Design.html#spin">the measurement</a> before raising it.</td></tr>
+</table>
+
+<h2 id="properties">Class properties</h2>
+
+<table>
+
+<tr><th>Type + Name</th><th>Default Value</th><th>Description</th></tr>
+<tr><td><code>using ValueType = T;</code> <span class="badge">public nested</span></td><td><code>T</code></td><td>The element type, spelled by the class itself so a container that stores these rings can check its own element type against the block it was given.</td></tr>
+<tr><td><code>static constexpr size_t LineSpacing = std::hardware_destructive_interference_size;</code> <span class="badge">private</span></td><td><code>the platform's line spacing</code></td><td>Spacing between the shared words.</td></tr>
+<tr><td><code>static constexpr size_t PayloadAlignment = alignof(T);</code> <span class="badge">private</span></td><td><code>alignof(T)</code></td><td>Alignment the payload array must satisfy.</td></tr>
+<tr><td><code>static constexpr size_t IndexMask = Capacity - 1;</code> <span class="badge">private</span></td><td><code>Capacity - 1</code></td><td>The mask that turns an absolute index into a slot index.</td></tr>
+<tr><td><code>alignas(LineSpacing) std::atomic&lt;size_t&gt; writeIndex;</code> <span class="badge">private</span></td><td><code>0</code></td><td>The enqueue frontier, the one word producers contend for.</td></tr>
+<tr><td><code>alignas(LineSpacing) std::atomic&lt;size_t&gt; readyIndex[Capacity];</code> <span class="badge">private</span></td><td>each <code>i</code> is stored <code>i</code> by the constructor</td><td>The publication gate, one per slot.</td></tr>
+<tr><td><code>alignas(LineSpacing) size_t readIndex;</code> <span class="badge">private</span></td><td><code>0</code></td><td>The dequeue frontier. <strong>Not atomic on purpose</strong>: one consumer owns it, which is exactly what deletes its CAS.</td></tr>
+<tr><td><code>alignas(PayloadAlignment) std::byte payload[Capacity * sizeof(T)];</code> <span class="badge">private</span></td><td>uninitialised raw storage</td><td>Where elements are constructed and destroyed; the queue owns what lives here.</td></tr>
+</table>
+
+<p>
+  Its answers are the shared <a href="../EPushResult/index.html"><code>EPushResult</code></a> and
+  <a href="../EPopResult/index.html"><code>EPopResult</code></a>, declared beside each other in
+  <code>Engine/Container/</code> and outside this class. The third enumerator of each — <code>TooManyProducers</code> and
+  <code>Blocked</code> — belongs to the <a href="../RingBuffer/index.html">RingBuffer</a> chain, and this class never answers
+  with it.
+</p>
+
+<h2 id="methods">Class methods</h2>
+
+<table>
+  <tr><th>Name</th><th>Signature</th><th>What a caller depends on</th></tr>
+  <tr><td><a href="constructors.html">constructors</a></td><td><code>AtomicFixedRingMPSC()</code>, copies deleted</td><td>Empty ring, every ready index primed; the capacity comes from the template, not from an argument.</td></tr>
+  <tr><td><a href="destructor.html">~AtomicFixedRingMPSC</a></td><td><code>~AtomicFixedRingMPSC()</code></td><td>Destroys what is still queued. Needs no thread inside <code>Push</code> or <code>Pop</code>.</td></tr>
+  <tr><td><a href="push.html">Push</a></td><td><code>EPushResult Push(const T&amp;)</code>, <code>EPushResult Push(T&amp;&amp;)</code></td><td>Claims, constructs, publishes. A refusal leaves nothing reserved.</td></tr>
+  <tr><td><a href="pop.html">Pop</a></td><td><code>EPopResult Pop(T&amp;)</code></td><td>Takes the frontier element, or reports that nothing is ready.</td></tr>
+  <tr><td><a href="isempty.html">IsEmpty</a></td><td><code>bool IsEmpty() const</code></td><td>A snapshot, not a reservation.</td></tr>
+  <tr><td><a href="getslotversion.html">GetSlotVersion</a></td><td><code>size_t GetSlotVersion() const noexcept</code></td><td>Accepted pushes, monotone and never lowered by <code>Pop</code>. A snapshot, and not a synchronisation point.</td></tr>
+</table>
+
+<p>Beyond the six operations above, <a href="getcapacity.html"><code>GetCapacity</code></a>, <a href="payloadat.html"><code>PayloadAt</code></a>, <a href="isdataready.html"><code>IsDataReady</code></a>, <a href="markdataready.html"><code>MarkDataReady</code></a>, <a href="releaseslot.html"><code>ReleaseSlot</code></a>, <a href="tryreserveslot.html"><code>TryReserveSlot</code></a>, <a href="destroyqueued.html"><code>DestroyQueued</code></a> are the entries the class keeps to itself, and each is documented
+  because the reason it is private is the reason the public half is shaped the way it is.</p>
+
+<h2 id="coverage">Coverage</h2>
+
+<p>
+  This page documents every entry <code>AtomicFixedRingMPSC</code> declares, and the design document <a href="../../design/FixedRingBufferQueues_Design.html">Fixed-size ring buffers</a> owns the protocol, the ordering table, the negative controls and the measurements. Nothing in the header is left undocumented.
+</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; AtomicFixedRingMPSC</a></span>
+  <span><a href="index.html#methods">All AtomicFixedRingMPSC methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

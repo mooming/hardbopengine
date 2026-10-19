@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>EPerfGrade — Test module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a class="current" href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This class</h3>
+  <ul>
+    <li><a href="#description">Class description</a></li>
+    <li><a href="#properties">Class properties</a></li>
+    <li><a href="#methods">Class methods</a></li>
+    <li><a href="#coverage">Coverage</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Test</a> /
+  EPerfGrade
+</p>
+
+<h1>EPerfGrade</h1>
+<p class="subtitle">
+  <span class="tag">Engine/Test/PerfHarness.h</span>
+  <span class="tag">namespace hbe::Test</span>
+  <span class="tag">scoped enum</span>
+  the colour a performance cell prints, and never a test failure
+</p>
+
+
+<h2 id="description">Class description</h2>
+
+<p>
+  The colour a performance cell prints. It is <em>information</em>: no grade calls the test framework&rsquo;s error or
+  warning path, and none of them changes whether the suite passed. A cell exists to make a number hard to misread, and
+  a failing suite whose failure is a ratio is a suite whose owner learns to ignore the ratio.
+</p>
+<p>
+  The rule that chooses a colour is <a href="../PerfBenchmark/gradeof.html">GradeOf</a>, and the
+  <a href="../../design/FixedRingBufferQueues_Design.html#grading">grading section of the design document</a> carries the measurements that set the
+  margins it compares against.
+</p>
+
+<h2 id="properties">Class properties</h2>
+
+<table>
+
+<tr><th>Type + Name</th><th>Default Value</th><th>Description</th></tr>
+<tr><td><code>None</code></td><td><code>not applicable</code></td><td>The cell carries no claim, or names an arm that was never added: the numbers are printed and nothing is judged.</td></tr>
+<tr><td><code>Green</code></td><td><code>not applicable</code></td><td>The claim held on the fastest round <em>and</em> on the middle round, and the noise floor was too small to explain the margin.</td></tr>
+<tr><td><code>Amber</code></td><td><code>not applicable</code></td><td>The fastest round cleared the margin; the middle round did not. The claim is alive on the best case only.</td></tr>
+<tr><td><code>Red</code></td><td><code>not applicable</code></td><td>The claim did not hold on this machine in this configuration, by the fastest round as well as the middle one.</td></tr>
+<tr><td><code>Noise</code></td><td><code>not applicable</code></td><td>The measured margin is inside the noise floor: the same code, run as a second arm, varied by more than the claim is ahead. No colour is supportable.</td></tr>
+<tr><td><code>Rejected</code></td><td><code>not applicable</code></td><td>The winning arm lost, duplicated or corrupted an item, or a round gave up at its deadline. The cell measured nothing, so nothing is graded.</td></tr>
+
+</table>
+
+<h2 id="methods">Class methods</h2>
+
+<p>
+  None. The rule that chooses one of these six values is
+  <a href="../PerfBenchmark/gradeof.html">GradeOf</a>, a member of the benchmark rather than of the enumeration, so the
+  colour stays a property of a measurement rather than an object with behaviour.
+</p>
+
+<h2 id="coverage">Coverage</h2>
+
+<p>
+  All six enumerators are listed. The enumerator&rsquo;s underlying type is <code>unsigned char</code> because it is
+  stored in no container and printed as a word; the order is the report&rsquo;s order, with <code>None</code> first so a
+  zero-initialised value reads as &ldquo;no claim&rdquo; rather than as a colour.
+</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; EPerfGrade</a></span>
+  <span><a href="index.html#methods">All EPerfGrade methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>
