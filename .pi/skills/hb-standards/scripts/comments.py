@@ -14,6 +14,12 @@ Exemptions, exhaustive and mirrored in docs/CodingStandards.md:
   exemplar      Engine/CodingStandards.cpp, which teaches the rule by breaking it
 
 Output: one finding per line as `path:line: KIND  text`, exit 1 when anything was found.
+
+Arguments are source files, never directories, and the exit codes are the sibling gate's: a directory,
+an unreadable file or an empty argument is a usage error and exits 3, the way `blank_lines.py` and
+`includes.py` treat one. A finding is only ever a comment in a file this run actually read, because a
+count that mixes "the rule was broken" with "the checker could not look" cannot be reconciled against
+the sum of the per-file runs, and a run that read nothing must never exit 0.
 """
 
 import os
@@ -438,7 +444,7 @@ def check_file(path, text):
     """
     findings = []
     spans_kept = []
-    if path in EXEMPT_FILES:
+    if repo_relative(path) in EXEMPT_FILES:
         return findings, spans_kept
     starts = line_starts(text)
     try:
@@ -546,6 +552,23 @@ SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 REPO_ROOT = os.path.abspath(os.path.join(SCRIPT_DIR, '..', '..', '..', '..'))
 
 
+def repo_relative(path):
+    """The spelling every rule in this file keys on: repository-relative, whatever the shell handed us.
+
+    Three decisions are made from a path string rather than from its contents — whether the file is the
+    exempt exemplar, which module owns its reference pages, and therefore whether a pointer address and a
+    documentation guard apply at all. Reading them off the argument as typed made each of them an
+    artefact of the working directory, which is how one module's total stopped equaling the sum of its
+    files. A path outside the repository keeps its own spelling: the selftest fixtures name files that do
+    not exist, and they must resolve to the same answer from any working directory.
+    """
+    absolute = os.path.abspath(path)
+    relative = os.path.relpath(absolute, REPO_ROOT)
+    if relative == os.pardir or relative.startswith(os.pardir + os.sep):
+        return os.path.normpath(path)
+    return relative
+
+
 def anchor_resolves(target):
     """Whether `docs/<Module>/index.html#<id>` names an id that still exists on that page.
 
@@ -582,8 +605,15 @@ def engine_module(path):
     Applications and Examples own no API reference — they are not modules under Engine/ — so their prose
     has no class page to land in and the caller must place it in a guide by hand. That is stated out loud
     below rather than treated as satisfied.
+
+    The lookup is on the repository-relative spelling, so `Engine/Core/Task.h`, `./Engine/Core/Task.h`,
+    `/Users/.../Engine/Core/Task.h` and `Task.h` read from inside `Engine/Core` are four spellings of one
+    file with one verdict. Keying this on the argument as typed made the same header answer `Core` from
+    the repository root and `None` from its own directory, and `None` means "no reference page needed": a
+    module run launched from inside the module reported 31 findings `Core` does not owe, and a `--strip`
+    launched the same way switched the reference-page guard off file by file.
     """
-    parts = os.path.normpath(path).split(os.sep)
+    parts = repo_relative(path).split(os.sep)
     if parts and parts[0] == 'Engine' and len(parts) > 2:
         return parts[1]
     return None
@@ -761,6 +791,13 @@ SELFTEST_CASES.append(('a namespace label inside a conditional is still a struct
                                   '\t};',
                                   '} // namespace hbe',
                                   '#endif //__UNIT_TEST__', '']), []))
+SELFTEST_CASES.append(('the exempt exemplar is exempt under every spelling of its path',
+                       './Engine/CodingStandards.cpp',
+                       '\n'.join(['// Copyright (c) 2025 Hansol Park', '// prose that would count', '']), []))
+SELFTEST_CASES.append(('a header keeps its module when it is named from its own directory',
+                       'Engine/Core/WorkItem.h',
+                       '\n'.join(['/// API reference: docs/Core/WorkItem/index.html',
+                                  'class WorkItem final', '{', '};', '']), []))
 SELFTEST_CASES.append(('a guard whose name ends in a word character cannot swallow the keyword',
                        'selftest.h',
                        '\n'.join(['#if HBE_TRACE',
@@ -839,6 +876,20 @@ def main(argv):
     argv = [a for a in argv if a != '--force']
     strip = '--strip' in argv
     argv = [a for a in argv if a != '--strip']
+    if not argv:
+        print('usage: comments.py [--strip] <file ...>', file=sys.stderr)
+        return 3
+    # Every argument must name a file before anything is asked about it. This is checked above the strip
+    # guard on purpose: `docs_are_in_place` decides by path, and a directory reads to it as "outside
+    # Engine/, so no reference pages are owed", after which the run opened nothing and still reported
+    # `stripped 1 comment(s) from 0 file(s)` and exit 0. `blank_lines.py` and `includes.py` answer a
+    # directory with a usage error and exit 3; so does this.
+    for path in argv:
+        label = path or '<empty argument>'
+        reason = 'is a directory; this gate reads files, not directories' if path else 'names no file'
+        if os.path.isdir(path) or not path:
+            print('[NONE] comments — %s: %s' % (label, reason))
+            return 3
     if strip:
         allowed = docs_are_in_place(argv, force=force)
         if not allowed:
@@ -847,21 +898,15 @@ def main(argv):
         # are still standing, and a caller reading only the exit status would think the sweep finished.
         partial = len(allowed) != len(argv)
         argv = allowed
-    if not argv:
-        print('usage: comments.py [--strip] <file ...>', file=sys.stderr)
-        return 3
     total = 0
     scored = 0
     refused = 0
     for path in argv:
-        if not path:
-            continue
         try:
             text = open(path, encoding='utf-8', errors='ignore').read()
         except OSError as exc:
-            print('%s:0: UNREADABLE  %s' % (path, exc))
-            total += 1
-            continue
+            print('[NONE] comments — %s: %s' % (path, exc))
+            return 3
         scored += 1
         if strip:
             removed = strip_file(path, text)

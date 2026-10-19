@@ -26,7 +26,7 @@ public:
 	using SizeType = size_t;
 
 #if PROFILE_ENABLED
-	using TSrcLoc = hbe::source_location;
+	using TSrcLoc = SourceLocation;
 #endif // PROFILE_ENABLED
 
 private:
@@ -35,12 +35,7 @@ private:
 
 	SizeType capacity;
 	SizeType cursor;
-
-	union
-	{
-		Byte* buffer;
-		Pointer bufferPtr;
-	};
+	Byte* buffer;
 
 #if PROFILE_ENABLED
 	TSrcLoc srcLocation;

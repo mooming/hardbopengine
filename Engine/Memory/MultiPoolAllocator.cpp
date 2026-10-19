@@ -110,6 +110,8 @@ MultiPoolAllocator::MultiPoolAllocator(const char* inName, TInitializerList init
 
 MultiPoolAllocator::~MultiPoolAllocator()
 {
+	AllocatorScope scope(parentID);
+
 	auto& mmgr = MemoryManager::GetInstance();
 
 #if PROFILE_ENABLED
@@ -168,6 +170,14 @@ void MultiPoolAllocator::Deallocate(void* ptr, size_t size)
 {
 	if (unlikely(ptr == nullptr))
 	{
+		if (unlikely(size != 0))
+		{
+			const auto logName = name;
+			auto log = Logger::Get(logName);
+			log.Out(ELogLevel::Warning, [logName, size](auto& ls)
+			{ ls << "Deallocate(nullptr) is called with size " << size << " on " << logName << '.'; });
+		}
+
 		Assert(size == 0);
 
 		return;
@@ -288,18 +298,32 @@ void MultiPoolAllocator::ReportConfiguration() const
 		{
 			configs.emplace_back(key, value);
 		}
-
-		found->numberOfBlocks += value;
+		else
+		{
+			found->numberOfBlocks += value;
+		}
 	};
+
+	size_t peakBlocks = 0;
+	size_t reportedBlocks = 0;
 
 	for (auto& bank : banks)
 	{
 		InsertItem(bank);
+		peakBlocks += bank.GetUsedBlocksMax();
 	}
+
+	for (const auto& config : configs)
+	{
+		reportedBlocks += config.numberOfBlocks;
+	}
+
+	Assert(reportedBlocks == peakBlocks, "ReportConfiguration: the reported block count ", reportedBlocks,
+		   " does not match the summed bank peak ", peakBlocks);
 
 	auto& mmgr = MemoryManager::GetInstance();
 	auto uniqueName = GetName();
-	mmgr.ReportMultiPoolConfigutation(uniqueName.GetID(), std::move(configs));
+	mmgr.ReportMultiPoolConfiguration(uniqueName.GetID(), std::move(configs));
 }
 #endif // PROFILE_ENABLED
 
@@ -317,7 +341,9 @@ void* MultiPoolAllocator::NewBankAllocate(size_t size)
 	auto index = GetBankIndex(size);
 	if (unlikely(index >= banks.size()))
 	{
-		FatalAssert(false);
+		FatalAssert(false, "MultiPoolAllocator: bank generated for ", size, " bytes cannot be used: index ", index,
+					" of ", banks.size(), ", proposed block ", blockSize, " by ", numBlocks, ", allocation unit ",
+					bankSize);
 
 		return nullptr;
 	}
@@ -325,7 +351,7 @@ void* MultiPoolAllocator::NewBankAllocate(size_t size)
 	auto& bank = banks[index];
 	auto ptr = bank.Allocate(size);
 
-#ifdef PROFILE_ENABLED
+#if PROFILE_ENABLED
 	{
 		auto& mmgr = MemoryManager::GetInstance();
 		mmgr.ReportAllocation(GetID(), ptr, size, bank.GetBlockSize());
@@ -417,8 +443,8 @@ size_t MultiPoolAllocator::CalculateNumberOfBlocks(size_t bankSize, size_t block
 {
 	size_t numberOfBlocks = (bankSize + blockSize - 1) / blockSize;
 
-	constexpr size_t megaBytes = 1024 * 1024;
-	if (blockSize < megaBytes)
+	constexpr size_t MegaBytes = 1024 * 1024;
+	if (blockSize < MegaBytes)
 	{
 		numberOfBlocks = std::max(MinNumberOfBlocks, numberOfBlocks);
 	}
