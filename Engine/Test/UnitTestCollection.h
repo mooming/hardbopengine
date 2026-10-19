@@ -23,6 +23,8 @@ void RegisterSuite();
 ///          stream has to be throttled for that to mean anything - see the allowance set in the harness - because an
 ///          unbounded pass would take all of them at once and make the count vacuous again.
 void ScheduleSuiteOnBaseStream();
+
+void RegisterPerfBenchmarkSuite();
 } // namespace Test
 } // namespace hbe
 

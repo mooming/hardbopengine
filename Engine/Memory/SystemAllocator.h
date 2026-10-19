@@ -28,12 +28,10 @@ public:
 	SystemAllocator() = default;
 	~SystemAllocator() = default;
 
-#ifdef _MSC_VER
 	template <class U>
-	SystemAllocator(const SystemAllocator<U>&)
+	explicit SystemAllocator(const SystemAllocator<U>&) noexcept
 	{
 	}
-#endif // _MSC_VER
 
 	[[nodiscard]] constexpr auto GetID() const
 	{
