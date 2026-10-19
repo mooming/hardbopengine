@@ -153,6 +153,10 @@ Core data structures with custom allocator support.
 - `Array<T>` - Static array with allocator template
 - `LinkedList<T>` - Linked list implementation
 - `AtomicStackView<T>` - Lock-free stack
+- `RingBuffer<T, U>` - Growable chain of allocator-owned blocks: many producers push values, one consumer pops them, and each block is a fixed-size ring supplied as `U`. `U` is constrained by `CFixedRing<T, U>`: its value type must be `T`, it must be default-constructible and not copyable, `GetCapacity()` must be a power of two greater than one, and it must answer `Push`, `Pop`, `IsEmpty()` and `GetSlotVersion()`
+- `RingBufferMPSC<T, BlockCapacity>` - the same queue with `AtomicFixedRingMPSC<T, BlockCapacity>` as its block (`RingBuffer<T, AtomicFixedRingMPSC<T, BlockCapacity>>`, capacity defaults to 1024)
+- `AtomicFixedRingMPSC<T, Capacity>` / `AtomicFixedRingMPMC<T, Capacity>` - Lock-free fixed-size rings: no allocation, no growth, one publication index per slot, and an honest `Full` when the slots are not released
+- `FixedRingMPSC<T, Capacity>` / `FixedRingMPMC<T, Capacity>` - The same fixed-size rings behind a mutex, kept as the baseline the lock-free pair is measured against
 
 ### Core
 Essential engine systems.

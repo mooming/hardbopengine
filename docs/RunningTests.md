@@ -127,3 +127,38 @@ review.
 | `N test collection(s) FAILED` | A testlet assertion failed; each one prints its own message and level |
 | `retained N bytes of the global heap at the end of its body, over the M byte ceiling` | The testlet held more than the
 memory ceiling it declared for itself (or than any testlet may hold, where it declared none) |
+
+### Performance cells: measured, graded, and never a failure
+
+Some testlets measure rather than assert. They are ordinary registered testlets, and the difference is only what they
+do with the result: a grade is **information**, and no colour calls the error or warning path, so the suite's pass count
+does not move whatever a cell prints. The one thing a cell can refuse is its own number — `REJECTED` means an invariant
+broke inside the measured round, so the ratio beside it describes nothing.
+
+| Collection | Registered by | Cells | Release cost |
+|---|---|---|---|
+| `RingBufferPerfTest` | `RegisterSuite`, so every `EngineTest` run | 3 | about 0.75 s |
+| `RingBufferPerfBenchmarkTest` | `RegisterPerfBenchmarkSuite`, so only `RingBufferBenchmark` | 22 | about 16 s |
+
+```bash
+# the compact cells, inside the suite
+./build.sh EngineTest -release -test
+./build/Applications/EngineTest/Release/EngineTest
+
+# the full sweep: both curves, sparse and saturated, plus the spin-cap cells
+./build.sh RingBufferBenchmark -release -test
+./build/Examples/RingBufferBenchmark/Release/RingBufferBenchmark
+```
+
+Two conventions make those numbers comparable, and both are visible in the output rather than assumed:
+
+* **A claim is graded only in an optimised build.** The same cells measured spreads up to 66% in `Dev` where they
+  measured 4% in `Release`, so a `Dev` or `Debug` run prints its numbers and the words `claim numbers only`. A grade is
+  a statement about a configuration, not a fact about the code.
+* **Every cell prints its own wall time.** No testlet may exceed five seconds and these are held to three; the report
+  line `cell 0.31 s over 5 rounds and 3 arms` is what a reviewer checks that against, because a budget nobody can read
+  is not a budget.
+
+`docs/design/FixedRingBufferQueues_Design.html` owns the measured claims, the noise floor that decides which of them are
+gradable, and the two measurements of MPMC that disagree — which is why no MPMC cell carries a claim at all.
+`docs/Test/PerfBenchmark/index.html` documents the harness itself.

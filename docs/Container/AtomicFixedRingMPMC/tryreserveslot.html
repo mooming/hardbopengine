@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AtomicFixedRingMPMC::TryReserveSlot — Container module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a class="current" href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Container</a> /
+  <a href="index.html">AtomicFixedRingMPMC</a> / TryReserveSlot
+</p>
+
+<h1><span class="fn">TryReserveSlot</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::AtomicFixedRingMPMC</span>
+  <span class="tag">Engine/Container/AtomicFixedRingMPMC.h</span>
+  producer claim: test the ring, then commit the index, never the other way round
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>[[nodiscard]] bool TryReserveSlot(size_t&amp; outIndex) noexcept</code></pre>
+
+<p class="note">Signature text is checked against the header by <code>docs_pass.py signatures</code>.</p>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  Private, and the producer&rsquo;s half of the design. It loads the write frontier, asks the slot at that index whether
+  it is free for this lap, and only then attempts the compare-and-swap that commits the index. It returns
+  <code>false</code> in two distinct cases and the loop tells them apart: a slot whose <code>readyIndex</code> lies
+  <em>behind</em> the frontier means the ring is genuinely full, while a <code>readyIndex</code> <em>ahead</em> of it
+  means another producer moved the frontier and the local copy is stale, so the position is reloaded and the attempt is
+  made again.
+</p>
+
+<p>
+  The order of test and commit is what makes a refusal leave nothing behind. Claim first and discover fullness
+  afterwards, and the index is burned: nothing was stored, yet the frontier advanced, so no future index can satisfy
+  that slot&rsquo;s readiness test again and the slot dies. A bounded ring cannot undo a reservation, which is why this
+  is a CAS loop rather than a <code>fetch_add</code> &mdash;
+  <a href="../../design/FixedRingBufferQueues_Design.html#claim">the measured refutation of the alternative</a> delivered 706,741 pops for 200,000 pushes and
+  detected none of them as wrong.
+</p>
+
+The loop reloads the frontier on every failed compare-and-swap and, after <code>MaxSpinAttempts</code> failures, yields between attempts. The measured right value for that constant is smaller than its default: on a 12-CPU machine running 17 runnable threads, yielding immediately beat spinning eight times by 1.5&times; to 2.2&times; &mdash; <a href="../../design/FixedRingBufferQueues_Design.html#spin">the sweep</a>.
+
+<h2 id="parameters">Parameters</h2>
+
+<table>
+  <tr><th>Name</th><th>What the caller must supply</th></tr>
+  <tr><td><code>outIndex</code></td><td>Receives the absolute index on success. On failure it is untouched and must not be used.</td></tr>
+</table>
+
+<h2 id="return">Return value</h2>
+
+<table>
+  <tr><th>Value</th><th>Meaning</th></tr>
+  <tr><td><code>true</code></td><td>The caller owns that slot and must publish it with <a href="markdataready.html"><code>MarkDataReady</code></a>; leaving it unpublished strands nothing, it simply stays invisible.</td></tr>
+  <tr><td><code>false</code></td><td>Full, or the frontier moved and the retry limit was reached. Nothing was reserved, so retrying is harmless.</td></tr>
+</table>
+
+<h2 id="example">Examples</h2>
+
+<p class="note">Private helper, called by <a href="push.html"><code>Push</code></a>; the retry count it bounds is the
+class&rsquo;s <code>MaxSpinAttempts</code>.</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; AtomicFixedRingMPMC</a></span>
+  <span><a href="index.html#methods">All AtomicFixedRingMPMC methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

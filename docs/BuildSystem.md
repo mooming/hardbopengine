@@ -51,6 +51,21 @@
   in Release `libTest.a` is compiled with the macro while the engine modules are not — which links
   only because `TestMain.cpp`'s `#else` branch never names `Test::RegisterSuite`, so the linker
   never pulls that object in. Do not make Release's `EngineTest` reference the suite by hand.
+- **`Examples/` is in the build graph, and it was not**: `Examples/WindowExample` is a real application, tracked in git
+  with a `Main.cpp`, but no `.module.config` existed for `Examples` itself, so the generator skipped the directory and
+  `Examples/CMakeLists.txt` sat stale — it still read `project (Applications)` and named a `WindowExample` that looked
+  like a phantom. Everything downstream inherited it: `cmake --build --target WindowExample` failed, and the standard
+  gate's build step names that target, so the gate printed three FAIL lines on every run for a defect in the build
+  graph rather than in the code. `Examples/.module.config` (`buildType = None`) and
+  `Examples/RingBufferBenchmark/.module.config` (`buildType = Executable`) are the whole fix; the regenerated root
+  carries `add_subdirectory (Examples)`. Discovery is directory-driven, so a new example is a new directory with one
+  config file — no list to remember to update.
+- **Benchmark and performance binaries**: `Examples/RingBufferBenchmark` registers
+  `Test::RegisterPerfBenchmarkSuite()` and drives it exactly the way `Applications/EngineTest` drives `RegisterSuite`,
+  so the sweep and the regression run share one measurement path. Its cells live in `Engine/Test/RingBufferPerf.cpp`
+  under `__UNIT_TEST__`, which is why the binary is built `-release -test`: a Release engine binary carries no
+  benchmark code, and the app built without the macro says so and refuses to run. `docs/RunningTests.md` carries the
+  commands and what the grades mean.
 - **Common Configurations**: Debug, Dev (default), Release.
   ```bash
   cmake --fresh -B build -G "Ninja Multi-Config" -S .

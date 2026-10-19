@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PerfBenchmark::Report — Test module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a class="current" href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Example</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Test</a> /
+  <a href="index.html">PerfBenchmark</a> / Report
+</p>
+
+<h1><span class="fn">Report</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::PerfBenchmark</span>
+  <span class="tag">Engine/Test/PerfHarness.h</span>
+  print the cell as plain text, aligned and colourless
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>void Report(std::ostream&amp; ioOut) const</code></pre>
+
+
+<h2 id="description">Function description</h2>
+
+<p>
+  Prints one shape line, one row per arm with its fastest, middle and slowest round and its violation count, the wall
+  time of the cell, and &mdash; only when the cell carries a claim &mdash; the claim, the two ratios it produced, the
+  winner&rsquo;s own spread, the noise floor and the colour.
+</p>
+<p>
+  The output is plain text with no ANSI colour even on a terminal, because these lines are meant to be grepped and
+  diffed across runs, and a colour escape inside a field breaks both. A colour for a human reader is the benchmark
+  binary&rsquo;s choice to make, not this report&rsquo;s.
+</p>
+<p>
+  Every figure is formatted with <code>snprintf</code> into a local buffer rather than with stream manipulators. The
+  suite hands a testlet a log stream that arrives with fixed notation, internal adjustment and forced signs already
+  set, and a report that inherited that state printed <code>31&nbsp;&nbsp;&nbsp;&nbsp;.9</code> where it meant
+  <code>31.9</code>. Formatting into a buffer makes the report the same text whatever stream carries it, which is the
+  reason a testlet&rsquo;s report and the benchmark app&rsquo;s report cannot drift apart.
+</p>
+
+<h2 id="parameters">Parameters</h2>
+
+<table>
+  <tr><th>Name</th><th>What the caller must supply</th></tr>
+  <tr><td><code>ioOut</code></td><td>Destination stream. Its formatting state is read by nothing this function writes.</td></tr>
+</table>
+
+<h2 id="return">Return value</h2>
+
+<p>None.</p>
+
+<h2 id="example">Example</h2>
+
+<pre><code>  MPSC | P1 C1, capacity 64, 200000 items per producer, arrival gap 0 ns, 5 rounds, claim graded
+  arm                                 best      median     slowest        viol
+  AtomicFixedRingMPSC                34.7        35.7        42.3           0
+  FixedRingMPSC (mutex)             126.3       130.2       136.1           0
+  AtomicFixedRingMPSC (control)      33.8        35.0        37.6           0
+  cell 0.20 s over 5 rounds and 3 arms
+  expect FixedRingMPSC (mutex) &gt;= 2.00x AtomicFixedRingMPSC | best 3.63x  median 3.64x  wobble 21%  control 11%  -&gt; GREEN</code></pre>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; PerfBenchmark</a></span>
+  <span><a href="index.html#methods">All PerfBenchmark methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

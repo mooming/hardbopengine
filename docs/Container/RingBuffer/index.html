@@ -1,0 +1,490 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>RingBuffer — Container module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a class="current" href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This class</h3>
+  <ul>
+    <li><a href="#description">Class description</a></li>
+    <li><a href="#template">Template parameters</a></li>
+    <li><a href="#properties">Class properties</a></li>
+    <li><a href="#methods">Class methods</a></li>
+    <li><a href="#non-member">Non-member helper functions</a></li>
+    <li><a href="#coverage">Coverage</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Container</a> /
+  RingBuffer
+</p>
+
+<h1>RingBuffer</h1>
+<p class="subtitle">
+  <span class="tag">Engine/Container/RingBuffer.h</span>
+  <span class="tag">namespace hbe</span>
+  <span class="tag">final</span>
+  Lock-free multi-producer single-consumer FIFO over a chain of lock-free fixed-size rings, owning its elements and recycling its blocks
+</p>
+
+<h2 id="description">Class description</h2>
+
+<p>
+  A first-in first-out queue for the shape the engine was asking for: <strong>many threads enqueue, exactly one thread
+  dequeues</strong>, elements are values rather than caller-owned nodes, and the number of elements in flight is in the millions
+  rather than the dozens. It is a chain of fixed-size blocks. Each block is one
+  <em>pluggable fixed-size ring</em> &mdash; the template parameter <code>U</code> &mdash; so the rules that decide whether a slot
+  is ready, free or taken are the ring's own, not a second protocol written beside it. The block adds exactly one thing of its
+  own: an atomic <em>claim</em> counter that caps the block at one lap of that ring.
+  Producers never wait for each other and never allocate on the hot path; the consumer walks the ring's slots in order.
+</p>
+
+<p>
+  That structure buys the two properties a linked-list MPSC cannot give at this scale. Memory is one allocation per
+  <code>U::GetCapacity()</code> elements instead of one per element, and no element is ever lost because a producer stalled &mdash; a
+  slot that is claimed but not yet published is <em>seen</em> as such and reported as
+  <code><a href="pop.html">EPopResult::Blocked</a></code>, so the consumer can go and do something else instead of spinning, and
+  cannot skip past it either.
+</p>
+
+<p>
+  Two of the operations are deliberately single-threaded. The consumer's position in the chain is a plain pointer, and its
+  position inside the current block belongs to the ring, so
+  <a href="pop.html"><code>Pop</code></a> and <a href="isempty.html"><code>IsEmpty</code></a> belong to one thread; making them
+  safe for several would mean either a lock on the hot path or a second generation of indices. Pushing from many threads is the
+  whole point; draining from many is a different container.
+</p>
+
+<p>
+  Block memory comes from <code>MemoryManager</code> (<code>Engine/Memory/MemoryManager.h</code>) against the allocator
+  that was current when the queue was constructed, so a queue charged to a subsystem shows up under that subsystem in the ledger.
+  Recycling is enabled: a block the consumer has left is freed once no producer is standing inside it, and the memory comes back
+  into the same pool. Growth is capped by the constructor's fuse, so a queue with no consumer refuses work rather than eating the
+  heap.
+</p>
+
+<p>
+  Algorithm, invariants, the memory-ordering table and the cost model are in the design document:
+  <a href="../../design/RingBuffer_Design.html">RingBuffer design</a>.
+</p>
+
+<h2 id="template">Template parameters</h2>
+
+<table>
+  <tr><th>Parameter</th><th>Kind</th><th>What it must satisfy</th></tr>
+  <tr>
+    <td><code>T</code></td>
+    <td>type</td>
+    <td>
+      A value type the queue can own. It must be copy-constructible from <code>const T&amp;</code> (that copy is what
+      <a href="push.html"><code>Push</code></a> performs inside the slot the block's ring reserves), move-assignable (that is how
+      <a href="pop.html"><code>Pop</code></a> hands the element over) and destructible (the queue destroys the slot's object after
+      handing it over, and again for anything still queued at teardown). It must not be an lvalue-reference type and its destructor
+      must not throw. There is no compile-time check for the first three: they are diagnosed where the template is instantiated,
+      inside <code>Push</code>, <code>Pop</code> and <code>DestroyAll</code>.
+    </td>
+  </tr>
+  <tr>
+    <td><code>U</code></td>
+    <td>type, constrained by <code>CFixedRing&lt;T, U&gt;</code></td>
+    <td>
+      The fixed-size ring each block is built from. One concept states the whole contract, and it is stated as a concept rather
+      than a <code>static_assert</code> in the class body so that a wrong <code>U</code> is refused at the point of use with
+      <em>constraints not satisfied</em> instead of a failure somewhere inside a member function. It requires, in order:
+      <ul>
+        <li><code>typename U::ValueType</code> names <code>T</code> exactly &mdash; the block must hold what the queue hands it,
+          not something convertible to it;</li>
+        <li><code>std::default_initializable&lt;U&gt;</code> &mdash; the chain placement-constructs a block with no arguments,
+          because it does not know the element count in advance;</li>
+        <li><code>!std::copy_constructible&lt;U&gt;</code> &mdash; copying a ring that owns slots would hand the same slot to two
+          owners, so a backend that permits the copy is refused here rather than debugged later;</li>
+        <li><code>U::GetCapacity()</code> returning <code>std::size_t</code>, and that capacity being a power of two greater than
+          one &mdash; the chain's arithmetic assumes a mask, and a capacity of one makes &ldquo;one lap&rdquo; meaningless;</li>
+        <li><code>Push(const T&amp;)</code> and <code>Push(T&amp;&amp;)</code> returning
+          <a href="../EPushResult/index.html"><code>EPushResult</code></a>, and <code>Pop(T&amp;)</code> returning
+          <a href="../EPopResult/index.html"><code>EPopResult</code></a> &mdash; the shared types themselves, not per-class enums
+          reached through <code>typename U::</code>: one type for the backend's answer and the chain's answer means the
+          forwarding cannot drift, and no separate clause has to check that the enumerators exist. A backend must still be able
+          to answer with <code>Pushed</code>, <code>Full</code>, <code>Element</code> and <code>Empty</code>, and both
+          spellings of an element are demanded, since a block that cannot take an rvalue would quietly turn every
+          <code>Push(value)</code> into a copy;</li>
+        <li><code>IsEmpty()</code> and <code>GetSlotVersion()</code> &mdash; <a href="pop.html"><code>Pop</code></a> cannot tell
+          &ldquo;nothing yet&rdquo; from &ldquo;nothing ever again&rdquo; without them, and the difference is what
+          <code>EPopResult::Blocked</code> and block retirement both rest on.</li>
+      </ul>
+      Four engine containers satisfy it today: <code>AtomicFixedRingMPSC</code>, <code>AtomicFixedRingMPMC</code>,
+      <code>FixedRingMPSC</code> and <code>FixedRingMPMC</code>; the <code>static_assert</code> group in the
+      <code>__UNIT_TEST__</code> region of <code>Engine/Container/RingBuffer.h</code> fails the build if one ever stops
+      satisfying it. A <code>U</code> of a different capacity is not a different tuning of the same queue: the capacity is how many
+      elements a block can hold before the chain links the next one, so it is also the amortisation unit for growth, retirement and
+      hazard scans &mdash; which is why the testlets in <code>Engine/Container/RingBuffer.cpp</code> choose capacities of
+      <code>2</code>, <code>4</code> and <code>8</code>, small enough to hit those rare paths on purpose.
+    </td>
+  </tr>
+  <tr>
+    <td><code>TAllocator</code></td>
+    <td>type, default <code>DefaultAllocator&lt;T&gt;</code></td>
+    <td>An allocator for the queue's own storage, named as a template parameter for the same reason the other containers name
+      one: the queue's memory should be chargeable to a caller-chosen allocator without the queue knowing which one. It must
+      satisfy the standard allocator requirements and be rebindable, because the queue allocates no <code>T</code> objects with
+      it - the blocks and the producer slot array are raw bytes reached through
+      <code>TAllocator::rebind&lt;std::uint8_t&gt;</code>, and the deferred list is a <code>std::vector</code> over
+      <code>rebind&lt;Block*&gt;</code>. The member is default-constructed, so the allocator decides its own target:
+      <code>DefaultAllocator</code> captures the constructing thread's allocator id, which is why a queue built inside an
+      <code>AllocatorScope</code> charges everything to that scope's node of the allocator tree. Because the chain allocates on
+      producer threads and frees on the consumer, an injected allocator must tolerate concurrent use &mdash; the
+      <a href="../../design/RingBuffer_Design.html#allocator">pool-allocator contract</a> says what the
+      default does and does not tolerate. It is never copied into a block,
+      and nothing on the consumer path reads it.</td>
+  </tr>
+</table>
+
+<h2 id="properties">Class properties</h2>
+
+<table>
+  <tr><th>Type + Name</th><th>Default Value</th><th>Description</th></tr>
+  <tr>
+    <td><code>struct alignas(std::hardware_destructive_interference_size) Block final</code> <span class="badge">private nested</span></td>
+    <td><code>not applicable</code></td>
+    <td>One ring: <code>claim</code>, the <code>next</code> link, a <code>tags</code> array of publication flags, the inline payload
+        storage, and the <a href="../../Memory/AlignedStorage/index.html"><code>AlignedStorage</code></a> pair that makes it freeable. Field-level detail is in the design document.</td>
+  </tr>
+  <tr>
+    <td><code>struct alignas(std::hardware_destructive_interference_size) ProducerSlot final</code> <span class="badge">private nested</span></td>
+    <td><code>not applicable</code></td>
+    <td>One producer's declaration of which block it is working on, plus the flag that reserves the slot. Own cache line, so two
+        producers never write the same line.</td>
+  </tr>
+  <tr>
+    <td><code>static constexpr size_t InvalidProducerToken = static_cast&lt;size_t&gt;(-1);</code> <span class="badge">private</span></td>
+    <td><code>static_cast&lt;size_t&gt;(-1)</code></td>
+    <td>The value of a thread's cached token before it has been given a hazard slot.</td>
+  </tr>
+  <tr>
+    <td><code>static constexpr size_t BlockCapacity = U::GetCapacity();</code> <span class="badge">private</span></td>
+    <td><code>U::GetCapacity()</code></td>
+    <td>
+      How many pushes one block accepts, taken from the backend rather than declared again: the block is one lap of its ring, so a
+      second number would be a second truth to keep in step. It is the cap the atomic <code>claim</code> compare-exchange enforces,
+      and it is private because the queue's own contract never asks a caller to size anything against it.
+    </td>
+  </tr>
+  <tr>
+    <td><code>static constexpr size_t LineSpacing = std::hardware_destructive_interference_size;</code> <span class="badge">private</span></td>
+    <td><code>std::hardware_destructive_interference_size</code></td>
+    <td>
+      The pad between the block's independent hot words &mdash; the chain <code>claim</code>, the successor pointer and the ring's
+      own counters &mdash; so that two producers reserving slots do not fight over a cache line the block did not ask them to share.
+    </td>
+  </tr>
+  <tr>
+    <td><code>std::atomic&lt;size_t&gt; fuseRefusalCount;</code> <span class="badge">private</span></td>
+    <td><code>0 (constructor)</code></td>
+    <td>Times the block fuse refused growth; read by
+      <a href="getfuserefusalcount.html"><code>GetFuseRefusalCount</code></a>.</td>
+  </tr>
+  <tr>
+    <td><code>std::atomic&lt;size_t&gt; deferredBlockCount;</code> <span class="badge">private</span></td>
+    <td><code>0 (constructor)</code></td>
+    <td>Depth of the deferred list; read by
+      <a href="getdeferredblockcount.html"><code>GetDeferredBlockCount</code></a>.</td>
+  </tr>
+  <tr>
+    <td><code>static inline std::atomic&lt;size_t&gt; nextInstanceId{1};</code> <span class="badge">private static</span></td>
+    <td><code>1</code></td>
+    <td>Hands out the identity each queue instance carries. It starts at one because zero is what an unset thread-local
+      cache holds, and a fresh instance must never look like an unset cache.</td>
+  </tr>
+  <tr>
+    <td><code>const size_t instanceId;</code> <span class="badge">private</span></td>
+    <td><code>nextInstanceId</code> at construction</td>
+    <td>This instance's identity, taken once. It is what makes a cached producer token safe to trust: an address reused by
+      a later queue does not reuse an identity.</td>
+  </tr>
+  <tr>
+    <td><code>static inline thread_local const void* producerCacheInstance = nullptr;</code> <span class="badge">private static</span></td>
+    <td><code>nullptr</code></td>
+    <td>Which queue instance this thread's cached token was earned from, compared against <code>this</code> so that a
+      token from one queue is never honoured by another.</td>
+  </tr>
+  <tr>
+    <td><code>static inline thread_local size_t producerCacheId = 0;</code> <span class="badge">private static</span></td>
+    <td><code>0</code></td>
+    <td>The <a href="#properties"><code>instanceId</code></a> that went with the cached token, so an address reused by a
+      new instance is caught as well.</td>
+  </tr>
+  <tr>
+    <td><code>static inline thread_local size_t producerToken = InvalidProducerToken;</code> <span class="badge">private static</span></td>
+    <td><code>InvalidProducerToken</code></td>
+    <td>This thread's producer slot index in <code>producerCacheInstance</code>, cached so that a push pays one relaxed
+      load for the whole protocol. Trusted only while the two cache fields above still name this instance.</td>
+  </tr>
+  <tr>
+    <td><code>std::mutex managementLock;</code> <span class="badge">private</span></td>
+    <td><code>none in the header</code></td>
+    <td>Guards every rare operation: extending the chain, retiring a block, retrying deferred ones, and handing out producer
+        slots. Never held across a claim or a publish, so it is not on the hot path.</td>
+  </tr>
+  <tr>
+    <td><code>std::atomic&lt;Block*&gt; chainRoot;</code> <span class="badge">private</span></td>
+    <td><code>nullptr (constructor)</code></td>
+    <td>The oldest block that still exists, and the block a consumer adopts the first time it pops. Advanced only by the consumer.</td>
+  </tr>
+  <tr>
+    <td><code>std::atomic&lt;Block*&gt; tail;</code> <span class="badge">private</span></td>
+    <td><code>nullptr (constructor)</code></td>
+    <td>The block producers claim from. Advanced by compare-and-swap when a block fills, and a thread that finds it stale simply
+        retries against the value it just read.</td>
+  </tr>
+  <tr>
+    <td><code>Block* head;</code> <span class="badge">private</span></td>
+    <td><code>nullptr (constructor)</code></td>
+    <td>The block the consumer is draining. Consumer-only, therefore not atomic.</td>
+  </tr>
+  <tr>
+    <td><code>TAllocator allocator;</code> <span class="badge">private</span></td>
+    <td><code>default-constructed</code></td>
+    <td>The allocator every block, the producer slot array and the deferred list are charged to. Default-constructed, so its
+        target is the constructing thread's allocator context, and whichever thread later grows the chain allocates against the
+        same one. <code>DefaultAllocator</code> opens its own scope, so no call site needs to.</td>
+  </tr>
+  <tr>
+    <td><code>AlignedStorage&lt;ProducerSlot&gt; slotAllocation;</code> <span class="badge">private</span></td>
+    <td><code>raw = nullptr, aligned = nullptr, bytes = 0</code></td>
+    <td>The producer slot array's storage as one value: the unaligned base the allocator handed out, the aligned array the queue
+        uses, and the byte count both were obtained with, so the destructor frees exactly what was allocated. The pair type
+        is <a href="../../Memory/AlignedStorage/index.html"><code>AlignedStorage</code></a>.</td>
+  </tr>
+  <tr>
+    <td><code>ProducerSlot* producerSlots;</code> <span class="badge">private</span></td>
+    <td><code>nullptr (constructor)</code></td>
+    <td>The producer slot array, one entry per permitted producer thread, allocated once and never resized.</td>
+  </tr>
+  <tr>
+    <td><code>size_t producerSlotCount;</code> <span class="badge">private</span></td>
+    <td><code>0 (constructor)</code></td>
+    <td>How many producer slots exist &mdash; the length of every scan and the ceiling on distinct producer threads.</td>
+  </tr>
+  <tr>
+    <td><code>DeferredList deferredBlocks;</code> <span class="badge">private</span></td>
+    <td><code>empty (constructor)</code></td>
+    <td>Blocks the consumer has left that a producer still declared, so they could not be freed yet. Reserved to
+        <code>maxBlocks</code> at construction, touched only under the management mutex. Its allocator is rebound from
+        <code>allocator</code>, so the list's buffer is engine memory like everything else here.</td>
+  </tr>
+  <tr>
+    <td><code>size_t blockCount;</code> <span class="badge">private</span></td>
+    <td><code>0 (constructor)</code></td>
+    <td>Live blocks, the number the fuse is compared against. Mutex-guarded, never exposed directly.</td>
+  </tr>
+  <tr>
+    <td><code>size_t maxBlocks;</code> <span class="badge">private</span></td>
+    <td><code>the inMaxBlocks argument</code></td>
+    <td>The capacity fuse.</td>
+  </tr>
+  <tr>
+    <td><code>std::atomic&lt;size_t&gt; growCount;</code> <span class="badge">private</span></td>
+    <td><code>0 (constructor)</code></td>
+    <td>Blocks created; read by <a href="getgrowcount.html"><code>GetGrowCount</code></a>.</td>
+  </tr>
+  <tr>
+    <td><code>std::atomic&lt;size_t&gt; retireCount;</code> <span class="badge">private</span></td>
+    <td><code>0 (constructor)</code></td>
+    <td>Blocks recycled; read by <a href="getretirecount.html"><code>GetRetireCount</code></a>.</td>
+  </tr>
+  <tr>
+    <td><code>std::atomic&lt;size_t&gt; blockedCount;</code> <span class="badge">private</span></td>
+    <td><code>0 (constructor)</code></td>
+    <td>Pops that met an unpublished slot; read by <a href="getblockedcount.html"><code>GetBlockedCount</code></a>.</td>
+  </tr>
+</table>
+
+<p>
+  What <a href="push.html"><code>Push</code></a> and <a href="pop.html"><code>Pop</code></a> answer with is the shared
+  <a href="../EPushResult/index.html"><code>EPushResult</code></a> and <a href="../EPopResult/index.html"><code>EPopResult</code></a>
+  &mdash; declared in <code>Engine/Container/EPushResult.h</code> and <code>EPopResult.h</code>, not nested here. The chain owns
+  the third enumerator of each: <code>TooManyProducers</code> when the producer slots are exhausted, <code>Blocked</code> when a
+  block is claimed ahead of publication.
+</p>
+
+<h2 id="methods">Class methods</h2>
+
+<table class="methods">
+  <tr><th>Name</th><th>Signature</th><th>What a caller depends on</th></tr>
+  <tr>
+    <td><a href="constructors.html"><code>RingBuffer</code></a></td>
+    <td class="sig">RingBuffer(const RingBuffer&amp;) = delete<br>explicit RingBuffer(size_t inMaxBlocks = 64, size_t inMaxProducers = 64) noexcept</td>
+    <td>Allocates nothing for elements; reserves the hazard array and captures the current allocator. Not copyable.</td>
+  </tr>
+  <tr>
+    <td><a href="destructor.html"><code>~RingBuffer</code></a></td>
+    <td class="sig">~RingBuffer()</td>
+    <td>Destroys what is still queued and frees every block, from the consumer thread, after producers have stopped.</td>
+  </tr>
+  <tr>
+    <td><code>operator=</code></td>
+    <td class="sig">RingBuffer&amp; operator=(const RingBuffer&amp;) = delete</td>
+    <td>Deleted &mdash; no page; a queue owns memory and thread-affine state, so a copy would be a second owner of one chain.</td>
+  </tr>
+  <tr>
+    <td><a href="push.html"><code>Push</code></a></td>
+    <td class="sig">[[nodiscard]] EPushResult Push(const T&amp; inItem) noexcept</td>
+    <td>Any thread, no lock and no allocation on the hot path; refuses rather than blocking when the fuse is reached.</td>
+  </tr>
+  <tr>
+    <td><a href="pop.html"><code>Pop</code></a></td>
+    <td class="sig">[[nodiscard]] EPopResult Pop(T&amp; outItem) noexcept</td>
+    <td>The one consumer thread; distinguishes empty from blocked and never spins, never skips.</td>
+  </tr>
+  <tr>
+    <td><a href="isempty.html"><code>IsEmpty</code></a></td>
+    <td class="sig">[[nodiscard]] bool IsEmpty() const noexcept</td>
+    <td>The consumer thread; reads claim and cursor together, so a committed-but-unpublished element is not called absence.</td>
+  </tr>
+  <tr>
+    <td><a href="getgrowcount.html"><code>GetGrowCount</code></a></td>
+    <td class="sig">[[nodiscard]] size_t GetGrowCount() const noexcept</td>
+    <td>Blocks ever created, for a diagnostic of how often the chain turned over.</td>
+  </tr>
+  <tr>
+    <td><a href="getretirecount.html"><code>GetRetireCount</code></a></td>
+    <td class="sig">[[nodiscard]] size_t GetRetireCount() const noexcept</td>
+    <td>Blocks recycled; with the grow count it is the live-block count the fuse allows.</td>
+  </tr>
+  <tr>
+    <td><a href="getfuserefusalcount.html"><code>GetFuseRefusalCount</code></a></td>
+    <td class="sig">[[nodiscard]] size_t GetFuseRefusalCount() const noexcept</td>
+    <td>How often the block fuse refused growth; separates a queue that refused work from one that was merely slow.</td>
+  </tr>
+  <tr>
+    <td><a href="getdeferredblockcount.html"><code>GetDeferredBlockCount</code></a></td>
+    <td class="sig">[[nodiscard]] size_t GetDeferredBlockCount() const noexcept</td>
+    <td>How many retired blocks are parked waiting for a producer to leave them.</td>
+  </tr>
+  <tr>
+    <td><a href="getblockedcount.html"><code>GetBlockedCount</code></a></td>
+    <td class="sig">[[nodiscard]] size_t GetBlockedCount() const noexcept</td>
+    <td>How many pops met an in-flight slot &mdash; the visible cost of the FIFO boundary.</td>
+  </tr>
+  <tr>
+    <td><a href="allocateblock.html"><code>AllocateBlock</code></a> <span class="badge">private</span></td>
+    <td class="sig">[[nodiscard]] Block* AllocateBlock() noexcept</td>
+    <td>Allocates and aligns one block and zeroes its tags; links nothing.</td>
+  </tr>
+  <tr>
+    <td><a href="acquireblock.html"><code>AcquireBlock</code></a> <span class="badge">private</span></td>
+    <td class="sig">[[nodiscard]] Block* AcquireBlock(Block* inFullBlock) noexcept</td>
+    <td>The only growth path and the only lock a producer can take; enforces the fuse.</td>
+  </tr>
+  <tr>
+    <td><a href="acquireproducertoken.html"><code>AcquireProducerToken</code></a> <span class="badge">private</span></td>
+    <td class="sig">[[nodiscard]] size_t AcquireProducerToken() noexcept</td>
+    <td>This thread's hazard slot, cached in thread-local storage; refuses a thread it cannot track.</td>
+  </tr>
+  <tr>
+    <td><a href="freeblock.html"><code>FreeBlock</code></a> <span class="badge">private</span></td>
+    <td class="sig">void FreeBlock(Block* inBlock) noexcept</td>
+    <td>Returns one block's raw allocation to the allocator it came from.</td>
+  </tr>
+  <tr>
+    <td><a href="retireblock.html"><code>RetireBlock</code></a> <span class="badge">private</span></td>
+    <td class="sig">void RetireBlock(Block* inBlock, Block* inSuccessor) noexcept</td>
+    <td>Moves <code>tail</code> off a drained block and frees it, or defers it while a producer still declares it.</td>
+  </tr>
+  <tr>
+    <td><a href="isblockshadowed.html"><code>IsBlockShadowed</code></a> <span class="badge">private</span></td>
+    <td class="sig">[[nodiscard]] bool IsBlockShadowed(Block* inBlock) const noexcept</td>
+    <td>The one question recycling turns on: does any producer slot declare this block?</td>
+  </tr>
+  <tr>
+    <td><a href="retrydeferredblocks.html"><code>RetryDeferredBlocks</code></a> <span class="badge">private</span></td>
+    <td class="sig">void RetryDeferredBlocks() noexcept</td>
+    <td>Frees deferred blocks that nobody declares any more, which is what unsticks a queue at its fuse.</td>
+  </tr>
+  <tr>
+    <td><a href="destroyall.html"><code>DestroyAll</code></a> <span class="badge">private</span></td>
+    <td class="sig">void DestroyAll() noexcept</td>
+    <td>Destroys queued elements and frees the chain, oldest first.</td>
+  </tr>
+</table>
+
+<h2 id="non-member">Non-member helper functions</h2>
+
+<table>
+  <tr><th>Name</th><th>Declaration</th><th>What it is for</th></tr>
+  <tr>
+    <td><code>RingBufferMPSC</code> <span class="badge">alias template</span></td>
+    <td class="sig">template &lt;typename T, size_t BlockCapacity = 1024&gt; using RingBufferMPSC = RingBuffer&lt;T, AtomicFixedRingMPSC&lt;T, BlockCapacity&gt;&gt;</td>
+    <td>The short name. The class spells out the ownership rule the type enforces; call sites that have already said it once per
+        file can use the alias without losing the meaning. It adds no behaviour and owns nothing.</td>
+  </tr>
+</table>
+
+<h2 id="coverage">Coverage</h2>
+
+<p>This page documents every entry the header declares, with one omission recorded rather than glossed: the concept <code>CFixedRing&lt;T, U&gt;</code> has no page of its own &mdash; it constrains this one class and means nothing away from it, so its whole contract lives in the <code>U</code> row of the template-parameter table above, exactly as <code>CLockable</code> is documented on the page of the class it constrains in <code>docs/Core/ScopedLock/index.html</code>; and the three aliases (<code>StorageAllocator</code>, <code>DeferredAllocator</code> and <code>DeferredList</code>) have no
+  pages of their own - they name no runtime behaviour, and what they guarantee is stated in the <code>TAllocator</code> row of
+  the template-parameter table above. What follows are the claims the reference could not
+establish by testing, recorded rather than glossed.</p>
+
+<table>
+  <tr><th>Not established</th><th>Why, and what was done instead</th></tr>
+  <tr>
+    <td>That the block declaration is necessary, as opposed to merely argued for.</td>
+    <td>No testlet can schedule the interleaving it guards — the window is two instructions wide and holds no user code — and
+        deleting the declaration changed nothing: every testlet still passed, so the guard has no control demonstrating its
+        necessity in this form. ThreadSanitizer did catch the earlier version of this protocol, which is why the protocol is as it
+        is, and that history together with the ordering argument is recorded in the design document. Read that argument sceptically:
+        it is the whole case.</td>
+  </tr>
+  <tr>
+    <td>That a producer slot is ever given back.</td>
+    <td>It is not. A thread that pushes and then exits keeps its slot for the life of the queue, so the bound is on the number of
+        threads that ever push, not on the number pushing at once. Nothing in the engine cycles unbounded thread identities
+        through one queue; a caller that does must size <code>inMaxProducers</code> for it.</td>
+  </tr>
+  <tr>
+    <td>A measured throughput or a false-sharing figure.</td>
+    <td>Adjacent slots share tag cache lines, which is a deliberate trade for memory density. The trade has now been measured: adding one publication gate per slot to a bare claim-and-write ring is the largest single term in the cost of a push (4.3 ns to 24.1 ns per element at one producer), while moving the block's claim word off the first tag line and line-aligning the tag array changed end-to-end throughput by less than the run-to-run noise. The numbers and the method are in the design document. The design document records it as an open measurement rather than a number.</td>
+  </tr>
+  <tr>
+    <td>A call site.</td>
+    <td>Nothing in the engine uses this container yet, so every example on these pages is labelled illustrative.</td>
+  </tr>
+</table>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; RingBuffer</a></span>
+  <span><a href="index.html#methods">All RingBuffer methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

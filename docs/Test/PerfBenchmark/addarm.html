@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PerfBenchmark::AddArm — Test module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a class="current" href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Example</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Test</a> /
+  <a href="index.html">PerfBenchmark</a> / AddArm
+</p>
+
+<h1><span class="fn">AddArm</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::PerfBenchmark</span>
+  <span class="tag">Engine/Test/PerfHarness.h</span>
+  register one implementation of the cell
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>void AddArm(const char* inName, const void* inUserData, TPerfMeasure inMeasure) noexcept</code></pre>
+
+
+<h2 id="description">Function description</h2>
+
+<p>
+  Appends an arm. The three arguments are a name, an address and a function pointer, all of which must outlive the
+  benchmark: the name goes into the report, the address goes back into the measure function once per round, and
+  nothing copies them. A testlet therefore passes the address of a namespace-scope shape rather than one it built on
+  its own stack.
+</p>
+<p>
+  The measure function owns everything it measures. It builds the queue, its threads and its bookkeeping, runs the
+  round, checks the invariants and destroys it all, returning one <a href="../PerfSample/index.html">PerfSample</a>.
+  That is what makes the arms independent: no queue is shared between rounds, and a warm ring never flatters the arm
+  measured second.
+</p>
+<p>
+  A call past <code>MaxArms</code> is dropped rather than growing the table, so a cell that asks for six arms reports
+  five &mdash; the arm count on the report line is where that becomes visible.
+</p>
+
+<h2 id="parameters">Parameters</h2>
+
+<table>
+  <tr><th>Name</th><th>What the caller must supply</th></tr>
+  <tr><td><code>inName</code></td><td>Static-storage name, as a literal. It is the arm&rsquo;s identity: <a href="expect.html">Expect</a> and <a href="control.html">Control</a> name arms by it.</td></tr>
+  <tr><td><code>inUserData</code></td><td>Address passed back to <code>inMeasure</code>, uninterpreted. May be null.</td></tr>
+  <tr><td><code>inMeasure</code></td><td>Function that measures one round and returns the sample. It must not throw, and it must leave nothing running behind it.</td></tr>
+</table>
+
+<h2 id="return">Return value</h2>
+
+<p>None.</p>
+
+<h2 id="example">Example</h2>
+
+<pre><code>bench.<span class="fn">AddArm</span>(<span class="st">"FixedRingMPSC (mutex)"</span>, &amp;shape, &amp;<span class="fn">RunPerfCell</span>&lt;TMutexMPSC&gt;);
+bench.<span class="fn">AddArm</span>(<span class="st">"AtomicFixedRingMPSC (control)"</span>, &amp;shape, &amp;<span class="fn">RunPerfCell</span>&lt;TAtomicMPSC&gt;);</code></pre>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; PerfBenchmark</a></span>
+  <span><a href="index.html#methods">All PerfBenchmark methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

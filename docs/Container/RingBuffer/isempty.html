@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>RingBuffer::IsEmpty — Container module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a class="current" href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Container</a> /
+  <a href="index.html">RingBuffer</a> / IsEmpty
+</p>
+
+<h1><span class="fn">IsEmpty</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::RingBuffer</span>
+  <span class="tag">Engine/Container/RingBuffer.h</span>
+  decide emptiness from the head block's ring and its successor pointer together, from the consumer thread
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>[[nodiscard]] bool IsEmpty() const noexcept</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  Reports whether the consumer has nothing left to take. <strong>Evaluate it from the consumer thread</strong>, like
+  <a href="pop.html"><code>Pop</code></a>: it starts from <code>head</code>, the consumer's own non-atomic pointer.
+</p>
+
+<p>
+  Two words decide it, and one word is not enough. The head block's ring answers whether its own read index has caught up with its
+  write index, and the head block's <code>next</code> answers whether the chain has anything behind it. Reading the ring alone would
+  call a queue empty the moment its head block drained, with a second block full of elements behind it; reading <code>next</code>
+  alone would call a queue that holds elements empty. Note which test is <em>not</em> here: <code>IsEmpty</code> does not consult the
+  block's <code>claim</code>, so it decides from what the ring can see, and the consequence is in the return value below.
+</p>
+
+<p>
+  The answer is a snapshot, not a promise: a producer can push the instant after it returns <code>true</code>. It is a drain
+  condition and a shutdown condition, not a lock.
+</p>
+
+<h2 id="parameters">Parameters</h2>
+
+<table>
+  <tr><th>Name</th><th>What the caller must supply</th></tr>
+  <tr><td><em>none</em></td><td>This method takes no argument.</td></tr>
+</table>
+
+<h2 id="return">Return value</h2>
+
+<p><code>true</code> when the head block's ring holds nothing and that block is still the last block of the chain, including
+the case where the queue has never been pushed to at all. <code>false</code> otherwise. The blocked case normally reads as
+non-empty, because a slot the ring has reserved but not yet published keeps the ring non-empty &mdash; a queue can report
+non-empty while <a href="pop.html"><code>Pop</code></a> returns <code>EPopResult::Blocked</code>, and is right to do so. The one
+exception is the window in which a producer has won the block's <code>claim</code> but its call into the ring has not yet reached
+the ring's own counters: in that instant the ring looks empty and so does <code>IsEmpty</code>, while <code>Pop</code> &mdash;
+which compares <code>claim</code> against <code>GetSlotVersion()</code> &mdash; can see that reservation and answer
+<code>Blocked</code>. <code>IsEmpty</code>
+is therefore the weaker of the two tests: a caller that must not miss a committed element asks <code>Pop</code>, which at least
+consults the chain's own counter, and treats <code>Empty</code> from either method as a snapshot rather than a promise.</p>
+
+<h2 id="example">Examples</h2>
+
+<p class="note">Illustrative &mdash; no call site for this exists in the repository.</p>
+
+<pre><code><span class="kw">if</span> (queue.<span class="fn">IsEmpty</span>() &amp;&amp; registry.<span class="fn">Count</span>() == <span class="nu">0</span>)
+{
+        <span class="kw">return</span>;
+}</code></pre>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; RingBuffer</a></span>
+  <span><a href="index.html#methods">All RingBuffer methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

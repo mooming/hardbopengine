@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AtomicFixedRingMPMC::PayloadAt — Container module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a class="current" href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Container</a> /
+  <a href="index.html">AtomicFixedRingMPMC</a> / PayloadAt
+</p>
+
+<h1><span class="fn">PayloadAt</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::AtomicFixedRingMPMC</span>
+  <span class="tag">Engine/Container/AtomicFixedRingMPMC.h</span>
+  absolute index to payload pointer, one mask and one stride
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>[[nodiscard]] T* PayloadAt(size_t inIndex) noexcept</code></pre>
+
+<p class="note">Signature text is checked against the header by <code>docs_pass.py signatures</code>.</p>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  Private. Turns an absolute index into the address of the payload bytes for that slot: mask with
+  <code>IndexMask</code>, stride by <code>sizeof(T)</code>. Two facts make that one instruction legal instead of a
+  memory error &mdash; <code>Capacity</code> is a power of two, which is what lets a mask replace a division, and
+  <code>sizeof(T) % alignof(T) == 0</code>, which is what keeps every stride landing on an alignment
+  <code>T</code> requires. Both are <code>static_assert</code>ed at the top of the class.
+</p>
+
+<p>
+  Precondition, and it is the one a caller outside the class cannot satisfy: the slot must belong to the calling
+  thread. That means claimed for writing after a successful <code>Push</code> claim, or published for reading after a
+  successful <code>Pop</code> claim. Read the payload of a slot nobody has given you and you have a data race that no
+  single-threaded test can show; <a href="../../design/FixedRingBufferQueues_Design.html#proof">ThreadSanitizer is what shows it</a>.
+</p>
+
+<h2 id="parameters">Parameters</h2>
+
+<table>
+  <tr><th>Name</th><th>What the caller must supply</th></tr>
+  <tr><td><code>inIndex</code></td><td>An absolute index, not a slot index. It is masked here, so callers carry the untruncated counter.</td></tr>
+</table>
+
+<h2 id="return">Return value</h2>
+
+<p>A pointer to raw storage, <em>not</em> to a live object unless the slot is published. Construct into it or destroy through it; do not dereference it casually.</p>
+
+<h2 id="example">Examples</h2>
+
+<p class="note">Private helper. It is documented because every declared name is documented, and because the two preconditions above are the reason the class is shaped the way it is.</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; AtomicFixedRingMPMC</a></span>
+  <span><a href="index.html#methods">All AtomicFixedRingMPMC methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

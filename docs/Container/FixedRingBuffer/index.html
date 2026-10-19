@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>RingQueue — Container — HardBop Engine API reference</title>
+<title>FixedRingBuffer — Container — HardBop Engine API reference</title>
 <link rel="stylesheet" href="../../assets/hbe-docs.css">
 </head>
 <body>
@@ -48,12 +48,12 @@
 
 <p class="breadcrumb">
   <a href="../../index.html">Module Index</a> /
-  <a href="../index.html">Container</a> / RingQueue
+  <a href="../index.html">Container</a> / FixedRingBuffer
 </p>
 
-<h1>RingQueue</h1>
+<h1>FixedRingBuffer</h1>
 <p class="subtitle">
-  <span class="tag">Engine/Container/RingQueue.h</span>
+  <span class="tag">Engine/Container/FixedRingBuffer.h</span>
   <span class="tag">namespace hbe</span>
   <span class="tag">template &lt;typename TElement, class TAllocator = DefaultAllocator&lt;TElement&gt;&gt;</span>
   <span class="tag">final</span>
@@ -63,7 +63,7 @@
 <h2 id="description">Class description</h2>
 
 <p>
-  <code>RingQueue</code> is the bounded sibling of <a href="../Deque/index.html"><code>Deque</code></a>: same idea — one
+  <code>FixedRingBuffer</code> is the bounded sibling of <a href="../Deque/index.html"><code>Deque</code></a>: same idea — one
   buffer, a <code>head</code> and a <code>tail</code> cursor, everything wrapped by <code>index &amp; (cap - 1)</code> —
   but the buffer is allocated once by the constructor and never touched again. Push and pop are constant time with no
   allocation, no deallocation and no element movement, which is exactly what a fixed-size producer/consumer window needs.
@@ -79,8 +79,8 @@
 
 <div class="gap">
   <strong>There is no default constructor, and the capacity cannot be re-chosen afterwards.</strong> The only
-  non-move constructor is <code>explicit RingQueue(TIndex fixedCapacity)</code>, guarded by
-  <code>FatalAssert(fixedCapacity &gt; 0, "RingQueue capacity must be positive")</code>. A <code>RingQueue</code> member
+  non-move constructor is <code>explicit FixedRingBuffer(TIndex fixedCapacity)</code>, guarded by
+  <code>FatalAssert(fixedCapacity &gt; 0, "FixedRingBuffer capacity must be positive")</code>. A <code>FixedRingBuffer</code> member
   therefore has to be initialised where it is declared or in the constructor's member list; it cannot be left empty and
   filled in later, it cannot be a value in a container that default-constructs its elements, and the way to reset one is
   <a href="#methods"><code>Clear()</code></a> — not "resize it", because nothing here resizes.
@@ -141,7 +141,7 @@
     <td><code>TIndex</code></td>
     <td><code>using TIndex = int;</code></td>
     <td><span class="badge">member type</span> Count, capacity and index — signed <code>int</code>, as in every other
-      contiguous container here. The constructor takes this type, so <code>RingQueue&lt;T&gt; q(100)</code> is an
+      contiguous container here. The constructor takes this type, so <code>FixedRingBuffer&lt;T&gt; q(100)</code> is an
       <code>int</code>, not a <code>size_t</code></td>
   </tr>
   <tr>
@@ -188,20 +188,20 @@
   <tr><th>Method</th><th>Signature</th><th>What a caller depends on</th></tr>
   <tr>
     <td><code>constructors</code><span class="badge">2 + 1 deleted</span></td>
-    <td class="sig">explicit RingQueue(TIndex fixedCapacity)<br>RingQueue(RingQueue&amp;&amp; rhs) noexcept<br>RingQueue(const RingQueue&amp;) = delete</td>
+    <td class="sig">explicit FixedRingBuffer(TIndex fixedCapacity)<br>FixedRingBuffer(FixedRingBuffer&amp;&amp; rhs) noexcept<br>FixedRingBuffer(const FixedRingBuffer&amp;) = delete</td>
     <td>The sizing form asserts positivity, rounds the capacity up with <code>std::bit_ceil</code> and allocates once; the
       move form steals the buffer by swapping and allocates nothing; no copy and no default constructor exist</td>
   </tr>
   <tr>
     <td><code>destructor</code></td>
-    <td class="sig">~RingQueue()</td>
+    <td class="sig">~FixedRingBuffer()</td>
     <td>Returns early when <code>data</code> is null; otherwise destroys every live element through
       <code>WrapIndex(head + i)</code> and frees <code>cap</code> elements through a fresh
       <code>TAllocator</code></td>
   </tr>
   <tr>
     <td><code>operator=</code><span class="badge">2 overloads, one deleted</span></td>
-    <td class="sig">RingQueue&amp; operator=(RingQueue&amp;&amp; rhs) noexcept<br>RingQueue&amp; operator=(const RingQueue&amp;) = delete</td>
+    <td class="sig">FixedRingBuffer&amp; operator=(FixedRingBuffer&amp;&amp; rhs) noexcept<br>FixedRingBuffer&amp; operator=(const FixedRingBuffer&amp;) = delete</td>
     <td>Move assignment is <code>Swap(rhs); return *this;</code>, so the source ends up holding the destination's former
       buffer rather than being emptied; safe on self-assignment because a swap with itself is a no-op</td>
   </tr>
@@ -256,7 +256,7 @@
   </tr>
   <tr>
     <td><code>Swap</code></td>
-    <td class="sig">void Swap(RingQueue&amp; rhs) noexcept</td>
+    <td class="sig">void Swap(FixedRingBuffer&amp; rhs) noexcept</td>
     <td>Five <code>std::swap</code> calls over <code>cap</code>, both cursors, the count and the buffer. Takes an lvalue
       reference. Since capacity travels with the buffer, a swap exchanges capacities too — the two objects' capacity
       ceilings can end up swapped</td>
@@ -285,9 +285,9 @@
   </tr>
   <tr>
     <td>No call site in the engine</td>
-    <td><code>Container/RingQueue.h</code> is included by <code>Engine/Test/UnitTestCollection.cpp</code> and by nothing
+    <td><code>Container/FixedRingBuffer.h</code> is included by <code>Engine/Test/UnitTestCollection.cpp</code> and by nothing
       else in <code>Engine/</code> or <code>Applications/</code>. Every example on this page is labelled illustrative;
-      <code>RingQueueTest</code> in <code>Engine/Container/RingQueue.cpp</code> is the only code that constructs one</td>
+      <code>FixedRingBufferTest</code> in <code>Engine/Container/FixedRingBuffer.cpp</code> is the only code that constructs one</td>
   </tr>
   <tr>
     <td>No iteration, by design or by omission</td>
@@ -310,7 +310,7 @@
 
 <footer class="prevnext">
   <span><a href="../index.html">← Container</a></span>
-  <span><a href="../index.html#ringqueue">RingQueue in the Container class list</a></span>
+  <span><a href="../index.html#fixedringbuffer">FixedRingBuffer in the Container class list</a></span>
 </footer>
 
 </main>

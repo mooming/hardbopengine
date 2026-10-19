@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>EPushResult — Container module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a class="current" href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This class</h3>
+  <ul>
+    <li><a href="#description">Class description</a></li>
+    <li><a href="#template">Template parameters</a></li>
+    <li><a href="#properties">Class properties</a></li>
+    <li><a href="#methods">Class methods</a></li>
+    <li><a href="#non-member">Non-member helpers</a></li>
+    <li><a href="#coverage">Coverage</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Container</a> /
+  EPushResult
+</p>
+
+<h1>EPushResult</h1>
+<p class="subtitle">
+  <span class="tag">Engine/Container/EPushResult.h</span>
+  the one answer every push in the ring family returns — a shared type that made the concept one requires block
+</p>
+
+<h2 id="description">Class description</h2>
+
+<p>
+  <code>EPushResult</code> is the one <code>enum class</code> over <code>unsigned char</code> that every push in the ring family
+  answers with: the four fixed rings (<a href="../AtomicFixedRingMPSC/index.html">AtomicFixedRingMPSC</a>,
+  <a href="../AtomicFixedRingMPMC/index.html">AtomicFixedRingMPMC</a>, <a href="../FixedRingMPSC/index.html">FixedRingMPSC</a>,
+  <a href="../FixedRingMPMC/index.html">FixedRingMPMC</a>) and the <a href="../RingBuffer/index.html">RingBuffer</a> chain that
+  carries their blocks. It exists as one type because the answers travel between layers: a block-level
+  <code>Full</code> becomes a queue-level <code>Full</code>, and with one type that mapping is the identity, which cannot drift.
+  While the enums were nested, the concept <code>CFixedRing&lt;T, U&gt;</code> had to name the backend's answer through
+  <code>typename U::EPushResult</code> and then re-check in a second <code>requires</code> block that the enumerators the chain
+  relies on actually existed; sharing the type retired both devices.
+</p>
+
+<p>
+  <code>Pushed</code> means the argument was constructed into a slot and is visible to the consumer. <code>Full</code> means
+  nothing was constructed and the item is still the caller's: for a fixed ring this is capacity, for the chain it is the
+  <a href="../RingBuffer/getfuserefusalcount.html">block fuse</a> refusing growth, and in both cases the answer invites a retry
+  rather than reporting a loss. <code>TooManyProducers</code> is the chain's answer when every producer slot has already been
+  claimed — a slot is earned for the lifetime of the queue, never released, so this says <em>thread identities</em> ran out, not
+  capacity.
+</p>
+
+<div class="note">
+  <strong>A fixed ring never answers <code>TooManyProducers</code>.</strong> It does not track producer identity at all —
+  the enumerator exists in the shared type because the chain needs it, and <code>CFixedRing&lt;T, U&gt;</code> demands only
+  <code>Pushed</code> and <code>Full</code> of a backend. Code that switches on the type should still handle the enumerator
+  (exhaustive <code>switch</code> over three cases is the shape), but code reading a bare ring's answer can rely on it never
+  arriving.
+</div>
+
+<h2 id="template">Template parameters</h2>
+
+<p>None — an enumeration is not a template, and this one is parameterised on nothing.</p>
+
+<h2 id="properties">Class properties</h2>
+
+<table>
+  <tr><th>Name</th><th>Declaration</th><th>What it means</th></tr>
+  <tr>
+    <td><code>Pushed</code></td><td><code>= 0</code></td>
+    <td><span class="badge">enumerator</span> The item was constructed into a reserved slot and published; the consumer will
+    see it. The only enumerator that means success.</td>
+  </tr>
+  <tr>
+    <td><code>Full</code></td><td><code>= 1</code></td>
+    <td><span class="badge">enumerator</span> Nothing was constructed and the item was not lost; the queue was at its
+    capacity limit — a ring's slots, or the chain's block fuse. Retrying is legitimate, and the chain counts fuse refusals at
+    <a href="../RingBuffer/getfuserefusalcount.html">GetFuseRefusalCount</a> so a caller can tell pressure from progress.</td>
+  </tr>
+  <tr>
+    <td><code>TooManyProducers</code></td><td><code>= 2</code></td>
+    <td><span class="badge">enumerator</span> Chain-only. Every producer slot was already claimed by a thread that has ever
+    pushed into this queue; see <a href="../RingBuffer/acquireproducertoken.html">AcquireProducerToken</a>. Raising
+    <code>inMaxProducers</code> is the fix; a fixed ring never answers this.</td>
+  </tr>
+</table>
+
+<h2 id="methods">Class methods</h2>
+
+<p>None — the enumeration is the entire interface, and what each answer costs a caller is owned by the
+<code>Push</code> page of the class that returns it.</p>
+
+<h2 id="non-member">Non-member helpers</h2>
+
+<p>None. There is no <code>operator&lt;&lt;</code>: a class that prints an answer switches on the enumerator at the call site,
+the way the benchmark harness does.</p>
+
+<h2 id="coverage">Coverage</h2>
+
+<p>
+  This page documents the type completely: three enumerators, their underlying width, and the shared-type argument that made the
+  concept compact. The <em>per-class</em> consequences — whether a retry should spin, park or fail the caller — are owned by
+  <a href="../RingBuffer/push.html">RingBuffer::Push</a> and each backend's <code>Push</code> page, which link back here.
+</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; EPushResult</a></span>
+  <span><a href="index.html#methods">All EPushResult methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

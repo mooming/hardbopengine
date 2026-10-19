@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>RingBuffer::Pop — Container module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a class="current" href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Container</a> /
+  <a href="index.html">RingBuffer</a> / Pop
+</p>
+
+<h1><span class="fn">Pop</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::RingBuffer</span>
+  <span class="tag">Engine/Container/RingBuffer.h</span>
+  take the oldest element from the one consumer thread, distinguishing empty from claimed-but-unpublished
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>[[nodiscard]] EPopResult Pop(T&amp; outItem) noexcept</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  Takes the oldest element out of the queue, if one is ready. <strong>The single consumer thread only.</strong> The chain-side
+  cursor it advances, <code>head</code>, is an ordinary non-atomic pointer, and the position inside a block is the ring backend's
+  own read index, which nothing but this call moves; a second consumer would corrupt both silently.
+</p>
+
+<p>
+  It never spins and never waits. It asks the head block's ring for an element, and an empty answer from that ring is not yet an
+  answer about the queue, so the chain makes two further tests before it concludes anything. <code>claim</code> ahead of
+  <code>ring.GetSlotVersion()</code> means a producer has reserved a place in the block that the ring has not taken yet; and
+  <code>!ring.IsEmpty()</code> means the ring has taken a slot whose payload is not published yet. Either is a commitment. Answering
+  "empty" to a commitment loses an element that is already owed, and stepping past it to a later slot would break first-in
+  first-out, so the honest third answer is required and is what this method returns. Only when both tests find nothing in flight
+  does the chain look for a successor, and only the absence of one earns <code>Empty</code>.
+</p>
+
+<p>
+  When the head block is drained and a newer block exists &mdash; a block gains a successor only once its claim reached
+  <code>BlockCapacity</code>, so a drained block with a successor behind it is always a block that was filled to its cap &mdash;
+  the cursor moves to that block and the one
+  it leaves is retired. <a href="retireblock.html"><code>RetireBlock</code></a> first moves <code>tail</code> off that block, so
+  no producer can acquire it afresh, then frees it unless some producer's slot still declares it — in which case the block joins
+  the deferred list and is freed by a later advance or by a producer that reaches the fuse. That is what bounds the chain at
+  <code>maxBlocks</code> under a consumer that keeps up.
+</p>
+
+<p>
+  The backend moves the element into <code>outItem</code>, destroys its own copy and releases the slot, so a recycled slot is
+  indistinguishable from a virgin one. That is the backend's work, not the chain's: the queue keeps no element bookkeeping of its
+  own, which is why the same chain runs on any ring that satisfies <code>CFixedRing</code>.
+</p>
+
+<h2 id="parameters">Parameters</h2>
+
+<table>
+  <tr><th>Name</th><th>What the caller must supply</th></tr>
+  <tr>
+    <td><code>T&amp; outItem</code></td>
+    <td>Written only when the result is <code>EPopResult::Element</code>. On <code>Empty</code> and <code>Blocked</code> it is left exactly as the caller passed it, which the tests assert.</td>
+  </tr>
+</table>
+
+<h2 id="return">Return value</h2>
+
+<table>
+  <tr><th>Value</th><th>What it means for the caller</th></tr>
+  <tr><td><code>EPopResult::Element</code></td><td><code>outItem</code> holds the oldest element. Call again to take the next.</td></tr>
+  <tr><td><code>EPopResult::Empty</code></td><td>Nothing is in flight on the head block &mdash; neither a chain reservation the
+      ring has not taken nor a ring slot still waiting for its payload &mdash; and that block is still the tail of the
+      chain. A producer may add work at any moment, so this is not a promise.</td></tr>
+  <tr><td><code>EPopResult::Blocked</code></td><td>An element is committed somewhere on the path between the chain's reservation
+      and the ring's publication, so the oldest element is neither present nor absent. The element exists and is on
+      its way; the caller must not treat this as empty and must not look past it. Each occurrence increments
+      <a href="getblockedcount.html"><code>GetBlockedCount</code></a>.</td></tr>
+</table>
+
+<h2 id="example">Examples</h2>
+
+<p class="note">Illustrative &mdash; no call site for this exists in the repository.</p>
+
+<pre><code><span class="ty">Task</span> task;
+<span class="kw">for</span> (<span class="ty">EPopResult</span> result = queue.<span class="fn">Pop</span>(task); result != <span class="ty">EPopResult</span>::<span class="fn">Empty</span>; result = queue.<span class="fn">Pop</span>(task))
+{
+        <span class="kw">if</span> (result == <span class="ty">EPopResult</span>::<span class="fn">Blocked</span>)
+        {
+                <span class="fn">doSomethingElseUseful</span>();
+
+                <span class="kw">continue</span>;
+        }
+
+        <span class="fn">run</span>(task);
+}</code></pre>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; RingBuffer</a></span>
+  <span><a href="index.html#methods">All RingBuffer methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

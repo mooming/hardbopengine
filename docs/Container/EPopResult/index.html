@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>EPopResult — Container module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a class="current" href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This class</h3>
+  <ul>
+    <li><a href="#description">Class description</a></li>
+    <li><a href="#template">Template parameters</a></li>
+    <li><a href="#properties">Class properties</a></li>
+    <li><a href="#methods">Class methods</a></li>
+    <li><a href="#non-member">Non-member helpers</a></li>
+    <li><a href="#coverage">Coverage</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Container</a> /
+  EPopResult
+</p>
+
+<h1>EPopResult</h1>
+<p class="subtitle">
+  <span class="tag">Engine/Container/EPopResult.h</span>
+  the one answer every pop in the ring family returns — element, empty, and the chain-only third answer
+</p>
+
+<h2 id="description">Class description</h2>
+
+<p>
+  <code>EPopResult</code> is the one <code>enum class</code> over <code>unsigned char</code> that every pop in the ring family
+  answers with — the four fixed rings and the <a href="../RingBuffer/index.html">RingBuffer</a> chain. It is the read side of
+  <a href="../EPushResult/index.html">EPushResult</a>: one shared type, so the concept
+  <code>CFixedRing&lt;T, U&gt;</code> compares a backend's answer against <em>it</em> instead of reaching through
+  <code>typename U::EPopResult</code> and re-checking enumerators.
+</p>
+
+<p>
+  <code>Element</code> means a value was moved into the out-parameter and its slot released. <code>Empty</code> means nothing
+  was available and the out-parameter was untouched. <code>Blocked</code> is the chain's third answer: the queue is empty
+  <em>right now</em> but must not be treated as finished, because a producer reserved a block ahead of publishing — popping
+  into <code>Blocked</code> is the consumer learning that in-flight work exists, and it is counted at
+  <a href="../RingBuffer/index.html">GetBlockedCount</a>.
+</p>
+
+<div class="note">
+  <strong>A fixed ring never answers <code>Blocked</code>.</strong> A bare ring cannot observe a reservation without taking
+  one, so its two answers are <code>Element</code> and <code>Empty</code>, and the concept demands only those two of a
+  backend. The enumerator exists because one type carries the family; reading a bare ring's answer, it cannot arrive.
+</div>
+
+<h2 id="template">Template parameters</h2>
+
+<p>None — an enumeration is not a template.</p>
+
+<h2 id="properties">Class properties</h2>
+
+<table>
+  <tr><th>Name</th><th>Declaration</th><th>What it means</th></tr>
+  <tr>
+    <td><code>Element</code></td><td><code>= 0</code></td>
+    <td><span class="badge">enumerator</span> One value was moved to the caller and its slot is free again. The only
+    enumerator that means the out-parameter holds something.</td>
+  </tr>
+  <tr>
+    <td><code>Empty</code></td><td><code>= 1</code></td>
+    <td><span class="badge">enumerator</span> Nothing was available and the out-parameter was not written. For a fixed ring
+    this is the only no-value answer; the caller decides whether to retry, park or stop.</td>
+  </tr>
+  <tr>
+    <td><code>Blocked</code></td><td><code>= 2</code></td>
+    <td><span class="badge">enumerator</span> Chain-only. Empty for now, but a reservation exists ahead of publication, so
+    declaring the queue finished would lose an item a producer already owns. A consumer treats it as <code>Empty</code> plus
+    the knowledge that progress is in hand.</td>
+  </tr>
+</table>
+
+<h2 id="methods">Class methods</h2>
+
+<p>None — the enumeration is the entire interface.</p>
+
+<h2 id="non-member">Non-member helpers</h2>
+
+<p>None. No <code>operator&lt;&lt;</code> exists; printing switches on the enumerator at the call site.</p>
+
+<h2 id="coverage">Coverage</h2>
+
+<p>
+  This page documents the type completely. The mechanics of <em>when</em> <code>Blocked</code> appears — the three-case
+  <code>Pop</code>, the reservation window, the retirement interlock — are owned by
+  <a href="../RingBuffer/pop.html">RingBuffer::Pop</a> and the queue's design document, which link back here.
+</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; EPopResult</a></span>
+  <span><a href="index.html#methods">All EPopResult methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>RingBuffer::Push — Container module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a class="current" href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Container</a> /
+  <a href="index.html">RingBuffer</a> / Push
+</p>
+
+<h1><span class="fn">Push</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::RingBuffer</span>
+  <span class="tag">Engine/Container/RingBuffer.h</span>
+  copy a value onto the tail block from any thread, with two reservations and no lock on the hot path
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>[[nodiscard]] EPushResult Push(const T&amp; inItem) noexcept</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  Enqueues a copy of <code>inItem</code>. Any thread may call it and any number of them at once; the only thread that must not
+  is the one consumer, and only because it has <a href="pop.html"><code>Pop</code></a> instead.
+</p>
+
+<p>
+  The hot path reserves twice and locks nothing. One atomic compare-and-swap on the tail block's <code>claim</code> counter
+  reserves a place in that block &mdash; the same counter is what caps a block at one lap of its ring &mdash; and the block's ring
+  backend then makes its own slot reservation, constructs the copy and publishes it. Nothing is locked, nothing is allocated, and
+  no other producer's progress is required. The chain never touches a payload or a publication index itself; the backend owns both,
+  which is what makes the backend pluggable. <a
+  href="../../design/RingBuffer_Design.html">The design document</a> prices that second reservation.
+</p>
+
+<p>
+  Before the block is touched it is <em>declared</em>: the thread stores the block's address into its own
+  <a href="acquireproducertoken.html">producer slot</a>, then reads <code>tail</code> once more and restarts if it has moved.
+  Those two sequential-consistency reads around one store are what make it safe for the consumer to recycle blocks at all — a
+  block cannot be freed while a slot declares it, and a producer cannot be left holding a block that was freed before it
+  declared one. The declaration is cleared as soon as the block's ring has taken the element, before this call returns.
+</p>
+
+<p>
+  A block is one ring of <code>U</code>, so it holds <code>BlockCapacity</code> elements, where <code>BlockCapacity</code> is
+  <code>U::GetCapacity()</code>, and it is handed over after one lap: a <code>claim</code> of <code>BlockCapacity</code> sends the
+  producer to the successor or to a new block, and a block is never filled a second time. Extending the chain takes the management
+  mutex, so the locking cost is at most one acquisition per <code>BlockCapacity</code> elements, and only on the thread that happens
+  to arrive at a full tail. The queue can refuse: see <a href="#return">the return values</a>.
+</p>
+
+<h2 id="parameters">Parameters</h2>
+
+<table>
+  <tr><th>Name</th><th>What the caller must supply</th></tr>
+  <tr>
+    <td><code>const T&amp; inItem</code></td>
+    <td>The value to store. The block's ring backend constructs it in the ring's own storage and then publishes it, so a copy constructor that blocks delays the publication of this one element and nothing else.</td>
+  </tr>
+</table>
+
+<h2 id="return">Return value</h2>
+
+<table>
+  <tr><th>Value</th><th>When it comes back</th></tr>
+  <tr><td><code>EPushResult::Pushed</code></td><td>The copy is in the block's ring and visible to the consumer.</td></tr>
+  <tr><td><code>EPushResult::Full</code></td><td>The chain already holds <code>maxBlocks</code> live blocks, so growing would
+      exceed the fuse. Nothing was written. Retry later, after the consumer has drained and recycled a block. This answer also
+      covers the one case the design forbids rather than handles &mdash; the ring answering <code>Full</code> to a reservation the
+      chain had already won, which means one lap is not being enforced; it asserts in a non-release build and is reported as
+      <code>Full</code> rather than silently retried.</td></tr>
+  <tr><td><code>EPushResult::TooManyProducers</code></td><td>Every producer slot is claimed, so this thread cannot be tracked and
+      was refused rather than left untracked. Raise <code>inMaxProducers</code> at construction.</td></tr>
+</table>
+
+<h2 id="example">Examples</h2>
+
+<p class="note">Illustrative &mdash; no call site for this exists in the repository.</p>
+
+<pre><code><span class="kw">for</span> (<span class="ty">Task</span>* task = <span class="fn">dequeueWork</span>(); task != <span class="kw">nullptr</span>; task = task-&gt;<span class="fn">next</span>)
+{
+        <span class="kw">if</span> (queue.<span class="fn">Push</span>(*task) != <span class="ty">TaskQueue</span>::<span class="ty">EPushResult</span>::<span class="fn">Pushed</span>)
+        {
+                <span class="kw">break</span>;
+        }
+}</code></pre>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; RingBuffer</a></span>
+  <span><a href="index.html#methods">All RingBuffer methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

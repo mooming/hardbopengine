@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>RingBufferPerfTest — Test module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a class="current" href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This class</h3>
+  <ul>
+    <li><a href="#description">Class description</a></li>
+    <li><a href="#properties">Class properties</a></li>
+    <li><a href="#methods">Class methods</a></li>
+    <li><a href="#coverage">Coverage</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Test</a> /
+  RingBufferPerfTest
+</p>
+
+<h1>RingBufferPerfTest</h1>
+<p class="subtitle">
+  <span class="tag">Engine/Test/RingBufferPerf.h</span>
+  <span class="tag">hbe</span>
+  <span class="tag">final</span>
+  the three performance cells that run inside every EngineTest run
+</p>
+
+
+<h2 id="description">Class description</h2>
+
+<p>
+  The three performance cells that belong in a regression run. They are registered by
+  <code>hbe::Test::RegisterSuite</code>, which every <code>EngineTest</code> binary calls, so the direction of the two
+  queue designs is visible in a ten-second run rather than only in a benchmark run somebody has to remember to make.
+  Three cells cost about 0.75&nbsp;s of a roughly ten-second suite, which is what makes them affordable to keep.
+</p>
+<p>
+  They are ordinary <a href="../TestCollection/index.html"><code>TestCollection</code></a> subclasses and follow the
+  module&rsquo;s conventions: a testlet is a closure that streams text, and the text is flushed by ending with
+  <code>log &lt;&lt; lf</code>. Nothing here reports an error or a warning, whatever the numbers say &mdash; the grade is
+  carried in <a href="../EPerfGrade/index.html"><code>EPerfGrade</code></a> and the pass count does not move. A cell
+  <em>can</em> still fail in the ordinary way: it would take a container that throws or leaks past its retention ceiling
+  to get there, and neither is a performance complaint.
+</p>
+
+<h2 id="properties">Class properties</h2>
+
+<table>
+
+<tr><th>Type + Name</th><th>Default Value</th><th>Description</th></tr>
+<tr><td><code>RingBufferPerfTest(const RingBufferPerfTest&amp;) = delete;</code> <span class="badge">public</span></td><td><code>not applicable</code></td><td>The collection is registered by type into <code>TestEnv</code>; copying one would double its cells.</td></tr>
+<tr><td><code>RingBufferPerfTest&amp; operator=(const RingBufferPerfTest&amp;) = delete;</code> <span class="badge">public</span></td><td><code>not applicable</code></td><td>Same reason as the copy constructor.</td></tr>
+
+</table>
+
+<h2 id="methods">Class methods</h2>
+
+<table>
+
+<tr><th>Name</th><th>Signature</th><th>What a caller depends on</th></tr>
+<tr><td><a href="constructors.html">RingBufferPerfTest</a></td><td><code>RingBufferPerfTest()</code></td><td>Names the collection, which is the log category every cell of it prints under.</td></tr>
+<tr><td><a href="prepare.html">Prepare</a></td><td><code>void Prepare() override</code></td><td>Registers the MPSC claim at one and two producers and the MPMC numbers at two producers and two consumers.</td></tr>
+
+</table>
+
+<h2 id="coverage">Coverage</h2>
+
+<p>
+  The constructor and <code>Prepare</code> are both documented; the constructor only names the collection, so it has no
+  page of its own and its one line is this sentence. The shapes, margins and arms the cells use are file-local to
+  <code>Engine/Test/RingBufferPerf.cpp</code> and are listed in
+  <a href="../../design/FixedRingBufferQueues_Design.html#claims">what the harness claims</a>, because a shape is a measurement decision rather than an API
+  a caller can call.
+</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; RingBufferPerfTest</a></span>
+  <span><a href="index.html#methods">All RingBufferPerfTest methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

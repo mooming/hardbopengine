@@ -47,6 +47,7 @@
     <li><a href="#description">What this module is</a></li>
     <li><a href="#register-suite">RegisterSuite</a></li>
     <li><a href="#schedule">ScheduleSuiteOnBaseStream</a></li>
+    <li><a href="#perf-sweep">RegisterPerfBenchmarkSuite</a></li>
     <li><a href="#why">Why the split, and why before Run</a></li>
     <li><a href="#coverage">Coverage</a></li>
   </ul>
@@ -96,6 +97,29 @@ loop rather than before it.
 </p>
 <p><strong>Preconditions.</strong> <code>RegisterSuite()</code> has run.</p>
 <p><strong>Postconditions.</strong> One task is queued, and completing the suite is now the main thread's job.</p>
+
+<h2 id="perf-sweep"><code>void hbe::Test::RegisterPerfBenchmarkSuite()</code></h2>
+
+<p>
+  Registers the performance sweep and nothing else:
+  <a href="../RingBufferPerfBenchmarkTest/index.html"><code>RingBufferPerfBenchmarkTest</code></a>, flattened into the
+  sequence of testlets the harness schedules. It is the counterpart of <code>RegisterSuite</code> for a benchmark
+  binary &mdash; <code>Examples/RingBufferBenchmark</code> calls this instead of that, and nothing else about the run
+  differs.
+</p>
+
+<p>
+  The split is deliberate and it is not a filter. The unit-test suite already carries a compact pair of these cells, so a
+  regression run still sees the direction of the two designs; the sweep is what cannot live in a suite that must finish in
+  seconds. Scheduling is the same <code>ScheduleSuiteOnBaseStream()</code>, because the harness drives whatever was
+  registered &mdash; registration is the only difference between the two binaries, which is what makes a sweep number and
+  a regression number comparable at all. Two code paths computing throughput &ldquo;the same way&rdquo; is how those two
+  numbers drift apart.
+</p>
+
+<p><strong>Preconditions.</strong> The same as <code>RegisterSuite()</code>: an initialised engine, called before
+<code>Run</code>. It is meaningless in a binary built without <code>__UNIT_TEST__</code>, which is why that build
+refuses to run and prints the command that would work.</p>
 
 <h2 id="why">Why the split, and why before <code>Run</code></h2>
 <p>

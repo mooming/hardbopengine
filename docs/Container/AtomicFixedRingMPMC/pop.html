@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AtomicFixedRingMPMC::Pop — Container module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a class="current" href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Container</a> /
+  <a href="index.html">AtomicFixedRingMPMC</a> / Pop
+</p>
+
+<h1><span class="fn">Pop</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::AtomicFixedRingMPMC</span>
+  <span class="tag">Engine/Container/AtomicFixedRingMPMC.h</span>
+  take the frontier element, or report nothing is ready
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>[[nodiscard]] EPopResult Pop(T&amp; outItem) noexcept</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  Reads the frontier slot's readyIndex and, if the element there is published, takes it: move-assign into
+  <code>outItem</code>, destroy the slot's element, then release the slot for the lap after next by storing
+  <code>index + Capacity</code>.
+</p>
+
+<p>
+  Readiness is decided <strong>before</strong> the dequeue CAS commits an index, which has a consequence worth stating twice: a successful claim already implies the payload has been published, so this method never spins waiting for another thread's write. That is why there is no <em>blocked</em> answer to give.
+</p>
+
+<p>
+  <code>Empty</code> can be a conservative answer, and the direction of the conservatism matters. A producer that has
+  claimed the frontier index but not yet published it is <em>invisible</em> to this method, so an element may be on its
+  way while the answer is <code>Empty</code>; what cannot happen is <code>Empty</code> while a published element sits
+  at the frontier, or an element being reported twice.
+</p>
+
+<h2 id="parameters">Parameters</h2>
+
+<table>
+  <tr><th>Name</th><th>What the caller must supply</th></tr>
+  <tr><td><code>outItem</code></td><td>An object to move-assign into. It must already be a valid <code>T</code>; on <code>Empty</code> it is left untouched.</td></tr>
+</table>
+
+<h2 id="return">Return value</h2>
+
+<table>
+  <tr><th>Value</th><th>Meaning</th></tr>
+  <tr><td><code>EPopResult::Element</code></td><td><code>outItem</code> holds the next element in order, and that slot is free again.</td></tr>
+  <tr><td><code>EPopResult::Empty</code></td><td>Nothing is ready to take. Nothing was consumed, so the frontier is where it was.</td></tr>
+</table>
+
+<h2 id="example">Examples</h2>
+
+<pre><code>Sample sample;
+<span class="kw">while</span> (queue.<span class="fn">Pop</span>(sample) == Queue::EPopResult::Element)
+{
+        <span class="fn">write</span>(sample);
+}</code></pre>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; AtomicFixedRingMPMC</a></span>
+  <span><a href="index.html#methods">All AtomicFixedRingMPMC methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

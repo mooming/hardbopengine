@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PerfBenchmark::ControlSpreadPercent — Test module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a class="current" href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Example</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Test</a> /
+  <a href="index.html">PerfBenchmark</a> / ControlSpreadPercent
+</p>
+
+<h1><span class="fn">ControlSpreadPercent</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::PerfBenchmark</span>
+  <span class="tag">Engine/Test/PerfHarness.h</span>
+  the noise floor a grade is allowed to trust
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>[[nodiscard]] std::size_t ControlSpreadPercent() const noexcept</code></pre>
+
+
+<h2 id="description">Function description</h2>
+
+<p>
+  Private. The spread of the arm named by <a href="control.html">Control</a>; when no arm was declared, the widest
+  spread among the arms that are not the claimed winner. The fallback is honest but weaker, so the report labels the
+  number <code>control</code> in the first case and <code>spread</code> in the second rather than pretending they are
+  the same measurement.
+</p>
+<p>
+  This is the quantity that decides whether a <code>GREEN</code> means anything. A same-code control measured 3% to
+  29% spread on the machine this module was developed on, so a claim ahead by 20% on a control that moved 29% is
+  reported as <code>NOISE</code> even though the ratio is real in the data.
+</p>
+
+<h2 id="parameters">Parameters</h2>
+
+<table>
+  <tr><th>Name</th><th>What the caller must supply</th></tr>
+  <tr><td><em>none</em></td><td>Reads the declared control arm, or the arms that are not the winner.</td></tr>
+</table>
+
+<h2 id="return">Return value</h2>
+
+<p>Spread in percent, zero when there is no other arm to compare.</p>
+
+<h2 id="example">Example</h2>
+
+<pre><code><span class="cm">// Internal: the uncertainty term of GradeOf.</span></code></pre>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; PerfBenchmark</a></span>
+  <span><a href="index.html#methods">All PerfBenchmark methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

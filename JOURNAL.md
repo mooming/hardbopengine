@@ -1,5 +1,498 @@
 # Journal
 
+## 2026-10-19 (evening) — fifth fold: the whole branch became two commits
+
+Twelve commits, all authored by this session pair over two days, were regrouped by
+kind at the owner's direction: every document first (pages, design records, plans,
+this journal), then all code — whose API-reference pointers therefore resolve the
+moment they land. The tree is byte-identical to the twelve-commit tip; PR #15 was
+force-updated with a lease. The per-commit history survives in the PR activity feed
+and in this journal.
+
+## 2026-10-19 18:40 — the last document named for the old class is named for `RingBuffer` now
+
+**Why.** Owner directive, with the log explicitly requested. When the queue was renamed to `RingBuffer`, its pages moved to
+`docs/Container/RingBuffer/` — but the design document kept answering to `MultiProviderSingleConsumerQueue_Design.html`, the
+pre-rename class name, the last file in the docs tree still named for a class that no longer exists. It is now
+`docs/design/RingBuffer_Design.html`, moved with `git mv` so its history follows.
+
+**What moved.** The file, its own `<title>` and `<h1>` (retitled *RingBuffer design*), and every referring path and label: the
+module pages for Container and the site index — including one label still calling it the *block-ring queue design*, a third name
+for the same document, now retired along with the other two.
+
+**What stayed, deliberately.** Older journal entries cite the old path and the design document's sanitizer traces still quote
+`AtomicRingQueueMultiProviderSingleConsumer` — both are chronicles of what was true when written, and a chronicle that renames
+its own evidence stops being evidence.
+
+**Verification.** Docs-only change: `htmlcheck.py` 0 problems over the moved document and its four referrers, zero stale path or
+label occurrences remain. The standards gate reports build PASS 12/12 and states its own limit — no C/C++ sources in scope, so
+the lint layers examined nothing and claim nothing.
+## 2026-10-19 18:21 — `RingQueue` is `FixedRingBuffer` now, the fixed sibling of the growable `RingBuffer`
+
+**Why.** Owner directive: revise `RingQueue` to `FixedRingBuffer`. The old name said "queue with rings"; the new one says what
+the class is — a fixed-capacity, single-threaded sibling of the growable `RingBuffer` — and leaves the `FixedRing` + concurrency
+-suffix vocabulary (`FixedRingMPSC`, `FixedRingMPMC`) to the backend family.
+
+**Scope moved.** The file pair with `git mv` (history follows the class), the class, its test collection and registration,
+both CMake entries in byte order, the docs folder with all pages re-addressed, the module page's nav/row/section anchor, and
+every cross-reference in the `Queue`, `BoundedPriorityQueue` and `AtomicStackView` pages. One deliberate non-edit: the design
+document's sanitizer traces still quote `AtomicRingQueueMultiProviderSingleConsumer` — the class name as it was when those
+stacks were captured; a chronicle that renames its own evidence is not evidence.
+
+**Status quo, recorded so nobody reads it as regression.** `FixedRingBuffer` inherits the unswept backlog exactly as `RingQueue`
+held it — pre-ban comments, no pointer line of its own, fifteen method pages still owed. The rename moved the debt; it did not
+incur new debt and the sweep does not get skipped because a file changed name.
+
+**Verification.** Three-configuration build green; suite 413/413 in Debug, Dev and Release with the collection reporting under
+its new name; `htmlcheck.py` 0 problems over the seven touched pages; `docs_pass.py signatures` verbatim; the coverage ledger
+lists the same legacy entries before and after.
+## 2026-10-19 17:42 — the ring's lifetime claim stamp is called `GetSlotVersion`, and the allocator policy is re-pinned
+
+**Why.** Two owner decisions closed together. First, the naming item every recent entry has carried: `ClaimedSlotCount()`
+answered "how many pushes has this ring ever taken" while the name advertised a current, capacity-bounded occupancy — a caller
+trusting the name writes `count < GetCapacity()` as "has room" and is wrong forever after the first lap. The owner considered the
+`Stamp`/`Version` family — nouns that carry monotonicity in themselves — and chose **`GetSlotVersion`**.
+
+**What moved.** The concept clause, the four backends, the chain's `claim > ring.GetSlotVersion()` comparison, four method-page
+folders renamed with `git mv` so history follows, and every mention: class pages, the module page, the chain's design document,
+the README. 61 signature pages re-verified verbatim against the renamed headers. The pages' prose needed no surgery — the spent-
+versus-empty rule, which is the counter's whole reason to exist, reads the same under either name. Older journal and plan entries
+keep the old name on purpose: the chronicle records what was true when written.
+
+**The allocator policy, re-pinned by the owner.** The chain's default allocator stays `DefaultAllocator`, and `SystemAllocator`
+lives only in the testlets and the benchmark's chain cell — the crash fix for the shared pool is carried by other PRs, and this
+queue does not preempt them. Task notes from earlier today that had started exploring a default switch were cancelled before any
+code changed; the tree already expressed exactly the policy now decided, so this decision cost zero edits to the engine.
+
+**Verification.** The rename built in all three configurations; the suite ran 413/413 in Dev, Debug and Release; `htmlcheck.py`
+reports 0 problems over the 13 pages touched; `docs_methods.py` accepts the renamed pages (the 128-method debt is the same
+legacy list as before, unchanged); `docs_pass.py signatures` verbatim across all five classes.
+## 2026-10-19 16:29 — the two ring answers became one type each, and the concept shrank to one block
+
+**Why.** The owner's ask: `EPushResult` and `EPopResult` existed nine times — nested in each of the four fixed rings, in the
+chain, and in the benchmark's baseline class — and nesting was what forced `CFixedRing` to reach the backend's answers through
+`typename U::EPushResult` and then re-check in a second `requires` block that the four enumerators the chain relies on exist.
+Separating the enums into their own files lets the concept compare return types against a named type instead.
+
+**What shipped.** `Engine/Container/EPushResult.h` and `EPopResult.h`: namespace-scope enums, superset spellings, one
+`/// API reference` pointer each, modelled on `Engine/Core/ComponentState.h`. All nine duplicates are gone; the concept's
+type-lookup clauses name the shared types and its enumerator-checking block is retired. No class keeps a nested alias — that
+would be a second name for one fact — so the ~100 call sites are spelled directly. What the shared types cost in precision is
+stated instead of typed: the four rings never answer `TooManyProducers` or `Blocked`, and each enum page carries that restriction
+as a note, so the concept demands only `Pushed`/`Full`/`Element`/`Empty` of a backend. `RingBuffer`'s class body, with its enums
+gone, now opens `private` — its public block had held nothing else.
+
+**A bug my own tooling contained.** The qualification rewrite ran `s/Queue::EPushResult::/EPushResult::/g` before the
+`TQueue::` pattern — and `TQueue::EPushResult` *contains* `Queue::EPushResult`, so the benchmark's two cell lines became
+`TEPushResult::`. The first build refused to compile exactly there; with the spelling corrected, every configuration built and
+passed. Recorded because a bulk edit that silently produces an identifier that never existed is one miss nearer to a silent
+semantic change, and only the compiler caught it.
+
+**Documentation.** Two entry pages generated from the fragments (`EPushResult/index.html`, `EPopResult/index.html`), module-page
+rows and sidebar entries, five class pages that no longer claim a public nested enum — each links the shared types and keeps its
+never-answer note — and the chain's class page `U` row re-read against the compacted concept, sentence by sentence.
+
+**Verification.** First build failed (the sed bug above); after it, the full suite ran 413/413 in Dev and Debug with zero failures;
+`docs_pass.py signatures` reports all 61 method pages of the five classes verbatim against the rewritten headers; `htmlcheck.py`
+0 problems over the eight touched pages; `docs_coverage.py` introduces no new debt over the same legacy list.
+
+**Still owed.** Unchanged from the previous entries: the `ClaimedSlotCount()` name, the chain's allocator decision, and a TSan
+run that survives the suite.
+## 2026-10-19 15:47 — the suite's crashes were the shared pool under the chain, and the ring tests moved to the system heap
+
+**Why.** Re-verifying the previous entry for its commit, the suite did not reproduce its own claimed green: Debug and Dev crashed
+5/5 runs at testlet teardown, just after the ring testlets. The owner directed that the tests switch to the system allocator so
+the crash is isolated from the ring work, and the engine-side question kept as its own debt.
+
+**What the crash actually was.** The assert site wandered over one subsystem — `PoolAllocator`'s move constructor catching a source
+with an invalid ID, `MultiPoolAllocator` finding a deallocation larger than its bank's block, then a bank reported missing right
+after having been generated. That triad is one race from three seats. `DefaultAllocator` captures `MemoryManager`'s current scope
+ID at construction, so every chain in the process routes to one `MultiPoolAllocator`; the engine's own verification mode
+(`MEMORY_VERIFICATION_ENABLED`, 0 in every configuration) checks the single-thread ownership that design assumes. The chain
+allocates on producer threads under its per-queue management lock and frees on the consumer thread with no such lock — and two
+queues, each perfectly locked, still race each other on the pool they share. What turned latent into certain: the new testlets
+introduce size classes no earlier collection allocates, so bank creation — a `banks` vector growth that every allocation and
+deallocation scans — first happened from several threads. The old stress shapes reused warmed size classes and survived on luck;
+Release "passed" only because the asserts compile out.
+
+**A hypothesis closed by measurement.** The isolation was asked for on suspicion of `PROFILE_ENABLED`; the macro is 0 in Debug,
+Dev and Release alike (read from the build flags, not assumed), so no crashing run ever entered a profiling counter. The isolation
+chosen is therefore against the whole pool stack, which is the component that actually raced. The same reasoning corrected an
+earlier suspicion of this entry's own fix: the cross-thread pattern predates it; only the observability is new.
+
+**The isolation.** The ten chain testlets now build through a test-local `TSysQueue` alias and the benchmark's chain cell through
+`TChainMPSC`, both spelling `RingBuffer<T, AtomicFixedRingMPSC<T, N>, SystemAllocator<T>>` — the OS heap, thread-safe at the
+platform layer. Enabling it, `SystemAllocator`'s cross-type converting constructor came out of its `_MSC_VER` guard: the chain
+rebinds its allocator to `std::uint8_t` and `Block*`, so without that constructor the rebound copies could not compile in this
+tree at all — the path had simply never been exercised. The design document gained a section
+(`#allocator`) and an open-items row; the engine debt is theirs to carry, not this suite's to hide.
+
+**Measured.** Debug: five consecutive full runs, 413/413 testlets each, zero crashes — against 5/5 crashes at roughly testlet
+167 before. Dev: 413/413. Release, built with `-test` so the suite exists (a bare Release binary now refuses to run rather than
+exit 0 untested): 413/413.
+
+**Still owed.** The chain's allocator story: the engine already has `ThreadSafeMultiPoolAllocator` — the class `Logger` embeds for
+exactly this reason — so the open question is not inventing thread-safe banks but whether the chain should default to such an
+allocator, or document a discipline the default does not enforce, and re-run the stress shapes under a non-malloc allocator once
+that lands; and the carried items: the `ClaimedSlotCount()` name, and a TSan run that survives the suite.
+## 2026-10-19 — the chain jammed because a producer token was shared between queues
+
+**Why.** The owner approved carrying on, which meant closing the open item from the previous entry: a sparse benchmark
+round that occasionally never finished. The fair chain-versus-ring number was owed too.
+
+**The cause.** The producer slot array is a member, but the index a thread uses is cached in a
+`static inline thread_local` declared on the *class*, so one cache served every queue of that instantiation. A thread
+that had pushed into one queue was therefore treated as tracked by every queue of the same type, and in a process
+holding several such queues two producers could be handed the same slot. The slot is what declares a block alive, so
+both threads wrote the address of the block each was working on, into one word the retirement handshake trusts. A
+single-queue test cannot see this, which is why eight testlets and two sanitizers had passed over it for as long as it
+had existed.
+
+**The fix.** The cache is validated against the instance it was earned from: address, plus an identity from a
+process-wide counter (`nextInstanceId`, starting at one so that zero stays a valid "unset cache" value). Not a thread id,
+for two reasons the bug itself taught: validating a cached thread id means dereferencing the queue it came from, which
+may be long destroyed; and thread ids may be recycled, so ownership-by-id hands a dead producer's slot to a new thread.
+The first fix written *was* ownership-by-id, and the new control failed against it, which is how the recycling hazard
+was found before it could ship. `GetFuseRefusalCount` and `GetDeferredBlockCount` came in as the diagnostics that
+distinguish "the fuse is holding the chain" from "the handover is parked", documented on new pages with rows on the
+class page. The `Assert` on an exhausted slot pool is gone: `EPushResult::TooManyProducers` is a documented answer the
+caller acts on, and asserting on it turned a refusal into a Dev-build crash while Release reported it cleanly.
+
+**A bug my fix contained.** The claim loop hoisted `bool expected` out of the loop; `compare_exchange_strong` overwrites
+`expected` on failure, so every slot after the first was compared against the previous slot's value and second producers
+were refused. The control testlet refused to pass for exactly that reason, and the corrected form keeps `expected`
+inside the loop as the code it replaced had always done.
+
+**Measured.** Sparse chain cell before the fix: 60 s cell, 15 and 20 violations in two runs, slowest round
+750 000 ns/item, i.e. the 30 s deadline divided by the item count. After: two consecutive sweeps at 19 s, 0 violations,
+slowest round 690.5 and 683.4 ns/item. The absorbency-matched number the plan owed: at P4 C1 the chain is 36.9/39.9
+ns/item against a bare ring's 128.2/132.1 at *equal* absorbency (4096 slots) and 127.0/134.6 at 64 slots, so capacity is
+not the cause &mdash; the chain wins because every block is its own reservation point and the producers stop serialising
+on one `writeIndex`. At P1 it is 13.2/18.3 against 19.3/20.0.
+
+**Verification, corrected after the fact.** What this entry originally claimed — `EngineTest` 66 collections / 413 testlets,
+0 failures in Debug, Dev and Release, including the new control *A Producer Thread Is Tracked In Every Queue It Pushes* and the
+tight-fuse diagnostic *A Sparse Chain Under A Tight Fuse Never Jams* — did not survive re-verification one hour later: the same
+suite re-run on the same tree crashed 5/5 in Debug and Dev at testlet teardown, the assert wandering over the pool allocator's
+bookkeeping. The cause was not the token fix but the ground it stood on: the new testlets allocate bank-new size classes from
+several threads on one shared `MultiPoolAllocator`, which is single-threaded by the engine's own design — the next entry owns that
+story and the isolation that followed, ring testlets constructing with `SystemAllocator`. Both new testlets did still behave as
+claimed in every run that reached them: the control failed without the fix and passed with it, and the fuse diagnostic passed.
+ThreadSanitizer: all nine ring testlets PASS and
+**no SUMMARY line names a ring or the chain**; what that run does report is engine infrastructure the containers merely
+allocate through &mdash; `PoolAllocator` move-construction and `GetAvailableBlocks`, `Logger::DriverLoop` against the
+main thread's stack, `TaskProvider.cpp:334` &mdash; and it still dies of a signal before finishing the suite. Source
+gates introduce nothing; `htmlcheck.py` reports 115 Container pages and the design document clean, and all 18 method
+pages are verbatim against the header.
+
+**Still owed.** `ClaimedSlotCount()` still answers "how many pushes has this ring ever taken" while its name says count;
+the engine-side races above; a TSan run that survives to the end of the suite.
+
+
+## 2026-10-18 — a block of the chain became a pluggable ring, and the fuse it inherited bit back
+
+**Why.** Four fixed-size rings had just landed and been renamed to the `FixedRing` family, which left the block-chain
+queue owning a *second* implementation of the same idea: its own `tags[]`, its own payload array, its own
+publish/claim protocol. The owner asked to run `.Plans/PLAN_ringbuffer_over_fixedring.md` to the end, so that the chain
+keeps its linked-list growth and deferred-free behaviour and borrows the block's slot protocol from a backend.
+
+**What shipped.** `Engine/Container/RingBuffer.{h,cpp}`, the queue renamed from
+`AtomicRingQueueMultiProviderSingleConsumer`, now `template <typename T, typename U, class TAllocator> requires
+CFixedRing<T, U>` — a concrete type parameter, because the four backends differ in template arity and no
+template-template parameter can bind them all. `CFixedRing<T, U>` states the whole contract as a concept so a wrong `U`
+is refused at the point of use; it is documented on the class page, the way `CLockable` is documented on
+`ScopedLock`'s. A block is now `claim`, `next`, an `AlignedStorage` handle and one `U ring`; `tags[]`, `storage[]`,
+`SlotAt`, `InvalidTag`, `AlignOfT`, `SlotMask` and the consumer's `headCursor` are gone, and `FreeBlock` had to start
+running the block's destructor because the ring, not a tag walk, is the only thing that still knows which slots hold
+constructed objects. The preset is `RingBufferMPSC<T, BlockCapacity> = RingBuffer<T, AtomicFixedRingMPSC<T, BlockCapacity>>`,
+which is why the six existing testlets survived the rewrite with only their type spelling changed. Four
+`static_assert`s in the `__UNIT_TEST__` region fail the build if one of the four backends ever stops satisfying the
+concept. New testlets: *Each Block Is Handed Over Exactly One Lap* (twelve values through blocks of four must grow
+exactly three blocks and deliver 1..12 once) and *A Sparse Producer Never Leaves The Consumer Blocked* (bounded, reports
+rather than hangs). `Engine/Test/RingBufferPerf.cpp` gained a `Chain` cell kind measuring the chain against a bare ring.
+
+**A defect found in code that predates this change.** `blockCount` — the fuse counter — was a plain `size_t`
+incremented by producers in `AcquireBlock` and decremented by the consumer in retirement, with no atomic and no lock.
+That is a data race by the standard, and its lost update leaves the fuse permanently maxed, after which `Push` answers
+`Full` forever. Now `std::atomic<size_t>` with `relaxed` on every access: the fuse is a safety valve whose old semantics
+were already approximate, and the RMWs sit on growth and retirement only, never on a hot path.
+
+**A symptom that is open, and three explanations I killed first.** The `Chain Over A Bare Ring` cell in the sparse
+shape (4 producers, 10 000 items each, 2 µs arrival gap, the default 64-block fuse) stalls in roughly one round in a
+few: the cell takes 60 s, its slowest round costs 750 000 ns/item — exactly the 30 s cell deadline divided by the item
+count — while its median is 700 ns/item, and the *same cell registered twice by accident* ran the same shape in 0.40 s
+with zero violations one testlet later. Three hypotheses died: deferred-free starvation died because
+`AcquireBlock` takes the management lock and calls `RetryDeferredBlocks` *before* testing the fuse, so a
+shadow-cleared block is always offered back; producer-slot exhaustion died because each round builds a fresh queue and
+therefore sees only its own four producer threads, and it died embarrassingly — the slot pool really is a lifetime limit
+(`claimed` is cleared only by the destructor) and a testlet proved a third thread is refused, but the documented
+contract in `acquireproducertoken.html` says exactly that ("A slot is never released"), so the queue was right and the
+testlet was wrong and is gone; and memory-ordering died under the tools, because ThreadSanitizer ran all eight
+`RingBufferTest` testlets to PASS with no warning naming a ring or the chain, as did AddressSanitizer at the same
+shape, with duplicates and range both checked. What is left is an algorithmic jam in the fuse-and-retirement
+handover, not a race: producers can only be refused by a full fuse, a fuse unwinds only by retirement, and retirement
+needs the consumer to leave a block. Instrumenting that is the next job, and the shape above is the reproducer.
+
+The tools also weighed in on the engine around the containers: the TSan run reported ~130 data races, every one of
+them in `Task.cpp`, `TaskRegistry.cpp`, `ResultPacket.h` and `WorkItem.cpp` — none in a ring — and the run then died
+of `Killed: 9`, so TSan over the whole suite needs a memory ceiling raised or a per-collection run. `build-tsan/` and
+`build-asan/` also share the one `lib/` output directory, so building one wipes the other's archives: the TSan link
+failed with missing `Testlet<48ul>` symbols until `lib/*.a` was deleted, which is a build-system hazard independent of
+this work.
+
+**Measured, and confounded.** Chain over a bare ring, Release, 5 rounds: P1 C1 13.5 vs 35.7 ns/item, P4 C1 35.8 vs
+141.8 — the chain *ahead*, which is not the extra reservation being free. The comparison is unfair by construction: the
+chain absorbs 4 096 elements and the ring 64, so what was measured is mostly backpressure, the same lesson the spin-cap
+sweep taught. The extra `claim` RMW is therefore still unmeasured, and the honest number is the one nobody has taken yet:
+chain block 64 against bare ring 4 096. Negative control that does hold: forcing the one-lap cap off makes the queue's
+own assertion fire — `[Assert] RingBuffer: the block answered Full although its claim had room, so one lap is not
+enforced.` — and the Dev suite dies with SIGTRAP; the control was observed as the trap, not as the testlet's own message,
+because a collection's log flushes at collection end.
+
+**Verification.** `EngineTest` 66 collections / 411 testlets, 0 failures in Debug, Dev and Release;
+`RingBufferBenchmark` Release sweep 19 s, 0 violations, chain cells included. Source gates introduce nothing:
+`blank_lines` 0, `includes` 0, `layout` 0 violations (2 waived), `comments` 0 on the new pair and 8 before/8 after on
+`UnitTestCollection.cpp` (inherited `Test` backlog), `clang-format` 1 deviation on `RingBuffer.h` — the A3 seam, the same
+one every untouched header reports. `htmlcheck.py` 661 pages, 0 problems; signatures verbatim against the header on all
+16 method pages. `Engine/Memory/CMakeLists.txt` re-gains `AlignedStorage.h` every time `generate_cmake_files.sh` runs
+and was reverted out of this commit: the header landed without re-generation, which is a separate housekeeping fix.
+
+**Owes.** ThreadSanitizer over the chain (now also the deferred-free starvation above), the fair chain-vs-ring number,
+and the deferred-free retry that lets a shadow-cleared block be freed without a new push.
+
+
+## 2026-10-17 10:40 — the ring-buffer benchmark became registered testlets, and its own guide did not survive it
+
+**Why.** The measurement lived in `Applications/RingBufferBenchmark`, a private driver: nothing in a regression run
+showed the direction of the two designs, and the numbers there could not be compared with anything the suite printed.
+The owner asked for performance testlets inside `EngineTest`, a full sweep in a benchmark binary, and results as
+information — never `Error`, never `Warning`. Plan: `.Plans/PLAN_ringbuffer_perf_testlets.md`.
+
+**What shipped.** `Engine/Test/PerfHarness.{h,cpp}` — `PerfBenchmark`, one cell of up to five arms measured once per
+rotated round on a fresh queue, `EPerfGrade` in six colours, a report formatted with `snprintf` because the suite's log
+stream arrives with `internal` adjustment set and printed `31&nbsp;.9` where it meant `31.9`.
+`Engine/Test/RingBufferPerf.{h,cpp}` — `RingBufferPerfTest` (3 cells, 0.75 s, inside every `EngineTest` run) and
+`RingBufferPerfBenchmarkTest` (22 cells, 16 s, registered only by `Examples/RingBufferBenchmark`, which registers
+`Test::RegisterPerfBenchmarkSuite()` and otherwise drives the suite exactly like `EngineTest`). Registration is the only
+difference between the two binaries, which is the whole reason the sweep is a collection and not a command-line flag.
+
+**Three things the measurements changed.** (1) The guide's MPMC claim — mutex faster at 2 producers / 2 consumers — does
+not reproduce: lock-free wins at every count, 1.22×–1.86×, while the MPSC claim held at 3.6×/2.7× and is now the only
+graded claim in the tree. No MPMC cell grades anything until the disagreement is settled. (2) The spin cap: yielding
+immediately, which the previous sweep called best, loses by **2.6×** in the sparse regime — a waiter there is waiting for
+work that is not on this machine yet, so a yield only pays the scheduler to bring the thread back. The cap's right value
+is a function of what the waiter waits for, not a constant. (3) `Dev` is not a quieter `Release` but a different
+machine: the same cells that measured 4% control spread measured **66%** there, so claims are graded only in an
+optimised build and a `Dev` run prints `claim numbers only`.
+
+**Two bugs I made and what each teaches.** The consumer's exit condition counted only *valid* items, so the corrupt-item
+path skipped the increment and the first performance cell hung the suite — an exit condition must not depend on the
+correctness of the thing being counted. And `IsOptimizedBuild()` tested `#if defined(RELEASE_BUILD)`, which
+`Config/BuildConfig.h` always defines (as `0`), so `Dev` graded its own claims; the test is `#if RELEASE_BUILD`. A macro
+that is always defined has to be read as a value, never as an existence check.
+
+**Grading rule, and why it never fails a build.** Violations → `REJECTED`; ratio under the margin → `RED`; the ratio
+inside the control arm's spread → `NOISE`; median also clearing → `GREEN`; best-case-only → `AMBER`. The uncertainty term
+is the **control** arm's spread, not the winner's: the winner's slowest round is usually its cold round, and letting one
+arm's cold start veto its own claim turned a 3.85× `GREEN` into a meaningless `NOISE`. A suite that fails on a ratio is a
+suite whose owner learns to ignore the ratio.
+
+**The build-graph defect that had been printing FAIL lines for months.** `Examples/WindowExample` is a real tracked
+application, but `Examples/` had no `.module.config`, so the generator never emitted `add_subdirectory (Examples)` and
+the directory's stale `CMakeLists.txt` still read `project (Applications)`. `check.sh` names `WindowExample`, so every
+gate run printed 3 FAIL lines for a defect in the build graph, not in the code. Adding `Examples/.module.config` and
+`Examples/RingBufferBenchmark/.module.config` and regenerating fixes it — and `generate_cmake_files.sh` twice with no
+second-pass change is the proof, per `docs/BuildSystem.md`.
+
+**Proof.** `EngineTest` 66 collections / 409 testlets / 0 failures in Debug, Dev and Release; every cell inside a 3 s
+budget (max 2.37 s, in a suite of ~10 s); sweep 22 cells, 0 violations, all five graded MPSC cells `GREEN`. Gates:
+layout, blank lines, includes, comments 0 findings; 14 `PerfBenchmark` pages verbatim against the header via
+`docs_pass.py signatures`; `htmlcheck` 0 problems across 27 new pages, `docs/Test/index.html` and the design document.
+Docs: 11 Test entries, 49 method pages, and the design document's spin/cost/harness sections rewritten.
+
+**Left open, on purpose.** The idle-machine experiment that would settle the MPMC disagreement. A
+condition-variable mutex baseline — the sparse mutex rows are paying for a busy-poll they never asked for and some of
+them would be the better program. The spin default, still 8, pending a sweep where cores outnumber runnable threads.
+`ANSI` colour is deliberately absent from `EngineTest` output so it stays greppable; the app may add it later if a
+terminal is attached.
+
+## 2026-10-16 15:08 — four fixed-size ring buffers, and the measurement that later partly unmade itself
+
+> **Corrected 2026-10-17.** This entry's title and its MPMC row came from a standalone benchmark driver. The same four
+> containers, measured by registered testlets inside a running engine, put the lock-free ring ahead of the mutex at
+> *every* producer count — 1.22× to 1.86×. The claim is therefore not carried by any cell, and the disagreement is
+> written up rather than quietly resolved: `docs/design/FixedRingBufferQueues_Design.html#disagree`. Everything else in
+> this entry stands.
+
+**Why.** The shipped `AtomicRingQueueMultiProviderSingleConsumer` is a chain of allocated blocks, so it carries hazard
+slots and a deferred-free list. A fixed ring cannot express those problems at all: slots never die, so the whole
+reclamation question disappears and what is left is one question — *is the frontier element ready* — answered by a
+per-slot tag holding an absolute index. Added `AtomicRingBufferMPMC` (Vyukov bounded MPMC), `AtomicRingBufferMPSC`
+(the single-consumer specialization, no CAS on the dequeue side at all), and `RingBufferMPMC` / `RingBufferMPSC` as the
+mutex baselines, plus `Applications/RingBufferBenchmark` as a five-arm measurement harness. Record:
+`docs/design/FixedRingBufferQueues_Design.html`.
+
+**The one rule the shape cannot relax.** Readiness is tested *before* the index is committed, in both directions. The
+`fetch_add`-claims-then-checks design was built and measured in the plan: 200,000 pushes reported **706,741 successful
+pops**, with 0 detected as wrong values — burned indices make slots die silently. The fifth arm therefore waits instead
+of refusing, and stays in the benchmark app rather than becoming engine API, because a container that cannot answer
+`Full` honestly is a worse API than one that refuses.
+
+**Two answers the measured numbers forced.** `Pop` has no `Blocked`: a claimed-but-unpublished slot is invisible under
+this tag scheme, so `Empty` is the true statement about what the consumer may take, and buying the third answer would
+cost a store per push to reveal something the consumer cannot act on anyway. And the spin cap that was designed as
+"spin 8, then yield" is refuted by its own sweep — under 17 runnable threads on 12 CPUs, yielding immediately beat
+spinning 8 times by 1.5×/2.2× at 4/16 producers, and spin-64 was worst at 447.7 ns/item. The mechanism is vindicated,
+the constant is not; the default is left alone until a sweep on a machine with more cores than threads says otherwise.
+
+**Proof.** 11 stress shapes (4/8/16 producers, capacities 8/64/1024) exactly-once + per-producer order + checksum,
+native `-O2` and under `-fsanitize=thread` with 0 race reports. 4 negative controls, 4 detected: relaxed publish → TSan
+race, relaxed slot release → TSan race, loosened `tag == pos` to `tag <= pos` → **hang** (the consumer strands on an
+unreachable lap), reading the payload before the claim → TSan race. `EngineTest`: 65 collections / 406 testlets / 0
+failures, Debug, Dev and Release. Docs: 40 pages, `htmlcheck` 0 problems, and 11/9/7/7 method pages whose Signature
+sections are verbatim against the headers.
+
+**Two harness defects worth remembering.** `hbe::WaitUntil` calls its predicate once more after the loop, so a
+*predicate that withdraws* (one that calls `Pop`) reports false on a run that already took the element — the testlet now
+uses a bounded poll. And a control classified by grepping output for a failure word reads a **hang** as
+*not detected*; with block-buffered stdout the killed run printed nothing at all. A watchdog kill is a detection, and
+unbuffered stdout is what makes it readable.
+
+**Left open, on purpose.** Spin default pending a non-oversubscribed sweep. No condition-variable baseline (a sleeping
+consumer is a different trade, not a slower version of the same one). Tag array shares cache lines by design. And
+`check.sh` names `WindowExample` in its build gate and printed 3 FAIL lines on every gate run; the reason was not a
+missing application but a missing `.module.config`, which kept `Examples/` out of the build graph entirely — closed the
+next day, see the entry above.
+
+
+
+## 2026-10-13 07:07 — the queue's cache-line layout was wrong for this machine, and fixing it bought nothing measurable
+
+**Context.** The owner asked whether packing many atomics into one cache line is inefficient. Answering that needed
+numbers rather than a lecture about MESI, so the queue's real layout was measured with `offsetof` and its throughput
+benchmarked against the previous header. Record: the measured cost model in
+`docs/design/MultiProviderSingleConsumerQueue_Design.html`.
+
+**The machine disagrees with 64.** `hw.cachelinesize` is 128 and `std::hardware_destructive_interference_size` is 256,
+so spacing producer slots at 64 placed **two producers in one coherence line** while the reference page asserted each
+slot owns one. The block's `claim` word also shared line 0 with the first thirteen publication tags, and the consumer's
+private `head`/`headCursor` shared a line with the `tail` every producer reads. Spacing now comes from the standard
+constant, so the layout follows the target instead of this machine.
+
+**Measured neutral, and said out loud.** Ten interleaved runs of two binaries, run order counterbalanced, end-to-end
+timing from first push to last element consumed: the queue moved +1.6%, -4.3%, -2.7% at one, two and four producers,
+every cell inside its own spread, with three controls - code identical in both binaries - agreeing to within 2%. That
+2% is the method's noise floor and is now written next to the table, because a table without a noise floor invites
+someone to read 4% as a win.
+
+**Where the cost actually is.** A claim-and-write ring is 4.3 ns per element; adding one publication gate per slot
+takes it to 24.1; the block chain - hazard declaration, tail revalidation, acquire and retire - takes it to 66.0. So
+per-slot publication and block machinery dominate, and no amount of padding touches either. The hypothesis I stated
+before measuring was that false sharing was the hot term; it was a real property of the layout and not the cost driver.
+
+**Five harness defects, each of which had produced confident nonsense.** No inner loop, so a "push" happened once and
+reported 0.01 ns. A consumer thread that also pushed. A timed region covering only the producers, which let a starved
+consumer report 19.6 ns. A `static` cursor reused across cells. A queue shared across cells so the fuse carried over.
+Before counterbalancing, an *unchanged* control differed by 42% between the two run positions, which is how an earlier
+"27% improvement" was manufactured. Fix any one of these and the conclusion changes: a benchmark is code.
+
+**Kept anyway, on the argument.** The change is not a speedup here; it removes a layout that was objectively wrong for
+a wider granule and made a documented claim true. If throughput ever matters, the target is the 42 ns of block
+machinery - an `acq_rel` probe of the declare-and-revalidate path would size the fence cost, remembering that the
+`seq_cst` there is what ThreadSanitizer proved necessary.
+
+
+## 2026-10-12 20:40 — the ring queue lands; two reclamation protocols had to fail before the third was defensible
+
+**Context.** The reviewer asked for a queue carrying ~10⁷ records: many producers, one consumer, bounded memory,
+recycling enabled. PR #15's commit `65a8aa8` also mixed source with its pages, so it was split first
+(`980b150` source, `bef087b` pages) and the queue was then rewritten as a chain of lock-free fixed-size rings,
+one block per allocation, payload in the slot. Record: `.Plans/PLAN_block_ring_mpsc.md`,
+`docs/design/MultiProviderSingleConsumerQueue_Design.html`.
+
+**The slot count is a power of two because a mask has to be free.** `slot = idx & (N-1)`, and a `static_assert`
+carries that reason in its message. It is also the amortisation unit for every rare operation, which is why the
+testlets instantiate `BlockSlots` as 2 and 4 rather than the default 1024: at 2 the chain turns over thousands of
+times inside one testlet, so growth, recycling and the blocked path are exercised instead of commented about.
+
+**Three answers, not two.** A slot is claimed before its payload is written, so the oldest element can be
+committed and absent at once. Calling that *empty* loses a record; stepping past it breaks FIFO; spinning makes
+one slow copy constructor stall the consumer. `Pop` answers `Blocked`, and the testlet that proves it parks a
+producer inside its own copy constructor — a value type whose copy waits — which is the only way to occupy the
+claim-then-publish window from a test.
+
+**ThreadSanitizer caught the first reclamation protocol.** Storing the block into a producer's hazard slot
+*before* touching it looks right and is not: the dangerous read of `tail` happens before the store, so a producer
+can hold a pointer to a block a reclaimer is already entitled to free. The sanitizer reported it unprompted —
+`Push` writing a payload the consumer's `Pop` had read from recycled memory. Two things were missing: `tail` must
+be moved off a block before that block can be retired, and a producer must declare the block and then read `tail`
+again and restart if it moved. The shipped protocol states the ordering argument with each premise named.
+
+**A guard that blocks everything blocks the queue.** Replacing per-block identities with one "producer is inside
+the queue" flag is provable and unusable: a producer hitting the fuse retries with the flag nearly always set,
+and freeing a deferred block is the only thing that lowers the live-block count, so the count never drops. The
+testlet hung, which is the livelock, not a bug in the test. Identity-scoped declaration plus a deferred list run
+from the growth path is what unsticks it.
+
+**What is not proved.** Deleting the declaration step from the shipped protocol broke nothing observable: all six
+testlets passed and none of that run's 148 sanitizer warnings named this file. So the guard is justified by an
+argument, not by a reproduced failure, and the design document says so in its control table rather than implying
+a measurement it does not have. Owed: a schedule that reproduces the window, one completed sanitizer run of the
+shipped protocol, and controls D1–D4 re-run against this header.
+
+**The history was folded.** The branch first landed a different queue - an intrusive view queue, with its own pages
+and its own plan - and replaced it with this one two commits later, which meant a reviewer had to read a design that
+did not survive. Those six commits are now folded into one, so the discarded class leaves the branch entirely; it
+remains reachable at `backup/pr15-pre-split` and `backup/pr15-pre-fold`, and its plan file is gone from the tree
+because a plan for a class that does not exist is the redundancy it was.
+
+**Process, recorded because it cost someone else time.** Test binaries were launched in the background without a
+wall-clock guard; with the livelock above they spun for over an hour and the owner had to force-quit them. Every
+execution now carries `perl -e 'alarm shift; exec @ARGV' <seconds>`, which is kernel-enforced rather than polled.
+
+## 2026-10-12 18:26 — `std::function` in Log is not the cost; a seventeenth byte is — and nothing in the build says which side of it a call site is on
+
+**Context.** The owner asked for a review of `Engine/Log` focused on the performance inefficiency of its
+`std::function` usage. Four aliases were in scope: `TLogFunction`, `TLogFilter`, `TOutputFunc` and the
+`EmergencyLog` parameter. This is a review — **no engine source was changed**. Record:
+`docs/design/LoggerStdFunction_PerfReview.html`, plan and checklist: `.Plans/PLAN_logger_stdfunction_perf.md`.
+
+**The premise did not survive measurement.** Calling through `std::function` costs **+0.8 ns** over a direct
+lambda call, and a hand-rolled 16-byte non-owning delegate measured **no faster** (81.81 ns vs 81.94 ns at
+twelve threads). The cost is in *constructing* it: libc++ stores a callable inline to **16 bytes** — measured
+by counting allocations, not assumed — and a closure that overshoots by one byte mallocs and frees per log
+call, `+28 ns` single-threaded and `+157 ns` at twelve, against a whole callback that costs 33 ns. It is a
+cliff at 17 capture bytes, not a tax. Census from the compiler's own record layouts over all 136 translation
+units: **153 type-erased call sites, 114 inline, 17 heap, 22 unresolved**; thirteen of the seventeen are
+cold `OutError`/`OutWarning` paths, and the four at default level are two engine dump loops and two test
+harness sites — so today's bill is small, and the defect is that no feedback loop tells an author which side
+their `Out` call landed on.
+
+**Two findings the source could not have shown.** First, every global-allocation counter in
+`GlobalAllocation.cpp` sits in **one** 64-byte line (`0xb4e90/98`, `0xb4ea0/a8` → `0xb4e80…0xb4ebf`), so the
+four relaxed atomics cost 3.13 ns alone at one thread and **202.57 ns** at twelve — which is why an accounted
+`new`/`delete` pair is 241 ns under load where libc's own is 3.91 ns. Fixing it is a two-line change worth an
+order of magnitude to *every* engine allocation, and it is not the Log module's to own. Second, the conversion
+to `const TLogFunction&` happens at the **call site**, so a line that `Log.Level` discards still builds the
+closure, and with `[&]` the closure size is whatever locals happen to be in scope.
+
+**A measurement bug caught by re-checking, and it changed a number.** The first pass linked `lib/*.a`, which is
+the ThreadSanitizer build: it reported 250 ns for an accounted `new`/`delete` pair. Relinked against
+`lib/Dev/*.a` and verified zero `tsan` symbols, the twelve-thread figure held and the one-thread figure moved
+250 → 12 ns. Both were re-taken. A second trap: a callback body in the same translation unit is optimised
+away unevenly — an early draft reported 4.6 ns for a path that really costs 34 ns — so the body moved to its
+own non-inlinable TU. A third: LLVM coalesces a loop of relaxed `fetch_add` into one, so the counter test had
+to call the exported functions instead.
+
+**Recommendations, none executed.** R1 gate the level before the closure exists; R2 make the 16-byte rule a
+build gate; R5 give the allocation-failure path a form that cannot allocate (`ReportAllocationFailure` builds
+a `TLogFunction` today, and one capture change from calling `malloc` while `malloc` is failing). **R3 —
+replacing `std::function` in Log — is recommended against**, because it measured as no win. Recorded but not
+touched: `TLogStream` is a 128 KiB stack object per call though `LogLine` truncates at 1 KiB; `filterLock`
+plus a hash lookup on every line for a one-entry map; `InlineStringBuilder` formats integers with `snprintf`
+(32.9 ns → 81.9 ns at twelve threads), which is the real dominant cost of a log line and belongs to *String*.
+Nothing was committed: the tree carries unrelated in-flight Container work.
+
 ## 2026-10-09 18:42 — GLFW's orphaned submodule git directory is deleted
 
 **The tracked removal had already happened, so only the data was left.** `8b3f854` deleted the gitlink and the
@@ -72,6 +565,64 @@ expects a *size*, so aligned unsized frees record the wrong released byte count 
 scope, on the record now.
 
 
+## 2026-10-04 23:04 — `AtomicQueueViewMultiProviderSingleConsumer` lands with six reference pages, and a negative control rewrites one of its own tests
+
+> Superseded on 2026-10-12 by the ring-blocked queue, which is what the branch now ships. The
+> measurements below stand as a record of how they were taken, not of a shipped class.
+
+**Context.** The owner asked for a lock-free queue in `Engine/Container`, chose the topology by naming the type, and asked
+for the algorithm comparison first. `docs/TaskSystemRedesign.md` §9 guardrail 3 was the binding constraint: lock-free
+enqueue is wanted where a single consumer is *provable by construction*, and a multi-consumer lock-free queue is forbidden
+until profiling asks for one. `MultiPoolAllocator` is not thread-safe and `ThreadSafeMultiPoolAllocator` is mutex-based, so a
+queue that allocated its own nodes would put a lock in the path built to avoid one — the nodes stay caller-owned, which is
+what the `View` in the name advertises.
+
+**The algorithm is not the one the plan named.** The plan first proposed the two-step publish (exchange to take the head, then
+write the *previous* head's link). Deriving it against the ownership rule before writing it turned up two consequences it
+cannot shed: the consumer's frontier is read through `tail->next` before the queue knows whether an item exists, so the queue
+must own a sentinel node it cannot allocate; and a node may be handed back only once its single link write is provably
+landed, which the newest node never is — a drain stops one item short until someone else pushes. Both are recorded in
+`.Plans/PLAN_lock_free_queue.md` §3 and on the design document. What shipped instead is the two-stack queue (Michael and
+Scott's AMQ shape) restricted to one consumer: producers push onto an atomic Treiber stack with the same
+`compare_exchange_weak` loop `AtomicStackView::Push` already runs, and the consumer claims the whole stack with
+`newest.exchange(nullptr, acquire)` and reverses it with plain pointer writes. A producer writes one field — the link inside
+the node it is pushing — and writes it **before** publishing, so nothing in the container ever touches a node that has been
+handed back. That single inversion is what makes the view ownership contract sound without hazard pointers, an epoch scheme,
+or a compare-and-swap on the pop side.
+
+**Five testlets, each checked against the defect it is meant to catch.** A test that has never failed is not evidence, so both
+defects were re-injected and the real `EngineTest` testlets were rebuilt and run against them.
+
+| Negative control | Observed |
+|---|---|
+| `IsEmpty` reading only `newest` | `TC1` fails: "an emptiness test that reads only the producer stack calls the queue empty while it still holds work" — a pop that refills has already moved the batch into `oldest` |
+| A late write to a published node (the two-step publish's hazard) | `TC0`, `TC1`, `TC2` and `TC3` all fail; ThreadSanitizer reports a race on the node's link field in `ReverseNewest`; `TC2` delivers 1 of 4,000 and `TC3` strands after one node |
+
+**The controls caught a defect in the tests themselves.** The first draft of the sole-ownership drain ran
+`while (returned < nodeCount)` with no deadline; the injected defect made it spin forever, so a lost node would have produced
+a *hung* test instead of a failed one — the exact failure mode `WaitUntil` exists to prevent, documented in
+`Engine/Test/TestCollection.h`. The loop is now bounded at 200 ms and names the round it stranded on. Two other defects the
+draft carried and the pass removed: an `atomic_flag` start gate that opened itself for the first thread that arrived, and a
+thread-creation loop that assigned to joinable threads, which is `std::terminate`.
+
+**Gate.** `EngineTest` built in Dev, Debug and Release with `-test`, 0 `error:`, and **59 of 60 collections pass in all three
+— the single failure is `WindowTest::TC0.Create Window` retaining 82,126 bytes over the 65,536-byte testlet ceiling**, which
+this journal carries as an owner-declared separate issue and which this change does not touch: the diff reaches four Container
+and Test files plus docs, and OSAL references no Container header. The new pair is clean on every layer that owns it —
+clang-format, include layout, `comments.py` 0 violations, `layout.py` member layout clean, `blank_lines.py` 0 findings,
+`docs_coverage.py check-file` reports "1 entry documented, addressed from the header, method pages complete",
+`docs_methods.py` reports nothing against it, and `htmlcheck.py` reports **92 pages, 0 with problems**. Six method pages are
+byte-verbatim against the header (`docs_pass.py signatures`: 6 pages, 0 problems).
+
+**Two things left as findings rather than fixed, and one flag raised.** `Engine/Test/UnitTestCollection.cpp` carries 8 comment
+findings and 2 blank-line findings, all of them present at `HEAD` (`git show HEAD:… | blank_lines.py` reproduces them, shifted
+by the two lines this change adds); sweeping the Test module's comments is a separate task and was not silently widened. The
+reference pages also record two honest gaps: nothing is benchmarked, so `newest` and `oldest` are left unpacked rather than
+padded on a hunch, and the class has no production call site yet. The owner chose *provider* in the type name, where the
+concurrency term is *producer* — `MPSC` abbreviates producer, and this engine already uses *provider* for the task-supplying
+`TaskProvider` — so `AtomicQueueViewMPSC` is the alias the reference page documents and a rename to `MultiProducer` remains a
+mechanical change to one file pair and one docs folder.
+
 ## 2026-10-04 22:10 — the `_MainThread` suffix is a rule now, and the naming conflict is closed
 
 **Cause.** The 21:05 entry left the underscore undecided — "open, and deliberately not mine to close". The owner
@@ -143,6 +694,7 @@ page path, which is why the source moved with the docs; `docs/Log/Logger/get.htm
 a table of contents that says "Signature" — the plural made the module's signature checker report a missing block,
 and the heading is now the singular house shape, which takes `docs_pass.py signatures docs/Log/Logger` to 19 pages
 verbatim, 0 problems.
+
 
 ## 2026-10-04 20:57 — every local branch except `master` is deleted; the four unique commits survive only as loose objects
 
@@ -6444,3 +6996,4 @@ judgement (single-arg `explicit`, `[[nodiscard]]` getters, log-before-return, `c
 magic numbers) are listed in `SKILL.md` for manual review, which is honest rather than faked.
 Use the tool as a fast mechanical filter plus build gate; conformance of behaviour still needs
 a reader.
+

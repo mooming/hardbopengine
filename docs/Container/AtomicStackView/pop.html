@@ -81,7 +81,7 @@
   that second path returns <code>nullptr</code> even though the stack was non-empty on entry. So the return value is the whole
   contract: there is no assert (compare
   <a href="../Queue/pop.html"><code>Queue::Pop</code></a> and
-  <a href="../RingQueue/index.html"><code>RingQueue::Pop</code></a>, which stop the process), no exception, and no way to
+  <a href="../FixedRingBuffer/index.html"><code>FixedRingBuffer::Pop</code></a>, which stop the process), no exception, and no way to
   distinguish "empty" from "somebody else got there first" — which is exactly why a caller loops on it instead of treating a
   null as a bug.
 </div>

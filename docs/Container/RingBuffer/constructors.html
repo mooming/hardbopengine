@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>RingBuffer::constructors — Container module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a class="current" href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Container</a> /
+  <a href="index.html">RingBuffer</a> / constructors
+</p>
+
+<h1><span class="fn">constructors</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::RingBuffer</span>
+  <span class="tag">Engine/Container/RingBuffer.h</span>
+  reserve the producer slot array and capture the allocator, allocating nothing for elements
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>RingBuffer(const RingBuffer&amp;) = delete
+
+explicit RingBuffer(size_t inMaxBlocks = 64, size_t inMaxProducers = 64) noexcept
+		: blockCount(0)
+		, maxBlocks(inMaxBlocks)
+		, chainRoot(nullptr)
+		, tail(nullptr)
+		, head(nullptr)
+		, slotAllocation()
+		, producerSlots(nullptr)
+		, producerSlotCount(0)
+		, instanceId(nextInstanceId.fetch_add(1, std::memory_order_relaxed))
+		, deferredBlocks(DeferredAllocator</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  Builds an empty queue that has requested no memory for elements yet: blocks are created on demand by the first producer that
+  needs one. The constructor does allocate two things &mdash; the producer slot array, <code>inMaxProducers</code> slots each
+  padded to <code>LineSpacing</code>, because a producer's slot has to exist before that producer is allowed to declare a block,
+  and the deferred-block vector's capacity, so that deferring a recycle never allocates at runtime.
+</p>
+
+<p>
+  It also settles where the queue's memory is charged. The <code>allocator</code> member is default-constructed, which for
+  <code>DefaultAllocator</code> means capturing the calling thread's allocator id at this moment, and the deferred list rebinds
+  its own allocator from that member. Every block, the producer slot array and the deferred buffer are therefore charged to the
+  context that created the queue, whichever thread happens to grow the chain, and reported under one node of the allocator tree -
+  with no allocator id stored by the queue and no <code>AllocatorScope</code> at the call sites, because
+  <code>DefaultAllocator</code> opens the scope itself.
+</p>
+
+<p>
+  The queue owns its blocks and its elements and holds thread-affine state, so copying is deleted and moving is not offered:
+  <code>std::mutex</code> and <code>std::atomic</code> members make a moved-from queue meaningless.
+</p>
+
+<h2 id="parameters">Parameters</h2>
+
+<table>
+  <tr><th>Name</th><th>What the caller must supply</th></tr>
+  <tr>
+    <td><code>size_t inMaxBlocks</code></td>
+    <td>The fuse: how many blocks may be live at once. Live capacity is therefore <code>inMaxBlocks &times; BlockCapacity</code>
+      elements, where <code>BlockCapacity</code> is <code>U::GetCapacity()</code>, the width of the ring each block is built from.
+      A drained block still counts against the fuse until the consumer advances past it, so a producer that fills the queue with no
+      consumer running stops at exactly this many slots.</td>
+  </tr>
+  <tr>
+    <td><code>size_t inMaxProducers</code></td>
+    <td>How many distinct producer threads may push. One slot each. Passing 0 leaves the queue unpushable, which <a href="acquireproducertoken.html"><code>AcquireProducerToken</code></a> asserts on.</td>
+  </tr>
+</table>
+
+<h2 id="return">Return value</h2>
+
+<p>Nothing. A queue whose producer slot array could not be allocated is not marked invalid &mdash; it simply refuses every push with
+<code>EPushResult::TooManyProducers</code>, and the allocation failure is already logged by the allocator.</p>
+
+<h2 id="example">Examples</h2>
+
+<p class="note">Illustrative &mdash; no call site for this exists in the repository.</p>
+
+<pre><code><span class="cm">// One million elements of in-flight work, no single producer thread beyond sixty-four.</span>
+<span class="ty">RingBufferMPSC</span>&lt;<span class="ty">WorkItem</span>, <span class="nu">1024</span>&gt; queue(<span class="nu">977</span>, <span class="nu">64</span>);</code></pre>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; RingBuffer</a></span>
+  <span><a href="index.html#methods">All RingBuffer methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

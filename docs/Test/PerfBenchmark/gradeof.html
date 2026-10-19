@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PerfBenchmark::GradeOf — Test module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a class="current" href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Example</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Test</a> /
+  <a href="index.html">PerfBenchmark</a> / GradeOf
+</p>
+
+<h1><span class="fn">GradeOf</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::PerfBenchmark</span>
+  <span class="tag">Engine/Test/PerfHarness.h</span>
+  the whole grading rule, in one function
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>[[nodiscard]] EPerfGrade GradeOf(const PerfArm&amp; inWinner, const PerfArm&amp; inLoser) const noexcept</code></pre>
+
+
+<h2 id="description">Function description</h2>
+
+<p>
+  Private, and the only place a colour is chosen. In order, the first answer that applies wins:
+</p>
+<table>
+  <tr><th>Order</th><th>Condition</th><th>Grade</th></tr>
+  <tr><td>1</td><td>The winning arm has violations, or its fastest round is zero.</td><td><code>REJECTED</code></td></tr>
+  <tr><td>2</td><td>The loser&rsquo;s fastest-over-winner&rsquo;s-fastest ratio is below the margin.</td><td><code>RED</code></td></tr>
+  <tr><td>3</td><td>The ratio, discounted by the noise floor, falls below the margin: the claim fits inside the machine.</td><td><code>NOISE</code></td></tr>
+  <tr><td>4</td><td>The middle-round ratio also clears the margin.</td><td><code>GREEN</code></td></tr>
+  <tr><td>5</td><td>Only the fastest round cleared it.</td><td><code>AMBER</code></td></tr>
+</table>
+<p>
+  The uncertainty term is the control arm&rsquo;s spread when one was declared, and the wider of the control and the
+  winner&rsquo;s own spread otherwise. The winner&rsquo;s own spread is deliberately <em>not</em> used to veto a claim
+  when a control exists: the winner&rsquo;s slowest round is usually its cold round, and letting one arm&rsquo;s
+  cold start reject its own claim was measured to turn a 3.85x <code>GREEN</code> into a <code>NOISE</code> that
+  meant nothing. The spread is still printed, because a reader should see it either way.
+</p>
+<p>
+  Nothing here reports an error or a warning. <code>RED</code> and <code>NOISE</code> are answers about a machine, not
+  defects in a build, and a suite that fails on them is a suite whose colour stops meaning anything. The
+  <a href="../../design/FixedRingBufferQueues_Design.html#grading">grading section</a> carries the margins this compares against and where they came from.
+</p>
+
+<h2 id="parameters">Parameters</h2>
+
+<table>
+  <tr><th>Name</th><th>What the caller must supply</th></tr>
+  <tr><td><code>inWinner</code></td><td>The arm the claim says is faster. Read-only.</td></tr>
+  <tr><td><code>inLoser</code></td><td>The arm the claim is made against. Read-only.</td></tr>
+</table>
+
+<h2 id="return">Return value</h2>
+
+<p>One of <a href="../EPerfGrade/index.html">EPerfGrade</a>.</p>
+
+<h2 id="example">Example</h2>
+
+<pre><code><span class="cm">// Internal: reached only through GetGrade, so a cell cannot grade itself differently twice.</span></code></pre>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; PerfBenchmark</a></span>
+  <span><a href="index.html#methods">All PerfBenchmark methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

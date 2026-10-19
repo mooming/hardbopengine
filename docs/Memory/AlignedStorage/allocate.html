@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AlignedStorage::Allocate — Memory — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a class="current" href="../index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+
+  <h3><a href="index.html">AlignedStorage</a> methods</h3>
+  <ul class="methods">
+    <li><a class="current" href="allocate.html">Allocate</a></li>
+    <li><a href="free.html">Free</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Memory</a> /
+  <a href="index.html">AlignedStorage</a> / Allocate
+</p>
+
+<h1><span class="fn">Allocate</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::AlignedStorage</span>
+  <span class="tag">Engine/Memory/AlignedStorage.h</span>
+  <span class="tag">static</span>
+  <span class="tag">[[nodiscard]]</span>
+  <span class="tag">noexcept</span>
+  request the padded buffer and return the base, the aligned address and the byte count as one value
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>template &lt;typename TAllocator&gt;
+	[[nodiscard]] static AlignedStorage Allocate(TAllocator&amp; inAllocator, const size_t inCount) noexcept</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  Three steps, none of them optional and none of them repeated anywhere else in the engine:
+</p>
+
+<table>
+  <tr><th>Step</th><th>What happens</th><th>Why it is that shape</th></tr>
+  <tr>
+    <td>1</td>
+    <td><code>bytes = sizeof(TObject) * inCount + alignof(TObject)</code>, then
+      <code>inAllocator.allocate(bytes)</code></td>
+    <td>One extra <code>alignof(TObject)</code> is the most the rounding can ever consume, so it is the least that
+      always suffices. The count is passed to the allocator as <strong>bytes</strong>, never as elements — this class
+      deliberately binds to allocators whose unit is a byte</td>
+  </tr>
+  <tr>
+    <td>2</td>
+    <td>if the allocator returned null, return the handle as it stands</td>
+    <td>Failure is a value. The function is <code>noexcept</code> and throws nothing, so the caller's only channel is
+      <code>raw == nullptr</code> — which is why <code>bytes</code> is already filled in at this point and must not be
+      used as the test</td>
+  </tr>
+  <tr>
+    <td>3</td>
+    <td><code>aligned = (address + alignof(TObject) - 1) &amp; ~(alignof(TObject) - 1)</code></td>
+    <td>Round up to the type's alignment. <code>alignof</code> is a power of two, so the mask is exact; the worst-case
+      advance of <code>alignof - 1</code> bytes is inside the slack from step 1</td>
+  </tr>
+</table>
+
+<p>
+  Nothing is constructed. The returned <code>aligned</code> points at raw storage, and it is the caller who
+  placement-news <code>inCount</code> objects into it and who destroys them before
+  <a href="free.html"><code>Free</code></a>. That is the whole reason this class exists rather than a sized
+  <code>new</code>: the object being built usually lives inside a larger structure — a ring block, a slot array —
+  whose layout the caller owns.
+</p>
+
+<p>
+  The <code>reinterpret_cast</code> between the allocator's byte pointer and <code>std::byte*</code> lives here and
+  in <a href="free.html"><code>Free</code></a>, twice in total, and nowhere else. <code>Free</code> recovers the
+  allocator's byte-pointer type from what <code>allocate</code> returns, so no call site writes the allocator's
+  element type by hand.
+</p>
+
+<h2 id="parameters">Parameters</h2>
+
+<table>
+  <tr><th>Parameter</th><th>Type</th><th>Requirement</th></tr>
+  <tr>
+    <td><code>inAllocator</code></td>
+    <td><code>TAllocator&amp;</code></td>
+    <td>
+      An lvalue allocator with <code>allocate(size_t bytes)</code> returning a pointer and
+      <code>deallocate(pointer, size_t bytes)</code> — a byte-unit allocator, such as
+      <code>DefaultAllocator&lt;uint8_t&gt;</code> obtained by
+      <a href="../../Container/RingBuffer/index.html"><code>rebind&lt;std::uint8_t&gt;</code></a>.
+      Not stored: the same allocator, or one that accepts the same pointer and count, must be passed to
+      <a href="free.html"><code>Free</code></a>
+    </td>
+  </tr>
+  <tr>
+    <td><code>inCount</code></td>
+    <td><code>const size_t</code></td>
+    <td>
+      Number of <code>TObject</code> the buffer must hold, at least 1. The padded size is computed in
+      <code>size_t</code> unchecked, so a count that overflows it is a precondition violation, not a detectable error
+    </td>
+  </tr>
+</table>
+
+<h2 id="return">Return value</h2>
+
+<p>
+  An <code>AlignedStorage&lt;TObject&gt;</code> by value — three words, and the only way to obtain a buffer this class
+  can release. <strong>On failure, <code>raw</code> and <code>aligned</code> are null and <code>bytes</code> is
+  non-zero.</strong> It is <code>[[nodiscard]]</code>: discarding the return value leaks the buffer permanently,
+  because no other handle to the base pointer exists.
+</p>
+
+<h2 id="example">Examples</h2>
+
+<p class="note">These are the engine's two real call sites, from
+<a href="../../Container/RingBuffer/index.html"><code>RingBuffer</code></a>.</p>
+
+<p>One line-spaced block, whose type is declared <code>alignas(LineSpacing)</code>:</p>
+
+<pre><code><span class="ty">StorageAllocator</span> storageAllocator{allocator};
+<span class="kw">auto</span> allocation = <span class="ty">AlignedStorage</span>&lt;<span class="ty">Block</span>&gt;::<span class="fn">Allocate</span>(storageAllocator, 1);
+<span class="fn">returnValueIf</span>(<span class="kw">nullptr</span>, <span class="fn">unlikely</span>(allocation.raw == <span class="kw">nullptr</span>));
+
+<span class="kw">auto</span>* block = <span class="kw">new</span> (allocation.aligned) <span class="ty">Block</span>();   <span class="cm">// placement: the handle never constructs</span>
+block-&gt;allocation = allocation;                  <span class="cm">// the block carries the handle to its own free</span></code></pre>
+
+<p>An array whose element type is not the queue's element type:</p>
+
+<pre><code>slotAllocation = <span class="ty">AlignedStorage</span>&lt;<span class="ty">ProducerSlot</span>&gt;::<span class="fn">Allocate</span>(storageAllocator, inMaxProducers);
+<span class="fn">returnIf</span>(<span class="fn">unlikely</span>(slotAllocation.raw == <span class="kw">nullptr</span>));
+
+producerSlots = <span class="kw">new</span> (slotAllocation.aligned) <span class="ty">ProducerSlot</span>[inMaxProducers];  <span class="cm">// the array the queue indexes from now on</span></code></pre>
+
+<footer class="prevnext">
+  <span><a href="index.html">&larr; AlignedStorage</a></span>
+  <span><a href="free.html">Free &rarr;</a></span>
+</footer>
+
+</main>
+</body>
+</html>

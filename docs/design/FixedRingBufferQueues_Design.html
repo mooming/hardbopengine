@@ -1,0 +1,753 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Fixed-size ring buffers: MPMC, MPSC, and their mutex baselines</title>
+<link rel="stylesheet" href="../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../Config/index.html">Config</a></li>
+    <li><a class="current" href="../Container/index.html">Container</a></li>
+    <li><a href="../Core/index.html">Core</a></li>
+    <li><a href="../Engine/index.html">Engine</a></li>
+    <li><a href="../HSTL/index.html">HSTL</a></li>
+    <li><a href="../Log/index.html">Log</a></li>
+    <li><a href="../Math/index.html">Math</a></li>
+    <li><a href="../Memory/index.html">Memory</a></li>
+    <li><a href="../OSAL/index.html">OSAL</a></li>
+    <li><a href="../Renderer/index.html">Renderer</a></li>
+    <li><a href="../Resource/index.html">Resource</a></li>
+    <li><a href="../String/index.html">String</a></li>
+    <li><a href="../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This document</h3>
+  <ul>
+    <li><a href="#why">Why a fixed ring, and what it removes</a></li>
+    <li><a href="#names">The three lock-free shapes, and what they are called</a></li>
+    <li><a href="#readyindex">The ready index carries an absolute index</a></li>
+    <li><a href="#claim">Why the full and empty test precedes the claim</a></li>
+    <li><a href="#boundary">Why Blocked is not answerable here</a></li>
+    <li><a href="#affinity">Who may touch what</a></li>
+    <li><a href="#ordering">Memory order, one row per site</a></li>
+    <li><a href="#proof">What was run to believe the ordering</a></li>
+    <li><a href="#spin">The spin cap, measured, and it refutes its own default</a></li>
+    <li><a href="#cost">Measured cost, two regimes, and the floor under it</a></li>
+    <li><a href="#harness">The four properties the harness exists to protect</a></li>
+    <li><a href="#mutexpair">The two mutex baselines are one program</a></li>
+    <li><a href="#open">Open items</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../index.html">Module Index</a> /
+  <a href="../Container/index.html">Container</a> /
+  Fixed-size ring buffers
+</p>
+
+<h1>Fixed-size ring buffers: two lock-free queues and their mutex baselines</h1>
+<p class="subtitle">
+  <span class="tag">Engine/Container/AtomicFixedRingMPMC.h</span>
+  <span class="tag">Engine/Container/AtomicFixedRingMPSC.h</span>
+  <span class="tag">Engine/Container/FixedRingMPMC.h</span>
+  <span class="tag">Engine/Container/FixedRingMPSC.h</span>
+  How a static ring of <code>Capacity</code> slots gets a lock-free hot path, and what it cost against a mutex
+</p>
+
+<p>
+  Scope. This document owns the protocol, the invariants, the memory ordering, the measurement method and the numbers
+  behind four containers and one experimental arm. What a caller may depend on &mdash; who may call what, the meaning
+  of each return value, what destruction does &mdash; lives on the reference pages:
+  <a href="../Container/AtomicFixedRingMPMC/index.html">AtomicFixedRingMPMC</a>,
+  <a href="../Container/AtomicFixedRingMPSC/index.html">AtomicFixedRingMPSC</a>,
+  <a href="../Container/FixedRingMPMC/index.html">FixedRingMPMC</a>,
+  <a href="../Container/FixedRingMPSC/index.html">FixedRingMPSC</a>. The design record for the shape decision,
+  including the designs that were refuted before these were written, is
+  <code>.Plans/PLAN_fixed_ring_queue.md</code>.
+</p>
+
+<h2 id="why">Why a fixed ring, and what it removes</h2>
+
+<table>
+  <tr><th></th><th>Shipped <code>RingBuffer</code>, the block chain</th><th>These fixed rings</th></tr>
+  <tr><td>Slot lifetime</td><td>blocks allocated and recycled</td><td>static array, slots never die</td></tr>
+  <tr><td>Reclamation</td><td>hazard declaration + deferred list</td><td><strong>none at all</strong></td></tr>
+  <tr><td>ABA expressible?</td><td>yes, block pointer identity</td><td><strong>no</strong> &mdash; index <em>h</em> belongs to one claim forever</td></tr>
+  <tr><td>Capacity</td><td>grows to a fuse</td><td>fixed at compile time, refuses when full</td></tr>
+  <tr><td>New problem introduced</td><td>owning memory</td><td>an emptiness test the consumer must answer exactly</td></tr>
+</table>
+
+<p>
+  A fixed array is not merely a smaller implementation. Because a slot address never changes and no slot is ever
+  freed, the entire class of problems that made the block-chained queue hard &mdash; declaring a hazard, deferring a
+  block, proving no producer is standing inside a block before freeing it &mdash; cannot be stated here. What takes
+  their place is one question, <em>is the element at the frontier ready yet</em>, and this document is mostly about
+  answering it without lying in either direction.
+</p>
+
+<h2 id="names">The three lock-free shapes, and what they are called</h2>
+
+<table>
+  <tr><th>Container</th><th>Claim</th><th>Name in the literature</th></tr>
+  <tr>
+    <td><code>AtomicFixedRingMPMC</code></td>
+    <td>CAS on <code>writeIndex</code> / <code>readIndex</code>, per-slot <code>readyIndex</code></td>
+    <td><strong>Vyukov bounded MPMC queue</strong> &mdash; the sequence-number ring; <code>libcds</code> ships it as
+    <code>VyukovMPMCCycleQueue</code></td>
+  </tr>
+  <tr>
+    <td><code>AtomicFixedRingMPSC</code></td>
+    <td>CAS on <code>writeIndex</code> only; <code>readIndex</code> is a plain member</td>
+    <td><strong>Vyukov bounded MPSC queue</strong> &mdash; the single-consumer specialization of the same ring;
+    <code>libcds</code> names it <code>VyukovMPSCCycleQueue</code></td>
+  </tr>
+  <tr>
+    <td><code>rbench::FixedRingMPSCFetchAdd</code><br /><em>benchmark app only</em></td>
+    <td>one <code>fetch_add</code> on <code>writeIndex</code>, never retried; a full ring becomes producer latency</td>
+    <td>the fetch-and-add claim of a multi-producer sequencer, as in LMAX Disruptor&rsquo;s
+    <code>MultiProducerSequencer</code></td>
+  </tr>
+</table>
+
+<p>
+  Removing the consumer&rsquo;s CAS is not a cleverer algorithm; it is the direct consequence of one fact &mdash; a
+  single consumer owns its frontier outright, so its index needs no arbitration. That makes the consumer one
+  <code>acquire</code> load of the slot&rsquo;s <code>readyIndex</code> plus one plain increment, which is the floor: no MPSC consumer can be
+  cheaper, because one atomic read of the frontier is the minimum on which a correct answer depends.
+</p>
+
+<p>
+  The <code>fetch_add</code> arm is deliberately <strong>not</strong> engine surface. It cannot answer
+  <code>Full</code>: by the time it knows the ring is full it has already taken the index, and <a href="#claim">what
+  a burned index does to a bounded ring</a> is measured, not theoretical. An engine container that cannot refuse work
+  honestly is a worse API than one that refuses. It lives in <code>Applications/RingBufferBenchmark</code> to answer
+  one question with numbers, and the answer is <a href="#cost">below</a>.
+</p>
+
+<h2 id="readyindex">The ready index carries an absolute index</h2>
+
+<p>
+  Each slot owns one <code>std::atomic&lt;size_t&gt;</code> named <code>readyIndex</code>, and it holds the
+  <em>absolute</em> index of the
+  element it refers to, not a lap counter:
+</p>
+
+<pre><code>free for lap L      &#8658;  readyIndex == L
+published for lap L  &#8658;  readyIndex == L + 1
+released by consumer &#8658;  readyIndex := L + Capacity   (which is "free for lap L + Capacity")</code></pre>
+
+<p>
+  Because <code>readyIndex</code> holds an absolute index, a false match would need 2<sup>64</sup> items pushed &mdash; at one item a
+  nanosecond, several thousand years of a saturated queue &mdash; and the failure mode is a queue that answers
+  <code>Full</code> forever, not one that corrupts. The plan proposed catching that with one <code>FatalAssert</code>;
+  implementation found no assert that could catch it, because a wrapped index is indistinguishable from a full one
+  without extra state, and an assert that cannot fire is decoration. The claim is therefore recorded as an argument,
+  and the width of the index is what makes it.
+</p>
+
+<h3>Why the word is <code>readyIndex</code> and not <code>occupied</code>, <code>dataStored</code> or <code>dataReadiness</code></h3>
+
+<p>
+  The name was chosen against the value, not against the idea. The stored number is an absolute element index, and in
+  the free state it is the index of an element that <strong>does not exist yet</strong> — the one the slot will accept
+  next. Three candidates were examined and refused on that reading:
+</p>
+
+<table>
+  <tr><th>Candidate</th><th>How the free state reads</th><th>Verdict</th></tr>
+  <tr>
+    <td><code>occupied[i] == w</code></td>
+    <td>"occupied equals the index of a future element"</td>
+    <td>refused — a name that reads as a boolean, compared against an index; and in the released state
+    (<code>w + Capacity</code>) it asserts occupancy for data that is gone</td>
+  </tr>
+  <tr>
+    <td><code>dataStored[i] == w + 1</code></td>
+    <td>correct for exactly one of the three states</td>
+    <td>refused — the same boolean grammar, and "stored" cannot describe a slot whose value names a future element</td>
+  </tr>
+  <tr>
+    <td><code>dataReadiness[i] == w + 1</code></td>
+    <td>"the readiness is w + 1"</td>
+    <td>defensible, refused on precision — the name does not say the unit, and the unit is the whole trick</td>
+  </tr>
+  <tr>
+    <td><code>readyIndex[i] == w + 1</code> <span class="badge">adopted</span></td>
+    <td>"the index this slot is ready for, or the index it is ready with"</td>
+    <td>adopted — the name states the kind (index) and the property (readiness), which is what a reader needs to parse
+    the comparison at the use site</td>
+  </tr>
+</table>
+
+<p>
+  The boolean vocabulary did not go unused; it moved to the predicates, where it is grammatically correct.
+  <a href="../Container/AtomicFixedRingMPSC/isdataready.html"><code>IsDataReady</code></a>,
+  <a href="../Container/AtomicFixedRingMPSC/markdataready.html"><code>MarkDataReady</code></a> and
+  <a href="../Container/AtomicFixedRingMPSC/releaseslot.html"><code>ReleaseSlot</code></a> are what the hot path reads,
+  so the raw comparison survives in exactly one place per direction: the producer&rsquo;s loop, which must tell
+  <em>full</em> apart from <em>stale frontier</em> and therefore needs the loaded value itself rather than a yes-or-no
+  answer about it.
+</p>
+
+<h2 id="claim">Why the full and empty test precedes the claim</h2>
+
+<p>
+  Both directions of both queues test <code>readyIndex</code> <em>before</em> committing an index, and a successful claim therefore
+  already implies the payload it is about to write or read is safe. This is the one rule the shape cannot relax, and
+  it was earned by measuring the alternative. The plan&rsquo;s <code>&#167;4c</code> built the
+  <code>fetch_add</code>-claims-with-a-flag design literally and ran it:
+</p>
+
+<table>
+  <tr><th>Observation</th><th>Value</th><th>Diagnosis</th></tr>
+  <tr><td>2 producers + 2 consumers, 200,000 pushes</td><td><strong>706,741 pops reported success</strong></td><td>slots nobody published were delivered</td></tr>
+  <tr><td>Values never pushed, detected</td><td><strong>0</strong></td><td>stale values from the previous lap look valid &mdash; the corruption is silent</td></tr>
+  <tr><td>Pops that gave up waiting</td><td>593 in 0.2 s</td><td>burned indices are lost items</td></tr>
+  <tr><td>Failed push CASes</td><td>33,354</td><td>each burned an index while enqueuing nothing</td></tr>
+</table>
+
+<p>
+  The mechanism is short. <code>fetch_add</code> cannot be undone, so a claim that finds the slot busy and returns
+  <code>Full</code> leaves the index consumed while nothing was stored. <code>writeIndex - readIndex</code> then grows with
+  no data behind it, each <code>readyIndex</code> stops matching any future index, and slots die one at a time. Consumer over-claim is
+  worse still: skipping an index loses whatever is later published at it. Hence the rule &mdash; and hence the
+  <code>fetch_add</code> arm waiting rather than refusing, which is the only way it stays correct.
+</p>
+
+<p>
+  One consequence deserves emphasis for readers of the MPMC queue: because readiness is decided before the dequeue
+  CAS commits, <strong>its consumer never waits on a gap</strong>. A claimed-but-unpublished slot is answered
+  <code>Empty</code>, and no thread can hold a claimed index while spinning for someone else&rsquo;s payload write.
+</p>
+
+<h2 id="boundary">Why <code>Blocked</code> is not answerable here</h2>
+
+<p>
+  The shipped block-chained queue answers <code>EPopResult::Blocked</code> when a slot has been claimed but not yet
+  published, and that third answer is one of its better features. The fixed rings cannot offer it, and the reason is
+  structural rather than unfinished: its <code>readyIndex</code> holds two states, <em>free</em> and <em>published</em>, so a producer
+  that has won a claim and not yet stored the ready index is <em>invisible</em>. The consumer sees <code>Empty</code>, which
+  is a true statement about what it may take, not a false one.
+</p>
+
+<p>
+  Buying the third answer would cost a second atomic store on the publish path of every push, to make visible a
+  commitment the consumer cannot act on anyway &mdash; it may neither skip it nor take it. The two containers
+  therefore differ in what they can report, and a caller that needs to distinguish <em>nothing yet</em> from
+  <em>something coming</em> needs the block-chained queue, not this one.
+</p>
+
+<p>
+  A testlet pins the property rather than leaving it to this paragraph: <em>An Unpublished Claim Is Invisible, Never
+  an Element</em> parks a producer inside its own copy constructor &mdash; a value type whose copy waits &mdash; which
+  is the only way to occupy the claim-then-publish window from a test, then asserts that <code>Pop</code> answers
+  <code>Empty</code> and that the element arrives afterwards rather than being lost.
+</p>
+
+<h2 id="affinity">Who may touch what</h2>
+
+<table>
+  <tr><th>Container</th><th>Threads</th><th>Consequence</th></tr>
+  <tr><td><code>AtomicFixedRingMPMC</code></td><td>any number pushing, any number popping</td><td>both indices are CAS-arbitrated</td></tr>
+  <tr><td><code>AtomicFixedRingMPSC</code></td><td>any number pushing, <strong>exactly one</strong> popping</td><td><code>readIndex</code> is a plain <code>size_t</code>; a second consumer is a data race, not a slow path</td></tr>
+  <tr><td><code>FixedRingMPMC</code>, <code>FixedRingMPSC</code></td><td>any</td><td>a mutex covers every access, so the producer/consumer split does not exist as a variable of the program</td></tr>
+</table>
+
+<p>
+  Construction and destruction are single-threaded in all four, and destruction requires that no producer is still
+  inside <code>Push</code>: the destructor walks <code>[readIndex, writeIndex)</code> and destroys the slots whose <code>readyIndex</code> says
+  published, so an element under construction at that instant would be destroyed half-written or leaked. The
+  precondition is the same one the shipped queue carries.
+</p>
+
+<h2 id="ordering">Memory order, one row per site</h2>
+
+<table>
+  <tr><th>Site</th><th>Operation</th><th>Order</th><th>Why</th></tr>
+  <tr><td><code>writeIndex</code>, <code>readIndex</code></td><td>CAS success</td><td><code>relaxed</code></td><td>allocates an index only; every payload edge crosses the ready index</td></tr>
+  <tr><td><code>writeIndex</code>, <code>readIndex</code></td><td>CAS failure</td><td><code>relaxed</code></td><td>learns a fresher index and nothing else</td></tr>
+  <tr><td>slot <code>readyIndex</code></td><td>store <code>index + 1</code></td><td><strong><code>release</code></strong></td><td>must not become visible before the payload write</td></tr>
+  <tr><td>slot <code>readyIndex</code></td><td>load</td><td><strong><code>acquire</code></strong></td><td>the only gate through which a payload is read</td></tr>
+  <tr><td>slot <code>readyIndex</code></td><td>store <code>index + Capacity</code></td><td><strong><code>release</code></strong></td><td>the payload read must precede the slot&rsquo;s reuse</td></tr>
+  <tr><td>payload</td><td>construct, move, destroy</td><td>plain</td><td>the claim gives that thread sole ownership of the slot</td></tr>
+  <tr><td><code>fetch_add</code> arm</td><td>claim</td><td><code>relaxed</code></td><td>same argument; the RMW&rsquo;s atomicity is the claim</td></tr>
+</table>
+
+<p>
+  A stale position read cannot cause a double claim, because the claim <em>is</em> the atomic RMW: a CAS whose expected
+  value has moved fails atomically whatever its memory order, and a <code>fetch_add</code> hands out distinct values by
+  construction. That is why the position words are the relaxed half of the design and <code>readyIndex</code> is the ordered half.
+</p>
+
+<p>
+  The stronger alternative &mdash; <code>acq_rel</code> on the claim &mdash; is nearly free on x86, where
+  <code>lock cmpxchg</code> is already a full barrier, and costs a <code>dmb ish</code> on this machine&rsquo;s ARM
+  cores. It was not taken, because <a href="#proof">the proofs below pass without it</a>. Were one to fail, the
+  escalation belongs in this row with the proof that forced it, which is how the shipped queue records its own
+  <code>seq_cst</code>.
+</p>
+
+<h2 id="proof">What was run to believe the ordering</h2>
+
+<p>
+  An ordering table is a claim. Four checks were run against the code as shipped, on Apple&nbsp;Silicon, where the
+  memory model is weak enough for the question to be real:
+</p>
+
+<table>
+  <tr><th>Check</th><th>Cells</th><th>Result</th></tr>
+  <tr><td>Exactly-once delivery, per-producer order preserved, payload checksum consistent</td><td>11 shapes, 4/8/16 producers, capacities 8/64/1024</td><td>all pass, native <code>-O2</code></td></tr>
+  <tr><td>Same, under <code>-fsanitize=thread</code></td><td>same 11 shapes</td><td><strong>0 data-race reports</strong></td></tr>
+  <tr><td>Engine testlets (<code>EngineTest</code>, Debug/Dev)</td><td>19 testlets in 4 collections</td><td>all pass</td></tr>
+  <tr><td>Negative controls &mdash; each mutation must turn something red</td><td>4</td><td><strong>4 detected</strong></td></tr>
+</table>
+
+<h3>How the testlets decide exactly-once, and why they cannot decide it from order alone</h3>
+
+<p>
+  Each of the four collections verifies delivery with a per-id mark rather than with a sequence: every id is claimed
+  once in a bitmap, so a <em>duplicate</em> is a slot found already marked and a <em>loss</em> is a slot never marked,
+  and neither verdict depends on which consumer happened to win a given item. That independence is what lets one
+  harness judge both the single-consumer MPSC queue and the many-consumer MPMC queue without a second implementation.
+  The id doubles as the value, and it is the producer&rsquo;s own index into <code>[0,&nbsp;total)</code>, so a wrong
+  value is refused by its bounds before it can index the bitmap &mdash; corruption cannot turn into an out-of-range
+  write that merely crashes.
+</p>
+
+<p>
+  Checking that per-producer <em>order</em> survived is subtler than it looks, and the naive version is wrong. Each
+  consumer tracks the next id it expects from each producer, and when it takes an item it must advance that producer
+  &lsquo;s expectation. Two consumers can legally own two items of the same producer at once, and the later one reaches
+  the check first while the earlier one is still mid-move; a bare compare-and-swap would call that ordinary
+  interleaving a violation. The testlet therefore <em>waits</em> for the predecessor to finish before advancing. That is
+  the whole reason the check can refuse duplicate and lost and nothing else &mdash; a check that rejected the legal
+  interleaving would have been reporting failures in correct runs.
+</p>
+
+<h3>Negative controls, and what each proved</h3>
+
+<table>
+  <tr><th>Mutation</th><th>Intended severing</th><th>Observed</th></tr>
+  <tr><td><code>MarkDataReady</code> store with <code>relaxed</code> instead of <code>release</code></td><td>write-then-read edge</td><td>ThreadSanitizer race at the consumer&rsquo;s read</td></tr>
+  <tr><td>release the slot with <code>relaxed</code> instead of <code>release</code></td><td>read-then-reuse edge</td><td>ThreadSanitizer race at the producer&rsquo;s write</td></tr>
+  <tr><td>free-slot test loosened from <code>readyIndex == pos</code> to <code>readyIndex &lt;= pos</code></td><td>exactness of the fullness decision</td><td><strong>hang</strong> &mdash; the consumer&rsquo;s frontier strands on a lap it can never reach</td></tr>
+  <tr><td>MPMC reads the payload <em>before</em> the dequeue CAS</td><td>ownership before copy</td><td>ThreadSanitizer race</td></tr>
+</table>
+
+<p>
+  The third control is the one worth reading twice. A loosened free-slot test does not corrupt an element in the way a
+  reader expects: it lets a producer overwrite the slot holding an item the consumer has not yet reached, after which
+  the consumer can never satisfy its frontier test and the queue stops. The exact <code>readyIndex == pos</code> comparison is
+  what makes a fullness answer harmless, and it is load-bearing in a way that a passing functional test alone would
+  never have shown.
+</p>
+
+<h3>Two harness defects found while running the controls</h3>
+
+<p>
+  Both are the same failure the repository has recorded before &mdash; a harness is code, and a wrong harness reports a
+  wrong verdict with full confidence.
+</p>
+
+<ul>
+  <li>
+    Classifying a control by grepping its output for a failure word reads a <strong>hang</strong> as
+    <em>not&nbsp;detected</em>. A watchdog kill is a detection: the mutant stranded the consumer, which is the worst
+    failure a queue can have.
+  </li>
+  <li>
+    With stdout block-buffered into a pipe, a run killed by the watchdog printed <strong>nothing at all</strong>, so the
+    run looked like it had never started. Unbuffered stdout turns a hang into a readable last line.
+  </li>
+</ul>
+
+<p>
+  A third defect was in this module&rsquo;s own testlets, and it is worth stating because <code>WaitUntil</code> is
+  shared harness surface: <code>hbe::WaitUntil</code> polls a predicate and then
+  <code>return isReady()</code>, calling it once more after the loop. A predicate that merely reports a flag is
+  unaffected, but a predicate that <em>withdraws</em> &mdash; one that calls <code>Pop</code> &mdash; consumes on the
+  first call and reports false on the last, and the testlet then reports a lost element that was in fact delivered.
+  The testlet now uses a bounded poll. <code>WaitUntil</code>&rsquo;s own page does not warn against consuming
+  predicates; that is an open item below.
+</p>
+
+<h2 id="spin">The spin cap, measured twice, refuting two different claims</h2>
+
+<p>
+  Every retry loop in these containers yields after <code>MaxSpinAttempts</code> failed attempts, so a bounded busy-wait
+  replaces an unbounded one. The default, 8, was chosen before anything was measured. The sweep now measures the
+  default against yielding immediately, at capacity&nbsp;64, in the two regimes that could disagree &mdash; saturated,
+  where a producer is usually blocked on a full ring, and sparse, where a consumer is usually blocked on an empty one.
+  Best-of-five rounds, Release, ns/item:
+</p>
+
+<table>
+  <tr><th>Cell</th><th>Producers</th><th>spin 8</th><th>yield immediately</th><th>which won</th></tr>
+  <tr><td>MPSC saturated</td><td>4</td><td><strong>114.0</strong></td><td>128.1</td><td>spin, inside the control spread</td></tr>
+  <tr><td>MPSC saturated</td><td>16</td><td>116.3</td><td><strong>93.7</strong></td><td>yield, 1.24&times;</td></tr>
+  <tr><td>MPSC sparse, 2&nbsp;µs gap</td><td>16</td><td><strong>548.1</strong></td><td>1427.3</td><td>spin, 2.60&times;</td></tr>
+</table>
+
+<p>
+  An earlier version of this document read the saturated cells alone and concluded that yielding is best &mdash; 1.5&times;
+  at four producers and 4.2&times; at sixteen against a spin cap of 64. That conclusion was right about the mechanism
+  and wrong about its scope. Under saturation the thread that can unblock a waiter is another thread of the same cell,
+  so a waiter that spins holds a core the other thread needs, and with more runnable threads than cores a spin is a
+  tax on every retry. In the sparse regime the waiter is waiting for work that is <em>not</em> on this machine yet:
+  nobody can be unblocked, and a yield only pays the scheduler to put the thread back. Spinning wins there by 2.6&times;.
+</p>
+
+<p>
+  What the two readings agree on is the mechanism: the right cap is a function of what the waiter is waiting for, not a
+  constant. 8 is defensible as a compromise &mdash; it captures most of the sparse win while bounding the saturated loss
+  to roughly the noise floor &mdash; and it stays a template argument precisely so a call site that knows which regime it
+  is in can choose. The measurement does <em>not</em> vindicate a larger number: spin&nbsp;64 was the worst cell ever
+  measured here, at 447.7&nbsp;ns/item, so an unbounded busy-wait would be worse than either arm above.
+</p>
+
+<h2 id="cost">Measured cost, two regimes, and the floor under it</h2>
+
+<p>
+  Release build (<code>-O3</code>, <code>-D__UNIT_TEST__</code>), 16-byte payload, capacity&nbsp;64 throughout,
+  5 interleaved rotated rounds, a fresh queue per round, ns per item, fastest round reported with the middle round
+  beside it. The item count is scaled so that every cell moves about 200,000 items: <code>200000 / producers</code> per
+  producer when saturated, a flat 10,000 when sparse, where the 2&nbsp;µs arrival gap rather than the queue decides the
+  cost. Scaled this way, every cell costs about the same wall time and no cell is flattered by a longer run.
+</p>
+
+<h3>Saturated, capacity 64 (ns/item, best of 5)</h3>
+
+<table>
+  <tr><th>Producers</th><th>MPSC lock-free</th><th>MPSC mutex</th><th>MPSC fetch_add</th><th>MPMC lock-free</th><th>MPMC mutex</th></tr>
+  <tr><td>1</td><td><strong>34.7</strong></td><td>126.3</td><td>&mdash;</td><td><strong>75.7</strong></td><td>140.6</td></tr>
+  <tr><td>2</td><td><strong>47.3</strong></td><td>129.3</td><td>&mdash;</td><td><strong>82.8</strong></td><td>101.6</td></tr>
+  <tr><td>4</td><td><strong>126.8</strong></td><td>183.9</td><td><strong>84.4</strong></td><td><strong>145.1</strong></td><td>181.2</td></tr>
+  <tr><td>8</td><td><strong>132.0</strong></td><td>337.3</td><td><strong>80.3</strong></td><td><strong>186.2</strong></td><td>228.0</td></tr>
+  <tr><td>16</td><td><strong>118.8</strong></td><td>371.9</td><td>292.9</td><td><strong>164.0</strong></td><td>272.0</td></tr>
+</table>
+
+<h3>Sparse, capacity 64 with a 2&nbsp;µs gap (ns/item, best of 5)</h3>
+
+<table>
+  <tr><th>Producers</th><th>MPSC lock-free</th><th>MPSC mutex</th><th>MPMC lock-free</th><th>MPMC mutex</th></tr>
+  <tr><td>1</td><td><strong>2101.8</strong></td><td>4838.8</td><td>&mdash;</td><td>&mdash;</td></tr>
+  <tr><td>2</td><td><strong>1083.7</strong></td><td>2611.0</td><td><strong>1088.3</strong></td><td>3352.4</td></tr>
+  <tr><td>4</td><td><strong>597.1</strong></td><td>1470.4</td><td><strong>596.0</strong></td><td>2121.8</td></tr>
+  <tr><td>8</td><td><strong>407.0</strong></td><td>1161.8</td><td><strong>419.7</strong></td><td>1491.4</td></tr>
+  <tr><td>16</td><td><strong>540.0</strong></td><td>1098.5</td><td><strong>525.4</strong></td><td>1203.3</td></tr>
+</table>
+
+<h3>What the numbers say</h3>
+
+<ul>
+  <li>
+    <strong>MPSC: the lock-free ring wins every cell, saturated and sparse.</strong> 3.6&times; at one producer, 2.7&times; at
+    two, and still 1.45&times; at four, where its own curve dips. The uncontended mutex costs roughly 90&ndash;100&nbsp;ns per
+    item on this machine and is paid whether or not anyone contends.
+  </li>
+  <li>
+    <strong>MPMC: the lock-free ring wins every cell too, which is the correction in this table.</strong> The margin is thin
+    in the middle &mdash; 1.23&times; at two producers, 1.25&times; at four, 1.22&times; at eight &mdash; and wider at the ends,
+    1.86&times; at one and 1.66&times; at sixteen. An earlier measurement of the same classes said the opposite at one, two
+    and four producers; see <a href="#disagree">why the two measurements disagree</a>. The consequence for the guide is
+    that no MPMC cell carries a claim: the numbers are printed, and nothing is graded.
+  </li>
+  <li>
+    <strong>The <code>fetch_add</code> arm still answers the question it was built for.</strong> With no CAS at all it beats the
+    tagged ring by 1.5&times; at four producers and 1.6&times; at eight, then loses by 2.5&times; at sixteen, where producers
+    genuinely must wait for the ring and the arm converts a refusal it could have reported into latency it absorbs.
+    &ldquo;The CAS is the cost&rdquo; is true only while the ring is not actually full &mdash; and an arm that cannot answer
+    <code>Full</code> is not an engine API, which is why it stays a benchmark-local class.
+  </li>
+  <li>
+    <strong>Sparse separates the designs better than saturated does.</strong> With an arrival gap the mutex arms sit
+    2.0&ndash;3.6&times; behind, because the gap hands the queue to one thread at a time and the only cost left in the mutex
+    arm is the lock itself.
+  </li>
+</ul>
+
+<h2 id="disagree">Why the two measurements of MPMC disagree</h2>
+
+<p>
+  The tables in this document came from two drivers, run on the same 12-CPU machine, over the same four container
+  classes, and they do not agree:
+</p>
+
+<table>
+  <tr><th>MPMC, ns/item</th><th colspan="2">standalone driver</th><th colspan="2">registered testlets</th><th>Difference</th></tr>
+  <tr><th>Producers</th><th>lock-free</th><th>mutex</th><th>lock-free</th><th>mutex</th><th>verdict</th></tr>
+  <tr><td>1</td><td>127.1</td><td><strong>99.4</strong></td><td><strong>75.7</strong></td><td>140.6</td><td>flipped</td></tr>
+  <tr><td>2</td><td>140.1</td><td><strong>77.5</strong></td><td><strong>82.8</strong></td><td>101.6</td><td>flipped</td></tr>
+  <tr><td>4</td><td>205.2</td><td><strong>160.8</strong></td><td><strong>145.1</strong></td><td>181.2</td><td>flipped</td></tr>
+  <tr><td>8</td><td><strong>198.4</strong></td><td>214.7</td><td><strong>186.2</strong></td><td>228.0</td><td>agreed</td></tr>
+  <tr><td>16</td><td><strong>207.5</strong></td><td>301.0</td><td><strong>164.0</strong></td><td>272.0</td><td>agreed</td></tr>
+</table>
+
+<p>
+  Both drivers used the same shape (capacity&nbsp;64, two consumers, a busy-polling consumer, invariant checks inside the
+  timed region) and rotated their arms each round, so the difference is not in what was measured. Two conditions differ,
+  and both push in the direction observed:
+</p>
+
+<ul>
+  <li>
+    <strong>The engine is running.</strong> A testlet runs inside <code>hbe::Engine</code>, whose task system keeps worker
+    threads alive on 12 cores. A mutex held across a preemption stalls every other thread of the cell, which is exactly
+    the failure mode the mutex baseline pays for; a lock-free ring has nothing to be preempted inside. The standalone
+    driver measured on an otherwise idle machine.
+  </li>
+  <li>
+    <strong>Run length.</strong> The standalone driver moved 20,000 items per producer at every producer count &mdash; 20,000
+    items total at one producer. Thread creation, first-touch page faults and the wake-up of the start gate are a fixed
+    cost, so the short cells carried a larger share of them, and a cell that takes 2&nbsp;ms is not measuring the same thing
+    as a cell that takes 25&nbsp;ms. The registered cells hold the item <em>total</em> constant instead.
+  </li>
+</ul>
+
+<p>
+  Neither driver is wrong; they answer different questions. A queue in this engine is used while the engine runs, so the
+  registered cells are the answer that matters for the guide, and they are the numbers the grades compare against. What
+  is <em>not</em> settled is whether the mutex baseline would win on an idle machine at low producer counts with long
+  runs &mdash; the standalone driver says yes, and nothing here refutes it, because the current sweep cannot be run that
+  way from inside a testlet. <a href="#open">Open items</a> carries the experiment that would close it.
+</p>
+<h2 id="harness">The harness, and the properties it exists to protect</h2>
+
+<p>
+  The benchmark is a set of registered performance testlets, not a separate program with its own arithmetic.
+  <a href="../Test/RingBufferPerfTest/index.html"><code>RingBufferPerfTest</code></a> registers three cells into every
+  <code>EngineTest</code> run, so a regression run sees the direction of the two designs at the cost of about 0.7&nbsp;s;
+  <a href="../Test/RingBufferPerfBenchmarkTest/index.html"><code>RingBufferPerfBenchmarkTest</code></a> registers the
+  full sweep &mdash; twenty-two cells, about 16&nbsp;s &mdash; and only
+  <code>Examples/RingBufferBenchmark</code> registers that collection. The two binaries differ in nothing but which
+  collection they register, so a number in the sweep and a number in the regression run cannot be computed differently,
+  which is the failure this shape was chosen to prevent.
+</p>
+
+<p>
+  Five properties are requirements rather than style, and each was bought with a wrong number somewhere in this
+  repository&rsquo;s history:
+</p>
+
+<ul>
+  <li><strong>A real inner loop.</strong> A cell that performs one operation reports 0.01&nbsp;ns and looks fast.</li>
+  <li><strong>A fresh queue per round.</strong> A queue shared across rounds carries its fuse into the next measurement.</li>
+  <li><strong>A timed region that covers the consumers.</strong> Timing only the producers lets a starved consumer report 19.6&nbsp;ns.</li>
+  <li><strong>No static state in a cell.</strong> A static cursor is reused by the next cell, and the two cells then share a result.</li>
+  <li><strong>A cell that finishes.</strong> Every wait in a cell has a deadline, so a broken container cannot hang a suite.</li>
+</ul>
+
+<p>
+  The schedule is a rotation: every round walks every arm exactly once and the starting offset moves each round, so
+  drift with time, thermals or schedule position cannot spend itself on one arm and spare another. Invariant checking
+  happens inside every measured round, so a measurement that was wrong shows up as a violation count on the same row as
+  the number it would have produced. Instrumentation belongs to the harness, not to the container: a per-operation
+  <code>fetch_add</code> inside a queue would change what is being measured.
+</p>
+
+<h2 id="cell">Anatomy of a cell</h2>
+
+<p>
+  A cell&rsquo;s measure function owns everything. In order: it builds a fresh queue, a bitmap of
+  <code>producers &times; items</code> marks and three counters; it creates the producer and consumer threads, all of
+  which park on one release-stored <code>start</code> flag; it records the clock; it releases the flag; it joins every
+  thread; it stops the clock. The bitmap is checked <em>after</em> the join, so the loss check costs nothing inside the
+  timed region.
+</p>
+
+<p>
+  Each producer stamps its own index and a per-item check value, and retries a refused <code>Push</code>. Each consumer
+  verifies the check value, the producer index, and that it has not seen this item before, then advances the shared
+  count &mdash; unconditionally, including for a corrupt item. That last detail is a bug this document owns: an
+  early-continue on the corruption path skipped the increment, the consumer&rsquo;s exit condition never became true, and
+  the suite hung on the first performance cell for as long as anyone let it run. An exit condition must not depend on
+  the correctness of the thing being counted.
+</p>
+
+<p>
+  Every spin loop in a cell carries a deadline, checked once every 4,096 refusals rather than every attempt, so it is
+  free inside the measured region. On expiry the thread leaves, marks the cell abandoned, and the missing marks turn
+  the cell into a <code>REJECTED</code> row. This exists because a performance cell is registered in the same suite as
+  correctness tests: a cell that can hang takes the whole suite down with it, which is a worse failure than a wrong
+  number. The deadline is what turned &ldquo;the run is stuck&rdquo; into a row that says which cell and why.
+</p>
+
+<h2 id="noise">The floor: what the same code measures twice</h2>
+
+<p>
+  A cell may declare a control arm: the same measure function and the same shape a second time, so a third queue
+  instance of the same design runs in the same rotation. The spread between its fastest and slowest round is the
+  machine&rsquo;s own noise, and it is what a grade is allowed to trust. Measured on this 12-CPU machine (8 performance,
+  4 efficiency cores), Release build:
+</p>
+
+<table>
+  <tr><th>Cell</th><th>Control spread</th><th>Winner&rsquo;s own spread</th><th>Consequence for a claim</th></tr>
+  <tr><td>MPSC saturated, 1 producer</td><td>11%</td><td>21%</td><td>a 2.00&times; margin is supportable</td></tr>
+  <tr><td>MPSC saturated, 2 producers</td><td>22%</td><td>27%</td><td>a 2.00&times; margin is supportable, narrowly</td></tr>
+  <tr><td>MPSC saturated, 16 producers</td><td>29%</td><td>22%</td><td>only a margin above ~1.4&times; is supportable</td></tr>
+  <tr><td>MPSC sparse, 16 producers</td><td>1%</td><td>5%</td><td>the sparse regime is an order of magnitude steadier</td></tr>
+  <tr><td>the same cell in a Dev build</td><td>up to 66%</td><td>up to 62%</td><td>an unoptimised build grades nothing</td></tr>
+</table>
+
+<p>
+  Two conclusions, and the second is the one that changed the harness. Saturated cells on a machine whose cores are all
+  busy are noisy at the 10&ndash;30% level, so a claim of 1.2&times; cannot be graded there however clean the code is. And
+  <code>Dev</code> is not a quieter <code>Release</code> but a different machine: its spreads ran up to 66% on the very
+  cells that measured 4% in <code>Release</code>, which is why claims are graded only in an optimised build and a
+  <code>Dev</code> run prints its numbers with the words <code>claim numbers only</code>.
+</p>
+
+<h2 id="grading">How a grade is chosen, and why none of them fails a build</h2>
+
+<p>
+  <a href="../Test/PerfBenchmark/gradeof.html"><code>GradeOf</code></a> is the single place a colour is picked, and the
+  rule is five ordered tests: violations give <code>REJECTED</code>; a ratio below the margin gives <code>RED</code>; a
+  ratio that fits inside the noise floor gives <code>NOISE</code>; a middle round that also clears the margin gives
+  <code>GREEN</code>; a claim that cleared only on the fastest round gives <code>AMBER</code>.
+</p>
+
+<p>
+  None of them calls the framework&rsquo;s error or warning path, and none changes whether the suite passed. A failing
+  test suite whose failure is a ratio is a suite whose owner learns to ignore the ratio: the colour has to be worth
+  reading, and it is worth reading only when it is not also a complaint. The one thing a cell <em>can</em> refuse is
+  its own number &mdash; <code>REJECTED</code> exists because a ratio measured on a queue that lost an item is not a slow
+  design but a measurement of nothing, and quoting it is the error, not the design.
+</p>
+
+<p>
+  The uncertainty term is deliberately the <em>control</em>&rsquo;s spread rather than the winner&rsquo;s own, when a
+  control exists. The winner&rsquo;s slowest round is usually its cold round &mdash; first threads, first pages &mdash; and
+  letting one arm&rsquo;s cold start veto its own claim turned a 3.85&times; win into <code>NOISE</code> in a measurement
+  run while writing this. Both numbers are printed, so a reader can disagree with the choice.
+</p>
+
+<h2 id="claims">What the harness claims</h2>
+
+<table>
+  <tr><th>Cell</th><th>Claim</th><th>Margin</th><th>Measured (Release, best / median)</th><th>Grade</th></tr>
+  <tr><td>MPSC saturated, 1 producer</td><td>atomic at least 2.00&times; the mutex ring</td><td>200%</td><td>3.63&times; / 3.64&times;</td><td><code>GREEN</code></td></tr>
+  <tr><td>MPSC saturated, 2 producers</td><td>atomic at least 2.00&times; the mutex ring</td><td>200%</td><td>2.73&times; / 2.73&times;</td><td><code>GREEN</code></td></tr>
+  <tr><td>MPSC saturated, 4 producers</td><td>atomic at least 1.20&times; the mutex ring</td><td>120%</td><td>1.45&times; / 1.44&times;</td><td><code>GREEN</code></td></tr>
+  <tr><td>MPSC saturated, 8 producers</td><td>atomic at least 1.20&times; the mutex ring</td><td>120%</td><td>2.55&times; / 2.22&times;</td><td><code>GREEN</code></td></tr>
+  <tr><td>MPSC saturated, 16 producers</td><td>atomic at least 1.20&times; the mutex ring</td><td>120%</td><td>3.13&times; / 3.22&times;</td><td><code>GREEN</code></td></tr>
+  <tr><td>every MPMC cell</td><td><em>none</em></td><td>&mdash;</td><td>lock-free ahead by 1.22&ndash;1.86&times;</td><td>numbers only</td></tr>
+  <tr><td>every sparse cell</td><td><em>none</em></td><td>&mdash;</td><td>lock-free ahead by 1.9&ndash;3.6&times;</td><td>numbers only</td></tr>
+  <tr><td>spin-cap cells</td><td><em>none</em></td><td>&mdash;</td><td>see <a href="#spin">the spin table</a></td><td>numbers only</td></tr>
+</table>
+
+<p>
+  The MPSC margin is 2.00&times; up to two producers and 1.20&times; beyond, because that is where the mutex baseline
+  stops paying for itself: at one and two producers an uncontended lock dominates, and at four the lock-free ring dips to
+  1.45&times; before recovering. A single margin held across the whole curve would be a claim chosen to be true rather
+  than one chosen to be informative.
+</p>
+
+<p>
+  MPMC carries no claim at all. The guide it was built to check &mdash; that a mutex beats a CAS ring at two producers and
+  two consumers &mdash; is what the standalone driver measured, and the registered cells measure the opposite at every
+  producer count; <a href="#disagree">the disagreement</a> is documented rather than resolved in favour of the newer
+  number. Until that experiment runs, an MPMC cell prints its numbers and grades nothing.
+</p>
+
+<h2 id="budget">Time budget, because these cells run in a regression suite</h2>
+
+<p>
+  No testlet in this repository may exceed five seconds, and the performance cells are held to three. The
+  <a href="../Test/PerfBenchmark/report.html">report</a> prints the wall time of every cell, for the same reason a
+  compiler prints the size of a struct: a budget that cannot be read is not a budget. Measured in Release, the three
+  compact cells cost 0.21&nbsp;s, 0.24&nbsp;s and 0.30&nbsp;s; the twenty-two sweep cells run from 0.20&nbsp;s to
+  2.37&nbsp;s, the slowest being sixteen producers with an arrival gap. Total suite cost of the compact cells is about
+  0.75&nbsp;s, against a whole-suite runtime of roughly ten seconds.
+</p>
+
+<p>
+  The item count, not the round count, is what was reduced to meet this. Round counts below five make the middle-round
+  statistic meaningless, whereas 200,000 items per cell is far past the point where a per-item figure stabilises &mdash; and
+  holding the item <em>total</em> rather than the per-producer count constant is what makes sixteen producers cost the
+  same as one.
+</p>
+
+<h2 id="layout">Two member-layout waivers, both stated</h2>
+
+<p>
+  The layout rule puts a class&rsquo;s nested types in the first block and its constants in the second, and two types in
+  this work cannot obey that because a type is sized by a constant it is supposed to precede. Each marks its declaration
+  line <code>// hb-standards:ignore</code>, keeps the constant directly above it, and is counted by
+  <code>layout.py</code> as <code>MEMBER-WAIVED</code> rather than passing silently:
+</p>
+
+<table>
+  <tr><th>Type</th><th>Constant it needs</th><th>What breaks if the order is obeyed</th></tr>
+  <tr><td><code>SlotState</code> in the two atomic rings</td><td><code>Capacity</code></td><td>The enumerator values are <code>Capacity</code>-derived, so the enum cannot be declared before it.</td></tr>
+  <tr><td><code>PerfArm</code> in <code>PerfHarness.h</code></td><td><code>MaxRounds</code></td><td>The arm stores one figure per round, so the array bound must already exist.</td></tr>
+</table>
+
+<h2 id="mutexpair">The two mutex baselines are one program</h2>
+
+<p>
+  <code>FixedRingMPSC</code> and <code>FixedRingMPMC</code> carry the same state &mdash; one mutex, one head, one
+  count, one payload array &mdash; and the same method bodies. That is not duplication that survived review; under a
+  mutex the number of consumers is not a variable of the program, so there is no difference to implement, and any
+  apparent difference would be noise. The two names exist because the cells need two arms to make that visible, and
+  their agreement in the tables above is itself a control: the same program measured twice in one rotation, whose rows
+  should match and do.
+</p>
+
+<p>
+  A deliberate limit, stated rather than hidden: these baselines answer <code>Empty</code> and <code>Full</code>
+  immediately, like the lock-free arms, so the comparison is like-for-like. A <code>condition_variable</code> baseline
+  would sleep instead of returning, trading CPU for wake latency, and on the sparse cells it would be the better
+  program &mdash; the sparse mutex rows above are paying for a busy-poll the design never asked for. That variant is not
+  measured here; see <a href="#open">open items</a>.
+</p>
+
+<h2 id="open">Open items</h2>
+
+<table>
+  <tr><th>Item</th><th>Why it is open</th><th>What would close it</th></tr>
+  <tr>
+    <td>The spin default is 8; measurement wants 0 or 1 under oversubscription</td>
+    <td>The default was chosen before the sweep, and the sweep ran on a 12-CPU machine</td>
+    <td>A second sweep on a machine with more cores than threads, then changing the default with this table as its reason</td>
+  </tr>
+  <tr>
+    <td><code>WaitUntil</code> calls its predicate once after the loop</td>
+    <td>Harmless for a flag, wrong for a withdrawing predicate, and shared harness surface</td>
+    <td>A sentence on <code>docs/Test</code>&rsquo;s page for it, or restructure the helper to return the last polled value</td>
+  </tr>
+  <tr>
+    <td>No condition-variable baseline</td>
+    <td>A sleeping baseline is a different trade, not a slower version of the same one</td>
+    <td>One more arm in the benchmark, timed with wake latency reported beside CPU-time per item</td>
+  </tr>
+  <tr>
+    <td>The <code>fetch_add</code> arm is not engine API</td>
+    <td>It cannot answer <code>Full</code> without waiting, which the engine&rsquo;s API convention refuses</td>
+    <td>An owner decision on whether a latency-for-refusal trade is wanted; the arm already exists to be promoted</td>
+  </tr>
+  <tr>
+    <td>Tag array shares cache lines between adjacent slots</td>
+    <td>8-byte <code>readyIndex</code> entries cannot own 128-byte lines without multiplying the footprint by the line size</td>
+    <td>A footprint-vs-contention measurement; this repository has already learned that padding can be measurably neutral</td>
+  </tr>
+</table>
+
+<footer class="prevnext">
+  <span><a href="../Container/index.html">&larr; Container</a></span>
+  <span><a href="../Container/AtomicFixedRingMPMC/index.html">AtomicFixedRingMPMC &rarr;</a></span>
+</footer>
+
+</main>
+
+</body>
+</html>
