@@ -15,21 +15,21 @@
 namespace hbe
 {
 template <typename TElement, class TAllocator = DefaultAllocator<TElement>>
-class RingQueue final
+class FixedRingBuffer final
 {
 public:
 	using TIndex = int;
 
-	RingQueue(const RingQueue&) = delete;
+	FixedRingBuffer(const FixedRingBuffer&) = delete;
 
-	explicit RingQueue(TIndex fixedCapacity)
+	explicit FixedRingBuffer(TIndex fixedCapacity)
 		: cap(0)
 		, head(0)
 		, tail(0)
 		, count(0)
 		, data(nullptr)
 	{
-		FatalAssert(fixedCapacity > 0, "RingQueue capacity must be positive");
+		FatalAssert(fixedCapacity > 0, "FixedRingBuffer capacity must be positive");
 
 		// Round up to power of 2 for efficient bitmasking
 		TIndex pow2Capacity = static_cast<TIndex>(std::bit_ceil(static_cast<unsigned int>(fixedCapacity)));
@@ -39,7 +39,7 @@ public:
 		cap = pow2Capacity;
 	}
 
-	RingQueue(RingQueue&& rhs) noexcept
+	FixedRingBuffer(FixedRingBuffer&& rhs) noexcept
 		: cap(0)
 		, head(0)
 		, tail(0)
@@ -49,7 +49,7 @@ public:
 		Swap(rhs);
 	}
 
-	~RingQueue()
+	~FixedRingBuffer()
 	{
 		returnIf(data == nullptr);
 
@@ -58,9 +58,9 @@ public:
 		alloc.deallocate(data, cap);
 	}
 
-	RingQueue& operator=(const RingQueue&) = delete;
+	FixedRingBuffer& operator=(const FixedRingBuffer&) = delete;
 
-	RingQueue& operator=(RingQueue&& rhs) noexcept
+	FixedRingBuffer& operator=(FixedRingBuffer&& rhs) noexcept
 	{
 		Swap(rhs);
 
@@ -83,7 +83,7 @@ public:
 
 	void Push(const TElement& value) noexcept
 	{
-		FatalAssert(!IsFull(), "RingQueue is full");
+		FatalAssert(!IsFull(), "FixedRingBuffer is full");
 		new (&data[tail]) TElement(value);
 		tail = WrapIndex(tail + 1);
 		++count;
@@ -91,7 +91,7 @@ public:
 
 	void Push(TElement&& value) noexcept
 	{
-		FatalAssert(!IsFull(), "RingQueue is full");
+		FatalAssert(!IsFull(), "FixedRingBuffer is full");
 		new (&data[tail]) TElement(std::move(value));
 		tail = WrapIndex(tail + 1);
 		++count;
@@ -100,7 +100,7 @@ public:
 	template <typename... Types>
 	TElement& Emplace(Types&&... args) noexcept
 	{
-		FatalAssert(!IsFull(), "RingQueue is full");
+		FatalAssert(!IsFull(), "FixedRingBuffer is full");
 		auto* ptr = new (&data[tail]) TElement(std::forward<Types>(args)...);
 		tail = WrapIndex(tail + 1);
 		++count;
@@ -110,7 +110,7 @@ public:
 
 	TElement Pop() noexcept
 	{
-		FatalAssert(!IsEmpty(), "RingQueue is empty");
+		FatalAssert(!IsEmpty(), "FixedRingBuffer is empty");
 		auto item = std::move(data[head]);
 		data[head].~TElement();
 		head = WrapIndex(head + 1);
@@ -180,7 +180,7 @@ public:
 		count = 0;
 	}
 
-	void Swap(RingQueue& rhs) noexcept
+	void Swap(FixedRingBuffer& rhs) noexcept
 	{
 		std::swap(cap, rhs.cap);
 		std::swap(head, rhs.head);
@@ -217,11 +217,11 @@ private:
 
 namespace hbe
 {
-class RingQueueTest : public TestCollection
+class FixedRingBufferTest : public TestCollection
 {
 public:
-	RingQueueTest()
-		: TestCollection("RingQueueTest")
+	FixedRingBufferTest()
+		: TestCollection("FixedRingBufferTest")
 	{
 	}
 

@@ -35,10 +35,14 @@ include_directories ( ${CMAKE_SOURCE_DIR}
 
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/lib)
 add_library (Test STATIC 
+ PerfHarness.cpp
+ RingBufferPerf.cpp
  TestCollection.cpp
  TestEnv.cpp
  TestHelper.cpp
  UnitTestCollection.cpp
+ PerfHarness.h
+ RingBufferPerf.h
  TestCollection.h
  TestEnv.h
  TestHelper.h

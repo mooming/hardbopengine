@@ -1,6 +1,6 @@
 // Copyright (c) 2026 Hansol Park (mooming.go@gmail.com). All rights reserved.
 
-#include "RingQueue.h"
+#include "FixedRingBuffer.h"
 
 #ifdef __UNIT_TEST__
 #include <queue>
@@ -9,11 +9,11 @@
 
 namespace hbe
 {
-void RingQueueTest::Prepare()
+void FixedRingBufferTest::Prepare()
 {
 	AddTest("Construction", [this](auto& ls)
 	{
-		RingQueue<int> q(8);
+		FixedRingBuffer<int> q(8);
 
 		if (q.Capacity() != 8 || !q.IsEmpty())
 		{
@@ -27,7 +27,7 @@ void RingQueueTest::Prepare()
 
 	AddTest("Push and Pop", [this](auto& ls)
 	{
-		RingQueue<int> q(4);
+		FixedRingBuffer<int> q(4);
 		q.Push(10);
 		q.Push(20);
 		q.Push(30);
@@ -59,7 +59,7 @@ void RingQueueTest::Prepare()
 
 	AddTest("Wrap Around", [this](auto& ls)
 	{
-		RingQueue<int> q(4);
+		FixedRingBuffer<int> q(4);
 		q.Push(1);
 		q.Push(2);
 		q.Push(3);
@@ -80,7 +80,7 @@ void RingQueueTest::Prepare()
 
 	AddTest("Full Detection", [this](auto& ls)
 	{
-		RingQueue<int> q(4); // Power of 2 capacity
+		FixedRingBuffer<int> q(4); // Power of 2 capacity
 		q.Push(1);
 		q.Push(2);
 		q.Push(3);
@@ -98,7 +98,7 @@ void RingQueueTest::Prepare()
 
 	AddTest("Emplace", [this](auto& ls)
 	{
-		RingQueue<std::pair<int, int>> q(4);
+		FixedRingBuffer<std::pair<int, int>> q(4);
 		q.Emplace(10, 20);
 		q.Emplace(30, 40);
 
@@ -114,11 +114,11 @@ void RingQueueTest::Prepare()
 
 	AddTest("Move Semantics", [this](auto& ls)
 	{
-		RingQueue<int> q1(4);
+		FixedRingBuffer<int> q1(4);
 		q1.Push(1);
 		q1.Push(2);
 
-		RingQueue<int> q2(std::move(q1));
+		FixedRingBuffer<int> q2(std::move(q1));
 		if (q2.Size() != 2 || q2[0] != 1)
 		{
 			ls << "Move constructor failed" << lferr;
@@ -126,7 +126,7 @@ void RingQueueTest::Prepare()
 			return;
 		}
 
-		RingQueue<int> q3(1);
+		FixedRingBuffer<int> q3(1);
 		q3 = std::move(q2);
 		if (q3.Size() != 2 || q3[1] != 2)
 		{
@@ -140,7 +140,7 @@ void RingQueueTest::Prepare()
 
 	AddTest("Clear", [this](auto& ls)
 	{
-		RingQueue<int> q(4);
+		FixedRingBuffer<int> q(4);
 		q.Push(1);
 		q.Push(2);
 		q.Push(3);
@@ -166,7 +166,7 @@ void RingQueueTest::Prepare()
 
 	AddTest("Wrap Around Full Cycle", [this](auto& ls)
 	{
-		RingQueue<int> q(4);
+		FixedRingBuffer<int> q(4);
 
 		for (int iter = 0; iter < 3; ++iter)
 		{
@@ -202,7 +202,7 @@ void RingQueueTest::Prepare()
 			time::ScopedTime measure(heTime);
 			for (int iter = 0; iter < NumIterations; ++iter)
 			{
-				RingQueue<int> q(Capacity);
+				FixedRingBuffer<int> q(Capacity);
 				for (int i = 0; i < Capacity; ++i)
 				{
 					q.Push(i);
@@ -230,12 +230,12 @@ void RingQueueTest::Prepare()
 			}
 		}
 
-		ls << "RingQueue: " << heTime.count() << " us" << lf;
+		ls << "FixedRingBuffer: " << heTime.count() << " us" << lf;
 		ls << "std::queue (dynamic): " << stlTime.count() << " us" << lf;
 
 		if (heTime > stlTime)
 		{
-			ls << "RingQueue is slower than std::queue (" << heTime.count() << " vs " << stlTime.count() << ")"
+			ls << "FixedRingBuffer is slower than std::queue (" << heTime.count() << " vs " << stlTime.count() << ")"
 			   << lfwarn;
 		}
 

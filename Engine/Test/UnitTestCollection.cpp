@@ -8,14 +8,19 @@
 #include "UnitTestCollection.h"
 
 #include "Container/Array.h"
+#include "Container/AtomicFixedRingMPMC.h"
+#include "Container/AtomicFixedRingMPSC.h"
 #include "Container/AtomicStackView.h"
 #include "Container/BoundedPriorityQueue.h"
 #include "Container/Deque.h"
+#include "Container/FixedRingBuffer.h"
+#include "Container/FixedRingMPMC.h"
+#include "Container/FixedRingMPSC.h"
 #include "Container/HashMap.h"
 #include "Container/LinkedList.h"
 #include "Container/Map.h"
 #include "Container/Queue.h"
-#include "Container/RingQueue.h"
+#include "Container/RingBuffer.h"
 #include "Container/Vector.h"
 #include "Core/CPUBudget.h"
 #include "Core/ComponentSystem.h"
@@ -63,6 +68,7 @@
 #include "Resource/Buffer.h"
 #include "Resource/BufferInputStream.h"
 #include "Resource/BufferOutputStream.h"
+#include "RingBufferPerf.h"
 #include "String/InlineStringBuilder.h"
 #include "String/StaticString.h"
 #include "String/StringBuilder.h"
@@ -115,7 +121,6 @@ std::size_t RunTestletTask(void* userData, std::size_t, std::size_t)
 	}
 
 	const auto testletIndex = *static_cast<std::size_t*>(userData);
-
 	{
 		MultiPoolAllocator allocator("Testlet");
 		AllocatorScope scope(allocator);
@@ -171,13 +176,19 @@ void RegisterSuite()
 	testEnv.AddTestCollection<ArrayTest>();
 	testEnv.AddTestCollection<BoundedPriorityQueueTest>();
 	testEnv.AddTestCollection<AtomicStackViewTest>();
+	testEnv.AddTestCollection<AtomicFixedRingMPMCTest>();
+	testEnv.AddTestCollection<AtomicFixedRingMPSCTest>();
+	testEnv.AddTestCollection<RingBufferTest>();
+	testEnv.AddTestCollection<FixedRingMPMCTest>();
+	testEnv.AddTestCollection<FixedRingMPSCTest>();
+	testEnv.AddTestCollection<RingBufferPerfTest>();
 	testEnv.AddTestCollection<LinkedListTest>();
 	testEnv.AddTestCollection<VectorTest>();
 	testEnv.AddTestCollection<MapTest>();
 	testEnv.AddTestCollection<HashMapTest>();
 	testEnv.AddTestCollection<DequeTest>();
 	testEnv.AddTestCollection<QueueTest>();
-	testEnv.AddTestCollection<RingQueueTest>();
+	testEnv.AddTestCollection<FixedRingBufferTest>();
 	testEnv.AddTestCollection<OptionalTest>();
 	testEnv.AddTestCollection<StaticStringTest>();
 	testEnv.AddTestCollection<StringTest>();
@@ -209,6 +220,15 @@ void RegisterSuite()
 	testEnv.PrepareTestlets();
 }
 
+void RegisterPerfBenchmarkSuite()
+{
+	auto& testEnv = TestEnv::GetEnv();
+
+	testEnv.AddTestCollection<RingBufferPerfBenchmarkTest>();
+
+	testEnv.PrepareTestlets();
+}
+
 void ScheduleSuiteOnBaseStream()
 {
 	auto& testEnv = TestEnv::GetEnv();
@@ -222,7 +242,6 @@ void ScheduleSuiteOnBaseStream()
 
 	PostSuiteTask(0);
 }
-
 } // namespace hbe::Test
 
 #endif // __UNIT_TEST__

@@ -11,6 +11,18 @@
 #define PLATFORM_WINDOWS 1
 #endif
 
+#if !defined(DEBUG_BUILD)
+#define DEBUG_BUILD 0
+#endif
+
+#if !defined(DEV_BUILD)
+#define DEV_BUILD 0
+#endif
+
+#if !defined(RELEASE_BUILD)
+#define RELEASE_BUILD 0
+#endif
+
 #if !defined(PLATFORM_LINUX) && !defined(PLATFORM_OSX) && !defined(PLATFORM_WINDOWS)
 static_assert(false, "No platform defined. Please define PLATFORM_LINUX, PLATFORM_OSX, or PLATFORM_WINDOWS.");
 #endif

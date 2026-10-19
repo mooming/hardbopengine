@@ -1,0 +1,69 @@
+cmake_minimum_required (VERSION 3.12)
+project (RingBufferBenchmark)
+
+set (CMAKE_CONFIGURATION_TYPES "Debug;Dev;Release" CACHE STRING "" FORCE)
+if (NOT CMAKE_BUILD_TYPE)
+    set (CMAKE_BUILD_TYPE "Release" CACHE STRING "Build type" FORCE)
+endif ()
+
+set (CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -g -O0 -DDEBUG_BUILD=1 -D__TEST__ -D__UNIT_TEST__")
+set (CMAKE_CXX_FLAGS_DEV "${CMAKE_CXX_FLAGS_DEV} -g -O1 -DDEV_BUILD=1 -D__TEST__ -D__UNIT_TEST__")
+set (CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -O3 -DRELEASE_BUILD=1")
+
+set (CMAKE_CXX_STANDARD 23)
+
+if (APPLE)
+    set(PLATFORM_SOURCES
+    )
+else()
+    set(PLATFORM_SOURCES "")
+endif()
+
+if (MSVC)
+	add_compile_options (/W3 /WX)
+else (MSVC)
+	add_compile_options (-Wall -Werror)
+endif (MSVC)
+
+include_directories ( ${CMAKE_SOURCE_DIR}
+ ${CMAKE_SOURCE_DIR}/include
+ ${CMAKE_SOURCE_DIR}/External
+ ${CMAKE_SOURCE_DIR}/Engine
+ ${CMAKE_SOURCE_DIR}/Engine/Renderer
+ )
+link_directories (${CMAKE_SOURCE_DIR}/lib
+)
+
+
+add_executable (RingBufferBenchmark
+ TestMain.cpp
+${PLATFORM_SOURCES}
+)
+
+if (APPLE)
+	include_directories ( /System/Library/Frameworks )
+	set(MACOSX_BUNDLE_TRUE TRUE)
+	set(MACOSX_BUNDLE_INFO_PLIST ${CMAKE_CURRENT_SOURCE_DIR}/Info.plist)
+endif (APPLE)
+
+install (TARGETS RingBufferBenchmark DESTINATION ${CMAKE_SOURCE_DIR}/bin)
+
+
+target_link_libraries (RingBufferBenchmark HEngine Config Container HSTL Log Math Memory OSAL Renderer Resource String Core Test External)
+
+add_dependencies (RingBufferBenchmark HEngine)
+add_dependencies (RingBufferBenchmark Config)
+add_dependencies (RingBufferBenchmark Container)
+add_dependencies (RingBufferBenchmark HSTL)
+add_dependencies (RingBufferBenchmark Log)
+add_dependencies (RingBufferBenchmark Math)
+add_dependencies (RingBufferBenchmark Memory)
+add_dependencies (RingBufferBenchmark OSAL)
+add_dependencies (RingBufferBenchmark Renderer)
+add_dependencies (RingBufferBenchmark Resource)
+add_dependencies (RingBufferBenchmark String)
+add_dependencies (RingBufferBenchmark Core)
+add_dependencies (RingBufferBenchmark Test)
+add_dependencies (RingBufferBenchmark External)
+
+
