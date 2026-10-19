@@ -437,6 +437,7 @@ void* ThreadSafeMultiPoolAllocator::NewBankAllocate(size_t size)
 #if PROFILE_ENABLED
 	{
 		auto& mmgr = MemoryManager::GetInstance();
+		mmgr.ReportFallback(GetID(), ptr, size);
 		mmgr.ReportAllocation(GetID(), ptr, size, bank.GetBlockSize());
 	}
 #endif // PROFILE_ENABLED
@@ -1350,7 +1351,13 @@ void ThreadSafeMultiPoolAllocatorTest::Prepare()
 			AllocatorScope parentScope(parent);
 			std::optional<PoolAllocator> pool;
 			pool.emplace("TC4 Pool Owner", 64, 8);
-			allocated = pool->Allocate(32) != nullptr;
+
+			auto* block = static_cast<uint8_t*>(pool->Allocate(32));
+			allocated = block != nullptr;
+			if (block != nullptr)
+			{
+				pool->Deallocate(block, 32);
+			}
 			{
 				AllocatorScope unrelatedScope(unrelated);
 				pool.reset();
@@ -1397,4 +1404,4 @@ void ThreadSafeMultiPoolAllocatorTest::Prepare()
 	AddTest("Bank Growth Latency Spike M4", [this](auto& ls) { RunBankGrowthLatencyMeasurement(*this, ls); });
 }
 } // namespace hbe
-#endif //TEST_ENABLED
+#endif // TEST_ENABLED

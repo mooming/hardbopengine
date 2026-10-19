@@ -190,6 +190,7 @@ Pointer PoolAllocator::Allocate(size_t size)
 
 	auto ptr = AllocateBlock();
 #if PROFILE_ENABLED
+	if (likely(ptr != nullptr))
 	{
 		auto& mmgr = MemoryManager::GetInstance();
 		mmgr.ReportAllocation(id, ptr, size, blockSize);
@@ -215,6 +216,7 @@ void PoolAllocator::Deallocate(Pointer ptr, size_t size)
 	}
 
 #if PROFILE_ENABLED
+	if (likely(ptr != nullptr))
 	{
 		Assert(size <= blockSize);
 		auto& mmgr = MemoryManager::GetInstance();
