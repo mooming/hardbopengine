@@ -10,7 +10,7 @@
 int main(int argc, const char* argv[]) noexcept
 {
 
-#ifdef __UNIT_TEST__
+#ifdef TEST_ENABLED
 	constexpr auto BaseStreamPassBudget = std::chrono::duration<double>(0.001);
 
 	hbe::Engine hengine;
@@ -39,7 +39,7 @@ int main(int argc, const char* argv[]) noexcept
 
 	return 0;
 #else
-	std::cerr << "RingBufferBenchmark: built WITHOUT __UNIT_TEST__, so this binary contains no performance cells."
+	std::cerr << "RingBufferBenchmark: built WITHOUT TEST_ENABLED, so this binary contains no performance cells."
 			  << std::endl;
 	std::cerr << "Rebuild with: ./build.sh RingBufferBenchmark -release -test" << std::endl;
 

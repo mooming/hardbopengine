@@ -126,7 +126,7 @@ private:
 };
 } // namespace hbe
 
-#ifdef __UNIT_TEST__
+#ifdef TEST_ENABLED
 #include "Engine/Engine.h"
 #include "Test/TestCollection.h"
 
@@ -149,4 +149,4 @@ protected:
 	void Prepare() override;
 };
 } // namespace hbe
-#endif //__UNIT_TEST__
+#endif //TEST_ENABLED
