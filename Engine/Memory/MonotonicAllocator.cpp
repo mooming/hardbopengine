@@ -7,6 +7,7 @@
 #include "Core/Debug.h"
 #include "MemoryManager.h"
 
+
 namespace hbe
 {
 MonotonicAllocator::MonotonicAllocator(const char* name, TSize inCapacity)

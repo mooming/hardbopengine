@@ -13,6 +13,7 @@
 #include "Memory/MemoryManager.h"
 #include "String/StringBuilder.h"
 
+
 namespace hbe
 {
 namespace
@@ -393,7 +394,6 @@ void ThreadSafeMultiPoolAllocator::ReportConfiguration()
 		{
 			found->numberOfBlocks += value;
 		}
-
 	};
 	{
 		std::lock_guard lockGuard(lock);

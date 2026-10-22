@@ -10,6 +10,7 @@
 #include "MemoryManager.h"
 #include "OSAL/OSMemory.h"
 
+
 namespace hbe
 {
 #if PROFILE_ENABLED
