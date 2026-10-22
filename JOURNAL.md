@@ -1,5 +1,22 @@
 # Journal
 
+## 2026-10-22 10:20 — the branch regrouped into four commits
+
+**Cause.** The owner asked for every commit above master to be regrouped by type — documents apart
+from code, python and shell apart from native code — with simple messages.
+
+**The regroup.** The branch was reset to master with the working tree kept, then re-committed in four
+groups: `fix(memory)` (181 files, all native code — the defect fixes, the absorbed ledger and comment
+strip, the single test-macro rename and its #endif sweep), `chore(scripts)` (14 files — layer 5b and the
+checkers the stack carried, plus the build scripts), `docs(memory)` (297 reference pages) and `docs`
+(38 records — the branch review, the plans and the journal). The old history, including the absorbed
+stack's commits and the merge, remains on `backup/pre-regroup`.
+
+**Proof.** `git diff backup/pre-regroup HEAD` is empty, so the final tree is byte-identical to the
+pre-regroup state; each commit's file list is pure to its group; the suite reports 66 collections and
+429 testlets. Pushing now rewrites commits origin already has, so it needs `--force-with-lease` and
+the owner's approval.
+
 ## 2026-10-22 09:49 — the re-review that caught its own reviewer
 
 **Cause.** The owner asked for every finding and every disposition to be re-checked. Doing it against the
