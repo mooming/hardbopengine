@@ -50,7 +50,7 @@ MonotonicAllocator::~MonotonicAllocator()
 	mmgr.ReportDeallocation(id, bufferPtr, 0, cursor);
 #endif // PROFILE_ENABLED
 
-	mmgr.Deallocate(bufferPtr, capacity);
+	mmgr.Deallocate(parentID, bufferPtr, capacity);
 	mmgr.DeregisterAllocator(GetID());
 }
 
@@ -144,7 +144,9 @@ bool MonotonicAllocator::IsMine(TPointer ptr) const
 }
 } // namespace hbe
 
-#ifdef __UNIT_TEST__
+#ifdef TEST_ENABLED
+#include <new>
+
 #include "HSTL/HVector.h"
 #include "String/String.h"
 
@@ -222,7 +224,70 @@ void MonotonicAllocatorTest::Prepare()
 			   << " Usage should not be zero, but " << alloc.GetUsage() << lferr;
 		}
 	});
+
+		AddTest("Destroy In Own Scope", [this](auto& ls)
+	{
+		static void* claimedPtr = nullptr;
+		static size_t claimedSize = 0;
+		static void* releasedPtr = nullptr;
+		static size_t releasedSize = 0;
+		claimedPtr = nullptr;
+		claimedSize = 0;
+		releasedPtr = nullptr;
+		releasedSize = 0;
+
+		auto globalAlloc = [](void*, const size_t n) -> void*
+		{
+			claimedPtr = ::operator new(n);
+			claimedSize = n;
+
+			return claimedPtr;
+		};
+
+		auto globalFree = [](void*, void* ptr, const size_t n)
+		{
+			releasedPtr = ptr;
+			releasedSize = n;
+			::operator delete(ptr, n);
+		};
+
+		auto& mmgr = MemoryManager::GetInstance();
+
+		constexpr size_t capacity = 128 * 1024;
+		const auto parentID =
+				mmgr.RegisterAllocator(nullptr, "Test::GlobalBackedParent", false, capacity, globalAlloc, globalFree);
+		{
+			AllocatorScope parentScope(parentID);
+
+			auto alloc = new MonotonicAllocator("Test::MonotonicAllocator", capacity);
+			{
+				AllocatorScope selfScope(alloc->GetID());
+				delete alloc;
+			}
+		}
+
+		mmgr.DeregisterAllocator(parentID);
+
+		if (releasedPtr != claimedPtr)
+		{
+			ls << "destroying the allocator while its own AllocatorScope is open returned " << releasedPtr
+			   << " to its parent, which had handed out " << claimedPtr
+			   << ": the backing buffer went to whichever allocator is current, not to the one that owns it" << lferr;
+
+			return;
+		}
+
+		if (releasedSize != claimedSize)
+		{
+			ls << "the parent got its buffer back but was told " << releasedSize << " bytes for the " << claimedSize
+			   << " it handed out" << lferr;
+
+			return;
+		}
+
+		ls << "The parent that handed out the buffer is the one that got it back." << lf;
+	});
 }
 } // namespace hbe
 
-#endif //__UNIT_TEST__
+#endif // TEST_ENABLED

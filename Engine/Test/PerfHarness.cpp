@@ -2,7 +2,7 @@
 
 #include "PerfHarness.h"
 
-#ifdef __UNIT_TEST__
+#ifdef TEST_ENABLED
 #include <algorithm>
 #include <array>
 #include <chrono>
@@ -337,4 +337,4 @@ void PerfPlatformHeader(std::ostream& ioOut)
 }
 } // namespace hbe::Test
 
-#endif // __UNIT_TEST__
+#endif // TEST_ENABLED

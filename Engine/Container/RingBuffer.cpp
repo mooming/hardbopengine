@@ -2,7 +2,7 @@
 
 #include "RingBuffer.h"
 
-#ifdef __UNIT_TEST__
+#ifdef TEST_ENABLED
 #include <algorithm>
 #include <array>
 #include <atomic>
@@ -969,4 +969,4 @@ void RingBufferTest::Prepare()
 	});
 }
 } // namespace hbe
-#endif // __UNIT_TEST__
+#endif // TEST_ENABLED

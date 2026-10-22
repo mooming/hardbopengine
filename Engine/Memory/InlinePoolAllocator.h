@@ -16,33 +16,7 @@
 
 namespace hbe
 {
-/**
- * @brief A fixed-size, stack-allocated memory pool allocator for type T.
- *
- * This allocator manages memory in pre-allocated blocks of a fixed size
- * determined by {@link InlinePoolAllocator::ActualBlockSize}. It functions
- * as an efficient replacement for general-purpose allocators when all
- * allocated objects are of the same, known size (T).
- *
- * @tparam T The type of object to be allocated.
- * @tparam BlockSize The desired size of the object allocated in bytes.
- * @tparam NumBlocks The total number of blocks available in this pool.
- *
- * The internal memory pool is structured as a singly-linked free list,
- * where the pointer to the next free block is stored at the beginning
- * of each utilized block.
- *
- * Allocation prioritizes:
- * 1. The immediate block (LIFO cache).
- * 2. The managed free list.
- * 3. Fallback to the global MemoryManager if the pool is exhausted.
- *
- * Deallocation returns the memory block to the free list or the
- * immediate block, ensuring O(1) bookkeeping operations.
- *
- * Note: It interacts heavily with the global MemoryManager for fallback
- * allocation and registration/de-registration of allocation IDs.
- */
+/// API reference: docs/Memory/InlinePoolAllocator/index.html
 template <class T, size_t BlockSize, size_t NumBlocks>
 class InlinePoolAllocator
 {
@@ -78,7 +52,6 @@ public:
 		Assert(OS::CheckAligned(block[0]));
 		parentID = MemoryManager::GetCurrentAllocatorID();
 
-		// Place a pointer to the next block at the beginning of blocks.
 		for (size_t i = 1; i < ActualNumBlocks; i++)
 		{
 			WritePointerToNext(block[i - 1], block[i]);
@@ -88,7 +61,7 @@ public:
 
 #if MEMORY_VERIFICATION_ENABLED
 		constexpr size_t length = sizeof(T) * ActualBlockSize * ActualNumBlocks;
-		std::memset(buffer, 0, length);
+		std::memset(block, 0, length);
 #endif // MEMORY_VERIFICATION_ENABLED
 
 		RegisterAllocator();
@@ -125,7 +98,6 @@ public:
 		return name;
 	}
 
-	// This function name is enforced by STL
 	[[nodiscard]] T* allocate(std::size_t n) noexcept
 	{
 		const auto nBytes = n * sizeof(T);
@@ -134,10 +106,9 @@ public:
 		return static_cast<T*>(ptr);
 	}
 
-	// This function name is enforced by STL
 	void deallocate(T* ptr, std::size_t n) noexcept
 	{
-		return DeallocateBytes(ptr, n);
+		return DeallocateBytes(ptr, n * sizeof(T));
 	}
 
 	[[nodiscard]] auto GetID() const
@@ -175,6 +146,11 @@ private:
 				auto ptr = immediateBlock;
 				immediateBlock = nullptr;
 
+#if PROFILE_ENABLED
+				auto& mmgr = MemoryManager::GetInstance();
+				mmgr.ReportAllocation(id, ptr, nBytes, BlockSizeInBytes);
+#endif // PROFILE_ENABLED
+
 				return ptr;
 			}
 
@@ -201,23 +177,26 @@ private:
 
 	void DeallocateBytes(void* ptr, size_t nBytes) noexcept
 	{
-		if (immediateBlock == nullptr && nBytes <= BlockSizeInBytes)
-		{
-			immediateBlock = ptr;
-
-			return;
-		}
-
 		if (!IsValidPointer(ptr))
 		{
-			// Fallback Deallocation
 			auto& mmgr = MemoryManager::GetInstance();
 			mmgr.Deallocate(parentID, ptr, nBytes);
 
 			return;
 		}
 
-		// Return a block
+		if (immediateBlock == nullptr && nBytes <= BlockSizeInBytes)
+		{
+			immediateBlock = ptr;
+
+#if PROFILE_ENABLED
+			auto& mmgr = MemoryManager::GetInstance();
+			mmgr.ReportDeallocation(id, ptr, nBytes, BlockSizeInBytes);
+#endif // PROFILE_ENABLED
+
+			return;
+		}
+
 		WritePointerToNext(ptr, availableBlock);
 		availableBlock = ptr;
 
@@ -286,12 +265,11 @@ private:
 };
 } // namespace hbe
 
-#ifdef __UNIT_TEST__
+#ifdef TEST_ENABLED
 #include "Test/TestCollection.h"
 
 namespace hbe
 {
-/// @brief Test class for InlinePoolAllocator.
 class InlinePoolAllocatorTest : public TestCollection
 {
 public:
@@ -304,4 +282,4 @@ protected:
 	void Prepare() override;
 };
 } // namespace hbe
-#endif //__UNIT_TEST__
+#endif // TEST_ENABLED

@@ -12,31 +12,20 @@
 #include "AllocatorProxy.h"
 #include "Config/BuildConfig.h"
 #include "Container/AtomicStackView.h"
+#include "Core/Debug.h"
 #include "Core/Types.h"
 #include "Log/LogLevel.h"
 #include "MultiPoolConfigCache.h"
+#include "OSAL/SourceLocation.h"
 #include "PoolConfig.h"
 #include "String/StaticStringID.h"
 
 
 namespace hbe
 {
-struct source_location;
 class Engine;
 
-/// @brief Centralized memory management system for the engine.
-/// @details This singleton class serves as the core memory controller, providing:
-/// - **Allocator Management**: Registration and retrieval of various allocators (System, Pool, Stack, etc.)
-///   via `TAllocatorID`.
-/// - **Scoped Allocation**: Support for thread-local allocation scopes using `ScopedAllocator`.
-/// - **Object Lifecycle**: Type-safe object creation (`New`, `NewArray`) and destruction (`Delete`, `DeleteArray`)
-///   with automatic constructor/destructor calls.
-/// - **Tracking & Statistics**: Real-time tracking of allocation/deallocation counts, usage, and capacity
-///   across all registered allocators.
-/// - **Fallthrough Mechanism**: A hierarchical fallback system for handling exhausted allocators.
-/// - **Configuration Persistence**: Loading and saving `MultiPool` configurations via `MultiPoolConfigCache`.
-/// - **Profiling Support**: Built-in hooks for memory investigation, logging, and detailed usage reporting
-///   when `PROFILE_ENABLED` is active.
+/// API reference: docs/Memory/MemoryManager/index.html
 class MemoryManager final
 {
 public:
@@ -71,15 +60,9 @@ public:
 	/// @details Cumulative, not live: freeing does not reduce it. Read it as a delta around a region of
 	/// interest, which is how the test suite uses it to see allocations that no allocator scope can report.
 	/// @note SystemAllocator's own traffic is deliberately absent. Its usage lives in the paired UsageRecord
-	/// reported under PROFILE_ENABLED, and the two are not the same measure - this one counts bytes requested,
-	/// that one counts capacity obtained. Merging them would also misattribute a pool's bank backing, which
-	/// arrives through SystemAllocator, to whichever testlet happened to trigger the bank.
 	[[nodiscard]] static size_t GetGlobalAllocationBytes() noexcept;
-	/// @brief Number of requests that reached a global allocation entry point since process start.
 	[[nodiscard]] static uint64_t GetGlobalAllocationCount() noexcept;
-	/// @brief Bytes released through global deallocation entry points since process start.
 	[[nodiscard]] static size_t GetGlobalFreeBytes() noexcept;
-	/// @brief Number of releases that reached a global deallocation entry point since process start.
 	[[nodiscard]] static uint64_t GetGlobalFreeCount() noexcept;
 
 	[[nodiscard]] static size_t GetOSAllocationBytes() noexcept;
@@ -122,6 +105,7 @@ public:
 
 	void ReportAllocation(TId id, void* ptr, size_t requested, size_t allocated);
 	void ReportDeallocation(TId id, void* ptr, size_t requested, size_t allocated);
+	void ReportFallback(TId id, void* ptr, size_t requested);
 
 	void* SysAllocate(size_t nBytes);
 	void SysDeallocate(void* ptr, size_t nBytes);
@@ -161,8 +145,8 @@ public:
 #if PROFILE_ENABLED
 	AllocStats GetAllocatorStat(TAllocatorID id);
 
-	void DeregisterAllocator(TId id, const hbe::source_location& srcLocation);
-	void ReportMultiPoolConfigutation(StaticStringID uniqueName, TPoolConfigs&& poolConfigs);
+	void DeregisterAllocator(TId id, const SourceLocation& srcLocation);
+	void ReportMultiPoolConfiguration(StaticStringID uniqueName, TPoolConfigs&& poolConfigs);
 #endif // PROFILE_ENABLED
 
 	template <typename T>
@@ -185,6 +169,13 @@ public:
 	Type* New(Types&&... args)
 	{
 		auto ptr = AllocateByType<Type>(1);
+		if (unlikely(ptr == nullptr))
+		{
+			Assert(false, "MemoryManager::New: the allocation failed, so the object cannot be constructed.");
+
+			return nullptr;
+		}
+
 		auto tptr = new (ptr) Type(std::forward<Types>(args)...);
 
 		return tptr;
@@ -194,6 +185,12 @@ public:
 	Type* NewArray(Index size, Types&&... args)
 	{
 		auto ptr = AllocateByType<Type>(size);
+		if (unlikely(ptr == nullptr))
+		{
+			Assert(false, "MemoryManager::NewArray: the allocation failed, so the array cannot be constructed.");
+
+			return nullptr;
+		}
 
 		for (Index i = 0; i < size; ++i)
 		{
@@ -206,6 +203,11 @@ public:
 	template <typename Type>
 	void Delete(Type* ptr)
 	{
+		if (ptr == nullptr)
+		{
+			return;
+		}
+
 		ptr->~Type();
 		DeallocateTypes<Type>(ptr, 1);
 	}
@@ -213,6 +215,11 @@ public:
 	template <typename Type>
 	void DeleteArray(Type* ptr, size_t n)
 	{
+		if (ptr == nullptr)
+		{
+			return;
+		}
+
 		for (size_t i = 0; i < n; ++i)
 		{
 			ptr[i].~Type();
@@ -248,7 +255,6 @@ private:
 		return scopedAllocatorID;
 	}
 
-	void ReportFallback(TId id, void* ptr, size_t requested);
 	void RegisterSystemAllocator();
 	void DeregisterSystemAllocator();
 	void LoadMultiPoolConfigs();
@@ -259,7 +265,7 @@ private:
 };
 } // namespace hbe
 
-#ifdef __UNIT_TEST__
+#ifdef TEST_ENABLED
 #include "Test/TestCollection.h"
 
 namespace hbe
@@ -276,4 +282,4 @@ protected:
 	void Prepare() override;
 };
 } // namespace hbe
-#endif // __UNIT_TEST__
+#endif // TEST_ENABLED

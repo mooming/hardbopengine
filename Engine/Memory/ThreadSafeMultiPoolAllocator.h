@@ -2,6 +2,9 @@
 
 #pragma once
 
+#include <initializer_list>
+#include <mutex>
+
 #include "Config/BuildConfig.h"
 #include "HSTL/HVector.h"
 #include "PoolAllocator.h"
@@ -11,9 +14,7 @@
 
 namespace hbe
 {
-/// @brief Thread-safe multi-pool allocator with multiple block sizes.
-/// @details Manages multiple pool allocators of different block sizes.
-/// Uses mutex synchronization for thread safety.
+/// API reference: docs/Memory/ThreadSafeMultiPoolAllocator/index.html
 class ThreadSafeMultiPoolAllocator final
 {
 public:
@@ -36,9 +37,9 @@ private:
 	size_t minBlock;
 
 public:
-	explicit ThreadSafeMultiPoolAllocator(const char* name, size_t allocationUnit = DefaultBankUnit,
+	explicit ThreadSafeMultiPoolAllocator(const char* inName, size_t allocationUnit = DefaultBankUnit,
 										  size_t minBlockSize = DefaultMinBlock);
-	ThreadSafeMultiPoolAllocator(const char* name, TInitializerList initialConfigurations,
+	ThreadSafeMultiPoolAllocator(const char* inName, TInitializerList initialConfigurations,
 								 size_t allocationUnit = DefaultBankUnit, size_t minBlockSize = DefaultMinBlock);
 	~ThreadSafeMultiPoolAllocator();
 
@@ -72,13 +73,12 @@ private:
 };
 } // namespace hbe
 
-#ifdef __UNIT_TEST__
+#ifdef TEST_ENABLED
 
 #include "Test/TestCollection.h"
 
 namespace hbe
 {
-/// @brief Test class for ThreadSafeMultiPoolAllocator.
 class ThreadSafeMultiPoolAllocatorTest : public TestCollection
 {
 public:
@@ -91,4 +91,4 @@ protected:
 	void Prepare() override;
 };
 } // namespace hbe
-#endif //__UNIT_TEST__
+#endif // TEST_ENABLED

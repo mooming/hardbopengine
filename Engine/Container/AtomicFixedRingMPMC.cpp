@@ -2,7 +2,7 @@
 
 #include "AtomicFixedRingMPMC.h"
 
-#ifdef __UNIT_TEST__
+#ifdef TEST_ENABLED
 #include <atomic>
 #include <cstdint>
 #include <thread>
@@ -366,4 +366,4 @@ void AtomicFixedRingMPMCTest::Prepare()
 }
 } // namespace hbe
 
-#endif // __UNIT_TEST__
+#endif // TEST_ENABLED

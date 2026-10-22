@@ -2,6 +2,8 @@
 
 #pragma once
 
+#include <initializer_list>
+
 #include "Config/BuildConfig.h"
 #include "HSTL/HVector.h"
 #include "PoolAllocator.h"
@@ -13,9 +15,7 @@ namespace hbe
 {
 class MemoryManager;
 
-/// @brief A multi-pool allocator that manages multiple pools of different block sizes.
-/// @details Uses multiple pools to handle various allocation sizes efficiently.
-/// Blocks are organized into banks that can grow as needed.
+/// API reference: docs/Memory/MultiPoolAllocator/index.html
 class MultiPoolAllocator final
 {
 public:
@@ -31,14 +31,15 @@ private:
 	TAllocatorID id;
 	TAllocatorID parentID;
 	StaticString name;
+
 	hbe::HVector<PoolAllocator> banks;
 	size_t bankSize;
 	size_t minBlock;
 
 public:
-	explicit MultiPoolAllocator(const char* name, size_t allocationUnit = DefaultBankUnit,
+	explicit MultiPoolAllocator(const char* inName, size_t allocationUnit = DefaultBankUnit,
 								size_t minBlockSize = DefaultMinBlock);
-	MultiPoolAllocator(const char* name, TInitializerList initialConfigurations,
+	MultiPoolAllocator(const char* inName, TInitializerList initialConfigurations,
 					   size_t allocationUnit = DefaultBankUnit, size_t minBlockSize = DefaultMinBlock);
 	~MultiPoolAllocator();
 
@@ -62,7 +63,6 @@ public:
 #endif // PROFILE_ENABLED
 
 private:
-	// Generate a new bank to allocae
 	void* NewBankAllocate(size_t size);
 
 	bool GenerateBanksByCache(MemoryManager& mmgr);
@@ -74,13 +74,12 @@ private:
 };
 } // namespace hbe
 
-#ifdef __UNIT_TEST__
+#ifdef TEST_ENABLED
 
 #include "Test/TestCollection.h"
 
 namespace hbe
 {
-/// @brief Test class for MultiPoolAllocator.
 class MultiPoolAllocatorTest : public TestCollection
 {
 public:
@@ -93,4 +92,4 @@ protected:
 	void Prepare() override;
 };
 } // namespace hbe
-#endif //__UNIT_TEST__
+#endif // TEST_ENABLED

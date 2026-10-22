@@ -35,7 +35,7 @@ StackAllocator::StackAllocator(const char* name, SizeType inCapacity)
 
 	auto& mmgr = MemoryManager::GetInstance();
 	parentID = hbe::MemoryManager::GetCurrentAllocatorID();
-	bufferPtr = mmgr.Allocate(capacity);
+	buffer = static_cast<Byte*>(mmgr.Allocate(capacity));
 
 	auto allocFunc = [](void* allocatorPtr, size_t n) -> void*
 	{
@@ -56,7 +56,7 @@ StackAllocator::StackAllocator(const char* name, SizeType inCapacity)
 StackAllocator::~StackAllocator()
 {
 	auto& mmgr = MemoryManager::GetInstance();
-	mmgr.Deallocate(bufferPtr, capacity);
+	mmgr.Deallocate(parentID, buffer, capacity);
 
 #if PROFILE_ENABLED
 	mmgr.DeregisterAllocator(GetID(), srcLocation);
@@ -113,7 +113,7 @@ void StackAllocator::Deallocate(Pointer ptr, const SizeType requested) noexcept
 		size = multiplier * AlignUnit;
 	}
 
-	Assert(cursor >= size);
+	Assert(cursor >= size, "StackAllocator: cannot release ", size, " bytes with only ", cursor, " bytes outstanding.");
 
 	auto expected = buffer + cursor;
 	auto provided = static_cast<Byte*>(ptr) + size;
@@ -168,7 +168,8 @@ bool StackAllocator::IsMine(Pointer ptr) const
 }
 } // namespace hbe
 
-#ifdef __UNIT_TEST__
+#ifdef TEST_ENABLED
+#include "AllocatorScope.h"
 #include "HSTL/HVector.h"
 #include "ScopedAllocator.h"
 #include "String/String.h"
@@ -178,6 +179,62 @@ namespace hbe
 void StackAllocatorTest::Prepare()
 {
 	using namespace std;
+	AddTest("Destroy In Own Scope", [this](auto& ls)
+	{
+		static void* claimedPtr = nullptr;
+		static size_t claimedSize = 0;
+		static void* releasedPtr = nullptr;
+		static size_t releasedSize = 0;
+		claimedPtr = nullptr;
+		claimedSize = 0;
+		releasedPtr = nullptr;
+		releasedSize = 0;
+
+		auto globalAlloc = [](void*, const size_t n) -> void*
+		{
+			claimedPtr = ::operator new(n);
+			claimedSize = n;
+
+			return claimedPtr;
+		};
+
+		auto globalFree = [](void*, void* ptr, const size_t n)
+		{
+			releasedPtr = ptr;
+			releasedSize = n;
+			::operator delete(ptr, n);
+		};
+
+		auto& mmgr = MemoryManager::GetInstance();
+
+		constexpr size_t capacity = 128 * 1024;
+		const auto parentID =
+				mmgr.RegisterAllocator(nullptr, "Test::GlobalBackedParent", false, capacity, globalAlloc, globalFree);
+		{
+			AllocatorScope parentScope(parentID);
+
+			auto alloc = new StackAllocator("Test::StackAllocator", capacity);
+			{
+				AllocatorScope selfScope(alloc->GetID());
+				delete alloc;
+			}
+		}
+
+		if (releasedPtr != claimedPtr)
+		{
+			ls << "destroying the allocator while its own AllocatorScope is open returned " << releasedPtr
+			   << " to its parent, which had handed out " << claimedPtr
+			   << ": the backing buffer went to whichever allocator is current, not to the one that owns it" << lferr;
+		}
+		else if (releasedSize != claimedSize)
+		{
+			ls << "the parent got its buffer back but was told " << releasedSize << " bytes for the " << claimedSize
+			   << " it handed out" << lferr;
+		}
+
+		mmgr.DeregisterAllocator(parentID);
+	});
+
 	using namespace hbe;
 
 	AddTest("Vector Allocation", [this](auto& ls)
@@ -190,7 +247,7 @@ void StackAllocatorTest::Prepare()
 			a.push_back(0);
 
 #if PROFILE_ENABLED
-			if (stack.GetUsage() > 0)
+			if (stack.GetUsage() == 0)
 			{
 				ls << "Allocation Failed. Usage should not be zero, but " << stack.GetUsage() << lferr;
 			}
@@ -220,7 +277,7 @@ void StackAllocatorTest::Prepare()
 			b.push_back(1);
 
 #if PROFILE_ENABLED
-			if (stack.GetUsage() > 0)
+			if (stack.GetUsage() == 0)
 			{
 				ls << "Allocation Failed. Usage should not be zero, but " << stack.GetUsage() << lferr;
 			}
@@ -297,7 +354,6 @@ void StackAllocatorTest::Prepare()
 				ScopedAllocator<TAlloc> scope2("NestedStack2", 256);
 
 				auto ptr = New<long double>(0);
-
 				const auto depth = depthSeed++;
 				ls << "Neted Level " << depth << ", free size = " << scope2.GetAllocator().GetAvailable() << " / "
 				   << scope1.GetAllocator().GetAvailable() << " / " << scope0.GetAllocator().GetAvailable() << lf;
@@ -305,7 +361,6 @@ void StackAllocatorTest::Prepare()
 					ScopedAllocator<TAlloc> scope3("NestedStack3", 128);
 
 					auto ptr = New<long double>(0);
-
 					const auto depth = depthSeed++;
 					ls << "Neted Level " << depth << ", free size = " << scope3.GetAllocator().GetAvailable() << " / "
 					   << scope2.GetAllocator().GetAvailable() << " / " << scope1.GetAllocator().GetAvailable() << " / "
@@ -314,7 +369,6 @@ void StackAllocatorTest::Prepare()
 						ScopedAllocator<TAlloc> scope4("NestedStack4", 64);
 
 						auto ptr = New<long double>(0);
-
 						const auto depth = depthSeed++;
 						ls << "Neted Level " << depth << ", free size = " << scope4.GetAllocator().GetAvailable()
 						   << " / " << scope3.GetAllocator().GetAvailable() << " / "
@@ -324,7 +378,6 @@ void StackAllocatorTest::Prepare()
 							ScopedAllocator<TAlloc> scope5("NestedStack05", 32);
 
 							auto ptr = New<long double>(0);
-
 							const auto depth = depthSeed++;
 							ls << "Neted Level " << depth << ", free size = " << scope5.GetAllocator().GetAvailable()
 							   << " / " << scope4.GetAllocator().GetAvailable() << " / "
@@ -367,4 +420,4 @@ void StackAllocatorTest::Prepare()
 }
 } // namespace hbe
 
-#endif //__UNIT_TEST__
+#endif // TEST_ENABLED

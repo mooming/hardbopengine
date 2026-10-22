@@ -10,15 +10,7 @@
 
 namespace hbe
 {
-/// @brief Stack-based allocator for temporary allocations.
-/// @details Bump-pointer allocator over a fixed-size buffer. Deallocate IS supported, but
-///          strictly LIFO: the most recently allocated block must be released first, with the
-///          same byte count it was allocated with (the size is rounded up to
-///          `Config::DefaultAlign` on both paths). A release that does not match the current
-///          top of stack is logged and asserted rather than silently rewinding the cursor.
-///          A pointer belonging to another allocator is forwarded to the parent allocator
-///          instead of failing. Whatever is still allocated when the stack is destroyed is
-///          released as a group.
+/// API reference: docs/Memory/StackAllocator/index.html
 class StackAllocator final
 {
 public:
@@ -26,7 +18,7 @@ public:
 	using SizeType = size_t;
 
 #if PROFILE_ENABLED
-	using TSrcLoc = hbe::source_location;
+	using TSrcLoc = SourceLocation;
 #endif // PROFILE_ENABLED
 
 private:
@@ -35,19 +27,13 @@ private:
 
 	SizeType capacity;
 	SizeType cursor;
-
-	union
-	{
-		Byte* buffer;
-		Pointer bufferPtr;
-	};
+	Byte* buffer;
 
 #if PROFILE_ENABLED
 	TSrcLoc srcLocation;
 #endif // PROFILE_ENABLED
 
 public:
-	// Not Supported
 	static size_t GetSize(Pointer)
 	{
 		return 0;
@@ -77,12 +63,11 @@ private:
 };
 } // namespace hbe
 
-#ifdef __UNIT_TEST__
+#ifdef TEST_ENABLED
 #include "Test/TestCollection.h"
 
 namespace hbe
 {
-/// @brief Test class for StackAllocator.
 class StackAllocatorTest : public TestCollection
 {
 public:
@@ -95,4 +80,4 @@ protected:
 	void Prepare() override;
 };
 } // namespace hbe
-#endif //__UNIT_TEST__
+#endif // TEST_ENABLED

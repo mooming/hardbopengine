@@ -1,6 +1,6 @@
 // Copyright (c) 2026 Hansol Park (mooming.go@gmail.com). All rights reserved.
 
-#ifdef __UNIT_TEST__
+#ifdef TEST_ENABLED
 
 #include "InlineMonotonicAllocator.h"
 
@@ -82,7 +82,52 @@ void InlineMonotonicAllocatorTest::Prepare() noexcept
 			   << " Usage should not be zero, but " << alloc.GetUsage() << lferr;
 		}
 	});
+
+		AddTest("Destroy In Own Scope", [this](auto& ls)
+	{
+		static void* claimedPtr = nullptr;
+		static void* releasedPtr = nullptr;
+		claimedPtr = nullptr;
+		releasedPtr = nullptr;
+
+		auto claim = [](void*, const size_t n) -> void*
+		{
+			claimedPtr = ::operator new(n);
+
+			return claimedPtr;
+		};
+
+		auto release = [](void*, void* ptr, const size_t n)
+		{
+			releasedPtr = ptr;
+			::operator delete(ptr, n);
+		};
+
+		auto& mmgr = MemoryManager::GetInstance();
+		constexpr size_t capacity = 128 * 1024;
+		const auto parentID =
+				mmgr.RegisterAllocator(nullptr, "Test::InlineMonotonicParent", false, capacity, claim, release);
+		{
+			AllocatorScope parentScope(parentID);
+
+			auto alloc = new Allocator("InlineMonotonicAllocator");
+			AllocatorScope scope(alloc->GetID());
+			delete alloc;
+		}
+
+		mmgr.DeregisterAllocator(parentID);
+
+		if (claimedPtr != nullptr || releasedPtr != nullptr)
+		{
+			ls << "the class owns no heap buffer, but its construction claimed " << claimedPtr
+			   << " and its destruction released " << releasedPtr << " through the parent." << lferr;
+
+			return;
+		}
+
+		ls << "No buffer was claimed and none was released, which is the whole contract of an inline buffer." << lf;
+	});
 }
 } // namespace hbe
 
-#endif //__UNIT_TEST__
+#endif // TEST_ENABLED

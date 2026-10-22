@@ -479,7 +479,7 @@ template <typename T, size_t BlockCapacity = 1024>
 using RingBufferMPSC = RingBuffer<T, AtomicFixedRingMPSC<T, BlockCapacity>>;
 } // namespace hbe
 
-#ifdef __UNIT_TEST__
+#ifdef TEST_ENABLED
 #include "Container/AtomicFixedRingMPMC.h"
 #include "Container/FixedRingMPMC.h"
 #include "Container/FixedRingMPSC.h"
@@ -509,4 +509,4 @@ protected:
 };
 } // namespace hbe
 
-#endif // __UNIT_TEST__
+#endif // TEST_ENABLED
