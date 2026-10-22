@@ -1,0 +1,263 @@
+{
+ "label": "memory01",
+ "filesRead": [
+  ".pi/skills/hb-docs/SKILL.md",
+  "Engine/Memory/AllocatorScope.h",
+  "Engine/Memory/InlinePoolAllocator.h",
+  "Engine/Memory/MemoryManager.cpp",
+  "Engine/Memory/MemoryManager.h",
+  "Engine/Memory/MultiPoolAllocator.cpp",
+  "Engine/Memory/MultiPoolAllocator.h",
+  "Engine/Memory/PoolAllocator.cpp",
+  "Engine/Memory/PoolAllocator.h",
+  "Engine/Memory/StackAllocator.cpp",
+  "Engine/Memory/ThreadSafeMultiPoolAllocator.cpp",
+  "Engine/Memory/ThreadSafeMultiPoolAllocator.h",
+  "JOURNAL.md"
+ ],
+ "findings": [
+  {
+   "file": "Engine/Memory/InlinePoolAllocator.h",
+   "line": 91,
+   "rule": "correctness: undeclared name in a feature-macro path",
+   "why": "With MEMORY_VERIFICATION_ENABLED=1 this names a member that does not exist (the storage is `block`), so 10 of 12 Memory translation units stop compiling - measured. It also masks every other profile/verification path in the module, including the ones this commit rewrote.",
+   "fix": "rename the argument to `block` (sizeof(block) equals `length`), then add a `-DPROFILE_ENABLED=1 -DMEMORY_VERIFICATION_ENABLED=1` syntax-only layer to the gate so these paths stop being unverified.",
+   "confidence": "high",
+   "evidence": "std::memset(buffer, 0, length);"
+  },
+  {
+   "file": "Engine/Memory/PoolAllocator.h",
+   "line": 13,
+   "rule": "docs: API-reference pointer resolves to nothing",
+   "why": "docs/Memory/PoolAllocator/index.html does not exist; comments.py reports POINTER-PATH. The commit deleted the @brief block and installed an address to a page that was never authored, which the standard forbids: an entry without a page carries no pointer.",
+   "fix": "author the page with .pi/skills/hb-docs/scripts/docs_page.py, or remove the pointer line until the page exists.",
+   "confidence": "high",
+   "evidence": "/// API reference: docs/Memory/PoolAllocator/index.html"
+  },
+  {
+   "file": "Engine/Memory/MultiPoolAllocator.h",
+   "line": 18,
+   "rule": "docs: API-reference pointer resolves to nothing",
+   "why": "docs/Memory/MultiPoolAllocator/index.html does not exist; comments.py reports POINTER-PATH on this line.",
+   "fix": "author the page, or drop the pointer until it exists.",
+   "confidence": "high",
+   "evidence": "/// API reference: docs/Memory/MultiPoolAllocator/index.html"
+  },
+  {
+   "file": "Engine/Memory/ThreadSafeMultiPoolAllocator.h",
+   "line": 17,
+   "rule": "docs: API-reference pointer resolves to nothing",
+   "why": "docs/Memory/ThreadSafeMultiPoolAllocator/index.html does not exist; comments.py reports POINTER-PATH on this line.",
+   "fix": "author the page, or drop the pointer until it exists.",
+   "confidence": "high",
+   "evidence": "/// API reference: docs/Memory/ThreadSafeMultiPoolAllocator/index.html"
+  },
+  {
+   "file": "Engine/Memory/MemoryManager.h",
+   "line": 188,
+   "rule": "correctness: null pointer used after a failed allocation",
+   "why": "The added Assert(ptr != nullptr, ...) is compiled away in Release, where Assert is a no-op, so the placement-new on the next line still constructs through a null pointer. The same commit fixed exactly this class in Allocate/Deallocate with an early return.",
+   "fix": "if (ptr == nullptr) { Assert(false, ...); return nullptr; } - assert in debug, fail the call in release.",
+   "confidence": "high",
+   "evidence": "auto ptr = AllocateByType<Type>(1);"
+  },
+  {
+   "file": "Engine/Memory/PoolAllocator.cpp",
+   "line": 50,
+   "rule": "correctness: null pointer used after a failed allocation",
+   "why": "The added Assert(buffer != nullptr, ...) does not stop anything in Release; the next line forms an address from a null pointer and the loop after it writes a free list through it.",
+   "fix": "make the pool inert on failure (buffer stays null, numberOfBlocks = 0) or FatalAssert and document the policy; an assert alone is a debug-only guard.",
+   "confidence": "high",
+   "evidence": "availables = &buffer[0];"
+  },
+  {
+   "file": "Engine/Memory/MemoryManager.cpp",
+   "line": 177,
+   "rule": "policy: an unreleased-build-only assert now aborts in release",
+   "why": "FatalAssert is declared outside the !RELEASE_BUILD block (Debug.h:74, :89), so it aborts in every configuration; an invalid allocator id used to log and return a dummy proxy and now aborts a Release process too. The retained 'static AllocatorProxy dummy{}; return dummy;' is not a defect: 42 of 75 FatalAssert call sites are followed by a return, and keeping it makes the code correct whichever policy FatalAssert follows. Only the choice itself is unrecorded.",
+   "fix": "Owner ruling: keep the return. Do not add [[noreturn]] to FatalAssert - if it ever becomes a Release no-op, returning to a caller whose tail was deleted as unreachable is undefined behaviour. If Release is meant to survive the call, move the FatalAssert definitions into the !RELEASE_BUILD block; either way, say which policy the entry owns.",
+   "confidence": "high",
+   "evidence": "static AllocatorProxy dummy{};"
+  },
+  {
+   "file": "Engine/Memory/PoolAllocator.cpp",
+   "line": 191,
+   "rule": "correctness: profiler records a failed allocation",
+   "why": "AllocateBlock returns nullptr when the pool is exhausted and the profiling branch reports it anyway, so stats.usage grows for an allocation that never happened. The commit guarded the mirror-image underflow in ReportDeallocation but left its source.",
+   "fix": "report only when ptr != nullptr.",
+   "confidence": "medium",
+   "evidence": "auto ptr = AllocateBlock();"
+  },
+  {
+   "file": "Engine/Memory/ThreadSafeMultiPoolAllocator.cpp",
+   "line": 406,
+   "rule": "test: assertion that cannot fail",
+   "why": "peakBlocks sums bank.GetUsedBlocksMax() over every bank and reportedBlocks sums the same per-bank values accumulated one entry per size class, so the two are equal by construction. The assert proves a property of its own accumulation loop, not of the allocator, and its message over-claims.",
+   "fix": "compare against an independently derived figure (a snapshot of the per-bank peak taken before the lock, or a per-size-class recomputation), or delete the assert and keep the rename.",
+   "confidence": "medium",
+   "evidence": "Assert(reportedBlocks == peakBlocks, \"ReportConfiguration: the reported block count \", reportedBlocks,"
+  },
+  {
+   "file": "Engine/Memory/ThreadSafeMultiPoolAllocator.cpp",
+   "line": 19,
+   "rule": "architecture: external linkage for a file-local type",
+   "why": "BankGenerationLog (and BankUsageRecord further down) are defined at namespace scope inside a .cpp without an anonymous namespace, so they have external linkage and can collide with the same name in another translation unit - an ODR hazard the engine's no-namespace-indent style makes easy to repeat.",
+   "fix": "wrap both in `namespace { ... }` (or make them private nested types) and declare them together instead of one at the top and one mid-file.",
+   "confidence": "medium",
+   "evidence": "class BankGenerationLog final"
+  },
+  {
+   "file": "Engine/Memory/ThreadSafeMultiPoolAllocator.cpp",
+   "line": 203,
+   "rule": "performance: per-allocation cost for a log line",
+   "why": "A thread-local pointer write plus five stores happen on every Allocate, but the log fires only when a bank is generated. Single-thread Allocate is ~24 ns in this commit's own M1 measurement, so the overhead is a real fraction of the operation it is meant to describe.",
+   "fix": "construct the scope object in NewBankAllocate (the only path that records) or skip construction when the logger would not emit Verbose.",
+   "confidence": "medium",
+   "evidence": "const BankGenerationLog bankGenerationLog(*this);"
+  },
+  {
+   "file": "Engine/Memory/ThreadSafeMultiPoolAllocator.cpp",
+   "line": 542,
+   "rule": "docs: an undeclared locking invariant",
+   "why": "GenerateBank locks nothing and sorts `banks` in place; it is only correct because every caller holds `lock`. Engine sources cannot carry that note and no design document was added, so the invariant lives nowhere: a later edit that adds a lock inside it self-deadlocks a non-recursive std::mutex.",
+   "fix": "add docs/Memory/ThreadSafeMultiPoolAllocator design notes recording the caller-must-hold-lock rule, the deferred-logging protocol and why banks are sorted under the lock.",
+   "confidence": "medium",
+   "evidence": "void ThreadSafeMultiPoolAllocator::GenerateBank(size_t blockSize, size_t numberOfBlocks)"
+  },
+  {
+   "file": "Engine/Memory/ThreadSafeMultiPoolAllocator.cpp",
+   "line": 1362,
+   "rule": "test: regression test cannot detect its own bug",
+   "why": "The testlet is named for where the pool buffer must go, but it only checks that an allocation succeeded; it never observes which allocator received the buffer, so the pre-fix behaviour (buffer returned to the ambient scope) still passes.",
+   "fix": "measure the destination: use MemoryManager::GetGlobalAllocationBytes/GetGlobalFreeBytes deltas like the StackAllocator and MonotonicAllocator testlets, or assert the unrelated allocator's usage stays 0.",
+   "confidence": "high",
+   "evidence": "ls << \"The pool handed out no block, so its buffer was never exercised.\" << lferr;"
+  },
+  {
+   "file": "Engine/Memory/ThreadSafeMultiPoolAllocator.cpp",
+   "line": 599,
+   "rule": "test: invariant checked against the wrong modulus",
+   "why": "The free loop reduces modulo slots.size(), which is numThreads * ContentionOpsPerThread, not ContentionOpsPerThread. The assert passes today only because the resolved thread counts are 1, 2, 4 and 8; a count that shares a factor with the stride makes the loop free some slots twice and leak others.",
+   "fix": "verify the permutation at run time (build the index order once and assert it is a bijection) or free through a shuffled order built with a fixed seed.",
+   "confidence": "medium",
+   "evidence": "static_assert(std::gcd(ContentionFreeStride, ContentionOpsPerThread) == 1,"
+  },
+  {
+   "file": "Engine/Memory/ThreadSafeMultiPoolAllocator.cpp",
+   "line": 666,
+   "rule": "test: unchecked allocation result, then a dealloc with a size",
+   "why": "A null result is stored and later passed to Deallocate with a non-zero size, which now logs a Warning and reaches Assert(size == 0). In a non-Release build one failed allocation aborts the whole EngineTest process instead of reporting one failed testlet.",
+   "fix": "record a null count, skip the matching free, and report it as a testlet failure.",
+   "confidence": "medium",
+   "evidence": "slots[i] = allocator.Allocate(ContentionBlockSizeAt(i));"
+  },
+  {
+   "file": "Engine/Memory/ThreadSafeMultiPoolAllocator.cpp",
+   "line": 813,
+   "rule": "test: a worker exception aborts the whole suite",
+   "why": "An exception escaping a worker reaches std::terminate and takes the test binary with it; the timeout path then joins a thread that will never finish. One allocator fault becomes a suite-wide loss of evidence.",
+   "fix": "catch inside the worker lambda, store the failure in ContentionWorkerRecord and report it as a testlet failure.",
+   "confidence": "medium",
+   "evidence": "worker(workerIndex, slotSlice, nanosSlice, startSignal, records[workerIndex]);"
+  },
+  {
+   "file": "Engine/Memory/StackAllocator.cpp",
+   "line": 179,
+   "rule": "redundancy: the same testlet written three times",
+   "why": "The Destroy In Own Scope testlet in StackAllocator.cpp, MonotonicAllocator.cpp and InlineMonotonicAllocator.cpp are near-identical (same parent registration, same byte-delta comparison, same message shape). Three copies drift independently, which is the failure this project's standards cycle removes on sight.",
+   "fix": "hoist one helper (e.g. TestCollection::ReportRetainedBytesOnDestroy) and call it from the three collections.",
+   "confidence": "medium",
+   "evidence": "void StackAllocatorTest::Prepare()"
+  },
+  {
+   "file": "Engine/Memory/MemoryManager.cpp",
+   "line": 700,
+   "rule": "policy: unsigned <= 0 kept on purpose (house style)",
+   "why": "House style, ruled blanket by the owner: an unsigned `x <= 0` is written on purpose, so the negative case is already handled if the value is later revised to a signed integer. Closed as a decision, not a defect. `len` is `data.size()` today, so the guard only ever means `== 0`.",
+   "fix": "None - no code change requested or made; kept in the record so the next reviewer does not re-report it. Measured cost under this build: nil - clang++ -std=gnu++23 -Wall -Werror is silent on this shape, and -Wtautological-compare / -Weverything emit no diagnostic either (clang warns on `unsigned >= 0`, not `<= 0`). GCC's -Wtype-limits, enabled by -Wall, does warn on it, which is the price if a GCC build is ever configured. No checker greps for `<= 0`, so no waiver mechanism is needed.",
+   "confidence": "ruled",
+   "evidence": "if (len <= 0)"
+  },
+  {
+   "file": "Engine/Memory/PoolAllocator.cpp",
+   "line": 40,
+   "rule": "policy: unsigned <= 0 kept on purpose (house style)",
+   "why": "House style, ruled blanket by the owner: an unsigned `x <= 0` is written on purpose, so the negative case is already handled if the value is later revised to a signed integer. Closed as a decision, not a defect. `totalSize` is `TSize` (size_t), a constructor bail-out.",
+   "fix": "None - no code change requested or made; kept in the record so the next reviewer does not re-report it. Measured cost under this build: nil - clang++ -std=gnu++23 -Wall -Werror is silent on this shape, and -Wtautological-compare / -Weverything emit no diagnostic either (clang warns on `unsigned >= 0`, not `<= 0`). GCC's -Wtype-limits, enabled by -Wall, does warn on it, which is the price if a GCC build is ever configured. No checker greps for `<= 0`, so no waiver mechanism is needed.",
+   "confidence": "ruled",
+   "evidence": "if (totalSize <= 0)"
+  },
+  {
+   "file": "Engine/Memory/MultiPoolAllocator.cpp",
+   "line": 137,
+   "rule": "policy: unsigned <= 0 kept on purpose (house style)",
+   "why": "House style, ruled blanket by the owner: an unsigned `x <= 0` is written on purpose, so the negative case is already handled if the value is later revised to a signed integer. Closed as a decision, not a defect. `size` is the `size_t` parameter of `Deallocate`, sibling to the `requested <= 0` line 626249e changed to `== 0`.",
+   "fix": "None - no code change requested or made; kept in the record so the next reviewer does not re-report it. Measured cost under this build: nil - clang++ -std=gnu++23 -Wall -Werror is silent on this shape, and -Wtautological-compare / -Weverything emit no diagnostic either (clang warns on `unsigned >= 0`, not `<= 0`). GCC's -Wtype-limits, enabled by -Wall, does warn on it, which is the price if a GCC build is ever configured. No checker greps for `<= 0`, so no waiver mechanism is needed.",
+   "confidence": "ruled",
+   "evidence": "if (unlikely(size <= 0))"
+  },
+  {
+   "file": "Engine/Memory/MemoryManager.cpp",
+   "line": 215,
+   "rule": "observability: leak report lost in release",
+   "why": "The replaced code logged a Warning and debugBreak in every configuration; Assert prints nothing in Release, so an allocator that leaks at deregistration is now silent in the shipped configuration. The old early `return` also became fall-through, so the stats entry is now removed where it used to be kept - two silent behaviour changes inside a commit sold as fixes.",
+   "fix": "keep the Log(Warning) and add the Assert, and state the new control flow in the class page.",
+   "confidence": "medium",
+   "evidence": "Assert(stats.usage == 0, \"MemoryManager: allocator [\", stats.name, \"](\", id, \") leaks \", stats.usage, \" of \","
+  },
+  {
+   "file": "Engine/Memory/AllocatorScope.h",
+   "line": 29,
+   "rule": "architecture: unconstrained constructor template",
+   "why": "The constructor template accepts anything and calls allocator.GetID() on it, so a wrong argument is diagnosed inside the constructor rather than at the call site. The commit tightened the two non-template overloads with explicit but left this one open.",
+   "fix": "constrain it with a concept (requires { allocator.GetID(); } -> TAllocatorID) or drop it in favour of the ID overload at call sites.",
+   "confidence": "low",
+   "evidence": "template <typename T>"
+  },
+  {
+   "file": "Engine/Memory/MultiPoolAllocator.h",
+   "line": 40,
+   "rule": "architecture: an allocator that owns an id does not forbid copying",
+   "why": "MultiPoolAllocator and ThreadSafeMultiPoolAllocator register an allocator id and hold raw backing pointers, yet declare no deleted or defaulted copy/move operations; they are non-copyable only by accident of an HVector member. The proxy-aliasing bug this commit fixed in PoolAllocator returns the day anyone adds a move constructor here and forgets to repoint allocProxy.allocator.",
+   "fix": "state it explicitly: `MultiPoolAllocator(const MultiPoolAllocator&) = delete;` and the move deleted (or declared with the proxy repointed, mirroring PoolAllocator).",
+   "confidence": "medium",
+   "evidence": "explicit MultiPoolAllocator(const char* inName, size_t allocationUnit = DefaultBankUnit,"
+  },
+  {
+   "file": "Engine/Memory/PoolAllocator.cpp",
+   "line": 156,
+   "rule": "correctness: no self-move guard",
+   "why": "The implementation destroys *this and then placement-news from rhs; on self-assignment it constructs from an object it just destroyed. Pre-existing, but it is the file whose move semantics this commit had to repair.",
+   "fix": "add `if (this == &rhs) { return *this; }`, or make the move-assign destroy rhs after releasing this.",
+   "confidence": "medium",
+   "evidence": "PoolAllocator& PoolAllocator::operator=(PoolAllocator&& rhs) noexcept"
+  },
+  {
+   "file": ".pi/skills/hb-docs/SKILL.md",
+   "line": 131,
+   "rule": "tooling: a checker that no gate runs",
+   "why": "quoted_blocks.py is 625 new lines and SKILL.md documents it as an exit-code gate, but no script invokes it - it appears only in SKILL.md, and check.sh at the reviewed commit never mentions it. Run by hand it already reports 1 stale and 1 unresolved block in docs/Container, so it works and its findings are currently nobody's job.",
+   "fix": "invoke it from check.sh layer 5 beside htmlcheck.py, or state in SKILL.md that it is manual and name who runs it.",
+   "confidence": "high",
+   "evidence": "| Quoted code equals the source | `quoted_blocks.py docs/<M>` | exit 0 \u2014 every block captioned with a file and a symbol is a contiguous run of that symbol's lines; each `STALE` line names page, symbol and diff |"
+  },
+  {
+   "file": "JOURNAL.md",
+   "line": 3,
+   "rule": "process: work-policy 10 (journal) not met",
+   "why": "The newest journal entry predates the allocator work; no entry covers 34a0410 or 626249e and no .Plans/PLAN file exists for them, so a reader of JOURNAL.md cannot tell that the allocator family changed, which defects closed, or that the profiling paths are still unverified.",
+   "fix": "add a dated JOURNAL entry naming the six defect classes, the verification actually performed and the InlinePoolAllocator.h blocker.",
+   "confidence": "high",
+   "evidence": "## 2026-10-19 (evening) \u2014 fifth fold: the whole branch became two commits"
+  },
+  {
+   "file": "Engine/Memory/AllocatorScope.h",
+   "line": 57,
+   "rule": "formatting: label spacing clang-format refuses",
+   "why": "clang-format wants a space after the comment marker. This spelling sits in 104 files, so check.sh layer 1 is red tree-wide. It came from the macro-rename commit rather than the allocator commit, and it is one mechanical edit away.",
+   "fix": "rewrite '#endif //TEST_ENABLED' as '#endif // TEST_ENABLED' across those files, then re-run check.sh --all --no-build.",
+   "confidence": "high",
+   "evidence": "#endif //TEST_ENABLED"
+  }
+ ]
+}
