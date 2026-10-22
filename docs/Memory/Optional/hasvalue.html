@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Optional::HasValue — Memory module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a class="current" href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Memory</a> /
+  <a href="index.html">Optional</a> / HasValue
+</p>
+
+<h1><span class="fn">HasValue</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::Optional</span>
+  <span class="tag">Engine/Memory/Optional.h</span>
+  the state, by value - the only question this class can answer about its own contents
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>[[nodiscard]] auto HasValue() const noexcept</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  Defined in the class body of <code>Engine/Memory/Optional.h</code>; the body is <code>return hasValue;</code>. The
+  declared return type is <code>auto</code>, so a caller receives <code>bool</code> by value — a copy of the flag,
+  not a reference to it, which also means the answer cannot be invalidated by anything that happens afterwards.
+</p>
+
+<p>
+  It is the explicit spelling of the test that <a href="operator-bool.html"><code>operator bool</code></a> spells
+  implicitly, and of the field <a href="index.html#properties"><code>hasValue</code></a> itself. Three names for one
+  boolean, and no other state exists to test: an optional is either holding something or holding nothing.
+</p>
+
+<div class="note">
+  <p>
+    <strong>This is the only question the class can answer about its own contents.</strong> There is no
+    <code>empty()</code>, no <code>has_value()</code>, no capacity, and nothing that inspects the storage — so where
+    a caller must not read the element, this is the gate to stand in front of
+    <a href="operator-multiply.html">operator*</a> and <a href="value.html">Value</a>. The first re-checks the flag
+    and aborts on it; the second does not look at it.
+  </p>
+</div>
+
+<div class="gap">
+  <p>
+    <strong>It reports the flag, not a validated invariant.</strong> The field is public, so a caller can set it
+    without constructing anything, and the <a href="constructors.html">copy and move constructors</a> leave it
+    uninitialised when their source is empty. Both cases produce an optional that answers
+    <code>true</code> here while its bytes were never built. This function cannot tell that story — it is a getter,
+    not a validator.
+  </p>
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<p>None.</p>
+
+<h2 id="return">Return value</h2>
+
+<table>
+  <tr><th>Type</th><th>What you get</th></tr>
+  <tr><td><code>auto</code>, deduced to <code>bool</code></td><td>The flag as it stands at the moment of the call. <code>const noexcept</code>, <code>[[nodiscard]]</code>: cheap to call, impossible to ignore by accident, and never the reason a caller's code fails.</td></tr>
+</table>
+
+<h2 id="example">Examples</h2>
+
+<p>The one line of the body:</p>
+
+<pre><code>return hasValue;</code></pre>
+
+<p class="meta">From Engine/Memory/Optional.h, Optional::HasValue</p>
+
+<p>
+  Inside the class the same field is read directly and far more often — by
+  <a href="operator-multiply.html">operator*</a>, by both <a href="operator-assign.html">assignment</a> forms that
+  take an optional, by <a href="reset.html">Reset</a>, by <a href="emplace.html">Emplace</a> and by
+  <a href="destroy.html">Destroy</a> — because the writers need the flag to decide whether to destroy what is
+  already there before putting something new in.
+</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; Optional</a></span>
+  <span><a href="index.html#methods">All Optional methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

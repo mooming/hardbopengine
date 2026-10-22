@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>InlinePoolAllocator::RegisterAllocator — Memory module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a class="current" href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Memory</a> /
+  <a href="index.html">InlinePoolAllocator</a> / RegisterAllocator
+</p>
+
+<h1><span class="fn">RegisterAllocator</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::InlinePoolAllocator</span>
+  <span class="tag">Engine/Memory/InlinePoolAllocator.h</span>
+  Publish the pool to the MemoryManager through two callbacks, or die trying: registration slots are a fixed 256.
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>void RegisterAllocator() noexcept</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+Private, defined inline in the class body of <code>Engine/Memory/InlinePoolAllocator.h</code>, and called from exactly one place: the end of
+the default constructor, which the copy constructor reaches by delegation. It builds two stateless lambdas, computes the pool's capacity, and
+registers this object with the <a href="../MemoryManager/index.html"><code>MemoryManager</code></a> under the literal name
+<code>"InlinePoolAllocator"</code> and the inline flag set:
+</p>
+
+<pre><code>const auto capacity = ActualBlockSize * ActualNumBlocks * sizeof(T);
+id = mmgr.RegisterAllocator(this, "InlinePoolAllocator", true, capacity, allocFunc, deallocFunc);</code></pre>
+
+<p class="meta">From Engine/Memory/InlinePoolAllocator.h, hbe::InlinePoolAllocator::RegisterAllocator()</p>
+
+<p>
+That call is what makes the pool reachable from code that has never seen its type. The lambdas capture nothing and take the
+<code>void*</code> the manager stored, cast it back to <code>InlinePoolAllocator*</code>, and call
+<a href="allocate-bytes.html">AllocateBytes</a> or <a href="deallocate-bytes.html">DeallocateBytes</a> — so an allocation made inside an
+<a href="../index.html#allocatorscope">AllocatorScope</a> opened on this pool arrives at the same two functions a container calls. The
+<code>capacity</code> figure is the byte size of the member array and is recorded, not enforced: nothing in this class refuses an allocation
+for exceeding it, and the value is used only by the <code>PROFILE_ENABLED</code> statistics, where the inline flag routes it to the inline
+usage record (<code>Engine/Memory/MemoryManager.cpp</code>, <code>MemoryManager::RegisterAllocator()</code>).
+</p>
+
+<div class="gap">
+  <strong>Registration consumes one of a fixed 256 slots, and running out is fatal.</strong>
+  <code>MemoryManager::RegisterAllocator()</code> pops a proxy record from the manager's free pool; when none is left it logs a fatal error
+  and returns <code>InvalidAllocatorID</code> (<code>Engine/Memory/MemoryManager.cpp</code>). The pool then hits
+  <code>FatalAssert(id != InvalidAllocatorID)</code>. The pool of records is the fixed array
+  <code>AllocatorProxy allocators[MaxNumAllocators]</code> in <code>Engine/Memory/MemoryManager.h</code>, and
+  <code>MaxNumAllocators</code> is 256 (<code>Engine/Memory/AllocatorID.h</code>). This matters because the inline pools are not
+  process-level singletons: every <a href="../../HSTL/index.html"><code>HInlineString</code></a> and
+  <a href="../../HSTL/index.html"><code>HInlineVector</code></a> that is constructed registers one, and every one that is destroyed gives it
+  back. A program holding hundreds of live inline containers at once is competing for the same 256 records as every explicit allocator in the
+  engine.
+</div>
+
+<div class="note">
+  <strong><code>FatalAssert(id != 0)</code> is the system allocator's number.</strong>
+  <code>MemoryManager</code> reserves id 0 as <code>SystemAllocatorID</code> (<code>Engine/Memory/MemoryManager.h</code>), so a pool that
+  came back with 0 would be indistinguishable from the system allocator to anything routing by id. The second assertion is the guard against
+  that, and both assertions are the only validation this function performs on the manager's answer.
+</div>
+
+<div class="note">
+  <strong>A successful registration logs.</strong>
+  <code>MemoryManager::RegisterAllocator()</code> writes an <code>Info</code> line naming the allocator and its new id, so constructing an
+  inline pool is a logging call as well as an allocation from the proxy pool. It is also the reason the pool's own
+  <a href="get-name.html">GetName</a> text is worth matching the literal passed here: the log line and the profile entry both come from the
+  literal.
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<p>None. Everything it reports — name, inline flag, capacity — is derived from the type.</p>
+
+<h2 id="return">Return value</h2>
+
+<p>
+None. The side effect is <code>id</code>: the pool is registered for as long as that holds a real value, which
+<a href="deregister-allocator.html">DeregisterAllocator</a> ends.
+</p>
+
+<h2 id="example">Examples</h2>
+
+<pre><code>auto allocFunc = [](void* allocatorPtr, size_t nBytes) -&gt; void*
+{
+	auto allocator = static_cast&lt;InlinePoolAllocator*&gt;(allocatorPtr);
+
+	return static_cast&lt;void*&gt;(allocator-&gt;AllocateBytes(nBytes));
+};</code></pre>
+
+<p class="meta">From Engine/Memory/InlinePoolAllocator.h, hbe::InlinePoolAllocator::RegisterAllocator()</p>
+
+<p>
+The callback carries no capture, so the manager holds a bare function pointer plus the <code>this</code> it was handed. The obligation that
+follows is the lifetime rule: the pool must outlive every scope, thread and container that can reach its id.
+</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; InlinePoolAllocator</a></span>
+  <span><a href="index.html#methods">All InlinePoolAllocator methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

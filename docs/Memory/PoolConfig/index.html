@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PoolConfig — Memory module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a class="current" href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This class</h3>
+  <ul>
+    <li><a href="#description">Class description</a></li>
+    <li><a href="#template">Template parameters</a></li>
+    <li><a href="#properties">Class properties</a></li>
+    <li><a href="#methods">Class methods</a></li>
+    <li><a href="#non-member">Non-member helper functions</a></li>
+    <li><a href="#coverage">Coverage</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Memory</a> /
+  PoolConfig
+</p>
+
+<h1>PoolConfig</h1>
+<p class="subtitle">
+  <span class="tag">Engine/Memory/PoolConfig.h</span>
+  <span class="tag">final</span>
+  <span class="tag">namespace hbe</span>
+  a pool as a caller states it: a block size and a block count, plus the one comparator that orders every configuration list in the module
+</p>
+
+<h2 id="description">Class description</h2>
+
+<p>
+  <code>class PoolConfig final</code> at <code>Engine/Memory/PoolConfig.h</code>: two <code>size_t</code> fields
+  and a comparator. It is the request form of a pool — "give me <code>numberOfBlocks</code> blocks of
+  <code>blockSize</code> bytes" — with no allocator, no buffer and no state behind it. A caller builds a list of
+  them, and that list is what
+  <a href="../PoolConfigUtil/index.html"><code>PoolConfigUtil</code></a> normalises, what
+  <a href="../MultiPoolConfigCache/index.html"><code>MultiPoolConfigCache</code></a> writes to disk, and what
+  <a href="../MultiPoolAllocator/generate-banks-by-cache.html"><code>MultiPoolAllocator::GenerateBanksByCache</code></a>
+  replays into real banks at the next boot.
+</p>
+
+<p>
+  The class exists so a list of pools has one ordering rule. Every algorithm in the module that touches a list of
+  these calls <code>std::sort(configs.begin(), configs.end())</code> first
+  (<code>PoolConfigUtil::Normalize()</code>, <code>PoolConfigUtil::MergeMax()</code> and
+  <code>MultiPoolConfigCache::Normalize()</code> in <code>Engine/Memory/PoolConfigUtil.cpp</code> and
+  <code>Engine/Memory/MultiPoolConfigCache.cpp</code>), and that sort is decided entirely by
+  <a href="operator-less.html"><code>operator&lt;</code></a>. Nothing else in the engine compares two pool
+  configurations any other way.
+</p>
+
+<table>
+  <tr><th>Piece</th><th>What it is</th><th>Where the contract lives</th></tr>
+  <tr>
+    <td>Block size</td>
+    <td>Bytes per block, and the sort key for the whole module</td>
+    <td><a href="operator-less.html">operator&lt;</a>, <a href="../PoolConfigUtil/normalize.html">Normalize</a></td>
+  </tr>
+  <tr>
+    <td>Block count</td>
+    <td>How many blocks of that size to provision; the value that is summed, maxed and dropped</td>
+    <td><a href="../PoolConfigUtil/normalize.html">Normalize</a>,
+      <a href="../PoolConfigUtil/merge-max.html">MergeMax</a></td>
+  </tr>
+  <tr>
+    <td>Construction</td>
+    <td>Empty or explicit; the default is a zero-size, zero-count pair, not an unset state</td>
+    <td><a href="constructors.html">constructors</a></td>
+  </tr>
+</table>
+
+<h3>The ordering rule</h3>
+
+<p>
+  The rule is <strong>ascending by <code>blockSize</code>, and by nothing else</strong>. Two entries with the
+  same block size compare equivalent no matter how far apart their counts are, because the comparator reads only
+  <code>blockSize</code>. That is what makes a list of pool configurations a <em>set of sizes</em> in disguise:
+  <a href="../PoolConfigUtil/normalize.html"><code>PoolConfigUtil::Normalize</code></a> sorts, then folds every
+  run of equal sizes into one entry whose count is the run's sum, and asserts the result holds exactly as many
+  entries as there were distinct sizes.
+</p>
+
+<p>An out-of-order list costs different things depending on who receives it:</p>
+
+<table>
+  <tr><th>Receiver</th><th>What an out-of-order list does</th></tr>
+  <tr>
+    <td><a href="../PoolConfigUtil/normalize.html">Normalize</a>,
+      <a href="../PoolConfigUtil/merge-max.html">MergeMax</a></td>
+    <td>Nothing: both sort first, so the list self-heals. <code>MergeMax</code> sorts its destination again at
+      the end for the same reason</td>
+  </tr>
+  <tr>
+    <td><a href="../MultiPoolConfigCache/deserialize.html">MultiPoolConfigCache::Deserialize</a></td>
+    <td>It does not sort. Outside <code>RELEASE_BUILD</code> it walks each adjacent pair and logs a fatal error —
+      <code>"configs should be well-orddered"</code> — for every pair that fails <code>a &lt; b</code>, then still
+      returns <code>true</code> with the data loaded exactly as read</td>
+  </tr>
+  <tr>
+    <td><a href="../MultiPoolAllocator/generate-banks-by-cache.html">GenerateBanksByCache</a></td>
+    <td>Banks are created in the order the file lists them, and unlike
+      <a href="../MultiPoolAllocator/generate-bank.html"><code>GenerateBank</code></a> this path never sorts the
+      bank vector afterwards, so an unsorted cache file leaves an unsorted bank list in a shipping build where no
+      check runs at all</td>
+  </tr>
+  <tr>
+    <td><a href="../MultiPoolAllocator/get-bank-index.html">MultiPoolAllocator::GetBankIndex(size_t)</a></td>
+    <td>Where the cost lands. That scan takes the first bank whose block size covers the request and gives up as
+      soon as it meets a bank more than twice the request size — a rule that only means anything on an ascending
+      list. A bank that is too large, met early, ends the search and pushes the request into the fallback path: a
+      fresh bank every time and a fallback counted against the engine's statistics</td>
+  </tr>
+</table>
+
+<div class="gap">
+  <p>
+    <strong><code>numberOfBlocks</code> is <code>size_t</code>, so a negative count cannot be
+    represented.</strong> The one place that asks for it writes <code>config.numberOfBlocks &lt;= 0</code>
+    (<code>PoolConfigUtil::Normalize()</code>), which on an unsigned type is a zero test and nothing more. A
+    caller that computes a count and underflows it gets a value near <code>SIZE_MAX</code>, every check in the
+    module accepts it, and the entry survives into the cache file. The cost is paid at boot: a bank is
+    <code>blockSize * numberOfBlocks</code> requested from the parent allocator, and
+    <a href="../MultiPoolAllocator/generate-bank.html"><code>GenerateBank</code></a> guards only for
+    <code>Assert(blockSize &gt; 0)</code> and <code>Assert(numberOfBlocks &gt; 0)</code> — assertions, which
+    <code>Engine/Core/Debug.h</code> defines away in a Release build.
+  </p>
+</div>
+
+<div class="note">
+  <p>
+    <strong>A count of zero means "do not provision this size", and it is dropped rather than honoured.</strong>
+    <code>PoolConfigUtil::Normalize()</code> skips zero-count entries while it counts distinct sizes and refuses
+    to emit a run whose summed count is zero, so a size that appears only with a zero count disappears from the
+    list. A zero <em>block size</em> behaves the same way but for a subtler reason: the fold seeds its running
+    comparison with <code>blockSize = 0</code>, so a leading zero-size entry is never recognised as a new run and
+    its count is discarded with it. In both cases the trailing
+    <code>Assert(configs.size() == numUniqueBlocks)</code> still holds, so the loss is silent by design — it is a
+    compaction rule, not an error.
+  </p>
+</div>
+
+<h2 id="template">Template parameters</h2>
+
+<p>None. <code>PoolConfig</code> is <code>final</code> and declares no template parameter.</p>
+
+<h2 id="properties">Class properties</h2>
+
+<p>
+  Both fields are public and neither carries an initialiser in the header; whatever values exist come from a
+  <a href="constructors.html">constructor</a>.
+</p>
+
+<table>
+  <tr><th>Type + Name</th><th>Default Value</th><th>Description</th></tr>
+  <tr><td><code>size_t blockSize;</code> <span class="badge">public</span></td><td><span class="muted">none in the header</span> (the default constructor sets <code>0</code>)</td><td>Bytes in one block of this pool, and the only field <a href="operator-less.html">the comparator</a> reads, so it is also the sort key and the merge key for the whole module</td></tr>
+  <tr><td><code>size_t numberOfBlocks;</code> <span class="badge">public</span></td><td><span class="muted">none in the header</span> (the default constructor sets <code>0</code>)</td><td>How many blocks of <code>blockSize</code> to provision; summed across equal sizes by <a href="../PoolConfigUtil/normalize.html">Normalize</a> and maxed between two lists by <a href="../PoolConfigUtil/merge-max.html">MergeMax</a></td></tr>
+</table>
+
+<h2 id="methods">Class methods</h2>
+
+<table class="methods">
+  <tr><th>Name</th><th>Signature</th><th>What a caller depends on</th></tr>
+  <tr>
+    <td><a href="constructors.html"><code>PoolConfig</code></a><span class="badge">2 overloads</span></td>
+    <td class="sig">PoolConfig() noexcept<br>PoolConfig(size_t blockSize, size_t nBlocks) noexcept</td>
+    <td>Both are unconditional: any pair of sizes is accepted, including <code>(0, 0)</code>, and neither is aligned, floored or checked.</td>
+  </tr>
+  <tr>
+    <td><a href="operator-less.html"><code>operator&lt;</code></a></td>
+    <td class="sig">bool operator&lt;(const PoolConfig&amp; rhs) const noexcept</td>
+    <td>Strict weak ordering on <code>blockSize</code> alone, which is the ordering every sort in the module performs.</td>
+  </tr>
+</table>
+
+<h2 id="non-member">Non-member helper functions</h2>
+
+<p>
+  None. The functions that operate on lists of pool configurations live in the separate
+  <a href="../PoolConfigUtil/index.html"><code>PoolConfigUtil</code></a> namespace, which owns
+  <code>Normalize</code> and <code>MergeMax</code> and the <code>TPoolConfigs</code> alias they work on.
+  <code>PoolConfig.h</code> itself includes only <code>&lt;cstddef&gt;</code>.
+</p>
+
+<h2 id="coverage">Coverage</h2>
+
+<table>
+  <tr><th>Not documented here</th><th>Why</th></tr>
+  <tr>
+    <td>What a block size <em>should</em> be — the rounding a request is put through before it becomes a
+      <code>PoolConfig</code></td>
+    <td>That is the multi-pool allocator's arithmetic, not this type's:
+      <a href="../MultiPoolAllocator/calculate-block-size.html"><code>CalculateBlockSize</code></a> and
+      <a href="../MultiPoolAllocator/calculate-number-of-blocks.html"><code>CalculateNumberOfBlocks</code></a>
+      own it, and <a href="../PoolAllocator/getblocksize.html"><code>PoolAllocator::GetBlockSize</code></a> is the
+      stride a real pool ends up with after it floors at <code>sizeof(size_t)</code> and aligns. A
+      <code>PoolConfig</code> carries no such guarantee — it holds exactly what it was handed</td>
+  </tr>
+  <tr>
+    <td>Whether an unsorted list can reach a shipping build, and how often it does</td>
+    <td>The check that would catch it lives inside <code>#if !RELEASE_BUILD</code> in
+      <code>MultiPoolConfigCache::Deserialize()</code>, and the file's contents depend on whatever the previous run
+      wrote. The mechanism is stated above; the frequency is not something the code records</td>
+  </tr>
+  <tr>
+    <td>Any upper bound on a block count, and what a pathological one costs in practice</td>
+    <td>Nothing in <code>Engine/Memory/</code> bounds <code>numberOfBlocks</code>; the parent allocator's
+      capacity is the only limit, and how a request larger than that behaves belongs to
+      <a href="../PoolAllocator/index.html"><code>PoolAllocator</code></a> and
+      <a href="../MemoryManager/index.html"><code>MemoryManager</code></a>, not to this pair of integers</td>
+  </tr>
+</table>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; PoolConfig</a></span>
+  <span><a href="index.html#methods">All PoolConfig methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

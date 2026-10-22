@@ -417,7 +417,7 @@ released by consumer &#8658;  readyIndex := L + Capacity   (which is "free for l
 <h2 id="cost">Measured cost, two regimes, and the floor under it</h2>
 
 <p>
-  Release build (<code>-O3</code>, <code>-D__UNIT_TEST__</code>), 16-byte payload, capacity&nbsp;64 throughout,
+  Release build (<code>-O3</code>, <code>-DTEST_ENABLED</code>), 16-byte payload, capacity&nbsp;64 throughout,
   5 interleaved rotated rounds, a fresh queue per round, ns per item, fastest round reported with the middle round
   beside it. The item count is scaled so that every cell moves about 200,000 items: <code>200000 / producers</code> per
   producer when saturated, a flat 10,000 when sparse, where the 2&nbsp;µs arrival gap rather than the queue decides the

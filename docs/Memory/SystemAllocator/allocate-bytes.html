@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SystemAllocator::AllocateBytes — Memory module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a class="current" href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Memory</a> /
+  <a href="index.html">SystemAllocator</a> / AllocateBytes
+</p>
+
+<h1><span class="fn">AllocateBytes</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::SystemAllocator</span>
+  <span class="tag">Engine/Memory/SystemAllocator.h</span>
+  Private: where bytes come from - malloc in a shipped build, page-rounded virtual blocks with end-aligned pointers in an investigation build, and the profiling report either way
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>void* AllocateBytes(std::size_t nBytes)</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  Private; defined in the class body of <code>Engine/Memory/SystemAllocator.h</code> and reached only through
+  <a href="allocate.html">allocate</a>. This is where the class's one decision — where bytes come from — is made, and
+  the preprocessor selects between two very different answers.
+</p>
+
+<p>
+  In the shipped configuration, the body is <code>auto ptr = (T*) malloc(nBytes);</code> and nothing else before the
+  report: the pointer, null on failure, is returned as given. With <code>MEMORY_INVESTIGATION_ENABLED</code>, the
+  request is rounded up to whole pages (<code>pageCount = (nBytes + pageSize - 1) / pageSize</code> over
+  <code>OS::GetPageSize()</code>), the block comes from <code>OS::VirtualAlloc</code>, and the pointer handed back is
+  chosen to make off-by-N writes fault or show: unless the underrun-check switch is on, the returned pointer is placed
+  at the block's <em>end</em> minus the requested bytes, so the first byte past the caller's region is past the mapped
+  block. With <code>MEMORY_LOGGING_ENABLED</code> every such allocation logs raw base and placed pointer through the
+  engine logger. One further statement in this configuration deserves recording for what it is: a special case for
+  <code>nBytes == 1</code> that assigns <code>1</code> to <code>nBytes</code> — a no-op edit left in the source,
+  changing nothing.
+</p>
+
+<p>
+  Under <code>PROFILE_ENABLED</code> both configurations then file the statistics report —
+  <code>mmgr.ReportAllocation(GetID(), ptr, nBytes, allocated)</code>, with <code>allocated</code> read back from
+  <code>OS::GetAllocSize(ptr)</code> on the heap path and equal to the page-rounded size on the virtual one. That is
+  also the only reason this function touches <code>MemoryManager::GetInstance()</code>: in the shipped configuration
+  (profiling off) the byte layer stands entirely on its own, engine or no engine — the fact the class page's note is
+  about.
+</p>
+
+<h2 id="parameters">Parameters</h2>
+
+<table>
+  <tr><th>Parameter</th><th>Type</th><th>Requirement</th></tr>
+  <tr><td><code>nBytes</code></td><td><code>std::size_t</code></td><td>Byte count, computed by the caller as <code>n * sizeof(T)</code>; on the investigation path it is also the geometry input that decides the returned pointer's position inside the block.</td></tr>
+</table>
+
+<h2 id="return">Return value</h2>
+
+<p>
+  An untyped pointer to room for <code>nBytes</code> — never tested for null here, and the investigation path's pointer
+  is deliberately not the block base in the default switch combination, which is why
+  <a href="deallocate-bytes.html">DeallocateBytes</a> recomputes the base from the size before releasing.
+</p>
+
+<h2 id="example">Examples</h2>
+
+<pre><code>		const auto pageSize = OS::GetPageSize();
+		const size_t pageCount = (nBytes + pageSize - 1) / pageSize;
+		const size_t allocSize = pageCount * pageSize;
+		auto rawPtr = OS::VirtualAlloc(allocSize);</code></pre>
+
+<p class="meta">From Engine/Memory/SystemAllocator.h, SystemAllocator::AllocateBytes</p>
+
+<p>
+  The investigation path's request shaping, verbatim. This whole branch is compiled out under
+  <code>Engine/Config/BuildConfig.h</code>'s current <code>MEMORY_INVESTIGATION_ENABLED 0</code>, so the page describes
+  it from the source; nothing here has been observed running.
+</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; SystemAllocator</a></span>
+  <span><a href="index.html#methods">All SystemAllocator methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

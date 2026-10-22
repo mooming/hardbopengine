@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PoolAllocator::IsBlockStart — Memory module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a class="current" href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Memory</a> /
+  <a href="index.html">PoolAllocator</a> / IsBlockStart
+</p>
+
+<h1><span class="fn">IsBlockStart</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::PoolAllocator</span>
+  <span class="tag">Engine/Memory/PoolAllocator.h</span>
+  Private: inside the buffer is not enough — a block also has to begin where its stride says it begins.
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>bool IsBlockStart(Pointer ptr) const</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  Defined in <code>Engine/Memory/PoolAllocator.cpp</code> as <code>PoolAllocator::IsBlockStart(Pointer ptr) const</code>. It is
+  <a href="ismine.html">IsMine</a> and one further test: the distance from the base of the backing allocation has to be a whole number
+  of strides. Its only caller is <a href="deallocate.html">Deallocate</a>, which asks it after <code>IsMine</code> has already accepted
+  the pointer and before anything is written into it.
+</p>
+
+<pre><code>	if (!IsMine(ptr))
+	{
+		return false;
+	}
+
+	return static_cast&lt;size_t&gt;(static_cast&lt;Byte*&gt;(ptr) - buffer) % blockSize == 0;</code></pre>
+
+<p class="meta">From Engine/Memory/PoolAllocator.cpp, PoolAllocator::IsBlockStart(Pointer ptr) const</p>
+
+<div class="note">
+  <strong>What it refuses, and what that refusal buys.</strong>
+  A free list stores its links inside the free blocks themselves, at offset zero, and <a href="writenextindex.html">WriteNextIndex</a>
+  writes there without asking who else is using those bytes. Before this test existed, releasing <code>block + 1</code> — a pointer
+  <code>IsMine</code> happily accepts, because the range test has no notion of a boundary — wrote a link over the first
+  <a href="getblocksize.html">stride</a> of a block somebody was still holding and pushed that interior address onto the list, so the
+  same memory could be handed out a second time. In a Debug and Dev build the misalignment was caught downstream by the allocator's own
+  alignment assertion; in a Release build, where assertions are compiled out, nothing said anything at all. This is the check that makes
+  the refusal a refusal in every configuration, and it reports itself through <code>MemoryManager::LogError</code> at the call site.
+</div>
+
+<div class="note">
+  <strong>Cost, and why there is no table behind it.</strong>
+  Two pointer subtractions and one modulo against <code>blockSize</code>, with no per-block metadata and no extra memory: a pool of a
+  million blocks carries no bitmap that could have answered this question. The stride is already known to be a multiple of the
+  allocation's alignment — the constructor raises it to <code>sizeof(TSize)</code> and aligns it — so a block start is also an aligned
+  address, and the modulo cannot be replaced by an alignment test without accepting addresses that lie between two blocks.
+</div>
+
+<div class="gap">
+  <strong>It answers one question, so a second release still passes.</strong>
+  This test asks where a pointer sits, never whether the block is free. Releasing the same block twice keeps its address on the list
+  twice and is caught, if at all, by the free-count assertion at the end of
+  <a href="deallocate.html">Deallocate</a> — which a Release build removes. <a href="index.html#coverage">Coverage</a> records the
+  double release as still undetected; a bitmap would be the price of closing it, and that trade has not been made.
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<table>
+  <tr><th>Name</th><th>Type</th><th>Meaning</th></tr>
+  <tr><td><code>ptr</code></td><td><code>Pointer</code></td><td>A candidate block. It is not dereferenced here, so an uninitialised block stays unread; a null pointer fails <code>IsMine</code>, whose own test is skipped entirely when the pool holds no buffer.</td></tr>
+</table>
+
+<h2 id="return">Return value</h2>
+
+<table>
+  <tr><th>Type</th><th>What you get</th></tr>
+  <tr><td><code>bool</code></td><td><code>true</code> only when the pointer is inside the backing allocation and an exact multiple of <code>blockSize</code> from its base — in which case those bytes belong to the pool's own bookkeeping. Everything else, including an interior address and anything outside the buffer, is <code>false</code>.</td></tr>
+</table>
+
+<h2 id="example">Examples</h2>
+
+<p class="note">Illustrative — the only call site is inside the class itself.</p>
+
+<pre><code>	if (unlikely(!IsBlockStart(ptr)))
+	{
+		auto&amp; rejectMgr = MemoryManager::GetInstance();
+		rejectMgr.LogError([ptr](auto&amp; logStream) { logStream &lt;&lt; ptr &lt;&lt; " is not the start of a block of this pool."; });
+
+		return;
+	}</code></pre>
+
+<p class="meta">From Engine/Memory/PoolAllocator.cpp, PoolAllocator::Deallocate(Pointer ptr, size_t size)</p>
+
+<p>
+  The refusal as it stands in the release path: the pointer is named in the log, the free list is left exactly as it was, and the caller
+  keeps a block it no longer owns rather than the pool losing one it never had.
+  <code>TestPoolAllocatorInterior</code> in <code>Engine/Memory/PoolAllocator.cpp</code> walks this branch and then checks that the held
+  block is not handed out again.
+</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; PoolAllocator</a></span>
+  <span><a href="index.html#methods">All PoolAllocator methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

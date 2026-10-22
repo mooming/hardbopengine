@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Optional::ConstructAt — Memory module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a class="current" href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Memory</a> /
+  <a href="index.html">Optional</a> / ConstructAt
+</p>
+
+<h1><span class="fn">ConstructAt</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::Optional</span>
+  <span class="tag">Engine/Memory/Optional.h</span>
+  <span class="tag">private</span>
+  where an element arrives: an address stored for a reference type, a placement new for a value type
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>void ConstructAt(True_t, TType&amp; inValue)
+
+template &lt;typename... Types&gt;
+	void ConstructAt(False_t, Types&amp;&amp;... args)</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  Private, and the only place <code>Optional</code> puts an element into its storage. The
+  <code>True_t</code>/<code>False_t</code> parameter is not a caller's choice: every call site passes
+  <code>typename IsReferenceType&lt;TType&gt;::Result()</code> or names one of the two tags directly, so an
+  instantiation gets exactly one of these bodies.
+</p>
+
+<h3>Reference element types: <code>ConstructAt(True_t, TType&amp;)</code></h3>
+
+<p>
+  Stores the <em>address</em> of the argument into the byte array, treating the array as a pointer slot
+  (<code>reinterpret_cast&lt;TPtr&amp;&gt;(value[0]) = inValuePtr;</code>). It checks that address with
+  <code>Assert</code>, then re-reads the value through <a href="value.html">Value</a> and asserts that the address of
+  what it can reach equals the address it was given — a self-check that the cast and the storage agree — and
+  finally sets <code>hasValue = true</code>. Nothing is copied, and nothing is constructed: the optional becomes an
+  alias for an object it does not own.
+</p>
+
+<h3>Value element types: <code>ConstructAt(False_t, Types&amp;&amp;...)</code></h3>
+
+<p>
+  Sets <code>hasValue = true</code> first, then
+  <code>new (value) TType(std::forward&lt;Types&gt;(args)...);</code> — a placement new into the member array, with
+  the caller's arguments forwarded. That ordering means the flag is true while the constructor is still running, so
+  a destructor that ran in that window would see a live flag over a half-built object.
+</p>
+
+<div class="gap">
+  <p>
+    <strong>Neither overload destroys what was already in the storage.</strong> Both assume the caller emptied the
+    optional first, and both <a href="emplace.html">Emplace</a> and
+    <a href="operator-assign.html"><code>operator=(TType&amp;)</code></a> do exactly that. A caller that reached
+    <code>ConstructAt</code> without a preceding <a href="destroy.html">Destroy</a> would leak the old element's
+    resources and overwrite it in place — which no outside caller can do, since this is private, but it is the
+    invariant every call site is responsible for.
+  </p>
+</div>
+
+<div class="gap">
+  <p>
+    <strong>The reference form's two checks are <code>Assert</code>, not <code>FatalAssert</code>.</strong>
+    <code>Engine/Core/Debug.h</code> gives <code>Assert</code> an empty definition in <code>RELEASE_BUILD</code>, so a
+    shipped build stores whatever address it is handed — including null — and the later read in
+    <a href="getvalue.html"><code>GetValue(True_t)</code></a> dereferences it. And because the optional holds only an
+    address, the referred object's lifetime is the caller's problem: the optional cannot tell that it died, and
+    <a href="destroy.html"><code>Destroy(True_t)</code></a> will clear the flag without touching it.
+  </p>
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<table>
+  <tr><th>Parameter</th><th>Type</th><th>Requirement</th></tr>
+  <tr><td><code>True_t</code> / <code>False_t</code></td><td>the trait's <code>Result</code></td><td>Selects the overload; it is never chosen by hand at a call site, and passing the wrong tag for a given <code>TType</code> would be a compile error before it was a runtime one</td></tr>
+  <tr><td><code>inValue</code></td><td><code>TType&amp;</code></td><td>Reference element types only: the object to alias. Its address is taken, so it must outlive every use of the optional</td></tr>
+  <tr><td><code>args</code></td><td><code>Types&amp;&amp;...</code></td><td>Value element types only: arguments usable to construct a <code>TType</code> in place</td></tr>
+</table>
+
+<h2 id="return">Return value</h2>
+
+<p>
+  None, and no failure is reported on either path. The only state change a caller can observe is
+  <a href="hasvalue.html">HasValue</a> becoming true — for a value type, becoming true <em>before</em> the element
+  exists.
+</p>
+
+<h2 id="example">Examples</h2>
+
+<p>The value path, in its entirety:</p>
+
+<pre><code>hasValue = true;
+new (value) TType(std::forward&lt;Types&gt;(args)...);</code></pre>
+
+<p class="meta">From Engine/Memory/Optional.h, Optional::ConstructAt(False_t, Types&amp;&amp;...)</p>
+
+<p>
+  Both lines sit at the same indentation in the header, and their order is the ordering note above. The paired
+  teardown is <a href="destroy.html"><code>Destroy(False_t)</code></a>, which runs the destructor this placement new
+  created — and which is reached only when the flag reads true.
+</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; Optional</a></span>
+  <span><a href="index.html#methods">All Optional methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

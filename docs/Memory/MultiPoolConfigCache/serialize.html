@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MultiPoolConfigCache::Serialize — Memory module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a class="current" href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Memory</a> /
+  <a href="index.html">MultiPoolConfigCache</a> / Serialize
+</p>
+
+<h1><span class="fn">Serialize</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::MultiPoolConfigCache</span>
+  <span class="tag">Engine/Memory/MultiPoolConfigCache.h</span>
+  write every record to a buffer - and normalise the cache on the way, because writing rewrites what is written
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>size_t Serialize(Buffer&amp; outBuffer)</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  Writes the whole cache into <code>outBuffer</code> through a <code>BufferOutputStream</code>, in this exact
+  order: the class-name tag from <a href="get-class-name.html">GetClassName</a>, the version number from
+  <a href="get-version.html">GetVersion</a>, the number of allocator records, then per record the allocator's name
+  as text, the number of pool configurations, and per configuration the block size and the block count — two
+  <code>size_t</code> values each, with no padding, no per-record length and no checksum.
+</p>
+
+<p>
+  Before it writes anything it calls <a href="normalize.html">Normalize</a>, so the bytes that leave are the
+  sorted, de-duplicated, emptied-records-removed view of <code>data</code> — and <code>data</code> itself is left
+  in that shape afterwards. This is why the cache count written is smaller than the number of reports the run made:
+  one allocator that reported five times leaves one record whose per-size counts are the largest seen
+  (<a href="../PoolConfigUtil/merge-max.html">MergeMax</a>).
+</p>
+
+<p>
+  Two failure points, both logged through <code>Logger</code> under a name derived from
+  <code>__PRETTY_FUNCTION__</code> and both answered the same way: after the header (tag, version, count) and after
+  each record's configurations, <code>bos.HasError()</code> is tested and the function returns <strong>0</strong>.
+  On success it returns <code>bos.GetCursor()</code> — the number of bytes written.
+</p>
+
+<div class="gap">
+  <p>
+    <strong>The one caller writes the file twice.</strong>
+    <a href="../MemoryManager/save-multi-pool-configs.html">MemoryManager::SaveMultiPoolConfigs</a> first
+    serialises into a dummy buffer purely to learn the size, then opens the real file with that size and serialises
+    again — so <a href="normalize.html">Normalize</a> runs twice and the second pass sees a list it already
+    compacted. If the second call returns anything other than the measured size the caller logs a failure and
+    leaves the file as it is; that log line reads "Failed to deserialize the file", which is the load path's
+    wording, so a write failure is reported with a read message.
+  </p>
+</div>
+
+<div class="note">
+  <p>
+    <strong>A zero return is indistinguishable from an empty cache.</strong> An empty <code>data</code> after
+    normalisation still writes a header and returns a non-zero cursor, so in practice <code>0</code> means a stream
+    error — but nothing in the signature says so, and the caller compares the return against the size it measured
+    rather than against an error sentinel. The buffer is sized from the first pass, so a second pass that produced
+    more bytes than the first would be reported as a failure rather than truncating the file.
+  </p>
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<table>
+  <tr><th>Parameter</th><th>Type</th><th>Requirement</th></tr>
+  <tr><td><code>outBuffer</code></td><td><code>Buffer&amp;</code></td><td>A writable buffer with room for the whole cache. The caller obtains it from <code>BufferUtil::GetWriteOnlyFileBuffer(path, size)</code> with the size measured by a preceding call; nothing here checks or grows the capacity, a stream error is the only feedback</td></tr>
+</table>
+
+<h2 id="return">Return value</h2>
+
+<table>
+  <tr><th>Type</th><th>What you get</th></tr>
+  <tr><td><code>size_t</code></td><td>The stream's cursor position when writing finished, i.e. the bytes produced, or <code>0</code> after logging if the header or any record failed to stream.</td></tr>
+</table>
+
+<h2 id="example">Examples</h2>
+
+<p>The per-bank payload is two integers and nothing else:</p>
+
+<pre><code>bos &lt;&lt; config.blockSize;
+bos &lt;&lt; config.numberOfBlocks;</code></pre>
+
+<p class="meta">From Engine/Memory/MultiPoolConfigCache.cpp, MultiPoolConfigCache::Serialize</p>
+
+<p>
+  Those two <code>size_t</code> values are the whole of what survives a restart: an allocator's bank is rebuilt
+  from them by
+  <a href="../MultiPoolAllocator/generate-banks-by-cache.html"><code>MultiPoolAllocator::GenerateBanksByCache</code></a>,
+  which names each bank <code>&lt;allocator&gt;_&lt;blockSize&gt;_&lt;numberOfBlocks&gt;</code>. Their source is
+  <a href="../MultiPoolAllocator/report-configuration.html">ReportConfiguration</a>, which reads them off the live
+  banks as the block size and the peak block usage. The reader that pairs with this block is
+  <a href="deserialize.html">Deserialize</a>.
+</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; MultiPoolConfigCache</a></span>
+  <span><a href="index.html#methods">All MultiPoolConfigCache methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

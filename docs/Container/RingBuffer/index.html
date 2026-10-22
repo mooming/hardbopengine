@@ -142,7 +142,7 @@
       </ul>
       Four engine containers satisfy it today: <code>AtomicFixedRingMPSC</code>, <code>AtomicFixedRingMPMC</code>,
       <code>FixedRingMPSC</code> and <code>FixedRingMPMC</code>; the <code>static_assert</code> group in the
-      <code>__UNIT_TEST__</code> region of <code>Engine/Container/RingBuffer.h</code> fails the build if one ever stops
+      <code>TEST_ENABLED</code> region of <code>Engine/Container/RingBuffer.h</code> fails the build if one ever stops
       satisfying it. A <code>U</code> of a different capacity is not a different tuning of the same queue: the capacity is how many
       elements a block can hold before the chain links the next one, so it is also the amortisation unit for growth, retirement and
       hazard scans &mdash; which is why the testlets in <code>Engine/Container/RingBuffer.cpp</code> choose capacities of

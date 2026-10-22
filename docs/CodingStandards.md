@@ -176,7 +176,7 @@ To maintain high code quality and consistency, please adhere to the following gu
     | A11 | after the `}` of a nested block, before the next statement | exactly one |
     | A12 | between two definition blocks at namespace scope | exactly one |
     | A13 | between a doc comment or an `/// API reference:` pointer and its declaration | none |
-    | A14 | before a trailing `#ifdef __UNIT_TEST__` region | exactly one |
+    | A14 | before a trailing `#ifdef TEST_ENABLED` region | exactly one |
     | A15 | inside a parenthesized continuation — a constructor initializer list, an attribute argument list | none |
     | A16 | anywhere else | two or more consecutive blanks are forbidden |
 
@@ -188,7 +188,7 @@ To maintain high code quality and consistency, please adhere to the following gu
       the line it governs are one paragraph; a blank between them would push a pragma away from the code it
       exists to silence. A `return` sitting directly under a pragma therefore owes itself no blank, and
       `CreateWithMove` in `Engine/CodingStandards.cpp` demonstrates that shape.
-    - A2 reaches inside a guarded include region. A `#ifdef __UNIT_TEST__` block that pulls in `<deque>` and
+    - A2 reaches inside a guarded include region. A `#ifdef TEST_ENABLED` block that pulls in `<deque>` and
       `"Core/ScopedTime.h"` is a preamble at smaller scale, so the blank between the `<…>` block and the
       `"…"` block belongs there too — 15 such findings tree-wide. Rule B2's *sort* is the one that must not
       cross a guard: `Engine/OSAL/OSMemory.cpp` picks headers by platform, and sorting across `#if` / `#elif`
@@ -253,7 +253,7 @@ To maintain high code quality and consistency, please adhere to the following gu
     - **What never moves.** 83 files carry includes below the preamble, and every one of them matters
       where it stands: the `#include "MatrixCommonImpl.inl"` / `"VectorCommonImpl.inl"` directives
       sit *inside a class body* (`Engine/Math/Vector3.h:90`), so their position decides what is in scope
-      where, and the `#ifdef __UNIT_TEST__` regions at the end of a file (`Engine/Core/TaskSystem.cpp:787-794`)
+      where, and the `#ifdef TEST_ENABLED` regions at the end of a file (`Engine/Core/TaskSystem.cpp:787-794`)
       are test-only surface that belongs after everything they test. Hoisting, sorting or "cleaning" either
       one is a compile break dressed up as a cleanup. The checker proves the region below the preamble came
       out of the pass byte-identical.
@@ -285,7 +285,7 @@ To maintain high code quality and consistency, please adhere to the following gu
   legacy files to disagree until they are reformatted.
 - **Single-line Statements**: Avoid using braces for single-line `continue` or `return` statements.
 
-- **Unit-test blocks go at the end of the file.** A `#ifdef __UNIT_TEST__` region — a test
+- **Unit-test blocks go at the end of the file.** A `#ifdef TEST_ENABLED` region — a test
   class declaration, or test-only API — is always the last thing in the file, after the
   production declarations it relates to. One such region per file; a file that seems to need
   two belongs merged.
@@ -379,6 +379,16 @@ To maintain high code quality and consistency, please adhere to the following gu
     handled silently; reserve logging for exceptional or
     unexpected conditions.
 - **Assertions**: Use `Assert()` and `FatalAssert()` from `Core/Debug.h` for runtime checks and debugging.
+  - `Assert` is compiled out of Release, so anything a Release build must survive sits behind an explicit
+    `if` with a log and a return; the assert only repeats the condition in checked builds. An assert may
+    never be the only guard between a bad input and a dereference.
+  - `FatalAssert` is live in every configuration, Release included, by decision: it is reserved for state
+    from which the process cannot continue correctly, where every later step would silently produce wrong
+    results. `MemoryManager::GetAllocatorProxy` on an invalid id is the recorded example — continuing would
+    hand every caller the same shared dummy proxy, silently mixing statistics and routing — so it aborts in
+    Release too, and a caller that can survive the condition tests validity first and never reaches it.
+  - Give every assert a message that names the state, and log before asserting; a message-less assert makes
+    the call site the whole report.
 - **Exception-free**: The engine is exception-free; do not use C++ exceptions.
 - **Pointers**: Prefer passing by reference over raw pointers whenever possible, and assume reference variables always point to valid addresses.
 - **Constants**: Favor the use of `constexpr` and `const`.

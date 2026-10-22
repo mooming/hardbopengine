@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Shareable::GetReferenceCount — Memory module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a class="current" href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Memory</a> /
+  <a href="index.html">Shareable</a> / GetReferenceCount
+</p>
+
+<h1><span class="fn">GetReferenceCount</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::Shareable</span>
+  <span class="tag">Engine/Memory/Shareable.h</span>
+  How many handles share this object - the number a copy-on-write mutation decides on, and the first thing to break at 256 owners.
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>[[nodiscard]] RefCount GetReferenceCount() const</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+Defined inline in the class body of <code>Engine/Memory/Shareable.h</code>. The body is
+<code>return body != nullptr ? body-&gt;GetRefCount() : 0;</code> — the count the shared <code>Body</code> carries, or 0 for a handle that names
+nothing. The count is the number of live references, not the number of handles that ever existed: <code>Body::Create()</code> takes the first
+before any handle exists (<a href="constructors.html">constructors</a>), every copy takes one more, and every
+<a href="destructor.html">destruction</a> or <a href="release.html">Release</a> drops one.
+</p>
+
+<table>
+  <tr><th>Answer</th><th>What the handle may safely do</th><th>In-tree use</th></tr>
+  <tr><td>1</td><td>Mutate the object: no other handle names it.</td><td>The <code>else</code> branch of
+      <code>String::operator=</code>, which resizes and <code>memcpy</code>s into the buffer in place.</td></tr>
+  <tr><td>greater than 1</td><td>Not mutate it: somebody else is reading the same object.</td><td>The guard of the same function —
+      <code>if (buffer.GetReferenceCount() &gt; 1)</code> — which takes the copy-on-write branch instead.</td></tr>
+  <tr><td>0</td><td>Nothing: the handle is empty, and this answer means "no object", not "one free slot".</td><td>Reached by a moved-from or
+      released handle; see the gap below for the other way to get it.</td></tr>
+</table>
+
+<div class="gap">
+  <strong>With the default <code>uint8_t</code> counter, 256 owners of one object make it report 0.</strong>
+  <code>Reference()</code> is a bare <code>++count</code>, so the 256th reference wraps an 8-bit count to 0. From then on
+  <a href="destructor.html">the destructor</a> cannot free the object (<code>Dereference()</code> is guarded by <code>count &gt; 0</code>) and
+  this function reports 0 for an object with 256 live owners. Read together with the table above, that is the dangerous pair: a copy-on-write
+  caller testing <code>&gt; 1</code> gets "you are alone", and mutates in place a buffer that everyone else is still reading. Instantiate a wider
+  <code>RefCount</code> if a value can have that many simultaneous owners; the tree's one user does not test the boundary.
+</div>
+
+<div class="note">
+  <strong>The answer is a snapshot of a plain, non-atomic byte.</strong>
+  <code>count</code> is not an atomic and nothing locks it (see the class page), so the value is true at the instant of reading and not
+  afterwards. The check-then-mutate pattern above is sound because a single thread that holds the only handle cannot have its count changed by
+  anyone else; in a program where two threads touch handles naming one object, this function is the racing read, not the protection.
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<p>None.</p>
+
+<h2 id="return">Return value</h2>
+
+<table>
+  <tr><th>Type</th><th>What you get</th></tr>
+  <tr><td><code>RefCount</code></td><td>The shared object's owner count, or 0 when this handle names nothing. The type is the template
+      argument, <code>uint8_t</code> by default — so the return type itself is a warning about the width of the answer.</td></tr>
+</table>
+
+<h2 id="example">Examples</h2>
+
+<pre><code>	if (buffer.GetReferenceCount() &gt; 1)
+	{
+		Swap(String(rhs.ToCharArray()));
+	}
+	else
+	{
+		const auto length = rhs.buffer-&gt;size();
+		buffer-&gt;resize(length);
+		memcpy(buffer-&gt;data(), rhs.buffer-&gt;data(), length);
+	}</code></pre>
+
+<p class="meta">From the copy-assignment operator of <code>hbe::String</code> in <code>Engine/String/String.cpp</code>; this block is an excerpt of an <code>operator=</code> rather than a quotation of one named symbol.</p>
+
+<p>
+The whole copy-on-write decision in one comparison: share, therefore rebuild; alone, therefore overwrite. It is also the reason this function
+is <code>[[nodiscard]]</code> in a class where very little is — the answer is the only input to that branch.
+</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; Shareable</a></span>
+  <span><a href="index.html#methods">All Shareable methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

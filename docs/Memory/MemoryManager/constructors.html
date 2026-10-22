@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MemoryManager::MemoryManager — Memory module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a class="current" href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Memory</a> /
+  <a href="index.html">MemoryManager</a> / MemoryManager
+</p>
+
+<h1><span class="fn">MemoryManager</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::MemoryManager</span>
+  <span class="tag">Engine/Memory/MemoryManager.h</span>
+  Publishes the singleton, seeds 255 free slots, installs slot 0 and loads the pool geometry — one call per process, asserted.
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>MemoryManager(const MemoryManager&amp;) = delete
+
+explicit MemoryManager(Engine&amp; engine)</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+Defined in <code>Engine/Memory/MemoryManager.cpp</code> as <code>MemoryManager::MemoryManager(Engine&amp;)</code>, with
+the initialiser list <code>allocCount(0), deallocCount(0)</code> and a body that does four things in this order:
+publish the instance, seed the free-slot pool, install the system allocator, load the previous run's pool geometry.
+</p>
+
+<pre><code>Assert(mmgrInstance == nullptr);
+mmgrInstance = this;
+
+for (int i = 1; i &lt; MaxNumAllocators; ++i)
+{
+	auto&amp; proxy = allocators[i];
+	proxy.id = i;
+	proxyPool.Push(proxy);
+}
+
+RegisterSystemAllocator();
+LoadMultiPoolConfigs();
+
+engine.SetMemoryManagerReady();</code></pre>
+
+<p class="meta">From Engine/Memory/MemoryManager.cpp, MemoryManager::MemoryManager()</p>
+
+<div class="note">
+  <strong>There is exactly one, and the constructor is what makes it findable.</strong>
+  <code>mmgrInstance</code> is a file-scope pointer in the translation unit, and publishing it before anything else
+  happens is what lets <a href="get-instance.html">GetInstance</a> answer from the first statement of the constructor
+  onwards. The copy constructor is <code>= delete</code> and copy assignment too — two objects would publish the same
+  handle and each try to deregister slot 0 — so the only route to an instance is <code>Engine</code>'s own member
+  (<code>Engine/Engine/Engine.h</code>, <code>Engine::memoryManager</code>). The single call site is
+  <code>Engine::Engine()</code>'s initialiser list, where <code>memoryManager(*this)</code> sits ahead of
+  <code>statistics</code> and <code>logger</code>.
+</div>
+
+<div class="gap">
+  <strong>Slot 0 is installed by a different path, and its proxy never learns its own number.</strong>
+  The seeding loop starts at <code>i = 1</code>: slot 0 is never pushed onto <code>proxyPool</code> — which is what
+  stops <a href="register-allocator.html">RegisterAllocator</a> from ever handing out
+  <a href="index.html#properties">SystemAllocatorID</a> — but its <code>id</code> field is also never written, so
+  <code>allocators[0].id</code> stays <code>InvalidAllocatorID</code>, the default from
+  <code>AllocatorProxy::AllocatorProxy()</code>. Nothing in the tree reads that field for slot 0
+  (<a href="register-system-allocator.html">RegisterSystemAllocator</a> asserts against the class constant instead), so
+  it is a latent inconsistency rather than a live bug — but a caller who walks
+  <a href="get-allocator-proxy.html">GetAllocatorProxy</a>(0) and trusts <code>proxy.id</code> is reading
+  <code>-1</code>.
+</div>
+
+<div class="gap">
+  <strong>The constructor logs before there is a logger.</strong>
+  <a href="load-multi-pool-configs.html">LoadMultiPoolConfigs</a> is called from here and its diagnostics go through
+  <a href="log.html">Log</a> into <code>Engine::Log</code>, while <code>Engine::logger</code> has not been
+  constructed yet — <code>memoryManager</code> precedes <code>logger</code> in <code>Engine</code>'s member order, and
+  <code>Engine::isLoggerReady</code> is still false. In this tree the point is academic, because
+  <code>MEMORY_LOGGING_ENABLED</code> is <code>0</code> and <a href="log.html">Log</a> compiles to nothing; where
+  memory logging is switched on, the cache-load lines are the ones most likely to be lost.
+</div>
+
+<div class="note">
+  <strong>What the constructor leaves set.</strong>
+  <a href="register-system-allocator.html">RegisterSystemAllocator</a> has filled slot 0, seeded
+  <a href="get-usage.html">GetUsage</a>'s <code>totalCapacity</code> and <code>maxCapacity</code> with
+  <code>Config::MemCapacity</code> (5 GiB, <code>Engine/Config/EngineConfig.h</code>) and pointed this thread's
+  <a href="index.html#properties">scopedAllocatorID</a> at slot 0, and
+  <a href="load-multi-pool-configs.html">LoadMultiPoolConfigs</a> has either filled the config cache or left it empty.
+  <code>engine.SetMemoryManagerReady()</code> is the last statement, so readiness is published only once all of that is
+  true.
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<table>
+  <tr><th>Parameter</th><th>Type</th><th>Requirement</th></tr>
+  <tr><td><code>engine</code></td><td><code>Engine&amp;</code></td><td>The owning <code>Engine</code>, used only for <code>SetMemoryManagerReady()</code>. It must outlive the manager, which the member declaration order guarantees at the one call site; later calls reach the engine through <code>Engine::Get()</code> instead, not through a stored reference — the class keeps no <code>Engine*</code> member at all.</td></tr>
+</table>
+
+<h2 id="return">Return value</h2>
+
+<p>None — this is a constructor. Failure is not reportable: a second construction trips an <code>Assert</code> in Debug and Dev and silently replaces the published handle in Release, where <code>Assert</code> compiles away (<code>Engine/Core/Debug.h</code>).</p>
+
+<h2 id="example">Examples</h2>
+
+<pre><code>Engine::Engine()
+	: preEngineInit(this)
+	, isMemoryManagerReady(false)
+	, isSystemStatisticsReady(false)
+	, isLoggerReady(false)
+	, isTaskSystemReady(false)
+	, isResourceManagerReady(false)
+	, logFile("helowlevel.log")
+	, memoryManager(*this)
+	, statistics(*this)
+	, logger(*this, "./", "hardbop.log")</code></pre>
+
+<p class="meta">From Engine/Engine/Engine.cpp, Engine::Engine()</p>
+
+<p>
+The one construction in the repository. Everything in the module depends on this ordering: an allocator built by a
+static initialiser or by an early engine subsystem can already call
+<a href="get-instance.html">GetInstance</a> and register itself, while anything that wants log output from the manager
+must wait for <code>Engine::Initialize()</code>.
+</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; MemoryManager</a></span>
+  <span><a href="index.html#methods">All MemoryManager methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

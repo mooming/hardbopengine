@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AllocatorProxy::AllocatorProxy — Memory module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a class="current" href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Memory</a> /
+  <a href="index.html">AllocatorProxy</a> / AllocatorProxy
+</p>
+
+<h1><span class="fn">AllocatorProxy</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::AllocatorProxy</span>
+  <span class="tag">Engine/Memory/AllocatorProxy.h</span>
+  Writes the empty record - invalid identity, null handle, both operations null - which is the state of every unregistered slot
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>#endif
+
+public:
+	AllocatorProxy()
+		: id(InvalidAllocatorID)
+		, next(nullptr)
+		, allocator(nullptr)
+		, allocate(nullptr)
+		, deallocate(nullptr)</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  Defined in the class body of <code>Engine/Memory/AllocatorProxy.h</code>. The initializer list writes four values —
+  <code>id(InvalidAllocatorID)</code>, <code>next(nullptr)</code>, <code>allocator(nullptr)</code>,
+  <code>allocate(nullptr)</code>, <code>deallocate(nullptr)</code> — and the body is empty. The result is the empty
+  record: an identity no allocation may use (<code>InvalidAllocatorID</code> is <code>-1</code>, the sentinel of
+  <code>Engine/Memory/AllocatorID.h</code>) and two null operation pointers, so a record built by this constructor
+  forwards nothing to anyone.
+</p>
+
+<p>
+  This is the starting state of every element of <code>MemoryManager</code>'s <code>allocators[MaxNumAllocators]</code>
+  array before any registration touches it. <code>MemoryManager::MemoryManager()</code> then overwrites only
+  <code>id</code>, with the slot number, for slots 1 through <code>MaxNumAllocators - 1</code> and parks them in
+  <code>proxyPool</code>; slot 0 keeps the constructor's <code>InvalidAllocatorID</code> until
+  <a href="../MemoryManager/register-system-allocator.html"><code>RegisterSystemAllocator</code></a> fills its
+  operation pointers (<code>Engine/Memory/MemoryManager.cpp</code>). It is also the state the dummy returned by
+  <a href="../MemoryManager/get-allocator-proxy.html"><code>GetAllocatorProxy</code></a> is rebuilt to on every
+  invalid-id call, and the state of a proxy between being released from the free list and being filled by
+  <a href="../MemoryManager/register-allocator.html"><code>RegisterAllocator</code></a>.
+</p>
+
+<div class="gap">
+  <strong>A null operation pointer is an assert, not a graceful failure.</strong>
+  <code>MemoryManager::Allocate</code> and <code>MemoryManager::Deallocate</code> assert their operation pointer is
+  non-null immediately before calling it (<code>Engine/Memory/MemoryManager.cpp</code>). Outside a build where
+  <code>Assert</code> has teeth, the following line dereferences the null pointer — so a record still in this
+  constructed state must never receive traffic, which is why deregistration is allowed to leave the record parked in
+  the free list rather than in a routable slot.
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<p>None.</p>
+
+<h2 id="return">Return value</h2>
+
+<p>Constructs the empty proxy record; nothing is allocated and nothing is registered.</p>
+
+<h2 id="example">Examples</h2>
+
+<pre><code>static AllocatorProxy dummy;
+new (&amp;dummy) AllocatorProxy();
+
+return dummy;</code></pre>
+
+<p class="meta">From Engine/Memory/MemoryManager.cpp, MemoryManager::GetAllocatorProxy(TId)</p>
+
+<p>
+  The invalid-identity answer: the static dummy is re-constructed into this exact state on every call, so every
+  caller handed a proxy for a bad id holds the same record, and any reference kept from an earlier bad call is reset
+  under its owner. An allocation through it takes the null-<code>allocate</code> assert described above.
+</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; AllocatorProxy</a></span>
+  <span><a href="index.html#methods">All AllocatorProxy methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>
