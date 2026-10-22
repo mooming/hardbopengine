@@ -37,20 +37,24 @@
   rather than by reading a CMakeLists: `grep -c 'DDEV_BUILD'
   build/CMakeFiles/impl-Dev.ninja` reads 151 lines, and `grep -c 'DRELEASE_BUILD'
   build/CMakeFiles/impl-Debug.ninja` reads 0.
-- **`__TEST__` and `__UNIT_TEST__`**: given to Debug and Dev by `precompileDefinitionsDebug` and
-  `precompileDefinitionsDev`; `precompileDefinitionsRelease` is deliberately left empty. They gate
+- **`TEST_ENABLED`**: given to Debug and Dev by `precompileDefinitionsDebug` and
+  `precompileDefinitionsDev`; `precompileDefinitionsRelease` is deliberately left empty. It gates
   each module's own test bodies, so a definition reaching only `Applications/EngineTest` compiles
   `TestMain.cpp`'s test half and then fails to link — that is why this is a tree-wide
   `.project.config` input and not a `customCMake.txt`. The visible consequence is that
   `./build.sh Applications/EngineTest -dev -debug` runs the suite with no `-test`, while Release
   still builds a binary that reports it contains none; `build.sh -test` stays the only route that
-  puts both into Release. `docs/design/UnitTestSelection_Design.html` owns why the bodies are
+  puts the macro into Release. `docs/design/UnitTestSelection_Design.html` owns why the bodies are
   compiled per module. Counted the same way:
-  `grep -c 'D__TEST__' build/CMakeFiles/impl-Release.ninja` reads 0, and Debug and Dev read 151.
-  `Engine/Test`'s own `.module.config` carries a plain `precompileDefinitions = __UNIT_TEST__`, so
-  in Release `libTest.a` is compiled with the macro while the engine modules are not — which links
-  only because `TestMain.cpp`'s `#else` branch never names `Test::RegisterSuite`, so the linker
-  never pulls that object in. Do not make Release's `EngineTest` reference the suite by hand.
+  `grep -o 'DTEST_ENABLED' build/CMakeFiles/impl-Debug.ninja` reads 455, Dev reads 455, and Release
+  reads 4 — and those four are `Engine/Test`'s own sources, because its `.module.config` carries a
+  plain `precompileDefinitions = TEST_ENABLED` that no configuration key limits. So in Release `libTest.a`
+  is compiled with the macro while the engine modules are not — which links only because
+  `TestMain.cpp`'s `#else` branch never names `Test::RegisterSuite`, so the linker never pulls that
+  object in. Do not make Release's `EngineTest` reference the suite by hand. There used to be two names
+  before this one: `__UNIT_TEST__` was defined alongside `__TEST__` everywhere and read by no source, so it was
+  removed, and `__TEST__` itself was then renamed to `TEST_ENABLED` because a leading double underscore is reserved
+  to the C++ implementation.
 - **`Examples/` is in the build graph, and it was not**: `Examples/WindowExample` is a real application, tracked in git
   with a `Main.cpp`, but no `.module.config` existed for `Examples` itself, so the generator skipped the directory and
   `Examples/CMakeLists.txt` sat stale — it still read `project (Applications)` and named a `WindowExample` that looked
@@ -63,7 +67,7 @@
 - **Benchmark and performance binaries**: `Examples/RingBufferBenchmark` registers
   `Test::RegisterPerfBenchmarkSuite()` and drives it exactly the way `Applications/EngineTest` drives `RegisterSuite`,
   so the sweep and the regression run share one measurement path. Its cells live in `Engine/Test/RingBufferPerf.cpp`
-  under `__UNIT_TEST__`, which is why the binary is built `-release -test`: a Release engine binary carries no
+  under `TEST_ENABLED`, which is why the binary is built `-release -test`: a Release engine binary carries no
   benchmark code, and the app built without the macro says so and refuses to run. `docs/RunningTests.md` carries the
   commands and what the grades mean.
 - **Common Configurations**: Debug, Dev (default), Release.

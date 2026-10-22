@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AllocatorProxy — Memory module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a class="current" href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This class</h3>
+  <ul>
+    <li><a href="#description">Class description</a></li>
+    <li><a href="#template">Template parameters</a></li>
+    <li><a href="#properties">Class properties</a></li>
+    <li><a href="#methods">Class methods</a></li>
+    <li><a href="#non-member">Non-member helper functions</a></li>
+    <li><a href="#coverage">Coverage</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Memory</a> /
+  AllocatorProxy
+</p>
+
+<h1>AllocatorProxy</h1>
+<p class="subtitle">
+  <span class="tag">Engine/Memory/AllocatorProxy.h</span>
+  <span class="tag">final</span>
+  <span class="tag">namespace hbe</span>
+  The record the MemoryManager dispatches every engine allocation through: one allocator handle, the two operations forwarded as plain function pointers, plus the identity, free-list link and profiling state that ride along
+</p>
+
+<h2 id="description">Class description</h2>
+
+<p>
+  <code>class AllocatorProxy final</code> at <code>Engine/Memory/AllocatorProxy.h</code> is the record the
+  <a href="../MemoryManager/index.html"><code>MemoryManager</code></a> dispatches every engine allocation through. It
+  adapts an allocator object of any design to one fixed C calling convention: an opaque <code>void* allocator</code>
+  handle plus two free-function pointers, <code>allocate(handle, nBytes)</code> and
+  <code>deallocate(handle, ptr, nBytes)</code>. A request reaches the registered allocator as the plain call
+  <code>allocProxy.allocate(allocProxy.allocator, nBytes)</code> from <code>MemoryManager::Allocate()</code>
+  (<code>Engine/Memory/MemoryManager.cpp</code>) — no virtual dispatch, no template, nothing between the manager and
+  the function the allocator registered. The two forwarded operations are exactly these and nothing else: the proxy
+  forwards allocation and release; size queries, ownership tests and statistics never travel through it, they live on
+  the allocator object itself or on <a href="../AllocStats/index.html"><code>AllocStats</code></a>.
+</p>
+
+<p>
+  <strong>The proxy belongs to the manager, not to the allocator it describes.</strong> Every proxy is one element of
+  the fixed array <code>AllocatorProxy allocators[MaxNumAllocators]</code> owned by
+  <a href="../MemoryManager/index.html"><code>MemoryManager</code></a> (<code>Engine/Memory/MemoryManager.h</code>),
+  and it outlives every registration: <a href="../MemoryManager/register-allocator.html"><code>RegisterAllocator</code></a>
+  pops a free record and fills it,
+  <a href="../MemoryManager/deregister-allocator.html"><code>DeregisterAllocator</code></a> nulls both operation
+  pointers and pushes the same record back onto the manager's free list, where the next registration reuses it. A
+  pointer or reference to a proxy is therefore an address into the manager's array — never a lease on the allocator
+  behind it, and its contents can describe a different allocator by the next line.
+</p>
+
+<table>
+  <tr><th>Piece</th><th>What it is</th><th>Where the contract lives</th></tr>
+  <tr>
+    <td>Forwarded operations</td>
+    <td><code>allocate</code> and <code>deallocate</code>, called with <code>allocator</code> as first argument; both
+      null on a record that describes nothing</td>
+    <td><a href="../MemoryManager/allocate.html">Allocate</a>, <a href="../MemoryManager/deallocate.html">Deallocate</a></td>
+  </tr>
+  <tr>
+    <td>Identity</td>
+    <td><code>id</code>, the slot number, equal to the <code>TAllocatorID</code> callers allocate by; slot 0 is
+      <code>MemoryManager::SystemAllocatorID</code>, filled directly by <code>RegisterSystemAllocator</code> and
+      never taken from the free list while an instance is alive</td>
+    <td><a href="../MemoryManager/register-allocator.html">RegisterAllocator</a>,
+      <a href="../MemoryManager/register-system-allocator.html">RegisterSystemAllocator</a></td>
+  </tr>
+  <tr>
+    <td>Free list</td>
+    <td><code>next</code> is the intrusive link <code>AtomicStackView</code> writes when the record is parked; the
+      stack is <code>MemoryManager</code>'s <code>proxyPool</code></td>
+    <td><code>Engine/Container/AtomicStackView.h</code></td>
+  </tr>
+  <tr>
+    <td>Invalid identity</td>
+    <td>Asking the manager for a proxy by an out-of-range id logs an error and hands back one shared static dummy
+      record — freshly re-constructed on every such call, identity <code>InvalidAllocatorID</code>, both operation
+      pointers null — so allocating through it asserts instead of guessing</td>
+    <td><a href="../MemoryManager/get-allocator-proxy.html">GetAllocatorProxy</a></td>
+  </tr>
+  <tr>
+    <td>Profiling extras</td>
+    <td><code>stats</code> exists only under <code>PROFILE_ENABLED</code> and is where <a href="get-name.html">GetName</a>
+      reads its name; <code>threadId</code> exists only under <code>MEMORY_VERIFICATION_ENABLED</code> and records which
+      thread registered the allocator</td>
+    <td><a href="../AllocStats/index.html"><code>AllocStats</code></a>,
+      <a href="../MemoryManager/deregister-allocator.html">DeregisterAllocator</a></td>
+  </tr>
+</table>
+
+<div class="gap">
+  <strong>An out-of-range id is silently re-routed on the allocation path, but only after the assert path has been
+  taken.</strong> <code>MemoryManager::Allocate(TId, size_t)</code> asserts <code>id != InvalidAllocatorID</code>, logs
+  an error naming the id for any other invalid value, and then uses slot 0 — the system allocator
+  (<code>Engine/Memory/MemoryManager.cpp</code>). So a stale id does not fail a shipped build; it moves the traffic to
+  the system heap and leaves an error line as the only trace. The pointer you get back is then owned by slot 0, and
+  releasing it through a different id is exactly the mismatch this module's allocators guard with
+  <code>IsMine</code>.
+</div>
+
+<h2 id="template">Template parameters</h2>
+
+<p>None. <code>AllocatorProxy</code> is <code>final</code> and not a template — type erasure is done with the two
+function pointers and the <code>void*</code> handle, so one record shape serves every allocator in the engine.</p>
+
+<h2 id="properties">Class properties</h2>
+
+<table>
+  <tr><th>Type + Name</th><th>Default Value</th><th>Description</th></tr>
+  <tr><td><code>using TAllocBytes = void* (*) (void*, size_t);</code> <span class="badge">alias</span></td><td><span class="muted">not applicable</span></td><td>The allocation operation's shape: allocator handle and byte count in, raw pointer out. The header annotates the first parameter as <code>userData</code>.</td></tr>
+  <tr><td><code>using TDeallocBytes = void (*)(void*, void*, size_t);</code> <span class="badge">alias</span></td><td><span class="muted">not applicable</span></td><td>The release operation's shape: allocator handle, pointer and the size it was requested with.</td></tr>
+  <tr><td><code>TAllocatorID id;</code> <span class="badge">public</span></td><td><code>InvalidAllocatorID</code>, written by the <a href="constructors.html">constructor</a></td><td>The slot number and the id allocations are keyed by; <code>RegisterAllocator</code> asserts it is not <code>InvalidAllocatorID</code> before handing it out.</td></tr>
+  <tr><td><code>AllocatorProxy* next;</code> <span class="badge">public</span></td><td><code>nullptr</code></td><td>The intrusive link <code>AtomicStackView</code> writes through while the record sits in the manager's free list; meaningless while the record is registered.</td></tr>
+  <tr><td><code>void* allocator;</code> <span class="badge">public</span></td><td><code>nullptr</code></td><td>The registered allocator object, passed verbatim as the first argument of both operations; the proxy never casts, calls or frees it.</td></tr>
+  <tr><td><code>TAllocBytes allocate;</code> <span class="badge">public</span></td><td><code>nullptr</code></td><td>The forwarded allocation operation; <code>MemoryManager::Allocate</code> asserts it non-null immediately before calling it.</td></tr>
+  <tr><td><code>TDeallocBytes deallocate;</code> <span class="badge">public</span></td><td><code>nullptr</code></td><td>The forwarded release operation; <code>MemoryManager::Deallocate</code> asserts it non-null (under a message that names <code>Allocate</code> — a copy-paste in the assert text, not a different call).</td></tr>
+  <tr><td><code>AllocStats stats;</code> <span class="badge">public</span></td><td><span class="muted">none in the header</span></td><td>Exists only under <code>PROFILE_ENABLED</code>; filled by <code>AllocStats::OnRegister</code> from the registration arguments and updated by the manager's reporting paths.</td></tr>
+  <tr><td><code>std::thread::id threadId;</code> <span class="badge">public</span></td><td><span class="muted">none in the header</span></td><td>Exists only under <code>MEMORY_VERIFICATION_ENABLED</code>; the registering thread, stamped by <code>RegisterAllocator</code>, checked by <code>DeregisterAllocator</code>, cleared on release.</td></tr>
+</table>
+
+<h2 id="methods">Class methods</h2>
+
+<table class="methods">
+  <tr><th>Name</th><th>Signature</th><th>What a caller depends on</th></tr>
+  <tr><td><a href="constructors.html"><code>AllocatorProxy</code></a></td><td class="sig">AllocatorProxy()</td><td>Writes the empty record — invalid identity, null handle, both operations null — which is the state of every unregistered slot.</td></tr>
+  <tr><td><a href="get-name.html"><code>GetName</code></a></td><td class="sig">[[nodiscard]] const char* GetName() const</td><td>The registered name under <code>PROFILE_ENABLED</code>, the literal <code>"NoName"</code> without it; one declaration, two definitions behind <code>#if</code>.</td></tr>
+</table>
+
+<h2 id="non-member">Non-member helper functions</h2>
+
+<p>None. The only functions that touch a proxy are <code>MemoryManager</code>'s —
+<a href="../MemoryManager/register-allocator.html">RegisterAllocator</a>,
+<a href="../MemoryManager/deregister-allocator.html">DeregisterAllocator</a>,
+<a href="../MemoryManager/get-allocator-proxy.html">GetAllocatorProxy</a> and the two dispatch paths — and each owns a
+page under <a href="../MemoryManager/index.html">that entry</a>.</p>
+
+<h2 id="coverage">Coverage</h2>
+
+<table>
+  <tr><th>Not documented here</th><th>Why</th></tr>
+  <tr><td>When a registration fails, what happens to the popped record, and the <code>MaxNumAllocators</code> ceiling</td>
+    <td>Owned by <a href="../MemoryManager/register-allocator.html">RegisterAllocator</a>; this page states only what the
+      record itself carries.</td></tr>
+  <tr><td>How <code>stats</code> is updated — fallback counting, the peak rules, who holds <code>statsLock</code></td>
+    <td>Accounting rules belong to <a href="../AllocStats/index.html"><code>AllocStats</code></a> and the manager's
+      <a href="../MemoryManager/report-allocation.html">ReportAllocation</a> and
+      <a href="../MemoryManager/report-deallocation.html">ReportDeallocation</a> pages.</td></tr>
+  <tr><td>The lifetime and storage of the pointer <a href="get-name.html">GetName</a> returns</td>
+    <td>It converts the <code>StaticString</code> inside <code>AllocStats::name</code>, and <code>StaticString</code>'s
+      storage rules are a String-module entry this wave has not written; the page says what the value is, not how long
+      the bytes are good for.</td></tr>
+  <tr><td>Whether <code>MemoryManager</code> itself reads <code>threadId</code> anywhere beyond the registration and
+      deregistration stamps</td>
+    <td>Every use found is in those two paths and in <code>MultiPoolAllocator</code>'s destructor restamping; a claim
+      that no other reader exists was not proved, so the field row states the two uses it has rather than the absence
+      of others.</td></tr>
+</table>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; AllocatorProxy</a></span>
+  <span><a href="index.html#methods">All AllocatorProxy methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

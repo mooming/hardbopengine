@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PoolAllocator::GetAvailableMemory — Memory module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a class="current" href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Memory</a> /
+  <a href="index.html">PoolAllocator</a> / GetAvailableMemory
+</p>
+
+<h1><span class="fn">GetAvailableMemory</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::PoolAllocator</span>
+  <span class="tag">Engine/Memory/PoolAllocator.h</span>
+  <span class="tag">nodiscard</span>
+  Free blocks times block stride, in bytes — a derived figure with nothing behind the multiplication.
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>[[nodiscard]] size_t GetAvailableMemory() const</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  Defined in the class body of <code>Engine/Memory/PoolAllocator.h</code> as <code>numberOfFreeBlocks * blockSize</code>. A derived
+  figure, with nothing behind it that <a href="getavailableblocks.html">GetAvailableBlocks</a> and
+  <a href="getblocksize.html">GetBlockSize</a> do not already say.
+</p>
+
+<div class="note">
+  <strong>It is capacity in blocks expressed in bytes, and it overstates what a caller can use.</strong>
+  The multiplication is honest about the buffer but not about the pool's granularity: 100 free blocks of 32 bytes report 3,200 bytes
+  available, and a request for 33 bytes gets none of them — it goes to the parent instead (<a href="allocate.html">Allocate</a>).
+  Free bytes here do not add up to a large allocation.
+</div>
+
+<div class="note">
+  <strong>The identity with the other two figures always holds.</strong>
+  <code>GetCapacity() - GetUsage()</code> equals this, because all three are products of the same two counters
+  (<a href="getusage.html">GetUsage</a>, <a href="getcapacity.html">GetCapacity</a>). A discrepancy between them is not a rounding
+  artefact; it means the counters were written from two threads, which this class does not prevent.
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<p>None.</p>
+
+<h2 id="return">Return value</h2>
+
+<table>
+  <tr><th>Type</th><th>What you get</th></tr>
+  <tr><td><code>size_t</code></td><td>Free blocks times block size, in bytes. Excludes anything the parent is holding on the pool's behalf.</td></tr>
+</table>
+
+<h2 id="example">Examples</h2>
+
+<p class="note">Illustrative — no call site for this exists in the repository.</p>
+
+<pre><code>if (pool.GetAvailableMemory() &lt; neededBytes)
+{
+	log.Out(ELogLevel::Warning, [&amp;pool](auto&amp; ls) { ls &lt;&lt; "pool nearly exhausted: " &lt;&lt; pool.GetAvailableMemory(); });
+}</code></pre>
+
+<p>
+  The engine reports bank usage through the multi-pool's own <code>PrintUsage()</code>, which prints committed bytes and capacity
+  rather than the remainder, so no code asks this question. Nothing in the tree calls it, and the name is the only thing that makes it
+  look used.
+</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; PoolAllocator</a></span>
+  <span><a href="index.html#methods">All PoolAllocator methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

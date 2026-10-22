@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MemoryManager::Log — Memory module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a class="current" href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Memory</a> /
+  <a href="index.html">MemoryManager</a> / Log
+</p>
+
+<h1><span class="fn">Log</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::MemoryManager</span>
+  <span class="tag">Engine/Memory/MemoryManager.h</span>
+  Every memory diagnostic funnels through one filtered forward to Engine::Log — and it can be a complete no-op.
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>void Log(ELogLevel level, TLogFunc func) const</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+Defined in <code>Engine/Memory/MemoryManager.cpp</code> as <code>MemoryManager::Log()</code>. The body is a filter and one
+forwarding call:
+</p>
+
+<pre><code>#if MEMORY_LOGGING_ENABLED
+	if (!IsLogEnabled(level))
+	{
+		return;
+	}
+
+	auto&amp; engine = Engine::Get();
+	engine.Log(level, func);
+#endif // MEMORY_LOGGING_ENABLED</code></pre>
+
+<p class="meta">From Engine/Memory/MemoryManager.cpp, MemoryManager::Log()</p>
+
+<p>
+A line is therefore a callable, not a formatted string: <code>TLogFunc</code> is
+<code>std::function&lt;void(std::ostream&amp; out)&gt;</code>, so the caller writes a lambda and the text is only built if
+the level survives <a href="is-log-enabled.html">IsLogEnabled</a>. From there the line goes to
+<code>Engine::Log</code> — the <a href="../../Engine/index.html">Engine</a> module's own routing and level filtering apply
+again, so a line can pass this gate and still be dropped by the logger.
+</p>
+
+<div class="gap">
+  <strong>The whole method is compiled out here, and the lambda is still built.</strong>
+  <code>MEMORY_LOGGING_ENABLED</code> is <code>0</code> in <code>Engine/Config/BuildConfig.h</code>, so
+  <a href="is-log-enabled.html">IsLogEnabled</a> is unreachable and the body is empty: every diagnostic in this module is
+  silently discarded in every build of this repository. Note what that does <em>not</em> remove — the conversion from a
+  lambda to <code>TLogFunc</code> happens at the call site, before the call, so captures are copied and a
+  <code>std::function</code> is constructed and destroyed even where the body cannot run. Lambdas that capture a handful of
+  pointers stay inside the small-object buffer; a capture list heavy enough to exceed it allocates, through the very
+  allocator the line was going to describe.
+</div>
+
+<div class="note">
+  <strong>It needs a constructed <code>Engine</code>, which the manager sometimes does not have.</strong>
+  <code>Engine::Get()</code> asserts the engine instance exists (<code>Engine/Engine/Engine.cpp</code>). The manager's own
+  constructor runs before <code>Engine::logger</code> is constructed
+  (<a href="constructors.html">MemoryManager</a>), and <a href="load-multi-pool-configs.html">the cache load it
+  performs</a> logs at <code>Significant</code> and <code>Error</code> — with logging enabled those lines are the ones most at
+  risk, and with it disabled they are simply never written.
+</div>
+
+<div class="gap">
+  <strong>A fatal level is not an exemption.</strong>
+  Every call in the class goes through this same gate, including the ones that report conditions a caller cannot recover
+  from: <a href="sys-allocate.html">SysAllocate</a> without an allocate function,
+  <a href="report-allocation.html">an allocation over capacity</a>, an allocation arriving for a deregistered slot. Those
+  paths pair the log with <code>debugBreak()</code> outside Release, but the report itself is subject to the same
+  <code>MEMORY_LOGGING_ENABLED</code> and threshold tests as a verbose trace line — which is why several pages in this folder
+  describe a failure as "logged and continued" rather than "reported".
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<table>
+  <tr><th>Parameter</th><th>Type</th><th>Requirement</th></tr>
+  <tr><td><code>level</code></td><td><code>ELogLevel</code></td><td>Chosen by the caller; compared by ordinal against the <code>"Log.Memory"</code> threshold. There is no bypass for high levels.</td></tr>
+  <tr><td><code>func</code></td><td><code>TLogFunc</code></td><td>A <code>std::function</code> taking the log stream, passed <strong>by value</strong> — so the conversion cost is paid at the call site whether or not the line is emitted. It is invoked at most once, and only under <code>MEMORY_LOGGING_ENABLED</code>.</td></tr>
+</table>
+
+<h2 id="return">Return value</h2>
+
+<p><code>void</code>. The caller cannot learn whether the line was emitted; <a href="is-log-enabled.html">IsLogEnabled</a> is the only way to ask beforehand.</p>
+
+<h2 id="example">Examples</h2>
+
+<pre><code>#if MEMORY_LOGGING_ENABLED
+		{
+			auto&amp; mmgr = MemoryManager::GetInstance();
+			mmgr.Log(ELogLevel::Info, [this, &amp;mmgr, ptr, size](auto&amp; ls)
+			{
+				ls &lt;&lt; mmgr.GetAllocatorName(id) &lt;&lt; '[' &lt;&lt; static_cast&lt;int&gt;(GetID()) &lt;&lt; "]: Allocate "
+				   &lt;&lt; static_cast&lt;void*&gt;(ptr) &lt;&lt; ", size = " &lt;&lt; size;
+			});
+		}
+#endif // MEMORY_LOGGING_ENABLED</code></pre>
+
+<p class="meta">From Engine/Memory/InlineMonotonicAllocator.h, InlineMonotonicAllocator::Allocate()</p>
+
+<p>
+The dominant pattern in the module, and an instructive one: the call site wraps itself in the same macro the body uses, so a
+line that cannot be printed is not even compiled. The two convenience wrappers
+<a href="log-warning.html">LogWarning</a> and <a href="log-error.html">LogError</a> fix the level and take the callable by
+<code>const&amp;</code> instead, and are the form most allocators use.
+</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; MemoryManager</a></span>
+  <span><a href="index.html#methods">All MemoryManager methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

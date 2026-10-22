@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>InlineMonotonicAllocator::IsMine — Memory module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a class="current" href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Memory</a> /
+  <a href="index.html">InlineMonotonicAllocator</a> / IsMine
+</p>
+
+<h1><span class="fn">IsMine</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::InlineMonotonicAllocator</span>
+  <span class="tag">Engine/Memory/InlineMonotonicAllocator.h</span>
+  Private: an address-range test on the member array, and the only thing that decides which allocator a release reaches.
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>[[nodiscard]] bool IsMine(TPointer ptr) const</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  Defined inline in <code>Engine/Memory/InlineMonotonicAllocator.h</code> as
+  <code>InlineMonotonicAllocator::IsMine(TPointer ptr) const</code>, in the private section after every public member. It answers one
+  question — is this address inside my array — and that answer is what routes every release this object performs.
+</p>
+
+<pre><code>auto bytePtr = reinterpret_cast&lt;const uint8_t*&gt;(ptr);
+if (bytePtr &lt; buffer)
+{
+	return false;
+}
+
+if (bytePtr &gt;= (buffer + Capacity))
+{
+	return false;
+}
+
+return true;</code></pre>
+
+<p class="meta">From Engine/Memory/InlineMonotonicAllocator.h, InlineMonotonicAllocator::IsMine(TPointer ptr) const</p>
+
+<p>
+  The interval is <code>[buffer, buffer + Capacity)</code>: the lower bound rejects anything below the array, the upper bound is the
+  one-past-end address and rejects it and everything above. Nothing else is consulted — no bitmap, no size table, no record of what
+  <a href="allocate.html">Allocate</a> handed out — because a bump allocator needs none for its own allocation and this is the only
+  ownership question it ever asks. The consequence is that the function answers "is this address in me", not "did I give this block
+  out": an address in the untaken tail, or 100 bytes into the middle of a live block, returns true exactly as a real block does, and
+  <a href="deallocate.html">Deallocate</a> will then ignore it as though it had been released.
+</p>
+
+<p>
+  The comparison is between a pointer into this object and a pointer from somewhere else, which the language leaves unspecified; in
+  practice it is a plain address ordering, and it is what makes the forwarding branch of
+  <a href="deallocate.html">Deallocate</a> work: a block that <a href="allocate.html">Allocate</a> obtained from
+  <code>parentID</code> cannot lie inside this object's own array, so it is recognised as foreign and returned to the parent. A null
+  pointer is not special-cased before this test, which is why <a href="deallocate.html">Deallocate</a> inherits the manager's
+  <code>Assert(nBytes == 0)</code> for a null release.
+</p>
+
+<div class="note">
+  <strong>Private, so a caller cannot use it as a guard.</strong>
+  Code outside the class cannot ask whether a pointer belongs to an arena; the only way to find out is to call
+  <a href="deallocate.html">Deallocate</a> and let the same test decide the branch in private. This is also the mechanism behind the
+  hazard on <a href="index.html">the class page</a>: because the range is the test, a pointer from the <em>original</em> is not
+  "mine" as far as a <em>copy</em> is concerned — each object tests against its own array — so the copy forwards it to its parent, and
+  the release reaches an allocator that never handed it out.
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<table>
+  <tr><th>Parameter</th><th>Type</th><th>Requirement</th></tr>
+  <tr><td><code>ptr</code></td><td><code>TPointer</code> (<code>void*</code>)</td><td>Any address. No null check, no alignment requirement, no requirement that it came from this allocator at all.</td></tr>
+</table>
+
+<h2 id="return">Return value</h2>
+
+<table>
+  <tr><th>Type</th><th>What you get</th></tr>
+  <tr><td><code>bool</code></td><td>True for every address in <code>[buffer, buffer + Capacity)</code>, false for every other address — including one this arena handed out and a copy of the object is now being asked about.</td></tr>
+</table>
+
+<h2 id="example">Examples</h2>
+
+<pre><code>void Deallocate(TPointer ptr, TSize requested) noexcept
+{
+	auto&amp; mmgr = MemoryManager::GetInstance();
+
+	if (unlikely(!IsMine(ptr)))
+	{
+		mmgr.Deallocate(parentID, ptr, requested);
+
+		return;
+	}
+	…</code></pre>
+
+<p class="meta">From Engine/Memory/InlineMonotonicAllocator.h, InlineMonotonicAllocator::Deallocate(TPointer ptr, TSize requested)</p>
+
+<p>
+  This is its only call site: the header declares it and <a href="deallocate.html">Deallocate</a> is the only function that reads it. No
+  testlet and no engine call site reaches it, because it is private and the class exposes no way to ask the question — see
+  <a href="index.html#coverage">Coverage</a> for what that leaves undocumented about a pointer that is neither the arena's nor the
+  parent's.
+</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; InlineMonotonicAllocator</a></span>
+  <span><a href="index.html#methods">All InlineMonotonicAllocator methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

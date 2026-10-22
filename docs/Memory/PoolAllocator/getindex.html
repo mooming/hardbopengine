@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PoolAllocator::GetIndex — Memory module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a class="current" href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Memory</a> /
+  <a href="index.html">PoolAllocator</a> / GetIndex
+</p>
+
+<h1><span class="fn">GetIndex</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::PoolAllocator</span>
+  <span class="tag">Engine/Memory/PoolAllocator.h</span>
+  Private: which block of the buffer an address falls in — arithmetic, with the range check left to the caller.
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>#endif
+
+private:
+	TSize GetIndex(Pointer ptr) const</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  Defined in <code>Engine/Memory/PoolAllocator.cpp</code> as
+  <code>PoolAllocator::GetIndex(Pointer ptr) const</code>. Private, and the arithmetic that turns an address into a block number.
+</p>
+
+<pre><code>auto bytePtr = reinterpret_cast&lt;Byte*&gt;(ptr);
+auto delta = bytePtr - buffer;
+auto index = static_cast&lt;TSize&gt;(delta / blockSize);
+
+return index;</code></pre>
+
+<p class="meta">From Engine/Memory/PoolAllocator.cpp, PoolAllocator::GetIndex(Pointer ptr) const</p>
+
+<div class="gap">
+  <strong>It checks nothing, because it is only ever called on something already known to be inside.</strong>
+  The single caller is <a href="deallocate.html">Deallocate</a>, and what it passes is the free-list head — in range by construction,
+  not by inspection. Give this a pointer from another allocation, or a pointer to a pool that has been moved from, and the answer is
+  a number computed from a difference that means nothing (or a division by a stride of zero). The public way to ask the same question
+  is <a href="ismine.html">IsMine</a> first.
+</div>
+
+<div class="note">
+  <strong>Integer division means the middle of a block answers its own block's index.</strong>
+  An offset of 20 bytes into block 4 at a 32-byte stride is block 4. That is the same tolerance
+  <a href="ismine.html">IsMine</a> has: both work on ranges, neither knows where a block begins.
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<table>
+  <tr><th>Parameter</th><th>Type</th><th>Requirement</th></tr>
+  <tr><td><code>ptr</code></td><td><code>Pointer</code></td><td>An address inside <code>buffer</code>, from a pool that owns a buffer. Nothing here enforces either half, and neither is checked.</td></tr>
+</table>
+
+<h2 id="return">Return value</h2>
+
+<table>
+  <tr><th>Type</th><th>What you get</th></tr>
+  <tr><td><code>TSize</code></td><td>Byte offset from the buffer base divided by the block stride. For a pointer inside the pool, the block's ordinal, in the same numbering the constructor laid the blocks out in; outside it, an unusable number.</td></tr>
+</table>
+
+<h2 id="example">Examples</h2>
+
+<p class="note">Illustrative — the only call site is inside the class itself.</p>
+
+<pre><code>const auto index = GetIndex(availables);
+if (unlikely(index &gt; numberOfBlocks))
+{
+	…
+}</code></pre>
+
+<p class="meta">From Engine/Memory/PoolAllocator.cpp, PoolAllocator::Deallocate(Pointer ptr, size_t size)</p>
+
+<p>
+  The real use, quoted from its only caller: the index of the free-list head is compared against the block count, and a head that
+  names a block past the end is taken as evidence the free list itself has been damaged — the corruption report
+  <a href="deallocate.html">Deallocate</a> describes.
+</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; PoolAllocator</a></span>
+  <span><a href="index.html#methods">All PoolAllocator methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

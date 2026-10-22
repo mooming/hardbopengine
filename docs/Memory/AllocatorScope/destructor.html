@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AllocatorScope::~AllocatorScope — Memory module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a class="current" href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Memory</a> /
+  <a href="index.html">AllocatorScope</a> / ~AllocatorScope
+</p>
+
+<h1><span class="fn">~AllocatorScope</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::AllocatorScope</span>
+  <span class="tag">Engine/Memory/AllocatorScope.h</span>
+  Writes the saved id back, once, unconditionally - the restore that defines what a scope protects and what it cannot
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>~AllocatorScope() noexcept</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  Defined at <code>Engine/Memory/AllocatorScope.cpp</code>: fetch <code>MemoryManager::GetInstance()</code>, then
+  <code>mmgr.SetScopedAllocatorID(previous)</code>. That is the entire restore — the value this thread held when the
+  scope was constructed is written back, once, on every exit path (the <code>GetInstance()</code>
+  <code>FatalAssert</code> being the single way out that is not a restore). Because each object stores what it found
+  rather than what it replaced, nested scopes unwind correctly in any stack order: each destructor hands back the
+  exact value its constructor read.
+</p>
+
+<p>
+  Two properties of this one line decide what a scope is and is not. First, it is unconditional: the destructor does not
+  check whether the id it is restoring is still meaningful, only that it is a stored number — an allocator that was
+  deregistered while current is restored to being current, pointing at a slot the next registration may already own.
+  Second, it runs on whichever thread destroys the object: the saved value came from the constructing thread's
+  <code>thread_local</code> slot, and the setter writes the destroying thread's. Construct and destroy on one thread;
+  see the hazard below.
+</p>
+
+<div class="gap">
+  <strong>What this destructor cannot protect you from is the release of memory that was allocated before the scope
+  opened.</strong> The classic shape in this module: an allocator object allocates its backing buffer from its parent,
+  is destroyed while its own scope is open, and its destructor releases through the id-free
+  <code>MemoryManager::Deallocate(void*, size_t)</code> — which reads this thread's current scope, not the buffer's
+  history. The release then enters the dying allocator's own <code>Deallocate</code>, which ignores individual
+  releases by design, so nothing asserts and the buffer leaks. That was
+  <code>MonotonicAllocator</code>'s bug until the 2026-10-06 fix (reproduced by the testlet
+  <code>Destroy In Own Scope</code>, recorded in <code>JOURNAL.md</code>): the destructor now names its parent
+  explicitly, the line quoted below.
+</div>
+
+<pre><code>	mmgr.Deallocate(parentID, bufferPtr, capacity);</code></pre>
+
+<p class="meta">From Engine/Memory/MonotonicAllocator.cpp, MonotonicAllocator::~MonotonicAllocator()</p>
+
+<p>
+  The repaired release line — and the general rule it encodes: a scope protects where calls made inside it are routed
+  and restores the outer value on exit; it protects neither an object's own teardown nor a pointer's history from
+  whichever scope happens to be current at the moment of release.
+</p>
+
+<h2 id="parameters">Parameters</h2>
+
+<p>None.</p>
+
+<h2 id="return">Return value</h2>
+
+<p>None. After it returns, the calling thread allocates by id exactly as it did before the scope was constructed.</p>
+
+<h2 id="example">Examples</h2>
+
+<pre><code>	auto&amp; mmgr = MemoryManager::GetInstance();
+	mmgr.SetScopedAllocatorID(previous);</code></pre>
+
+<p class="meta">From Engine/Memory/AllocatorScope.cpp, AllocatorScope::~AllocatorScope()</p>
+
+<p>
+  The whole body. Symmetric with the constructor's read-save-install, and the reason a scope object's lifetime — not
+  the allocator it names — is the unit of redirection.
+</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; AllocatorScope</a></span>
+  <span><a href="index.html#methods">All AllocatorScope methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MultiPoolAllocator::GenerateBank — Memory module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a class="current" href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Memory</a> /
+  <a href="index.html">MultiPoolAllocator</a> / GenerateBank
+</p>
+
+<h1><span class="fn">GenerateBank</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::MultiPoolAllocator</span>
+  <span class="tag">Engine/Memory/MultiPoolAllocator.h</span>
+  Private: borrow a buffer from the parent, insert a bank, and re-sort the ladder that other threads must never see.
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>void GenerateBank(size_t blockSize, size_t numberOfBlocks)</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  Private. Builds one bank, adds it to the ladder, and puts the ladder back in order. It is the only member that calls
+  <code>std::sort</code>, and the only one that can move existing banks while doing so.
+</p>
+
+<pre><code>	AllocatorScope scope(parentID);
+
+	Assert(blockSize &gt; 0);
+	Assert(numberOfBlocks &gt; 0);
+
+	InlineStringBuilder&lt;1024&gt; str;
+	str &lt;&lt; name &lt;&lt; '_' &lt;&lt; blockSize &lt;&lt; '_' &lt;&lt; numberOfBlocks;
+	{
+		AllocatorScope allocScope(parentID);
+		banks.emplace_back(str.c_str(), blockSize, numberOfBlocks);
+		std::sort(banks.begin(), banks.end());
+	}</code></pre>
+
+<p class="meta">From Engine/Memory/MultiPoolAllocator.cpp, MultiPoolAllocator::GenerateBank()</p>
+
+<p>
+  The bank's backing buffer is one request to the parent allocator, made inside that scope
+  (<code>PoolAllocator::PoolAllocator()</code> calls <code>mmgr.Allocate(totalSize)</code>), and the bank registers
+  itself with the manager under the composite name <code>name_blockSize_numberOfBlocks</code>. After the block, a
+  <code>Verbose</code> log line names the bank, and a profiling build adds
+  <code>blockSize * numberOfBlocks</code> to this allocator's registered capacity.
+</p>
+
+<table>
+  <tr><th>What one bank costs</th><th>Where it is paid</th></tr>
+  <tr><td>One buffer of <code>blockSize × numberOfBlocks</code> from <code>parentID</code></td><td><code>PoolAllocator::PoolAllocator()</code>, through <code>MemoryManager::Allocate</code></td></tr>
+  <tr><td>One registration slot out of the 255 the process shares</td><td><code>MemoryManager::RegisterAllocator</code>, and <code>Engine/Memory/AllocatorID.h</code> for the ceiling</td></tr>
+  <tr><td>A full re-sort of the ladder</td><td><code>std::sort</code> over every bank, on every growth</td></tr>
+  <tr><td>One engine-level fallback count</td><td>By the caller, in <a href="new-bank-allocate.html">NewBankAllocate</a></td></tr>
+</table>
+
+<div class="gap">
+  <strong>Sorting moves banks, and a moved bank's registration is not refreshed.</strong>
+  <code>PoolAllocator</code>'s move constructor re-points the manager's proxy for the bank's id at the new
+  <code>allocate</code> and <code>deallocate</code> functions (and refreshes the profiling capacity) but never re-points
+  <code>allocProxy.allocator</code> (<code>Engine/Memory/PoolAllocator.cpp</code>). Dispatch is
+  <code>allocProxy.allocate(allocProxy.allocator, nBytes)</code>
+  (<code>Engine/Memory/MemoryManager.cpp</code>, <code>MemoryManager::Allocate()</code>), and those function pointers
+  begin by casting their first argument back to a <code>PoolAllocator*</code>. After any bank is moved — by the
+  <code>emplace_back</code> growing the vector, or by the sort — the proxy still names the address the bank used to
+  occupy. This class is unaffected today because it reaches banks as <code>banks[index]</code> and never through their
+  ids; the failure arrives the moment anything scopes to a bank id. The same three lines were recorded against the
+  thread-safe twin as finding 5 of the 2026-10-05 review, and no fix has landed.
+</div>
+
+<div class="gap">
+  <strong>The sort also depends on how the standard library chooses to move.</strong>
+  <code>PoolAllocator::operator=(PoolAllocator&amp;&amp;)</code> is destructive: it runs the destructor on the destination —
+  which returns that destination's buffer to its parent and deregisters it — and then placement-news the moved bank into
+  the same storage (<code>Engine/Memory/PoolAllocator.cpp</code>). Whether a sort ever destroys a <em>live</em> bank
+  therefore depends on which element the algorithm moves into which slot. The 2026-10-05 review measured it against
+  libc++ and recorded zero releases for an out-of-order insert, and its own conclusion is the sentence to keep: "safe by
+  luck, not by contract". The measurement was made on the twin; the two lines it rests on, the
+  <code>emplace_back</code> and the <code>std::sort</code> above, are the same here.
+</div>
+
+<div class="gap">
+  <strong>Both asserts that guard this member are Debug and Dev only.</strong>
+  <code>Assert(blockSize &gt; 0)</code> and <code>Assert(numberOfBlocks &gt; 0)</code> compile to nothing in a Release
+  build (<a href="../../Core/index.html#debug">Core: Debug</a>). A zero count is otherwise unreachable from the only
+  caller — <a href="calculate-number-of-blocks.html">CalculateNumberOfBlocks</a> returns at least one — except where
+  <code>blockSize × numberOfBlocks</code> wraps to zero, which is exactly the case
+  <code>PoolAllocator::PoolAllocator()</code> answers with an early return that leaves the bank's free-list head
+  uninitialised and the bank holding no blocks. Such a bank is then skipped by
+  <a href="get-bank-index.html">GetBankIndex</a> forever, and the next request for its size ends in the
+  <code>FatalAssert</code> of <a href="new-bank-allocate.html">NewBankAllocate</a>.
+</div>
+
+<div class="note">
+  <strong>The scope is opened twice, and the second opening changes nothing.</strong>
+  <code>parentID</code> is installed at the top of the function and again inside the block that wraps the
+  <code>emplace_back</code> and the sort — the same id, nested (<code>Engine/Memory/MultiPoolAllocator.cpp</code>). The
+  outer scope is the one that matters: it covers the name formatting, the insertion and the profiling bookkeeping. What
+  the inner one is for is not stated anywhere in the sources or in a design document, and it is listed on the
+  <a href="index.html#coverage">class page</a> with the other things two authors appear to have edited separately.
+</div>
+
+<div class="note">
+  <strong>Order is maintained here and nowhere else.</strong> Every insertion re-sorts the whole ladder by
+  <code>PoolAllocator::operator&lt;</code>, which orders by block size and breaks a tie by putting the bank with more
+  free blocks first (<code>Engine/Memory/PoolAllocator.cpp</code>). That is what keeps
+  <a href="get-bank-index.html">GetBankIndex</a>'s early exit a best fit; the
+  <a href="generate-banks-by-cache.html">cache path</a> relies on the file already being ordered instead.
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<table>
+  <tr><th>Parameter</th><th>Type</th><th>Requirement</th></tr>
+  <tr>
+    <td><code>blockSize</code></td>
+    <td><code>size_t</code></td>
+    <td>Bytes per block. Must be non-zero — asserted in a checked build. The pool rounds it up to
+      <code>sizeof(size_t)</code> and to a multiple of <code>Config::DefaultAlign</code> before reserving, so the bank's
+      real block size can exceed what is passed here</td>
+  </tr>
+  <tr>
+    <td><code>numberOfBlocks</code></td>
+    <td><code>size_t</code></td>
+    <td>Blocks in the bank. Must be non-zero — asserted in a checked build. The product of the two parameters is the
+      buffer borrowed from the parent, and it is the capacity a profiling build adds to the allocator's total</td>
+  </tr>
+</table>
+
+<h2 id="return">Return value</h2>
+
+<p>
+  <code>void</code>. The new bank is reachable as <code>banks[index]</code> afterwards — the caller re-runs
+  <a href="get-bank-index.html">GetBankIndex</a> rather than being handed the bank, because the sort may have moved it.
+  Failure is not reported: an assert stops a checked build and a Release build continues with whatever the pool managed
+  to reserve.
+</p>
+
+<h2 id="example">Examples</h2>
+
+<p class="meta">From Engine/Memory/MultiPoolAllocator.cpp, MultiPoolAllocator::NewBankAllocate()</p>
+
+<pre><code>	auto blockSize = CalculateBlockSize(size);
+	auto numBlocks = CalculateNumberOfBlocks(bankSize, blockSize);
+	GenerateBank(blockSize, numBlocks);</code></pre>
+
+<p>
+  The single call site. The two constructors build their initial banks with their own loops instead, and those loops
+  open no scope over the parent — which is correct at that moment, because <code>parentID</code> is by definition the
+  ambient allocator while the constructor is running. <code>GenerateBank</code> is different: it runs long afterwards,
+  on whatever thread is allocating, inside whatever scope that caller happens to be standing in, so the explicit
+  <code>AllocatorScope</code> is what keeps a bank's backing buffer out of an unrelated pool. The ordering of the ladder
+  is enforced here too, and nowhere else — the <code>initializer_list</code> constructor sorts once before it inserts,
+  and <a href="generate-banks-by-cache.html">GenerateBanksByCache</a> sorts nothing.
+</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; MultiPoolAllocator</a></span>
+  <span><a href="index.html#methods">All MultiPoolAllocator methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MultiPoolAllocator::GetBankIndex — Memory module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a class="current" href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Memory</a> /
+  <a href="index.html">MultiPoolAllocator</a> / GetBankIndex
+</p>
+
+<h1><span class="fn">GetBankIndex</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::MultiPoolAllocator</span>
+  <span class="tag">Engine/Memory/MultiPoolAllocator.h</span>
+  Private: which bank serves this size, and which bank owns this pointer - both answered by a linear scan.
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>[[nodiscard]] size_t GetBankIndex(size_t nBytes) const
+
+[[nodiscard]] size_t GetBankIndex(void* ptr) const</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  Private, and the two overloads answer two different questions with the same return convention: an index into
+  <code>banks</code>, or <code>banks.size()</code> to mean "none". Every caller tests the answer with
+  <code>&gt;= banks.size()</code> rather than comparing against a sentinel.
+</p>
+
+<p>
+  The size overload chooses where a request should go. It walks from the smallest block size up, and stops at the first
+  bank that is large enough, not full, and not wasteful:
+</p>
+
+<pre><code>	nBytes = std::max(minBlock, nBytes);
+	const auto doubleSize = nBytes * 2;
+
+	const auto len = banks.size();
+	for (size_t i = 0; i &lt; len; ++i)
+	{
+		auto&amp; bank = banks[i];
+		if (nBytes &gt; bank.GetBlockSize())
+		{
+			continue;
+		}
+
+		if (bank.GetAvailableBlocks() &lt;= 0)
+		{
+			continue;
+		}
+
+		if (bank.GetBlockSize() &gt; doubleSize)
+		{
+			return len;
+		}
+
+		return i;
+	}
+
+	return len;</code></pre>
+
+<p class="meta">From Engine/Memory/MultiPoolAllocator.cpp, MultiPoolAllocator::GetBankIndex(size_t)</p>
+
+<p>
+  The pointer overload answers who owns this block, and can only answer it by asking everyone:
+</p>
+
+<pre><code>	size_t index = 0;
+
+	for (auto&amp; bank : banks)
+	{
+		if (bank.IsMine(ptr))
+		{
+			return index;
+		}
+
+		++index;
+	}
+
+	return index;</code></pre>
+
+<p class="meta">From Engine/Memory/MultiPoolAllocator.cpp, MultiPoolAllocator::GetBankIndex(void*)</p>
+
+<p>
+  <code>PoolAllocator::IsMine</code> is a range test against the bank's buffer
+  (<code>Engine/Memory/PoolAllocator.cpp</code>), so a block anywhere inside a bank — including the bank's own base
+  address — reports that bank, and the lowest-indexed owner wins.
+</p>
+
+<table>
+  <tr><th>Overload</th><th>Cost</th><th>What the answer depends on</th></tr>
+  <tr>
+    <td><code>GetBankIndex(size_t)</code></td>
+    <td>One scan of the banks from the smallest, at most reaching the end</td>
+    <td>The requested size, <code>minBlock</code>, the banks' block sizes, and <strong>how many blocks are free right
+      now</strong></td>
+  </tr>
+  <tr>
+    <td><code>GetBankIndex(void*)</code></td>
+    <td>One scan of the banks, stopping at the owner</td>
+    <td>Only the address and the banks' buffer ranges — never occupancy or size</td>
+  </tr>
+</table>
+
+<div class="gap">
+  <strong>The size answer is not a function of the size.</strong>
+  A bank that has run out of blocks is skipped, so the same request can be served by the 128-byte bank at one moment and
+  by a freshly generated 256-byte bank the next, and the choice is made against mutable state with no lock
+  (<code>Engine/Memory/MultiPoolAllocator.cpp</code>). The 2026-10-05 review of the thread-safe twin records this as the
+  prerequisite for any locking redesign — "making <code>size</code> to bank a pure function", because the free path has
+  to scan every bank by pointer range precisely because the size path will not commit to one. Callers today get a
+  correct answer, not a predictable one: which block size served a pointer cannot be inferred from the pointer, and
+  nothing in this class returns it.
+</div>
+
+<div class="note">
+  <strong>The 2× rule refuses a bank rather than skipping to a better one.</strong>
+  When the first sufficient non-full bank is more than double the request, the loop returns "none" immediately. It does
+  not continue looking: banks ascend in size, so every later bank is larger and would waste more. "None" means
+  <a href="new-bank-allocate.html">a new bank gets built</a> at the exact rounded size, and the ladder grows by one —
+  which is how a pool that started at <code>{64 … 4096}</code> ends up owning a 16-byte bank after a single 8-byte
+  request.
+</div>
+
+<div class="note">
+  <strong>Rounding happens here first.</strong> <code>nBytes</code> is raised to <code>minBlock</code> before the
+  comparison and before the 2× ceiling, so a request below the minimum block size is measured as the minimum. That is
+  why an allocator built with a large <code>minBlockSize</code> treats every small request as that size, and why the
+  doubling ceiling is computed on the rounded figure rather than the raw one.
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<table>
+  <tr><th>Parameter</th><th>Type</th><th>Requirement</th></tr>
+  <tr>
+    <td><code>nBytes</code></td>
+    <td><code>size_t</code></td>
+    <td>Size overload. The requested byte count; raised to <code>minBlock</code> by the first statement. Zero is legal
+      here and answers with the smallest bank — <a href="allocate.html">Allocate</a> has already returned null for zero
+      before reaching this</td>
+  </tr>
+  <tr>
+    <td><code>ptr</code></td>
+    <td><code>void*</code></td>
+    <td>Pointer overload. Any address; one outside every bank answers with <code>banks.size()</code>. Null answers the
+      same way unless a bank's buffer begins at address zero</td>
+  </tr>
+</table>
+
+<h2 id="return">Return value</h2>
+
+<table>
+  <tr><th>Type</th><th>What you get</th></tr>
+  <tr>
+    <td><code>size_t</code></td>
+    <td>An index into <code>banks</code>, or <code>banks.size()</code> for "no bank". The sentinel is one past the end
+      rather than an invalid index, so the caller must compare with <code>&gt;=</code>; both callers in this class do</td>
+  </tr>
+</table>
+
+<h2 id="example">Examples</h2>
+
+<p class="meta">From Engine/Memory/MultiPoolAllocator.cpp, MultiPoolAllocator::Allocate() and MultiPoolAllocator::Deallocate()</p>
+
+<pre><code>	auto index = GetBankIndex(size);
+	if (index &gt;= banks.size())
+	{
+…
+		return NewBankAllocate(size);
+	}
+…
+	auto index = GetBankIndex(ptr);
+	if (index &gt;= banks.size())
+	{
+…
+		return;
+	}</code></pre>
+
+<p>
+  The two call sites that define the contract: an unfound size grows the ladder, an unfound pointer is reported as a
+  foreign block and dropped. Both then index <code>banks[index]</code> with the answer.
+</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; MultiPoolAllocator</a></span>
+  <span><a href="index.html#methods">All MultiPoolAllocator methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Shareable — Memory module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a class="current" href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This class</h3>
+  <ul>
+    <li><a href="#description">Class description</a></li>
+    <li><a href="#template">Template parameters</a></li>
+    <li><a href="#properties">Class properties</a></li>
+    <li><a href="#methods">Class methods</a></li>
+    <li><a href="#non-member">Non-member helper functions</a></li>
+    <li><a href="#coverage">Coverage</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Memory</a> /
+  Shareable
+</p>
+
+<h1>Shareable</h1>
+<p class="subtitle">
+  <span class="tag">Engine/Memory/Shareable.h</span>
+  <span class="tag">template &lt;typename TType, typename RefCount = uint8_t&gt;</span>
+  A reference-counted handle to one object the MemoryManager allocated: a counter and a value in one Body, and a copy-on-write contract its one user has to enforce itself.
+</p>
+
+<h2 id="description">Class description</h2>
+
+<p>
+<code>template &lt;typename TType, typename RefCount = uint8_t&gt; class Shareable</code> at
+<code>Engine/Memory/Shareable.h</code> is a reference-counted handle to one object that the
+<a href="../MemoryManager/index.html"><code>MemoryManager</code></a> allocated. The handle is a single
+<code>Body*</code>; <code>Body</code> is a private nested type declared inside <code>Shareable</code> that holds a
+<code>RefCount count</code> and a <code>TType data</code> next to each other, so control block and object are one allocation. Both
+declarations are in the <a href="#properties">properties table</a> below.
+</p>
+
+<p>
+Control block and object are therefore the same allocation, which is the cheap half of the design: one
+<code>MemoryManager::New&lt;Body&gt;()</code> call rather than two, and no separate block to chase when the count is read. The other half of
+that choice is fixed by the same line: there is no weak count, no stored deleter, no stored allocator, and the count's width is a template
+argument that defaults to <code>uint8_t</code>.
+</p>
+
+<p>
+The tree's only user is <code>hbe::String</code>, whose entire storage is one handle —
+<code>Shareable&lt;Vector&lt;TChar&gt;&gt; buffer;</code> in <code>Engine/String/String.h</code>, where <code>Vector</code> is
+<code>hbe::HVector</code> — and <code>Applications/</code> contains no use of the class. It is a copy-on-write handle in that user, which is
+the contract the rest of this page is written against: <code>String::operator=(const String&amp;)</code> in
+<code>Engine/String/String.cpp</code> asks <code>buffer.GetReferenceCount() &gt; 1</code> and takes one of two branches —
+<code>Swap(String(rhs.ToCharArray()))</code>, which builds a whole new <code>String</code> and exchanges the handles, or, when the
+count says this handle is alone, <code>resize</code> to <code>rhs</code>'s length and <code>memcpy</code> its characters into this
+buffer.
+</p>
+
+<p>
+That <code>GetReferenceCount() &gt; 1</code> is the question "is anyone else looking?", and the two branches are the only safe answers:
+build a new buffer if someone is, mutate in place if the count says you are alone. Every rule below follows from the same
+dependency — the count is the
+only thing standing between <a href="operator-member-access.html">operator-&gt;</a> and a mutation two owners both thought they were entitled
+to.
+</p>
+
+<div class="gap">
+  <strong>Nothing is atomic, so a shared object may not be shared across threads.</strong>
+  <code>count</code> is a plain <code>RefCount</code>, and <code>Engine/Memory/Shareable.h</code> names no mutex, no atomic and no fence:
+  <code>Reference()</code> is <code>++count</code> and <code>Dereference()</code> is <code>--count</code>. Copying a handle, letting one go out
+  of scope, and <a href="release.html">Release</a> all mutate the same non-atomic counter, so two handles naming one object on two threads are
+  in a data race: a lost increment leaves the object freed while a handle still names it, and a lost decrement leaves it allocated with
+  nobody able to free it. Two handles naming one object across threads are safe only under locking the caller supplies, and nothing in the
+  engine supplies it today. What no page here claims — because the code does not say — is that any of this was ever intended to be
+  thread-safe.
+</div>
+
+<div class="gap">
+  <strong>The object is allocated and freed under whoever is current at that moment, not under one owner.</strong>
+  <code>Body::Create()</code> calls <code>MemoryManager::New&lt;Body&gt;()</code> and <code>Dereference()</code> calls
+  <code>MemoryManager::Delete&lt;Body&gt;()</code>, and both of those go through the manager's <em>current</em> scoped allocator — which in
+  <code>Engine/Memory/MemoryManager.h</code> is a <code>static thread_local</code> id. A handle created inside an
+  <a href="../index.html#allocatorscope">AllocatorScope</a> on one thread and released in another scope on another thread therefore frees
+  memory through an allocator that never allocated it. This is the cross-allocator free that
+  <a href="../PoolAllocator/index.html"><code>PoolAllocator</code></a>'s pages describe and solved by recording <code>parentID</code> at
+  construction; <code>Shareable</code> records nothing, and no page here claims the manager tolerates it.
+</div>
+
+<div class="note">
+  <strong>The default count is one byte wide, and the 256th owner is the failure.</strong>
+  <code>RefCount</code> defaults to <code>uint8_t</code>, and every in-tree use takes the default. <code>Reference()</code> is a bare
+  <code>++count</code>, so a 256th copy of one object wraps the count to 0; <code>Dereference()</code> is guarded by
+  <code>if (count &gt; 0)</code>, so from that moment every release is a no-op and the object can never be freed. A container of handles that
+  expects more than 255 simultaneous owners of one value must be instantiated with a wider <code>RefCount</code>; no code in the tree tests
+  the boundary.
+</div>
+
+<div class="gap">
+  <strong>Only a mutable handle can be copied or assigned.</strong>
+  The copy constructor and the copy-assignment operator both take <code>Shareable&amp;</code> — not a reference to <code>const</code> — so a
+  handle you cannot modify is a handle you cannot copy. <code>hbe::String</code> demonstrates the cost at the level above: its copy
+  constructor is <code>String(String&amp; rhs)</code>, non-const for no reason of its own, because the member initialiser
+  <code>buffer(rhs.buffer)</code> cannot bind a const handle to that constructor. Assignment is narrower still: because this
+  <code>operator=</code> is the class's copy-assignment operator and takes a non-const reference, there is no implicitly declared move
+  assignment either, so <code>a = std::move(b)</code> does not compile. Move <em>construction</em> is available and is what
+  <code>String(String&amp;&amp;)</code> uses.
+</div>
+
+<div class="note">
+  <strong>There is no "empty" constructor, and default construction still allocates.</strong>
+  The class declares no default constructor; what default-constructs a <code>Shareable</code> is the variadic
+  <code>template &lt;typename... Types&gt; Shareable(Types&amp;&amp;... args)</code> with an empty pack, and its initializer is
+  <code>Body::Create(...)</code> — an allocation and a construction of <code>TType</code> before the handle can be used at all. So
+  <code>Shareable&lt;T&gt; handle;</code> is never null and never free, and the only ways to hold no object are to be moved from
+  (<a href="constructors.html">constructors</a>) or to call <a href="release.html">Release</a>. That is why the null tests in
+  <code>Engine/String/String.cpp</code> guard against a moved-from <code>String</code>, not an uninitialised one.
+</div>
+
+<h2 id="template">Template parameters</h2>
+
+<table>
+  <tr><th>Parameter</th><th>What it constrains</th><th>What getting it wrong costs</th></tr>
+  <tr>
+    <td><code>typename TType</code></td>
+    <td>The owned type. It is constructed in place inside <code>Body</code> from whatever arguments the handle receives, so it must accept
+        them; the handle exposes it only as <code>TType&amp;</code>, <code>const TType&amp;</code>, <code>TType*</code> and
+        <code>const TType*</code>.</td>
+    <td>Nothing constrains the variadic constructor's pack, so a bad argument list fails inside <code>Body::Create()</code> and
+        <code>Body</code>'s constructor rather than at the call site.</td>
+  </tr>
+  <tr>
+    <td><code>typename RefCount = uint8_t</code></td>
+    <td>The counter's type: its width sets the maximum number of simultaneous owners, and its signedness sets what a decrement below zero
+        means. The guard in <code>Dereference()</code> is <code>count &gt; 0</code>, which is only meaningful for an unsigned type.</td>
+    <td>Too narrow wraps silently at 256 with the default, and a wrapped count makes the object permanently uncreatable-again: see the note
+        above. A signed <code>RefCount</code> would make the <code>count &gt; 0</code> test a signedness comparison instead of a liveness
+        test.</td>
+  </tr>
+</table>
+
+<h2 id="properties">Class properties</h2>
+
+<table>
+  <tr><th>Type + Name</th><th>Default Value</th><th>Description</th></tr>
+  <tr><td><code>class Body</code> <span class="badge">private nested</span> <span class="badge">member type</span></td><td><span class="muted">not applicable</span></td><td>The control block and the object in one allocation: a counter, the value, and the five members that create, link, read and release it. Documented on this page — a nested class belongs to its owner's page — with a table below.</td></tr>
+  <tr><td><code>Body* body;</code> <span class="badge">private</span></td><td><span class="muted">none in the header</span></td><td>The whole handle. Null only after a move or a <a href="release.html">Release</a>; a constructed handle always points at a live <code>Body</code> whose count already includes this handle.</td></tr>
+</table>
+
+<p>
+The members of the nested <code>Body</code>, in header order. They are private to <code>Shareable</code>: no caller outside the class can
+reach them, which is why they own no pages of their own (named in Coverage).
+</p>
+
+<table>
+  <tr><th>Type + Name</th><th>Default Value</th><th>Description</th></tr>
+  <tr><td><code>static constexpr auto SizeOfType = sizeof(TType);</code> <span class="badge">private</span></td><td><code>sizeof(TType)</code></td><td>Declared and never read: no member or method of <code>Body</code> or <code>Shareable</code> uses it.</td></tr>
+  <tr><td><code>RefCount count;</code> <span class="badge">private</span></td><td><span class="muted">none in the header</span></td><td>Owners, incremented by <code>Reference()</code> and decremented by <code>Dereference()</code>. Starts at 0 in <code>Body</code>'s constructor, and <code>Create()</code> takes the first reference before the handle is ever seen.</td></tr>
+  <tr><td><code>TType data;</code> <span class="badge">private</span></td><td><span class="muted">none in the header</span></td><td>The object itself, constructed in place from the handle's arguments. Every accessor of <code>Shareable</code> is a route to this member.</td></tr>
+</table>
+
+<h2 id="methods">Class methods</h2>
+
+<table class="methods">
+  <tr><th>Name</th><th>Signature</th><th>What a caller depends on</th></tr>
+  <tr><td><a href="constructors.html"><code>Shareable</code></a><span class="badge">3 overloads</span></td><td class="sig">template &lt;typename... Types&gt; Shareable(Types&amp;&amp;... args)<br>Shareable(Shareable&amp; rhs)<br>Shareable(Shareable&amp;&amp; rhs)</td><td>Construction always allocates and leaves the count at one; a copy takes a reference and a move steals the pointer and leaves the source empty.</td></tr>
+  <tr><td><a href="destructor.html"><code>~Shareable</code></a></td><td class="sig">~Shareable()</td><td>Releases this handle's reference and, if the count reaches zero, destroys the object and returns its memory through the allocator current at that moment.</td></tr>
+  <tr><td><a href="operator-assign.html"><code>operator=</code></a></td><td class="sig">Shareable&amp; operator=(Shareable&amp; rhs)</td><td>Releases first and then takes a reference; it does not return a value, and self-assignment empties the handle.</td></tr>
+  <tr><td><a href="get-reference-count.html"><code>GetReferenceCount</code></a></td><td class="sig">[[nodiscard]] RefCount GetReferenceCount() const</td><td>Owners, or 0 for an empty handle — the number a copy-on-write assignment decides on.</td></tr>
+  <tr><td><a href="operator-bool.html"><code>operator bool</code></a></td><td class="sig">operator bool() const</td><td>True when the handle names an object; implicit, and the only null test the class offers.</td></tr>
+  <tr><td><a href="get.html"><code>Get</code></a><span class="badge">2 overloads</span></td><td class="sig">[[nodiscard]] TType&amp; Get()<br>[[nodiscard]] const TType&amp; Get() const</td><td>The object, by reference, with no test for an empty handle in either overload.</td></tr>
+  <tr><td><a href="operator-multiply.html"><code>operator*</code></a><span class="badge">2 overloads</span></td><td class="sig">[[nodiscard]] TType&amp; operator*()<br>[[nodiscard]] const TType&amp; operator*() const</td><td>The same object through the pointer-handle idiom; <code>String</code> uses it as <code>(*buffer)[0]</code>.</td></tr>
+  <tr><td><a href="operator-member-access.html"><code>operator-&gt;</code></a><span class="badge">2 overloads</span></td><td class="sig">[[nodiscard]] TType* operator-&gt;()<br>[[nodiscard]] const TType* operator-&gt;() const</td><td>The member-access route, and the reason a non-const <code>String</code> may resize a buffer that another <code>String</code> also names unless the count is consulted first.</td></tr>
+  <tr><td><a href="release.html"><code>Release</code></a></td><td class="sig">void Release()</td><td>Give up this handle's reference early, exactly as the destructor would; the handle is empty afterwards.</td></tr>
+  <tr><td><a href="swap.html"><code>Swap</code></a></td><td class="sig">void Swap(Shareable&amp; rhs)</td><td>Exchange the two pointers. Counts do not move, so this is the one operation that reshares nothing.</td></tr>
+</table>
+
+<h2 id="non-member">Non-member helper functions</h2>
+
+<p>
+None. There is no <code>operator==</code>, no <code>std::hash</code> specialisation, no free <code>MakeShared</code> factory: handles are
+created by constructing them and compared — if at all — by the address of the object the caller already holds. That absence is why
+<code>hbe::String</code> carries its own hash cache rather than hashing its buffer, and it is recorded in Coverage rather than presented as
+a style choice.
+</p>
+
+<h2 id="coverage">Coverage</h2>
+
+<table>
+  <tr><th>Not documented here</th><th>Why</th></tr>
+  <tr>
+    <td>Thread-safety of a shared object, in either direction.</td>
+    <td>The pages state the fact (no atomic, no lock, one plain counter) and stop there. Whether the engine intends handles to cross threads
+        at all is not answered by <code>Engine/Memory/Shareable.h</code> or by its one user, and no test exercises it. A confident sentence
+        either way would be a guess.</td>
+  </tr>
+  <tr>
+    <td>What <code>MemoryManager</code> does with a <code>Delete</code> that names another allocator's memory.</td>
+    <td>Owned by <a href="../MemoryManager/index.html">the MemoryManager pages</a>. This page documents that the mismatch is reachable from
+        a handle whose creation and last release happen in different scopes, and does not claim the manager detects it.</td>
+  </tr>
+  <tr>
+    <td><a href="operator-assign.html">operator=</a>'s missing return value: what a caller receives.</td>
+    <td>The declaration returns <code>Shareable&amp;</code> and the body ends without a return statement, so the value is indeterminate; what
+        a given compiler produces there is not a contract this page can state, and no in-tree caller assigns through this operator at all
+        (<code>hbe::String::operator=</code> reaches its copy through <a href="swap.html">Swap</a> instead).</td>
+  </tr>
+  <tr>
+    <td>Whether the variadic constructor makes a handle copy-constructible from a <code>const</code> handle.</td>
+    <td>Not settled here. The copy constructor cannot bind a const reference, and the unconstrained variadic constructor is a candidate that
+        would fail deeper in the instantiation rather than at the call site; which of the two a compiler reports is not a fact about this
+        class. What is settled is that no well-formed copy from a const handle exists — <code>Engine/String/String.h</code>'s copy
+        constructor takes <code>String&amp;</code> for that reason.</td>
+  </tr>
+  <tr>
+    <td>The members of the nested <code>Body</code>: <code>Create</code>, <code>GetBody</code>, <code>Reference</code>,
+        <code>GetRefCount</code>, <code>Dereference</code> and its constructor.</td>
+    <td>Private to <code>Shareable</code> and unreachable from a caller, so they are described here and on the pages that use them
+        (<a href="constructors.html">constructors</a>, <a href="destructor.html">destructor</a>,
+        <a href="get-reference-count.html">GetReferenceCount</a>) rather than as one page per name; a nested class belongs to its owner's page.
+        Their behaviour is quoted where a caller depends on it — the counter's width, the first reference taken by <code>Create()</code>, and
+        the <code>count &gt; 0</code> guard that decides what the last release does.</td>
+  </tr>
+  <tr>
+    <td><code>Body::SizeOfType</code>.</td>
+    <td>Documented as unread: a search of <code>Engine/</code> finds no use. Whether it is a leftover or a placeholder for a sized delete is
+        not stated anywhere in the source, so no page invents an answer.</td>
+  </tr>
+  <tr>
+    <td>Copy-on-write as a policy.</td>
+    <td>The class provides a count and nothing else: it never copies on write, never defers, never forks. The policy lives in
+        <code>Engine/String/String.cpp</code>, and the <code>String</code> pages own it. This page quotes the assignment operator because it is
+        the only in-tree reading of <a href="get-reference-count.html">GetReferenceCount</a> as a decision.</td>
+  </tr>
+</table>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; Shareable</a></span>
+  <span><a href="index.html#methods">All Shareable methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

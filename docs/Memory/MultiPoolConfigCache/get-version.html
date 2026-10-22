@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MultiPoolConfigCache::GetVersion — Memory module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a class="current" href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Memory</a> /
+  <a href="index.html">MultiPoolConfigCache</a> / GetVersion
+</p>
+
+<h1><span class="fn">GetVersion</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::MultiPoolConfigCache</span>
+  <span class="tag">Engine/Memory/MultiPoolConfigCache.h</span>
+  <span class="tag">static</span>
+  <span class="tag">nodiscard</span>
+  the one format version this build writes and the only one it accepts
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>[[nodiscard]] static auto GetVersion()</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  Defined in the class body of <code>Engine/Memory/MultiPoolConfigCache.h</code>. Its whole purpose is to be the
+  public window onto a private constant: <code>version</code> is declared
+  <code>static constexpr TVersion version = 0;</code> in the private section, and this returns it by value. The
+  declared return type is <code>auto</code>, so what a caller actually gets is <code>TVersion</code> —
+  <code>uint32_t</code> — not a reference and not the constant's own type identity.
+</p>
+
+<p>
+  It is used once, by <a href="serialize.html">Serialize</a>, which streams <code>GetVersion()</code> as the second
+  field of the file, immediately after the class-name tag from <a href="get-class-name.html">GetClassName</a>.
+</p>
+
+<div class="note">
+  <p>
+    <strong>The reader does not ask this function.</strong>
+    <a href="deserialize.html">Deserialize</a> compares the number it read against the private <code>version</code>
+    constant directly, not against <code>GetVersion()</code>. Both name the same constant, so the two paths cannot
+    disagree today — but it means the accessor is a convenience for the writer and for outside callers rather than
+    the single source the format's version flows through.
+  </p>
+</div>
+
+<div class="gap">
+  <p>
+    <strong>There is exactly one version this build accepts, and accepting another is not implemented.</strong>
+    A mismatch is an <code>Error</code> log naming the read number and a <code>false</code> return: the file is
+    ignored, not upgraded, not migrated, not partially read. So bumping <code>version</code> is the whole of the
+    format-change story — every existing <code>.multiPoolConfig.dat</code> becomes dead weight, and the next run
+    relearns its bank sizes by demand. Nothing in the file records which version a human should migrate
+    <em>from</em>.
+  </p>
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<p>None.</p>
+
+<h2 id="return">Return value</h2>
+
+<table>
+  <tr><th>Type</th><th>What you get</th></tr>
+  <tr><td><code>auto</code>, deduced to <code>TVersion</code> (<code>uint32_t</code>)</td><td>The format version this build writes and the only one it reads: <code>0</code>. Marked <code>[[nodiscard]]</code>, and it is <code>static</code>, so it answers without an instance.</td></tr>
+</table>
+
+<h2 id="example">Examples</h2>
+
+<p>The one call site, writing the field a later load will compare against:</p>
+
+<pre><code>bos &lt;&lt; GetVersion();</code></pre>
+
+<p class="meta">From Engine/Memory/MultiPoolConfigCache.cpp, MultiPoolConfigCache::Serialize</p>
+
+<p>
+  On the other side, <a href="deserialize.html">Deserialize</a> reads the field into a local
+  <code>TVersion inVersion = 0</code> and refuses the file unless it equals <code>version</code>. Together the two
+  lines are the engine's entire forward-compatibility policy for this file: write the number, refuse anything that
+  does not carry the same number.
+</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; MultiPoolConfigCache</a></span>
+  <span><a href="index.html#methods">All MultiPoolConfigCache methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ThreadSafeMultiPoolAllocator::~ThreadSafeMultiPoolAllocator — Memory module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a class="current" href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Memory</a> /
+  <a href="index.html">ThreadSafeMultiPoolAllocator</a> / ~ThreadSafeMultiPoolAllocator
+</p>
+
+<h1><span class="fn">~ThreadSafeMultiPoolAllocator</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::ThreadSafeMultiPoolAllocator</span>
+  <span class="tag">Engine/Memory/ThreadSafeMultiPoolAllocator.h</span>
+  Releases every bank through the allocator recorded at construction, under the lock, then gives the registration id back.
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>~ThreadSafeMultiPoolAllocator()</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  Defined in <code>Engine/Memory/ThreadSafeMultiPoolAllocator.cpp</code>. It states where the release goes before it
+  does anything else:
+</p>
+
+<p class="meta">From Engine/Memory/ThreadSafeMultiPoolAllocator.cpp, ThreadSafeMultiPoolAllocator::~ThreadSafeMultiPoolAllocator()</p>
+
+<pre><code>AllocatorScope scope(parentID);
+
+auto&amp; mmgr = MemoryManager::GetInstance();</code></pre>
+
+<p>
+  Every bank's backing buffer was obtained from <code>parentID</code> and is returned to it, so the ambient scope at
+  the destruction site is irrelevant: an instance may be destroyed under any scope, including its own. That
+  redirect is also redundant by the time it matters — <code>PoolAllocator</code>'s own destructor releases through
+  the parent it recorded (<code>Engine/Memory/PoolAllocator.cpp</code>) — but it is what makes the guarantee not
+  depend on that.
+</p>
+
+<p>
+  Then, under one <code>std::lock_guard</code> on <code>lock</code>, it clears the bank list. Each bank's destructor
+  releases its buffer through its recorded parent and deregisters its own registration id; the
+  <code>MEMORY_VERIFICATION_ENABLED</code> block above the clear, which would stamp every bank's thread id with the
+  current thread, is compiled out (<code>Engine/Config/BuildConfig.h</code> defines it as 0). The lock is released
+  before the final <code>mmgr.DeregisterAllocator(GetID())</code>, and the id is never reset: <a
+  href="get-id.html"><code>GetID</code></a> keeps answering with the id that was just returned to the engine.
+</p>
+
+<div class="gap">
+  <strong>It does not stop, wait for, or notice a thread still inside the class.</strong> The precondition is that
+  no caller remains; nothing enforces it. Taking the lock proves only that no other thread is in a critical section
+  <em>at that instant</em> — a thread can be about to enter <a href="allocate.html"><code>Allocate</code></a>, and
+  after the final deregistration the bank list is being destroyed under it. Nothing in the class records who is
+  using it, so this is a caller duty and a named omission rather than a check that exists.
+</div>
+
+<div class="gap">
+  <strong>Two ways this teardown can outlive its own guarantees.</strong> First, the vector's own storage:
+  <code>banks</code> is a member, so it is destroyed after the destructor body ends and therefore after
+  <code>scope</code> is gone — its release obeys whatever scope the destruction site holds, not
+  <code>parentID</code>. Second, the id: <code>DeregisterAllocator</code> pushes the registration slot back onto the
+  pool <code>RegisterAllocator</code> pops from (<code>Engine/Memory/MemoryManager.cpp</code>), so the number
+  <a href="get-id.html"><code>GetID</code></a> still reports can be handed to a later allocator.
+</div>
+
+<div class="note">
+  <strong>The locked region reaches a logging function, and one build switch is what keeps it silent.</strong>
+  <code>banks.clear()</code> runs <code>~PoolAllocator</code>, which calls <code>MemoryManager::Deallocate</code>
+  and <code>MemoryManager::DeregisterAllocator</code> — and the latter calls <code>Log(ELogLevel::Info, ...)</code>
+  on every success (<code>Engine/Memory/MemoryManager.cpp</code>). That reaches the logger only through
+  <code>MemoryManager::Log</code>, which emits and allocates nothing unless
+  <code>MEMORY_LOGGING_ENABLED</code> is set, and <code>Engine/Config/BuildConfig.h</code> defines it as 0. Under
+  that switch the bank teardown would allocate from whatever pool a logger call allocates from — and for the one
+  instance the engine owns, that pool is this very object (<code>Engine/Log/Logger.h</code>), which is the
+  self-deadlock the fixed diagnostics describe under <a href="deallocate.html"><code>Deallocate</code></a>.
+</div>
+
+<div class="note">
+  <strong>Blocks that were never returned are not mentioned.</strong> The leak report on a deregistration lives
+  behind <code>PROFILE_ENABLED</code>, which this tree defines as 0 and cannot currently compile, and nothing in
+  this destructor inspects the banks' free-block counts. Dropping blocks and destroying the allocator is silent
+  today.
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<p>None.</p>
+
+<h2 id="return">Return value</h2>
+
+<p>A destructor has no return value. Its observable effect is that the bank buffers are gone, the registration id is
+available again, and no allocation may be made through this object afterwards.</p>
+
+<h2 id="example">Examples</h2>
+
+<p class="meta">From Engine/Memory/ThreadSafeMultiPoolAllocator.cpp</p>
+
+<pre><code>ThreadSafeMultiPoolAllocator parent("TC4 Pool Parent", {{1024, 16}});
+ThreadSafeMultiPoolAllocator unrelated("TC4 Pool Unrelated", {{1024, 16}});
+bool allocated = false;
+{
+        AllocatorScope parentScope(parent);
+        std::optional&lt;PoolAllocator&gt; pool;
+        pool.emplace("TC4 Pool Owner", 64, 8);
+        allocated = pool-&gt;Allocate(32) != nullptr;
+        {
+                AllocatorScope unrelatedScope(unrelated);
+                pool.reset();
+        }
+}</code></pre>
+
+<p>
+  Both instances are destroyed at the closing brace of the testlet body — one of them while a scope is open on the
+  other, which is the case the <code>AllocatorScope(parentID)</code> line exists to make irrelevant. The suite names
+  this case <em>Pool Buffer Returns To Its Recorded Parent</em>.
+</p>
+
+<p>
+  The production instance is destroyed as a member: <code>Logger</code> declares
+  <code>ThreadSafeMultiPoolAllocator inputAlloc</code> (<code>Engine/Log/Logger.h</code>), so its teardown runs when
+  the logger is torn down, under whatever scope that happens under.
+</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; ThreadSafeMultiPoolAllocator</a></span>
+  <span><a href="index.html#methods">All ThreadSafeMultiPoolAllocator methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

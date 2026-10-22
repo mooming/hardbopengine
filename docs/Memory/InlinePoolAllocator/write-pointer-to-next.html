@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>InlinePoolAllocator::WritePointerToNext — Memory module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a class="current" href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Memory</a> /
+  <a href="index.html">InlinePoolAllocator</a> / WritePointerToNext
+</p>
+
+<h1><span class="fn">WritePointerToNext</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::InlinePoolAllocator</span>
+  <span class="tag">Engine/Memory/InlinePoolAllocator.h</span>
+  The free list's only encoding: a block that is free stores the address of the next free block inside itself.
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>static void WritePointerToNext(void* ptr, void* nextPtr)</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+Private and static, defined inline in the class body of <code>Engine/Memory/InlinePoolAllocator.h</code>. It stores
+<code>nextPtr</code> in the first <code>sizeof(void*)</code> bytes of the block at <code>ptr</code>:
+</p>
+
+<pre><code>void** ptrArray = static_cast&lt;void**&gt;(ptr);
+auto&amp; pointerToNext = reinterpret_cast&lt;void*&amp;&gt;(ptrArray[0]);
+pointerToNext = nextPtr;</code></pre>
+
+<p class="meta">From Engine/Memory/InlinePoolAllocator.h, hbe::InlinePoolAllocator::WritePointerToNext()</p>
+
+<p>
+That is the whole encoding of the free list: a block that is free carries the address of the next free block inside itself, so the pool
+needs no separate bookkeeping array. Two callers, both inside this class — the constructor links the array block by block
+(<a href="constructors.html">constructors</a>) and terminates the list by writing a null into the last block, and
+<a href="deallocate-bytes.html">DeallocateBytes</a> writes the current head into a block just before making that block the head.
+</p>
+
+<div class="note">
+  <strong>The link is an address, and that is a statement about where the pool may live.</strong>
+  Because the free list stores real pointers rather than offsets, the array must never be relocated: a pool copied byte-for-byte into other
+  storage would keep links pointing into the object it came from. The design is consistent with that constraint — the array is a member of a
+  fixed object, the class declares no move operation, and <a href="constructors.html">the copy constructor</a> asserts — but the constraint is
+  real, and it is the reason the pool cannot support the <code>realloc</code>-style growth a pointer-indexed design would allow.
+  <a href="../PoolAllocator/writenextindex.html"><code>PoolAllocator</code></a> stores an index for exactly that reason; here the storage can
+  never move, so the cheaper encoding is safe.
+</div>
+
+<div class="gap">
+  <strong>Two requirements sit outside this function, and it cannot check either.</strong>
+  The block must be at least one pointer wide — which is what <code>ActualBlockSize</code>'s <code>sizeof(void*)</code> floor guarantees, not
+  <code>BlockSize</code> as written — and the block must be aligned well enough for a pointer store, which the array's
+  <code>alignas(AlignUnit)</code> and the constructor's <code>Assert(OS::CheckAligned(block[0]))</code> are for. What the function does not do
+  is bounds-check or type-check its destination: <a href="deallocate-bytes.html">DeallocateBytes</a> validates with
+  <a href="is-valid-pointer.html">IsValidPointer</a> before writing, but the constructor's linking loop and any future caller write wherever
+  they are told.
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<table>
+  <tr><th>Parameter</th><th>Type</th><th>Meaning</th></tr>
+  <tr><td><code>ptr</code></td><td><code>void*</code></td><td>Destination block. Its first <code>sizeof(void*)</code> bytes become the link,
+      which is why a block handed to a caller must be treated as damaged goods until released.</td></tr>
+  <tr><td><code>nextPtr</code></td><td><code>void*</code></td><td>The next free block, or <code>nullptr</code> to terminate the list.</td></tr>
+</table>
+
+<h2 id="return">Return value</h2>
+
+<p>None.</p>
+
+<h2 id="example">Examples</h2>
+
+<pre><code>for (size_t i = 1; i &lt; ActualNumBlocks; i++)
+{
+	WritePointerToNext(block[i - 1], block[i]);
+}
+
+WritePointerToNext(block[ActualNumBlocks - 1], nullptr);</code></pre>
+
+<p class="meta">From the default constructor of <code>Engine/Memory/InlinePoolAllocator.h</code>; this block is an excerpt of a constructor rather than a quotation of one named symbol.</p>
+
+<p>
+The constructor's loop is the one place the whole array is written at once, and it explains the constructor's cost: linking
+<code>ActualNumBlocks</code> blocks is <code>ActualNumBlocks</code> pointer stores before the pool can serve anything.
+</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; InlinePoolAllocator</a></span>
+  <span><a href="index.html#methods">All InlinePoolAllocator methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

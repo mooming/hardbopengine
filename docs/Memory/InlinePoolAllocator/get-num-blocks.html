@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>InlinePoolAllocator::GetNumBlocks — Memory module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a class="current" href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Memory</a> /
+  <a href="index.html">InlinePoolAllocator</a> / GetNumBlocks
+</p>
+
+<h1><span class="fn">GetNumBlocks</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::InlinePoolAllocator</span>
+  <span class="tag">Engine/Memory/InlinePoolAllocator.h</span>
+  Blocks in the member array after the minimum-one clamp - the pool's depth, and the owning object's size.
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>[[nodiscard]] static auto GetNumBlocks()</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+Defined inline in the class body of <code>Engine/Memory/InlinePoolAllocator.h</code>; the body returns <code>ActualNumBlocks</code>, which
+is <code>std::max(NumBlocks, static_cast&lt;size_t&gt;(1))</code>. It is the pool's depth: how many blocks of
+<code>BlockSizeInBytes</code> bytes the member array holds, and therefore how many simultaneous small allocations the pool can serve before
+the parent allocator has to. Static, compile-time, and silent about how many of them are in use.
+</p>
+
+<div class="note">
+  <strong>A pool of zero blocks is a pool of one, and this is the accessor that proves it.</strong>
+  The clamp exists so the array is never empty, which also keeps the constructor's
+  <code>WritePointerToNext(block[ActualNumBlocks - 1], nullptr)</code> inside the array bounds. Reading the answer back is cheaper than
+  re-deriving it: use this, or the constant, rather than the template argument.
+</div>
+
+<div class="note">
+  <strong>The cost it reports is paid by whatever owns the pool.</strong>
+  The array is a member, so an object owning <code>InlinePoolAllocator&lt;T, BlockSize, NumBlocks&gt;</code> grows by
+  <code>GetNumBlocks() * sizeof(T) * GetBlockSize()</code> bytes, and the constructor writes a free-list link into every one of those blocks
+  at construction time. Both <a href="../../HSTL/index.html"><code>HInlineString</code></a> and
+  <a href="../../HSTL/index.html"><code>HInlineVector</code></a> set it to 2 — one block for the container's first request and one for the
+  block it holds while it grows into a larger one.
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<p>None.</p>
+
+<h2 id="return">Return value</h2>
+
+<table>
+  <tr><th>Type</th><th>What you get</th></tr>
+  <tr><td><code>size_t</code></td><td><code>ActualNumBlocks</code> — blocks in the array, minimum 1.</td></tr>
+</table>
+
+<h2 id="example">Examples</h2>
+
+<pre><code>void* ptrArray[std::decay&lt;decltype(allocator)&gt;::type::ActualNumBlocks];</code></pre>
+
+<p class="meta">From Engine/Memory/InlinePoolAllocator.cpp, InlinePoolAllocatorTest::Prepare()</p>
+
+<p>
+The stress harness sizes its holding array by the same constant this accessor returns, so the testlet's worst case is "every block in the
+pool, held at once" for whatever <code>NumBlocks</code> it was instantiated with — 32 for the eight timing testlets, 2 for anything built
+through the <code>HSTL</code> aliases.
+</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; InlinePoolAllocator</a></span>
+  <span><a href="index.html#methods">All InlinePoolAllocator methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

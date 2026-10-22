@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MemoryManager::IsLogEnabled — Memory module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a class="current" href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Memory</a> /
+  <a href="index.html">MemoryManager</a> / IsLogEnabled
+</p>
+
+<h1><span class="fn">IsLogEnabled</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::MemoryManager</span>
+  <span class="tag">Engine/Memory/MemoryManager.h</span>
+  The gate every memory diagnostic passes — one config parameter, and hard-coded false in this tree.
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>bool IsLogEnabled(ELogLevel level) const</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+Defined in <code>Engine/Memory/MemoryManager.cpp</code> as <code>MemoryManager::IsLogEnabled()</code>, and it exists so
+that a log line can be free: <a href="log.html">Log</a> asks this first and returns before building anything if the answer
+is no.
+</p>
+
+<pre><code>#if MEMORY_LOGGING_ENABLED
+	static TAtomicConfigParam&lt;uint8_t&gt; CPLogLevel("Log.Memory", "The Memory System Log Level",
+												  static_cast&lt;uint8_t&gt;(Config::MemLogLevel));
+
+	if (static_cast&lt;uint8_t&gt;(level) &lt; CPLogLevel.Get())
+	{
+		return false;
+	}
+
+	return true;
+#else // MEMORY_LOGGING_ENABLED
+	return false;
+#endif // MEMORY_LOGGING_ENABLED</code></pre>
+
+<p class="meta">From Engine/Memory/MemoryManager.cpp, MemoryManager::IsLogEnabled()</p>
+
+<p>
+Two consequences of writing it this way. The filter compares the <em>ordinal</em> of an
+<code>ELogLevel</code> (<code>Verbose</code> = 0 through <code>FatalError</code>) against the configured threshold, so a
+higher threshold silences the chattier levels and the enum's declaration order is the verbosity order — a new enumerator
+inserted anywhere other than the end changes every filter in the module. And the config parameter is a function-local
+static: the parameter named <code>"Log.Memory"</code> is not registered with the engine's parameter system until the first
+call, and its default is <code>Config::MemLogLevel</code> (<code>1</code> in <code>Engine/Config/EngineConfig.h</code>,
+i.e. <code>Verbose</code> suppressed, <code>Info</code> and above allowed).
+</p>
+
+<div class="gap">
+  <strong>In this repository the answer is always <code>false</code>.</strong>
+  <code>MEMORY_LOGGING_ENABLED</code> is <code>0</code> in <code>Engine/Config/BuildConfig.h</code> with no
+  per-configuration override, so the whole method compiles to <code>return false;</code>: no memory diagnostic is ever
+  emitted, no <code>"Log.Memory"</code> parameter is ever registered, and every lambda passed to
+  <a href="log.html">Log</a>, <a href="log-warning.html">LogWarning</a> or <a href="log-error.html">LogError</a> is discarded
+  without being called. That is why the rest of the class is written the way it is — a null return from
+  <a href="allocate.html">Allocate</a> on a bad id is "reported" by a line that cannot print.
+</div>
+
+<div class="note">
+  <strong>The check is a filter, not a level mapping.</strong>
+  Callers choose the level themselves and there is no per-call-site override: the pool module logs the requests it had to
+  send elsewhere at <code>Warning</code> (<a href="log-warning.html">LogWarning</a>), its routine detail at
+  <code>Info</code>/<code>Verbose</code>, and its fatal conditions at <code>FatalError</code> — those fatal lines are then
+  filtered too, which is the asymmetry <a href="log.html">Log</a> documents.
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<table>
+  <tr><th>Parameter</th><th>Type</th><th>Requirement</th></tr>
+  <tr><td><code>level</code></td><td><code>ELogLevel</code></td><td>The level the caller intends to log at. Compared by ordinal against <code>"Log.Memory"</code>; <code>ELogLevel::MAX</code> is a legal argument and passes every threshold.</td></tr>
+</table>
+
+<h2 id="return">Return value</h2>
+
+<table>
+  <tr><th>Type</th><th>What you get</th></tr>
+  <tr><td><code>bool</code></td><td><code>true</code> when a line at that level should be built and sent — and, in every build of this tree, <code>false</code> always.</td></tr>
+</table>
+
+<h2 id="example">Examples</h2>
+
+<pre><code>#if !RELEASE_BUILD
+	constexpr auto logLevel = ELogLevel::Verbose;
+	if (!IsLogEnabled(logLevel))
+	{
+		return;
+	}
+
+	auto&amp; data = multiPoolConfigCache.GetData();
+	size_t index = 0;
+
+	for (auto&amp; item : data)
+	{
+		…</code></pre>
+
+<p class="meta">From Engine/Memory/MemoryManager.cpp, MemoryManager::LoadMultiPoolConfigs()</p>
+
+<p>
+The only call sites in the class are inside <a href="log.html">Log</a> itself and the two verbose dumps in
+<a href="load-multi-pool-configs.html">LoadMultiPoolConfigs</a> and <a href="save-multi-pool-configs.html">
+SaveMultiPoolConfigs</a>, where the point is to skip walking the whole configuration table rather than merely to skip
+printing it — the guard buys back the loop, not just the output.
+</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; MemoryManager</a></span>
+  <span><a href="index.html#methods">All MemoryManager methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MemoryManager::GetName — Memory module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a class="current" href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Memory</a> /
+  <a href="index.html">MemoryManager</a> / GetName
+</p>
+
+<h1><span class="fn">GetName</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::MemoryManager</span>
+  <span class="tag">Engine/Memory/MemoryManager.h</span>
+  The literal "MemoryManager" — an assert-prefix helper, not a logger category and not the allocator-name getter.
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>static const char* GetName()</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+Defined in <code>Engine/Memory/MemoryManager.cpp</code> as <code>MemoryManager::GetName()</code>, and the body is
+<code>return "MemoryManager";</code> — a string literal, not a member, not a <code>StaticString</code>, and not
+configurable. It is the class's own name, nothing more.
+</p>
+
+<p>
+Its one use in the module is to build a diagnostic prefix on the dispatch path:
+<code>Assert(allocProxy.allocate != nullptr, "[", GetName(), "::", __func__, "][Error] ", "No allocate function, ID = ", id);</code>
+in <a href="allocate.html">Allocate</a>. Every other message in the class either hard-codes its own prefix or omits one,
+so the string is not a logging contract: <a href="log.html">Log</a> lines are written by the call site's lambda and the
+manager's name appears in them only when the author typed it.
+</p>
+
+<div class="note">
+  <strong>Not a logger category, and not the allocator-name getter.</strong>
+  The logging entry points reach the engine's logger through <a href="log.html">Log</a> and its level filter
+  (<a href="is-log-enabled.html">IsLogEnabled</a>), which never consults this name. And it is a different function from
+  <code>AllocatorProxy::GetName()</code>, which answers <code>"NoName"</code> or a stored
+  <code>AllocStats::name</code>, and from <a href="get-allocator-name.html">GetAllocatorName</a>, which answers per
+  registered allocator. Three "names" in one module, three different sources of truth.
+</div>
+
+<div class="note">
+  <strong>Static, and <code>const char*</code> into static storage.</strong>
+  Safe to hold for the life of the process, safe to call before an instance exists — there is no <code>this</code>, no
+  allocation and no initialisation order dependency, unlike nearly everything else in the class.
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<p>None.</p>
+
+<h2 id="return">Return value</h2>
+
+<table>
+  <tr><th>Type</th><th>What you get</th></tr>
+  <tr><td><code>const char*</code></td><td>The literal <code>"MemoryManager"</code>. Never null, never freed, never localised.</td></tr>
+</table>
+
+<h2 id="example">Examples</h2>
+
+<pre><code>AllocatorProxy&amp; allocProxy = allocators[id];
+Assert(allocProxy.allocate != nullptr, "[", GetName(), "::", __func__, "][Error] ",
+	   "No allocate function, ID = ", id);</code></pre>
+
+<p class="meta">From Engine/Memory/MemoryManager.cpp, MemoryManager::Allocate()</p>
+
+<p>
+The only call site in the repository, and a small lesson in why the rest of the class does not use it: the matching
+release path writes its prefix by hand and gets it wrong —
+<code>Assert(allocProxy.deallocate != nullptr, "[MemoryManager::Allocate][Error] No allocate function, ID = ", id);</code>
+in <a href="deallocate.html">Deallocate</a> says <code>Allocate</code> inside a deallocation failure. A prefix built from
+this function cannot drift like that.
+</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; MemoryManager</a></span>
+  <span><a href="index.html#methods">All MemoryManager methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

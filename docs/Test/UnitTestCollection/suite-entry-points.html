@@ -66,7 +66,7 @@
 <main>
 
 <h1>Suite entry points</h1>
-<p><code>Engine/Test/UnitTestCollection.h</code> &nbsp;·&nbsp; namespace <code>hbe::Test</code> &nbsp;·&nbsp; two free functions, both behind <code>#ifdef __UNIT_TEST__</code></p>
+<p><code>Engine/Test/UnitTestCollection.h</code> &nbsp;·&nbsp; namespace <code>hbe::Test</code> &nbsp;·&nbsp; two free functions, both behind <code>#ifdef TEST_ENABLED</code></p>
 
 <h2 id="description">What this module is</h2>
 <p>
@@ -118,7 +118,7 @@ loop rather than before it.
 </p>
 
 <p><strong>Preconditions.</strong> The same as <code>RegisterSuite()</code>: an initialised engine, called before
-<code>Run</code>. It is meaningless in a binary built without <code>__UNIT_TEST__</code>, which is why that build
+<code>Run</code>. It is meaningless in a binary built without <code>TEST_ENABLED</code>, which is why that build
 refuses to run and prints the command that would work.</p>
 
 <h2 id="why">Why the split, and why before <code>Run</code></h2>
