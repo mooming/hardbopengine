@@ -11,8 +11,7 @@
 
 namespace hbe
 {
-/// @brief Allocator that uses the system heap (malloc/free).
-/// @details Wraps OS-level memory allocation functions.
+/// API reference: docs/Memory/SystemAllocator/index.html
 template <class T>
 class SystemAllocator
 {
@@ -135,12 +134,9 @@ private:
 #endif // MEMORY_INVESTIGATION_ENABLED
 
 #if PROFILE_ENABLED
-
-#ifndef MEMORY_INVESTIGATION_ENABLED
-		auto allocated = OS::GetAllocSize(ptr);
-#else
-		const std::size_t allocated = nBytes;
-#endif // MEMORY_INVESTIGATION_ENABLED
+#if !MEMORY_INVESTIGATION_ENABLED
+		const auto allocated = OS::GetAllocSize(ptr);
+#endif // !MEMORY_INVESTIGATION_ENABLED
 
 #if MEMORY_VERIFICATION_ENABLED
 		Assert(nBytes <= allocated);
@@ -165,7 +161,7 @@ private:
 };
 } // namespace hbe
 
-#ifdef __UNIT_TEST__
+#ifdef TEST_ENABLED
 #include "Test/TestCollection.h"
 
 namespace hbe
@@ -182,4 +178,4 @@ protected:
 	void Prepare() override;
 };
 } // namespace hbe
-#endif //__UNIT_TEST__
+#endif // TEST_ENABLED

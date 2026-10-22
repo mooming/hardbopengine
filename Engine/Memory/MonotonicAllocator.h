@@ -10,9 +10,7 @@
 
 namespace hbe
 {
-/// @brief Monotonic allocator that allocates linearly from a buffer.
-/// @details Simple bump-pointer allocator. Memory is released all at once
-/// on destruction. Individual deallocations are ignored.
+/// API reference: docs/Memory/MonotonicAllocator/index.html
 class MonotonicAllocator final
 {
 public:
@@ -52,7 +50,7 @@ private:
 };
 } // namespace hbe
 
-#ifdef __UNIT_TEST__
+#ifdef TEST_ENABLED
 #include "Test/TestCollection.h"
 
 namespace hbe
@@ -69,4 +67,4 @@ protected:
 	void Prepare() override;
 };
 } // namespace hbe
-#endif //__UNIT_TEST__
+#endif // TEST_ENABLED

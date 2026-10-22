@@ -3,7 +3,6 @@
 #pragma once
 
 #include <cstddef>
-#include <cstdlib>
 
 #include "AllocatorID.h"
 #include "AllocatorScope.h"
@@ -13,8 +12,7 @@
 
 namespace hbe
 {
-// A proxy allocator which uses the current allocator defined in Memory Manager.
-// It should be careful to use this when the current allocator is stack allocators.
+/// API reference: docs/Memory/DefaultAllocator/index.html
 template <typename T>
 class DefaultAllocator final
 {
@@ -44,15 +42,6 @@ public:
 
 	[[nodiscard]] T* allocate(std::size_t n) noexcept
 	{
-		// Fast-path: when the scoped allocator is the SystemAllocator,
-		// bypass the MemoryManager indirection chain and call malloc directly.
-		// This eliminates multiple function calls per allocation that dominate
-		// performance in hot paths (e.g., std::vector growth).
-		if (allocatorID == MemoryManager::SystemAllocatorID)
-		{
-			return static_cast<T*>(malloc(n * sizeof(T)));
-		}
-
 		AllocatorScope scope(allocatorID);
 		auto& mmgr = MemoryManager::GetInstance();
 		auto ptr = mmgr.AllocateByType<T>(n);
@@ -62,12 +51,9 @@ public:
 
 	void deallocate(T* ptr, std::size_t n) noexcept
 	{
-		Assert(ptr != nullptr);
-
-		// Fast-path: mirror the allocate() optimization for deallocation.
-		if (allocatorID == MemoryManager::SystemAllocatorID)
+		if (ptr == nullptr)
 		{
-			free(ptr);
+			Assert(n == 0);
 
 			return;
 		}
@@ -106,7 +92,7 @@ public:
 };
 } // namespace hbe
 
-#ifdef __UNIT_TEST__
+#ifdef TEST_ENABLED
 #include "Test/TestCollection.h"
 
 namespace hbe
@@ -123,4 +109,4 @@ protected:
 	void Prepare() noexcept override;
 };
 } // namespace hbe
-#endif //__UNIT_TEST__
+#endif // TEST_ENABLED

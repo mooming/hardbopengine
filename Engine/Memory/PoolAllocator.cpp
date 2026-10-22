@@ -2,6 +2,9 @@
 
 #include "PoolAllocator.h"
 
+#include <utility>
+
+#include "AllocatorScope.h"
 #include "Core/CommonUtil.h"
 #include "Core/Debug.h"
 #include "MemoryManager.h"
@@ -12,7 +15,7 @@ namespace hbe
 {
 #if PROFILE_ENABLED
 PoolAllocator::PoolAllocator(const char* inName, TSize inBlockSize, TSize inNumberOfBlocks,
-							 const hbe::source_location location)
+							 const SourceLocation location)
 #else // PROFILE_ENABLED
 PoolAllocator::PoolAllocator(const char* inName, TSize inBlockSize, TSize inNumberOfBlocks)
 #endif // PROFILE_ENABLED
@@ -23,19 +26,13 @@ PoolAllocator::PoolAllocator(const char* inName, TSize inBlockSize, TSize inNumb
 	, numberOfBlocks(inNumberOfBlocks)
 	, numberOfFreeBlocks(inNumberOfBlocks)
 	, buffer(nullptr)
+	, availables(nullptr)
 #if PROFILE_ENABLED
 	, maxUsedBlocks(0)
 	, srcLocation(location)
 #endif // PROFILE_ENABLED
 {
-	// A free block has to hold the next-index link written below, so a block smaller than
-	// TSize cannot be supported at all - hence a precondition, not something to clamp away.
-	Assert(inBlockSize >= sizeof(TSize));
-
 	parentID = hbe::MemoryManager::GetCurrentAllocatorID();
-	// Both operands are members here: blockSize is the aligned size every later path uses too
-	// (AllocateBlock, Deallocate, GetCapacity). Parameters carry the in prefix precisely so no
-	// unqualified name here can silently resolve to the unaligned request instead.
 	const TSize totalSize = blockSize * numberOfBlocks;
 	if (totalSize <= 0)
 	{
@@ -44,7 +41,15 @@ PoolAllocator::PoolAllocator(const char* inName, TSize inBlockSize, TSize inNumb
 
 	auto& mmgr = MemoryManager::GetInstance();
 	buffer = static_cast<Byte*>(mmgr.Allocate(totalSize));
-	availables = &buffer[0];
+	Assert(buffer != nullptr, "PoolAllocator: the backing allocation of ", totalSize,
+		   " bytes failed, so the free list cannot be built.");
+
+	if (unlikely(buffer == nullptr))
+	{
+		return;
+	}
+
+	availables = buffer;
 
 	for (TSize i = 0; i < numberOfBlocks; ++i)
 	{
@@ -98,6 +103,11 @@ PoolAllocator::PoolAllocator(PoolAllocator&& rhs) noexcept
 	rhs.maxUsedBlocks = 0;
 #endif // PROFILE_ENABLED
 
+	if (unlikely(id == InvalidAllocatorID))
+	{
+		return;
+	}
+
 	auto& mmgr = MemoryManager::GetInstance();
 
 	auto allocFunc = [](void* allocatorPtr, size_t n)
@@ -120,6 +130,7 @@ PoolAllocator::PoolAllocator(PoolAllocator&& rhs) noexcept
 	stats.capacity = blockSize * numberOfBlocks;
 #endif // PROFILE_ENABLED
 
+	allocProxy.allocator = this;
 	allocProxy.allocate = allocFunc;
 	allocProxy.deallocate = deallocFunc;
 }
@@ -137,7 +148,7 @@ PoolAllocator::~PoolAllocator()
 	Assert(buffer != nullptr);
 
 	auto& mmgr = MemoryManager::GetInstance();
-	mmgr.Deallocate(buffer, totalSize);
+	mmgr.Deallocate(parentID, buffer, totalSize);
 
 #if PROFILE_ENABLED
 	mmgr.DeregisterAllocator(GetID(), srcLocation);
@@ -151,6 +162,11 @@ PoolAllocator::~PoolAllocator()
 
 PoolAllocator& PoolAllocator::operator=(PoolAllocator&& rhs) noexcept
 {
+	if (this == &rhs)
+	{
+		return *this;
+	}
+
 	this->~PoolAllocator();
 	new (this) PoolAllocator(std::move(rhs));
 
@@ -186,6 +202,7 @@ Pointer PoolAllocator::Allocate(size_t size)
 
 	auto ptr = AllocateBlock();
 #if PROFILE_ENABLED
+	if (likely(ptr != nullptr))
 	{
 		auto& mmgr = MemoryManager::GetInstance();
 		mmgr.ReportAllocation(id, ptr, size, blockSize);
@@ -210,7 +227,16 @@ void PoolAllocator::Deallocate(Pointer ptr, size_t size)
 		return;
 	}
 
+	if (unlikely(!IsBlockStart(ptr)))
+	{
+		auto& rejectMgr = MemoryManager::GetInstance();
+		rejectMgr.LogError([ptr](auto& logStream) { logStream << ptr << " is not the start of a block of this pool."; });
+
+		return;
+	}
+
 #if PROFILE_ENABLED
+	if (likely(ptr != nullptr))
 	{
 		Assert(size <= blockSize);
 		auto& mmgr = MemoryManager::GetInstance();
@@ -221,7 +247,7 @@ void PoolAllocator::Deallocate(Pointer ptr, size_t size)
 	if (availables)
 	{
 		const auto index = GetIndex(availables);
-		if (unlikely(index > numberOfBlocks))
+		if (unlikely(index >= numberOfBlocks))
 		{
 			auto& mmgr = MemoryManager::GetInstance();
 			mmgr.LogError([ptr](auto& logStream) { logStream << ptr << " is not alloacted by this."; });
@@ -233,7 +259,7 @@ void PoolAllocator::Deallocate(Pointer ptr, size_t size)
 	}
 	else
 	{
-		WriteNextIndex(ptr, numberOfBlocks - 1);
+		WriteNextIndex(ptr, numberOfBlocks);
 	}
 
 	availables = ptr;
@@ -245,11 +271,26 @@ void PoolAllocator::Deallocate(Pointer ptr, size_t size)
 
 bool PoolAllocator::IsMine(Pointer ptr) const
 {
+	if (buffer == nullptr)
+	{
+		return false;
+	}
+
 	auto bytePtr = static_cast<Byte*>(ptr);
 	auto offset = static_cast<size_t>(bytePtr - buffer);
 	auto totalSize = blockSize * numberOfBlocks;
 
 	return buffer <= bytePtr && offset < totalSize;
+}
+
+bool PoolAllocator::IsBlockStart(Pointer ptr) const
+{
+	if (!IsMine(ptr))
+	{
+		return false;
+	}
+
+	return static_cast<size_t>(static_cast<Byte*>(ptr) - buffer) % blockSize == 0;
 }
 
 PoolAllocator::TSize PoolAllocator::GetIndex(Pointer ptr) const
@@ -264,14 +305,15 @@ PoolAllocator::TSize PoolAllocator::GetIndex(Pointer ptr) const
 PoolAllocator::TSize PoolAllocator::ReadNextIndex(Pointer ptr) const
 {
 	auto index = GetAs<TSize>(ptr);
-	Assert(index <= numberOfBlocks, "PoolAllocator: out of bounds index = %zu / %zu", index, numberOfBlocks);
+	Assert(index <= numberOfBlocks, "PoolAllocator: free-list link ", index, " is out of bounds for ", numberOfBlocks,
+		   " blocks.");
 
 	return index;
 }
 
 void PoolAllocator::WriteNextIndex(Pointer ptr, TSize index)
 {
-	Assert(index < numberOfBlocks, "PoolAllocator: out of bounds index. The index ", index, " should be less than ",
+	Assert(index <= numberOfBlocks, "PoolAllocator: out of bounds index. The index ", index, " should be at most ",
 		   numberOfBlocks);
 
 	SetAs<TSize>(ptr, index);
@@ -314,7 +356,7 @@ Pointer PoolAllocator::AllocateBlock()
 }
 } // namespace hbe
 
-#ifdef __UNIT_TEST__
+#ifdef TEST_ENABLED
 
 namespace hbe
 {
@@ -322,10 +364,6 @@ void PoolAllocatorTest::Prepare()
 {
 	AddTest("Construction", [](auto&)
 	{
-		// Each free block has to hold the pool's next-index link, so a block cannot be
-		// narrower than sizeof(size_t) - that is the constructor's precondition, an input
-		// error rather than a size worth probing. The range still covers every size above
-		// it, including the ones alignment rounds up.
 		for (size_t blockSize = sizeof(size_t); blockSize < 100; ++blockSize)
 		{
 			PoolAllocator pool("TestPoolAllocator", blockSize, 100);
@@ -352,14 +390,161 @@ void PoolAllocatorTest::Prepare()
 		}
 	});
 
+	AddTest("Zero Blocks Refuses Rather Than Walks An Unwritten Free List", [this](auto& ls)
+	{
+		PoolAllocator pool("TestPoolAllocatorZeroBlocks", 64, 0);
+
+		auto ptr = pool.Allocate(8);
+		if (ptr != nullptr)
+		{
+			ls << "a pool built with zero blocks handed out " << ptr << " instead of refusing." << lferr;
+
+			return;
+		}
+
+		if (pool.GetAvailableBlocks() != 0)
+		{
+			ls << "a pool built with zero blocks reports " << pool.GetAvailableBlocks() << " blocks free." << lferr;
+
+			return;
+		}
+
+		ls << "Zero blocks: the pool refuses the allocation instead of walking a free list it never wrote." << lf;
+	});
+
+	AddTest("Self Move Assignment Keeps The Pool Alive", [this](auto& ls)
+	{
+		PoolAllocator pool("TestPoolAllocatorSelfMove", 128, 4);
+
+		auto held = pool.Allocate(16);
+		if (held == nullptr)
+		{
+			ls << "the pool handed out nothing, so the self move had no live block to protect." << lferr;
+
+			return;
+		}
+
+		PoolAllocator& alias = pool;
+		pool = std::move(alias);
+
+		if (pool.GetAvailableBlocks() != 3)
+		{
+			ls << "self move assignment left the pool reporting " << pool.GetAvailableBlocks()
+			   << " blocks free, but 3 expected." << lferr;
+
+			return;
+		}
+
+		auto next = pool.Allocate(16);
+		if (next == nullptr || next == held)
+		{
+			ls << "self move assignment left the pool handing out " << next << " for a second allocation." << lferr;
+
+			return;
+		}
+
+		pool.Deallocate(next, 16);
+		pool.Deallocate(held, 16);
+
+		if (pool.GetAvailableBlocks() != 4)
+		{
+			ls << "the pool came back from a self move with " << pool.GetAvailableBlocks()
+			   << " of 4 blocks free." << lferr;
+
+			return;
+		}
+
+		ls << "Self move assignment kept the blocks it owns where they were." << lf;
+	});
+
+	AddTest("An Interior Pointer Is Not Relinked As A Block", [this](auto& ls)
+	{
+		PoolAllocator pool("TestPoolAllocatorInterior", 128, 4);
+
+		auto block = pool.Allocate(16);
+		if (block == nullptr)
+		{
+			ls << "the pool handed out nothing, so there was no live block to corrupt." << lferr;
+
+			return;
+		}
+
+		auto interior = static_cast<Byte*>(block) + 1;
+		pool.Deallocate(interior, 16);
+
+		if (pool.GetAvailableBlocks() != 3)
+		{
+			ls << "releasing an interior pointer changed the free count to " << pool.GetAvailableBlocks()
+			   << ", but 3 expected." << lferr;
+
+			return;
+		}
+
+		auto second = pool.Allocate(16);
+		if (second == block || second == interior)
+		{
+			ls << "the refused interior pointer let " << second << " be handed out while " << block
+			   << " was still held." << lferr;
+
+			return;
+		}
+
+		pool.Deallocate(second, 16);
+		pool.Deallocate(block, 16);
+
+		if (pool.GetAvailableBlocks() != 4)
+		{
+			ls << "the pool came back to " << pool.GetAvailableBlocks() << " of 4 blocks free after the refusal."
+			   << lferr;
+
+			return;
+		}
+
+		ls << "An interior pointer is refused instead of joining the free list." << lf;
+	});
+
+	AddTest("A Foreign Block Is Returned To The Parent Allocator", [this](auto& ls)
+	{
+		PoolAllocator parent("TestPoolAllocatorParent", 256, 8);
+
+		auto foreign = parent.Allocate(64);
+		if (foreign == nullptr)
+		{
+			ls << "the parent pool handed out nothing, so there was no foreign block to return." << lferr;
+
+			return;
+		}
+
+		const auto freeBefore = parent.GetAvailableBlocks();
+
+		AllocatorScope scope(parent);
+		PoolAllocator pool("TestPoolAllocatorUnderParent", 128, 4);
+
+		pool.Deallocate(foreign, 64);
+
+		if (parent.GetAvailableBlocks() != freeBefore + 1)
+		{
+			ls << "returning " << foreign << " through the child left the parent at " << parent.GetAvailableBlocks()
+			   << " blocks free, but " << freeBefore + 1 << " expected." << lferr;
+
+			return;
+		}
+
+		auto own = pool.Allocate(32);
+		if (own == nullptr || own == foreign)
+		{
+			ls << "the child handed out " << own << " after the parent had taken back its own block." << lferr;
+
+			return;
+		}
+
+		pool.Deallocate(own, 32);
+
+		ls << "A block the pool does not own is returned to the allocator that owns it." << lf;
+	});
+
 	AddTest("Allocation With A Clamped Block Size", [this](auto& ls)
 	{
-		// The constructor rounds blockSize up to Config::DefaultAlign, so a request that is
-		// not already aligned is the case that matters: the pool used to lay its free list out
-		// with the requested stride while walking it with the aligned one, which quietly handed
-		// the same block to two callers. 32 is here because it needs no rounding and so proves
-		// the rounding is not over-reaching; 24 is what LinkedList nodes ask for, and 100 lands
-		// mid-way between two multiples.
 		struct Case
 		{
 			size_t requested;
@@ -368,7 +553,7 @@ void PoolAllocatorTest::Prepare()
 
 		const Case cases[] = {{32, 32}, {24, 32}, {100, 112}};
 		constexpr size_t blockCount = 64;
-		constexpr size_t allocSize = 16; // fits every aligned size here, so no fallback path
+		constexpr size_t allocSize = 16;
 
 		for (const Case& testCase : cases)
 		{
@@ -382,8 +567,6 @@ void PoolAllocatorTest::Prepare()
 				return;
 			}
 
-			// Twice over. A mis-linked free list survives the first pass and only shows
-			// itself once the released blocks are walked again.
 			for (size_t round = 0; round < 2; ++round)
 			{
 				Pointer blocks[blockCount] = {};
@@ -409,8 +592,6 @@ void PoolAllocatorTest::Prepare()
 						}
 					}
 
-					// Rounding the stride to Config::DefaultAlign only buys 16-byte addresses if
-					// the pool buffer itself is aligned, so check the address, not the stride.
 					if (!OS::CheckAligned(blocks[i]))
 					{
 						ls << "blockSize " << testCase.requested << ": block " << i
@@ -429,7 +610,101 @@ void PoolAllocatorTest::Prepare()
 
 		ls << "Clamped block sizes keep one stride: no block was handed out twice." << lf;
 	});
+
+	AddTest("Reallocation After An Exhausted Free List", [this](auto& ls)
+	{
+		constexpr size_t blockCount = 8;
+		constexpr size_t returnedCount = blockCount / 2;
+		constexpr size_t probedCount = returnedCount + 1;
+		constexpr size_t allocSize = 16;
+
+		PoolAllocator pool("TestPoolAllocatorExhausted", 128, blockCount);
+
+		Pointer blocks[blockCount] = {};
+		for (size_t i = 0; i < blockCount; ++i)
+		{
+			blocks[i] = pool.Allocate(allocSize);
+			if (blocks[i] == nullptr)
+			{
+				ls << "exhaustion: block " << i << " was not available although the pool holds " << blockCount
+				   << " and none was taken before." << lferr;
+
+				return;
+			}
+		}
+
+		if (pool.GetAvailableBlocks() != 0)
+		{
+			ls << "exhaustion: " << pool.GetAvailableBlocks() << " blocks report free after all " << blockCount
+			   << " were allocated." << lferr;
+
+			return;
+		}
+
+		for (size_t i = 0; i < returnedCount; ++i)
+		{
+			pool.Deallocate(blocks[i], allocSize);
+			blocks[i] = nullptr;
+		}
+
+		Pointer reacquired[probedCount] = {};
+		for (size_t i = 0; i < probedCount; ++i)
+		{
+			auto ptr = pool.Allocate(allocSize);
+			if (ptr == nullptr)
+			{
+				continue;
+			}
+
+			for (size_t j = returnedCount; j < blockCount; ++j)
+			{
+				if (blocks[j] == ptr)
+				{
+					ls << "exhaustion: allocation " << i << " of the " << returnedCount << " returned blocks handed "
+					   << ptr << ", the address still held by block " << j << " " << blocks[j] << "." << lferr;
+
+					return;
+				}
+			}
+
+			for (size_t j = 0; j < i; ++j)
+			{
+				if (reacquired[j] == ptr)
+				{
+					ls << "exhaustion: allocation " << i << " handed " << ptr << ", the address allocation " << j
+					   << " already holds." << lferr;
+
+					return;
+				}
+			}
+
+			reacquired[i] = ptr;
+		}
+
+		for (size_t i = returnedCount; i < blockCount; ++i)
+		{
+			pool.Deallocate(blocks[i], allocSize);
+		}
+
+		for (const auto ptr : reacquired)
+		{
+			if (ptr != nullptr)
+			{
+				pool.Deallocate(ptr, allocSize);
+			}
+		}
+
+		if (pool.GetAvailableBlocks() != blockCount)
+		{
+			ls << "exhaustion: " << pool.GetAvailableBlocks() << " of " << blockCount
+			   << " blocks report free after every block came back." << lferr;
+
+			return;
+		}
+
+		ls << "A pool emptied and refilled by a strict subset never re-joins a block still handed out." << lf;
+	});
 }
 } // namespace hbe
 
-#endif //__UNIT_TEST__
+#endif // TEST_ENABLED

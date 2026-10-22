@@ -172,8 +172,9 @@ AllocatorProxy& MemoryManager::GetAllocatorProxy(TId id)
 		Log(ELogLevel::Error, [funcName = __func__, id](auto& ls)
 		{ ls << "[" << funcName << "] Invalid allocator id(" << id << ") is provided."; });
 
-		static AllocatorProxy dummy;
-		new (&dummy) AllocatorProxy();
+		FatalAssert(false, '[', __func__, "] Invalid allocator id(", id, ") is provided.");
+
+		static AllocatorProxy dummy{};
 
 		return dummy;
 	}
@@ -206,41 +207,19 @@ void MemoryManager::DeregisterAllocator(TId id)
 	allocator.deallocate = nullptr;
 
 #if MEMORY_VERIFICATION_ENABLED
-	if (unlikely(allocator.threadId != std::this_thread::get_id()))
-	{
-		Log(ELogLevel::Error, [funcName = __func__, id](auto& ls)
-		{ ls << "[" << funcName << "] Allocator(" << id << ") Thread id is mismatched."; });
-
-#if !RELEASE_BUILD
-		debugBreak();
-#endif // !RELEASE_BUILD
-
-		return;
-	}
+	Assert(allocator.threadId == std::this_thread::get_id(), "MemoryManager: allocator (", id,
+		   ") is deregistered from a thread other than the one that registered it.");
 #endif // MEMORY_VERIFICATION_ENABLED
 
 #if PROFILE_ENABLED
 	if (unlikely(stats.usage > 0))
 	{
-		Log(ELogLevel::Warning, [funcName = __func__, &stats, id](auto& ls)
-		{
-			ls << "[" << funcName << "] Allocator [" << stats.name << "](" << id << ") Memory leak is detected! "
-			   << stats.usage << " / " << stats.capacity << " bytes";
-		});
+		Log(ELogLevel::Warning, [funcName = __func__, id, &stats](auto& ls)
+		{ ls << "[" << funcName << "] Allocator [" << stats.name << "](" << id << ") leaks " << stats.usage << " / "
+		   << stats.capacity << " bytes at deregistration."; });
 
-#if !RELEASE_BUILD
-		debugBreak();
-#endif // !RELEASE_BUILD
-
-		return;
-	}
-
-	if (unlikely(stats.usage > 0))
-	{
-		Log(ELogLevel::Warning, [funcName = __func__, &stats, id](auto& ls)
-		{ ls << "[" << funcName << "] Allocator [" << stats.name << "](" << id << ") Memory leak is detected!"; });
-
-		return;
+		Assert(false, "MemoryManager: allocator [", stats.name, "](", id, ") leaks ", stats.usage, " of ",
+			   stats.capacity, " bytes at deregistration.");
 	}
 	{
 		std::lock_guard lockScope(statsLock);
@@ -284,7 +263,7 @@ AllocStats MemoryManager::GetAllocatorStat(TAllocatorID id)
 	return stats;
 }
 
-void MemoryManager::DeregisterAllocator(TId id, const hbe::source_location& srcLoc)
+void MemoryManager::DeregisterAllocator(TId id, const SourceLocation& srcLoc)
 {
 	if (unlikely(!IsValid(id)))
 	{
@@ -303,7 +282,7 @@ void MemoryManager::DeregisterAllocator(TId id, const hbe::source_location& srcL
 	DeregisterAllocator(id);
 }
 
-void MemoryManager::ReportMultiPoolConfigutation(StaticStringID uniqueName, TPoolConfigs&& poolConfigs)
+void MemoryManager::ReportMultiPoolConfiguration(StaticStringID uniqueName, TPoolConfigs&& poolConfigs)
 {
 	auto& data = multiPoolConfigLog.GetData();
 	data.emplace_back(uniqueName, std::move(poolConfigs));
@@ -458,6 +437,8 @@ void MemoryManager::ReportDeallocation(TId id, void* ptr, size_t requested, size
 #if !RELEASE_BUILD
 		debugBreak();
 #endif // !RELEASE_BUILD
+
+		return;
 	}
 
 	stats.usage -= allocated;
@@ -626,8 +607,12 @@ void* MemoryManager::Allocate(TId id, size_t nBytes)
 	}
 
 	AllocatorProxy& allocProxy = allocators[id];
-	Assert(allocProxy.allocate != nullptr, "[", GetName(), "::", __func__, "][Error] ",
-		   "No allocate function, ID = ", id);
+	if (unlikely(allocProxy.allocate == nullptr))
+	{
+		Assert(false, "[", GetName(), "::", __func__, "][Error] ", "No allocate function, ID = ", id);
+
+		return nullptr;
+	}
 
 	auto ptr = allocProxy.allocate(allocProxy.allocator, nBytes);
 	Assert(ptr != nullptr, "Allocation Failed");
@@ -663,7 +648,12 @@ void MemoryManager::Deallocate(TId id, void* ptr, size_t nBytes)
 	}
 
 	auto& allocProxy = allocators[id];
-	Assert(allocProxy.deallocate != nullptr, "[MemoryManager::Allocate][Error] No allocate function, ID = ", id);
+	if (unlikely(allocProxy.deallocate == nullptr))
+	{
+		Assert(false, "[", GetName(), "::", __func__, "][Error] ", "No deallocate function, ID = ", id);
+
+		return;
+	}
 
 	allocProxy.deallocate(allocProxy.allocator, ptr, nBytes);
 }
@@ -730,7 +720,7 @@ const MultiPoolAllocatorConfig& MemoryManager::LookUpMultiPoolConfig(StaticStrin
 		auto& item = data[mid];
 		if (uniqueName == item.uniqueName)
 		{
-			Log(ELogLevel::Warning, [&item](auto& ls)
+			Log(ELogLevel::Verbose, [&item](auto& ls)
 			{
 				StaticString name(item.uniqueName);
 				for (auto& config : item.configs)
@@ -925,8 +915,8 @@ void MemoryManager::SetScopedAllocatorID(TId id)
 
 	if (unlikely(dVarScopedAllocLogging))
 	{
-		Log(ELogLevel::Error, [funcName = __func__, id](auto& ls)
-		{ ls << '[' << funcName << "] Previous ID = " << id << ", New ID = " << id; });
+		Log(ELogLevel::Error, [funcName = __func__, prevID = scopedAllocatorID, id](auto& ls)
+		{ ls << '[' << funcName << "] Previous ID = " << prevID << ", New ID = " << id; });
 	}
 
 	scopedAllocatorID = id;

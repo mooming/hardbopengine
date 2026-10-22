@@ -19,7 +19,7 @@ void OS::Sleep(uint32_t milliseconds) noexcept
 	std::this_thread::sleep_for(std::chrono::milliseconds(milliseconds));
 }
 
-#ifdef __UNIT_TEST__
+#ifdef TEST_ENABLED
 
 void hbe::OSThreadTest::Prepare()
 {
@@ -188,4 +188,4 @@ void hbe::OSThreadTest::Prepare()
 	});
 }
 
-#endif //__UNIT_TEST__
+#endif // TEST_ENABLED

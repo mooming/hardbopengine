@@ -14,6 +14,7 @@
 
 namespace hbe
 {
+/// API reference: docs/Memory/InlineMonotonicAllocator/index.html
 template <size_t Capacity>
 class InlineMonotonicAllocator final
 {
@@ -59,9 +60,9 @@ public:
 	{
 		auto& mmgr = MemoryManager::GetInstance();
 
-#ifdef __MEMOR_STATISTICS__
+#if PROFILE_ENABLED
 		mmgr.ReportDeallocation(id, buffer, cursor, cursor);
-#endif // __MEMOR_STATISTICS__
+#endif // PROFILE_ENABLED
 
 		mmgr.DeregisterAllocator(GetID());
 	}
@@ -85,12 +86,12 @@ public:
 		auto ptr = reinterpret_cast<void*>(buffer + cursor);
 		cursor += size;
 
-#ifdef __MEMOR_STATISTICS__
+#if PROFILE_ENABLED
 		{
 			auto& mmgr = MemoryManager::GetInstance();
-			mmgr.ReportAllocation(id, ptr, size, size);
+			mmgr.ReportAllocation(id, ptr, requested, size);
 		}
-#endif // __MEMOR_STATISTICS__
+#endif // PROFILE_ENABLED
 
 #if MEMORY_LOGGING_ENABLED
 		{
@@ -124,10 +125,6 @@ public:
 			   << "] Deallocate call shall be ignored. ptr = " << static_cast<void*>(ptr) << ", size = " << requested;
 		});
 #endif // MEMORY_LOGGING_ENABLED
-
-#if PROFILE_ENABLED
-		mmgr.ReportDeallocation(id, ptr, requested, 0);
-#endif // PROFILE_ENABLED
 	}
 
 	[[nodiscard]] size_t GetAvailable() const
@@ -168,7 +165,7 @@ private:
 };
 } // namespace hbe
 
-#ifdef __UNIT_TEST__
+#ifdef TEST_ENABLED
 #include "Test/TestCollection.h"
 
 namespace hbe
@@ -185,4 +182,4 @@ protected:
 	void Prepare() noexcept override;
 };
 } // namespace hbe
-#endif //__UNIT_TEST__
+#endif // TEST_ENABLED

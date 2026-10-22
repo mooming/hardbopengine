@@ -3,7 +3,7 @@
 #ifndef __HBE_TEST_RING_BUFFER_PERF__
 #define __HBE_TEST_RING_BUFFER_PERF__
 
-#ifdef __UNIT_TEST__
+#ifdef TEST_ENABLED
 #include "Test/TestCollection.h"
 
 namespace hbe
@@ -27,6 +27,6 @@ public:
 };
 } // namespace hbe
 
-#endif // __UNIT_TEST__
+#endif // TEST_ENABLED
 
 #endif // __HBE_TEST_RING_BUFFER_PERF__
