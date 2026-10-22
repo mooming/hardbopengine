@@ -40,7 +40,7 @@ if kill -0 "$PID" 2>/dev/null; then
 fi
 
 
-# A cmake --build here can re-configure without -D__TEST__, which silently removes every test body from the
+# A cmake --build here can re-configure without -DTEST_ENABLED, which silently removes every test body from the
 # executable. A verdict from such a binary is worthless, so say so instead of printing "FINISHED".
 if grep -aq "test bodies live in the library sources" "$OUT"; then
 	echo "REFUSED: the binary printed the missing -test advice, so it contains no test body. Build with:"
