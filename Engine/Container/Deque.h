@@ -18,8 +18,6 @@ template <typename TElement, class TAllocator = DefaultAllocator<TElement>>
 class Deque final
 {
 public:
-	static constexpr int DefaultCapacity = 4;
-
 	using TIndex = int;
 
 	class Iterator final
@@ -106,6 +104,17 @@ public:
 		}
 	};
 
+	static constexpr int DefaultCapacity = 4;
+
+private:
+	TAllocator allocator;
+	TIndex head;
+	TIndex tail;
+	TIndex count;
+	TIndex mask;
+	TElement* data;
+
+public:
 	Deque() noexcept
 		: head(0)
 		, tail(0)
@@ -374,14 +383,6 @@ public:
 		std::swap(mask, rhs.mask);
 		std::swap(data, rhs.data);
 	}
-
-private:
-	TAllocator allocator;
-	TIndex head;
-	TIndex tail;
-	TIndex count;
-	TIndex mask;
-	TElement* data;
 
 	TIndex WrapIndex(TIndex index) const noexcept
 	{

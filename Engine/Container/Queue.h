@@ -17,6 +17,10 @@ class Queue final
 public:
 	using TContainerType = TContainer;
 
+private:
+	TContainer container;
+
+public:
 	Queue() = default;
 
 	Queue(const Queue&) = delete;
@@ -91,9 +95,6 @@ public:
 	{
 		container.Clear();
 	}
-
-private:
-	TContainer container;
 };
 } // namespace hbe
 

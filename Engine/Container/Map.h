@@ -19,8 +19,6 @@ template <typename TKey, typename TValue, class TCompare = std::less<TKey>,
 class Map final
 {
 public:
-	static constexpr int DefaultCapacity = 4;
-
 	struct Pair final
 	{
 		TKey key;
@@ -84,6 +82,16 @@ public:
 
 	using ConstIterator = Iterator;
 
+	static constexpr int DefaultCapacity = 4;
+
+private:
+	Pair* entries;
+	TIndex count;
+	TIndex cap;
+	TCompare compare;
+	TAllocator allocator;
+
+public:
 	Map() noexcept
 		: entries(nullptr)
 		, count(0)
@@ -271,13 +279,6 @@ public:
 
 		count = 0;
 	}
-
-private:
-	Pair* entries;
-	TIndex count;
-	TIndex cap;
-	TCompare compare;
-	TAllocator allocator;
 
 	[[nodiscard]] TIndex FindIndex(const TKey& key) const noexcept
 	{

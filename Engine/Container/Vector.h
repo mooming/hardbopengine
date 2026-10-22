@@ -18,12 +18,19 @@ template <typename TElement, class TAllocator = DefaultAllocator<TElement>>
 class Vector final
 {
 public:
-	static constexpr int DefaultCapacity = 4;
-
 	using TIndex = int;
 	using Iterator = TElement*;
 	using ConstIterator = const TElement*;
 
+	static constexpr int DefaultCapacity = 4;
+
+private:
+	TAllocator allocator;
+	TIndex count;
+	TIndex capacity;
+	TElement* data;
+
+public:
 	Vector() noexcept
 		: count(0)
 		, capacity(0)
@@ -299,11 +306,6 @@ public:
 	}
 
 private:
-	TAllocator allocator;
-	TIndex count;
-	TIndex capacity;
-	TElement* data;
-
 	void Grow() noexcept
 	{
 		auto newCap = std::max(DefaultCapacity, capacity * 2);

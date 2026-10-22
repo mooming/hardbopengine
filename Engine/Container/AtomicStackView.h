@@ -17,14 +17,13 @@ class AtomicStackView final
 {
 public:
 	/// @brief A lock-free atomic stack implementation using CAS operations
+	using Iterator = T*;
+	using ConstIterator = const T*;
+
 private:
 	static_assert(std::atomic<T*>::is_always_lock_free,
 				  "The speicified type is not always lock free on this platfrom.");
 	std::atomic<T*> top;
-
-public:
-	using Iterator = T*;
-	using ConstIterator = const T*;
 
 public:
 	AtomicStackView() noexcept

@@ -29,9 +29,6 @@ class HashMap final
 public:
 	using TIndex = int;
 
-	static constexpr TIndex MinCapacity = 4;
-	static constexpr double MaxLoadFactor = 0.7;
-
 	struct Pair final
 	{
 		TKey key;
@@ -158,6 +155,20 @@ public:
 		}
 	};
 
+	static constexpr TIndex MinCapacity = 4;
+	static constexpr double MaxLoadFactor = 0.7;
+
+private:
+	TIndex cap;
+	TIndex count;
+	TIndex tombstoneCount;
+	Pair* entries;
+	EHashEntryState* states;
+	THash hash;
+	TKeyEqual keyEqual;
+	TAllocator allocator;
+
+public:
 	HashMap() noexcept
 		: cap(0)
 		, count(0)
@@ -416,16 +427,6 @@ public:
 
 		Rehash(newCap);
 	}
-
-private:
-	TIndex cap;
-	TIndex count;
-	TIndex tombstoneCount;
-	Pair* entries;
-	EHashEntryState* states;
-	THash hash;
-	TKeyEqual keyEqual;
-	TAllocator allocator;
 
 	[[nodiscard]] bool IsValidSlot(TIndex index) const noexcept
 	{

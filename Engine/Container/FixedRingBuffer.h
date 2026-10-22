@@ -20,6 +20,14 @@ class FixedRingBuffer final
 public:
 	using TIndex = int;
 
+private:
+	TIndex cap;
+	TIndex head;
+	TIndex tail;
+	TIndex count;
+	TElement* data;
+
+public:
 	FixedRingBuffer(const FixedRingBuffer&) = delete;
 
 	explicit FixedRingBuffer(TIndex fixedCapacity)
@@ -188,13 +196,6 @@ public:
 		std::swap(count, rhs.count);
 		std::swap(data, rhs.data);
 	}
-
-private:
-	TIndex cap;
-	TIndex head;
-	TIndex tail;
-	TIndex count;
-	TElement* data;
 
 	TIndex WrapIndex(TIndex index) const noexcept
 	{

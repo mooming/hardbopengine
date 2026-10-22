@@ -31,54 +31,11 @@ class BoundedPriorityQueue final
 {
 	using TBucket = Deque<T>;
 	using TBuckets = std::array<std::optional<TBucket>, MaxPriority>;
+	using TPredicate = bool (*)(const T&);
 
 	TBuckets buckets;
 	std::size_t totalSize;
 	std::size_t highestBucket;
-
-	/// @brief Get the deque for a priority, creating it on first use.
-	[[nodiscard]] TBucket& AcquireBucket(std::size_t priority) noexcept
-	{
-		FatalAssert(priority < MaxPriority, "BoundedPriorityQueue priority is not a bucket index");
-
-		auto& bucket = buckets[priority];
-		if (!bucket.has_value())
-		{
-			if constexpr (BucketSizeHint > 0)
-			{
-				bucket.emplace(static_cast<typename TBucket::TIndex>(BucketSizeHint));
-			}
-			else
-			{
-				bucket.emplace();
-			}
-		}
-
-		return *bucket;
-	}
-
-	/// @brief Release a bucket that has run dry, so its storage is not held across an idle period.
-	/// @note The engaged-means-non-empty invariant is maintained here and only here; Pop and Remove
-	///       rely on it to treat has_value() as "there is work at this priority".
-	void ReleaseEmptyBucket(std::size_t priority) noexcept
-	{
-		auto& bucket = buckets[priority];
-		if (bucket.has_value() && bucket->IsEmpty())
-		{
-			bucket.reset();
-		}
-	}
-
-	/// @brief Walk the tracked priority down to the next one that still holds items.
-	/// @note Ends at 0 with nothing there once the queue is empty, which is harmless because every
-	///       reader checks totalSize first. Cost is paid when a queue empties, not per pop.
-	void RetrackHighestBucket() noexcept
-	{
-		while (highestBucket > 0 && !buckets[highestBucket].has_value())
-		{
-			--highestBucket;
-		}
-	}
 
 public:
 	BoundedPriorityQueue() noexcept
@@ -160,8 +117,6 @@ public:
 		return buckets[highestBucket]->Front();
 	}
 
-	using TPredicate = bool (*)(const T&);
-
 	/// @brief Drop every item the predicate claims, returning how many went.
 	/// @details Each bucket is rotate-filtered: every item is taken from the front exactly once and
 	///          either dropped or pushed to the back, so survivors keep their arrival order without
@@ -227,6 +182,51 @@ public:
 
 		totalSize = 0;
 		highestBucket = 0;
+	}
+
+private:
+	/// @brief Get the deque for a priority, creating it on first use.
+	[[nodiscard]] TBucket& AcquireBucket(std::size_t priority) noexcept
+	{
+		FatalAssert(priority < MaxPriority, "BoundedPriorityQueue priority is not a bucket index");
+
+		auto& bucket = buckets[priority];
+		if (!bucket.has_value())
+		{
+			if constexpr (BucketSizeHint > 0)
+			{
+				bucket.emplace(static_cast<typename TBucket::TIndex>(BucketSizeHint));
+			}
+			else
+			{
+				bucket.emplace();
+			}
+		}
+
+		return *bucket;
+	}
+
+	/// @brief Release a bucket that has run dry, so its storage is not held across an idle period.
+	/// @note The engaged-means-non-empty invariant is maintained here and only here; Pop and Remove
+	///       rely on it to treat has_value() as "there is work at this priority".
+	void ReleaseEmptyBucket(std::size_t priority) noexcept
+	{
+		auto& bucket = buckets[priority];
+		if (bucket.has_value() && bucket->IsEmpty())
+		{
+			bucket.reset();
+		}
+	}
+
+	/// @brief Walk the tracked priority down to the next one that still holds items.
+	/// @note Ends at 0 with nothing there once the queue is empty, which is harmless because every
+	///       reader checks totalSize first. Cost is paid when a queue empties, not per pop.
+	void RetrackHighestBucket() noexcept
+	{
+		while (highestBucket > 0 && !buckets[highestBucket].has_value())
+		{
+			--highestBucket;
+		}
 	}
 };
 } // namespace hbe
