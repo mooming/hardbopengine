@@ -1,0 +1,116 @@
+<h2 id="signature">Signature</h2>
+
+<pre><code>MonotonicAllocator(const char* name, TSize capacity)</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  Defined in <code>Engine/Memory/MonotonicAllocator.cpp</code> as
+  <code>MonotonicAllocator::MonotonicAllocator(const char* name, TSize inCapacity)</code>. One constructor, one overload — the
+  <a href="../StackAllocator/constructors.html">stack's</a> profile-carrying third parameter has no counterpart here. Four steps, in
+  this order: round the capacity, take the buffer from the allocator that is current, describe the two dispatch lambdas, register.
+</p>
+
+<pre><code>: id(InvalidAllocatorID)
+, cursor(0)
+, capacity(inCapacity)
+, buffer(nullptr)
+{
+	{
+		constexpr auto AlignUnit = Config::DefaultAlign;
+		const auto multiplier = (capacity + AlignUnit - 1) / AlignUnit;
+		capacity = multiplier * AlignUnit;
+	}
+
+	auto&amp; mmgr = MemoryManager::GetInstance();
+	parentID = hbe::MemoryManager::GetCurrentAllocatorID();
+	bufferPtr = mmgr.Allocate(capacity);
+
+	/* allocFunc, deallocFunc: static_cast the registration's void* back to MonotonicAllocator* and call Allocate / Deallocate */
+
+	id = mmgr.RegisterAllocator(this, name, false, capacity, allocFunc, deallocFunc);
+}</code></pre>
+
+<p class="meta">From Engine/Memory/MonotonicAllocator.cpp, MonotonicAllocator::MonotonicAllocator(const char* name, TSize inCapacity)</p>
+
+<table>
+  <tr><th>Step</th><th>What it fixes for the object's whole life</th></tr>
+  <tr><td>Round capacity</td><td>Up to a multiple of <a href="../../Config/index.html"><code>Config::DefaultAlign</code></a> (16), so <code>capacity</code> is never smaller than what was asked and is always a whole number of alignment units.</td></tr>
+  <tr><td>Record <code>parentID</code></td><td><code>MemoryManager::GetCurrentAllocatorID()</code> returns the thread's current scoped id — the scope that was open when this constructor ran, or <code>SystemAllocatorID</code> (0) if none was. Written in the body; this member is not named in the initializer list.</td></tr>
+  <tr><td>Take the buffer</td><td><code>mmgr.Allocate(capacity)</code> is the two-argument call through <code>GetScopedAllocatorID()</code>, so the bytes come from the same allocator <code>parentID</code> names, and from this thread's scope.</td></tr>
+  <tr><td>Register</td><td><code>RegisterAllocator(this, name, false, capacity, allocFunc, deallocFunc)</code> stores <code>this</code> in an <a href="../index.html#allocatorproxy"><code>AllocatorProxy</code></a> record. The <code>false</code> is <code>isInline</code>.</td></tr>
+</table>
+
+<div class="gap">
+  <strong>The object owns the buffer for its entire life, and nothing can hand it back early.</strong>
+  There is no <code>GetBuffer()</code> accessor and no release path a caller can drive: only
+  <a href="destructor.html">~MonotonicAllocator</a> returns the bytes, in one call, whether or not the caller is still using blocks
+  inside them. Callers own the blocks within the buffer; the object owns the buffer itself. That is the sentence a caller of this class
+  has to plan around, because for a monotonic allocator "I am done with this string" buys back nothing — see
+  <a href="deallocate.html">Deallocate</a>.
+</div>
+
+<div class="note">
+  <strong>The name is a registration label, not a member.</strong>
+  It is passed to <code>RegisterAllocator</code>, which stores it in the profile statistics and substitutes <code>"None"</code> for a
+  null pointer (<code>Engine/Memory/MemoryManager.cpp</code>); neither this class nor its proxy record keeps it in a configuration
+  where <code>PROFILE_ENABLED</code> is 0. The class has no <code>GetName</code>, and <a href="deallocate.html">Deallocate</a>'s
+  <code>Verbose</code> line reaches the name through <code>mmgr.GetAllocatorName(id)</code> instead of a member.
+</div>
+
+<div class="note">
+  <strong>Two failure shapes are readable from this body, and neither is exercised by a test.</strong>
+  Constructing before the manager exists is fatal and immediate: <code>MemoryManager::GetInstance()</code> is
+  <code>FatalAssert(mmgrInstance != nullptr); return *mmgrInstance;</code>, and <code>FatalAssert</code> aborts in every configuration
+  because it sits outside the <code>#if !RELEASE_BUILD</code> block in <code>Engine/Core/Debug.h</code>. A registration that finds the
+  manager's proxy pool empty logs a <code>FatalError</code> and returns <code>InvalidAllocatorID</code>
+  (<code>MaxNumAllocators</code> is 256, <code>Engine/Memory/AllocatorID.h</code>) — and this constructor does not check for it, so the
+  object keeps a buffer it cannot serve allocations for. Both are described from the source and untested; see
+  <a href="index.html#coverage">Coverage</a>.
+</div>
+
+<div class="note">
+  <strong>Capacity is rounded before it is spent, so a request below the alignment unit still costs a full one.</strong>
+  A capacity of 1 becomes 16; a capacity of 17 becomes 32. A capacity of 0 stays 0, and the manager's
+  <code>MemoryManager::Allocate(TId id, size_t nBytes)</code> returns <code>nullptr</code> for a zero-byte request — so a
+  zero-capacity allocator is an object with a null buffer, a valid id, and an <a href="getusage.html">GetUsage</a>() assertion that
+  fails the first time it is called. Named rather than documented as a contract: no testlet constructs either allocator with a
+  capacity of 0.
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<table>
+  <tr><th>Parameter</th><th>Type</th><th>Requirement</th></tr>
+  <tr><td><code>name</code></td><td><code>const char*</code></td><td>Label for the manager's registration log and profile statistics. <code>nullptr</code> is accepted and becomes <code>"None"</code>. Not copied by this object.</td></tr>
+  <tr><td><code>capacity</code></td><td><code>TSize</code></td><td>Bytes of backing storage to reserve, rounded up to a multiple of <code>Config::DefaultAlign</code> before the request is made. Read as an unsigned value: a negative intent becomes a very large request.</td></tr>
+</table>
+
+<h2 id="return">Return value</h2>
+
+<p>
+  Nothing — construction either produces a usable allocator or aborts the process. The one non-fatal failure, a full proxy pool,
+  produces an object holding a buffer and carrying <code>InvalidAllocatorID</code>; nothing in this body reports it to the caller.
+</p>
+
+<h2 id="example">Examples</h2>
+
+<pre><code>MonotonicAllocator alloc("Test::MonotonicAllocator", 1024 * 1024);
+{
+	AllocatorScope scope(alloc.GetID());
+
+	HVector&lt;int&gt; a;
+	a.push_back(0);
+}</code></pre>
+
+<p class="meta">From Engine/Memory/MonotonicAllocator.cpp, MonotonicAllocatorTest::Prepare(), Vector Allocation testlet</p>
+
+<p>
+  The declaration order is part of the use: the allocator is constructed outside the scope, so its <code>parentID</code> is whatever was
+  current before the scope opened (in the test, the system allocator), and the scope's own destruction restores that state before the
+  allocator is destroyed. <code>ScopedAllocator&lt;TAlloc&gt;</code>
+  (<code>Engine/Memory/ScopedAllocator.h</code>) encodes the same ordering structurally — it declares <code>allocator</code> before
+  <code>scope</code>, so the scope always dies first. It is also the only way to nest this class over itself: the nested-scope testlet
+  in <code>Engine/Memory/StackAllocator.cpp</code> uses <code>ScopedAllocator&lt;StackAllocator&gt;</code>, and the same shape applies
+  here, with each level's buffer coming from the level outside it.
+</p>
