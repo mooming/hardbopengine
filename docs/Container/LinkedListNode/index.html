@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LinkedListNode — Container module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a class="current" href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This class</h3>
+  <ul>
+    <li><a href="#description">Class description</a></li>
+    <li><a href="#template">Template parameters</a></li>
+    <li><a href="#properties">Class properties</a></li>
+    <li><a href="#methods">Class methods</a></li>
+    <li><a href="#non-member">Non-member helpers</a></li>
+    <li><a href="#coverage">Coverage</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Container</a> /
+  LinkedListNode
+</p>
+
+<h1>LinkedListNode</h1>
+<p class="subtitle">
+  <span class="tag">Engine/Container/LinkedList.h</span>
+  <span class="tag">template &lt;typename TType&gt;</span>
+  <span class="tag">final</span>
+  the node LinkedList allocates and links: value plus two pointers
+</p>
+
+<h2 id="description">Class description</h2>
+
+<p>
+  <code>LinkedListNode</code> is the node <a href="../LinkedList/index.html">LinkedList</a> allocates, links and returns: one
+  <code>struct</code> carrying the element and the two pointers that make a chain walkable in both directions. It is a
+  <code>struct</code> on purpose — the value and the two links are the entire state, and the list manipulates them directly —
+  but it is <code>final</code> and its links are set only by the list, so a node in a list is never a caller's object to
+  rewire. A node is identified by its <em>address</em>, not by its value: <a href="operator-not-equal.html"><code>operator!=</code></a>
+  compares addresses, which is what lets iteration detect the end of a range by node identity.
+</p>
+
+<p>
+  A node with <code>previous == nullptr</code> is a head and one with <code>next == nullptr</code> is a tail — there is no
+  separate end sentinel, so <a href="is-head.html"><code>IsHead</code></a> and <a href="is-tail.html"><code>IsTail</code></a>
+  are the list's own boundary tests, and a single-element list is both at once.
+</p>
+
+<h2 id="template">Template parameters</h2>
+
+<table>
+  <tr><th>Parameter</th><th>Requirement</th></tr>
+  <tr><td><code>TType</code></td><td>The element type stored by value. Move-constructible — the forwarding constructor
+  moves the argument in.</td></tr>
+</table>
+
+<h2 id="properties">Class properties</h2>
+
+<table>
+  <tr><th>Type + Name</th><th>Default Value</th><th>Description</th></tr>
+  <tr><td><code>using This = LinkedListNode;</code> <span class="badge">alias</span></td>
+      <td>not applicable</td><td>Shorthand the node's own signatures use.</td></tr>
+  <tr><td><code>TType value;</code> <span class="badge">public</span></td>
+      <td>none in the header</td><td>The stored element; constructed from the constructor argument, never default-initialised separately.</td></tr>
+  <tr><td><code>LinkedListNode* previous;</code> <span class="badge">public</span></td>
+      <td><code>nullptr</code></td><td>The preceding node; <code>nullptr</code> exactly at a head.</td></tr>
+  <tr><td><code>LinkedListNode* next;</code> <span class="badge">public</span></td>
+      <td><code>nullptr</code></td><td>The following node; <code>nullptr</code> exactly at a tail.</td></tr>
+</table>
+
+<h2 id="methods">Class methods</h2>
+
+<table class="methods">
+  <tr><th>Name</th><th>Signature</th><th>What a caller depends on</th></tr>
+  <tr><td><a href="constructors.html"><code>LinkedListNode</code></a> <span class="badge">2 overloads</span></td>
+      <td class="sig">explicit LinkedListNode(const TType&amp; value) noexcept<br>explicit LinkedListNode(TType&amp;&amp; value) noexcept</td>
+      <td>The node starts as a detached single-element list: both links <code>nullptr</code>, the value copied or moved in.</td></tr>
+  <tr><td><a href="operator-not-equal.html"><code>operator!=</code></a></td>
+      <td class="sig">bool operator!=(const This&amp; rhs) const noexcept</td>
+      <td>Address identity, not value equality — two nodes holding equal values are still different nodes.</td></tr>
+  <tr><td><a href="operator-multiply.html"><code>operator*</code></a> <span class="badge">2 overloads</span></td>
+      <td class="sig">TType&amp; operator*() noexcept<br>const TType&amp; operator*() const noexcept</td>
+      <td>Dereferences the stored value; the const overload is what a const walk reads through.</td></tr>
+  <tr><td><a href="is-head.html"><code>IsHead</code></a></td>
+      <td class="sig">bool IsHead() const noexcept</td>
+      <td>True exactly when <code>previous</code> is <code>nullptr</code>.</td></tr>
+  <tr><td><a href="is-tail.html"><code>IsTail</code></a></td>
+      <td class="sig">bool IsTail() const noexcept</td>
+      <td>True exactly when <code>next</code> is <code>nullptr</code>.</td></tr>
+</table>
+
+<h2 id="non-member">Non-member helpers</h2>
+
+<p>None.</p>
+
+<h2 id="coverage">Coverage</h2>
+
+<p>
+  This page documents every member of the node: the three data members, both constructors, and all four named operations.
+  The list-level contracts — allocation, splice order, who may rewire the links — are owned by the
+  <a href="../LinkedList/index.html">LinkedList</a> pages.
+</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; LinkedListNode</a></span>
+  <span><a href="index.html#methods">All LinkedListNode methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

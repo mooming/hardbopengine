@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LinkedListNode::operator* — Container module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a class="current" href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Container</a> /
+  <a href="index.html">LinkedListNode</a> / operator*
+</p>
+
+<h1><span class="fn">operator*</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::LinkedListNode</span>
+  <span class="tag">Engine/Container/LinkedList.h</span>
+  dereferences the node to its stored value
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>TType&amp; operator*() noexcept
+
+const TType&amp; operator*() const noexcept</code></pre>
+
+<pre><code>const TType& operator*() const noexcept</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  Dereferences the node to its stored <code>value</code>. The node borrows the container idiom so a
+  <code>LinkedListNode&lt;T&gt;*</code> reads like a pointer to the element: <code>*node</code> is the element itself, and the
+  const overload keeps a const walk const. It returns a reference into the node, not a copy, so writing through it writes the
+  element the list holds.
+</p>
+
+<h2 id="parameters">Parameters</h2>
+
+<p>None.</p>
+
+<h2 id="return">Return value</h2>
+
+<p>A reference to the node's <code>value</code> — mutable from a non-const node, const from a const one.</p>
+
+<h2 id="example">Examples</h2>
+
+<p>
+  Reading a node's element and comparing two nodes' elements by value are the two uses:
+  <code>*node</code> for the read, <code>*a == *b</code> for the value comparison — as opposed to
+  <a href="operator-not-equal.html"><code>operator!=</code></a>, which compares the nodes themselves.
+</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; LinkedListNode</a></span>
+  <span><a href="index.html#methods">All LinkedListNode methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

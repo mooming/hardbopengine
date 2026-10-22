@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LinkedListNode::Constructors — Container module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a class="current" href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Container</a> /
+  <a href="index.html">LinkedListNode</a> / Constructors
+</p>
+
+<h1><span class="fn">Constructors</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::LinkedListNode</span>
+  <span class="tag">Engine/Container/LinkedList.h</span>
+  a node is born detached: both links null, the value copied or moved in
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>explicit LinkedListNode(const TType&amp; value) noexcept
+		: value(value)
+		, previous(nullptr)
+		, next(nullptr)
+
+explicit LinkedListNode(TType&amp;&amp; value) noexcept
+		: value(std::move(value))
+		, previous(nullptr)
+		, next(nullptr)</code></pre>
+
+<pre><code>explicit LinkedListNode(TType&& value) noexcept</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  A node is born detached: both links are <code>nullptr</code>, so the fresh node is a single-element list and
+  <a href="is-head.html"><code>IsHead</code></a> and <a href="is-tail.html"><code>IsTail</code></a> both hold. Only
+  <a href="../LinkedList/index.html">LinkedList</a> attaches nodes to each other. The two constructors differ only in how the
+  argument reaches <code>value</code> — copied for an lvalue, moved for an rvalue — and both are <code>explicit</code>, so a
+  bare <code>{value}</code> never silently becomes a node.
+</p>
+
+<h2 id="parameters">Parameters</h2>
+
+<table>
+  <tr><th>Parameter</th><th>Type</th><th>Requirement</th></tr>
+  <tr><td><code>value</code></td><td><code>const TType&</code> or <code>TType&&</code></td>
+  <td>The element to store. Copied or moved into <code>value</code>; the node holds its own copy afterwards.</td></tr>
+</table>
+
+<h2 id="return">Return value</h2>
+
+<p>None — a constructor.</p>
+
+<h2 id="example">Examples</h2>
+
+<p>
+  <a href="../LinkedList/index.html">LinkedList</a> is the intended constructor of nodes; its allocator builds them through
+  this pair of signatures. Direct construction is legal for tests and for building a chain by hand before handing it to the
+  list, but an unattached node is not a list element until something links it.
+</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; LinkedListNode</a></span>
+  <span><a href="index.html#methods">All LinkedListNode methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>
