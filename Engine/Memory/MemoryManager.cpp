@@ -13,7 +13,6 @@
 #include "String/StringUtil.h"
 #include "SystemAllocator.h"
 
-
 namespace hbe
 {
 static_assert(MaxNumAllocators > 0, "MaxNumAllocators is invalid.");
@@ -215,8 +214,10 @@ void MemoryManager::DeregisterAllocator(TId id)
 	if (unlikely(stats.usage > 0))
 	{
 		Log(ELogLevel::Warning, [funcName = __func__, id, &stats](auto& ls)
-		{ ls << "[" << funcName << "] Allocator [" << stats.name << "](" << id << ") leaks " << stats.usage << " / "
-		   << stats.capacity << " bytes at deregistration."; });
+		{
+			ls << "[" << funcName << "] Allocator [" << stats.name << "](" << id << ") leaks " << stats.usage << " / "
+			   << stats.capacity << " bytes at deregistration.";
+		});
 
 		Assert(false, "MemoryManager: allocator [", stats.name, "](", id, ") leaks ", stats.usage, " of ",
 			   stats.capacity, " bytes at deregistration.");

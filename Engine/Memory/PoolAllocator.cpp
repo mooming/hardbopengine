@@ -10,7 +10,6 @@
 #include "MemoryManager.h"
 #include "OSAL/OSMemory.h"
 
-
 namespace hbe
 {
 #if PROFILE_ENABLED
@@ -230,7 +229,8 @@ void PoolAllocator::Deallocate(Pointer ptr, size_t size)
 	if (unlikely(!IsBlockStart(ptr)))
 	{
 		auto& rejectMgr = MemoryManager::GetInstance();
-		rejectMgr.LogError([ptr](auto& logStream) { logStream << ptr << " is not the start of a block of this pool."; });
+		rejectMgr.LogError([ptr](auto& logStream)
+		{ logStream << ptr << " is not the start of a block of this pool."; });
 
 		return;
 	}
@@ -448,8 +448,8 @@ void PoolAllocatorTest::Prepare()
 
 		if (pool.GetAvailableBlocks() != 4)
 		{
-			ls << "the pool came back from a self move with " << pool.GetAvailableBlocks()
-			   << " of 4 blocks free." << lferr;
+			ls << "the pool came back from a self move with " << pool.GetAvailableBlocks() << " of 4 blocks free."
+			   << lferr;
 
 			return;
 		}

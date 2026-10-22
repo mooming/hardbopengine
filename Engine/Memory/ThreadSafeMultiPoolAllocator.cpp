@@ -13,7 +13,6 @@
 #include "Memory/MemoryManager.h"
 #include "String/StringBuilder.h"
 
-
 namespace hbe
 {
 namespace
@@ -38,7 +37,6 @@ public:
 
 thread_local BankGenerationLog* activeBankGenerationLog = nullptr;
 } // namespace
-
 
 BankGenerationLog::BankGenerationLog(const ThreadSafeMultiPoolAllocator& inAllocator) noexcept
 	: allocator(&inAllocator)
@@ -67,9 +65,10 @@ BankGenerationLog::~BankGenerationLog()
 
 void BankGenerationLog::RecordBankGeneration(size_t inBlockSize, size_t inNumberOfBlocks) noexcept
 {
-	Assert(!recorded, "BankGenerationLog: a second bank of ", inBlockSize, " bytes was generated inside one "
-		   "allocation, so the record of the first bank, ", blockSize, " bytes by ", numberOfBlocks,
-		   " blocks, is about to be overwritten.");
+	Assert(!recorded, "BankGenerationLog: a second bank of ", inBlockSize,
+		   " bytes was generated inside one "
+		   "allocation, so the record of the first bank, ",
+		   blockSize, " bytes by ", numberOfBlocks, " blocks, is about to be overwritten.");
 
 	blockSize = inBlockSize;
 	numberOfBlocks = inNumberOfBlocks;
@@ -258,8 +257,7 @@ void ThreadSafeMultiPoolAllocator::Deallocate(void* ptr, size_t size)
 			{ ls << "Deallocate(nullptr) is called with size " << size << " on " << logName << '.'; });
 		}
 
-		Assert(size == 0, "Deallocate(nullptr) carries no block, so the size ", size,
-			   " it was given names nothing.");
+		Assert(size == 0, "Deallocate(nullptr) carries no block, so the size ", size, " it was given names nothing.");
 
 		return;
 	}
@@ -395,8 +393,8 @@ void ThreadSafeMultiPoolAllocator::ReportConfiguration()
 		{
 			found->numberOfBlocks += value;
 		}
-	};
 
+	};
 	{
 		std::lock_guard lockGuard(lock);
 
@@ -1355,7 +1353,7 @@ void ThreadSafeMultiPoolAllocatorTest::Prepare()
 		}
 	});
 
-		AddTest("Pool Buffer Returns To Its Recorded Parent", [this](auto& ls)
+	AddTest("Pool Buffer Returns To Its Recorded Parent", [this](auto& ls)
 	{
 		static void* claimedPtr = nullptr;
 		static size_t claimedSize = 0;

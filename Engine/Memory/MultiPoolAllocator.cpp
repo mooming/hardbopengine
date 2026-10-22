@@ -13,7 +13,6 @@
 #include "Memory/MemoryManager.h"
 #include "String/StringBuilder.h"
 
-
 namespace hbe
 {
 MultiPoolAllocator::MultiPoolAllocator(const char* inName, size_t allocationUnit, size_t minBlockSize)
@@ -175,8 +174,7 @@ void MultiPoolAllocator::Deallocate(void* ptr, size_t size)
 			{ ls << "Deallocate(nullptr) is called with size " << size << " on " << logName << '.'; });
 		}
 
-		Assert(size == 0, "Deallocate(nullptr) carries no block, so the size ", size,
-			   " it was given names nothing.");
+		Assert(size == 0, "Deallocate(nullptr) carries no block, so the size ", size, " it was given names nothing.");
 
 		return;
 	}

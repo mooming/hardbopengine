@@ -4,13 +4,10 @@
 
 #include "AllocatorID.h"
 
-
 namespace hbe
 {
 template <typename T>
-concept CAllocatorLike = requires(const T& allocator) {
-	allocator.GetID();
-};
+concept CAllocatorLike = requires(const T& allocator) { allocator.GetID(); };
 
 /// API reference: docs/Memory/AllocatorScope/index.html
 class AllocatorScope final

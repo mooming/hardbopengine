@@ -7,7 +7,6 @@
 #include "Core/Debug.h"
 #include "MemoryManager.h"
 
-
 namespace hbe
 {
 MonotonicAllocator::MonotonicAllocator(const char* name, TSize inCapacity)
@@ -225,7 +224,7 @@ void MonotonicAllocatorTest::Prepare()
 		}
 	});
 
-		AddTest("Destroy In Own Scope", [this](auto& ls)
+	AddTest("Destroy In Own Scope", [this](auto& ls)
 	{
 		static void* claimedPtr = nullptr;
 		static size_t claimedSize = 0;

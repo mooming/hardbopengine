@@ -83,7 +83,7 @@ void InlineMonotonicAllocatorTest::Prepare() noexcept
 		}
 	});
 
-		AddTest("Destroy In Own Scope", [this](auto& ls)
+	AddTest("Destroy In Own Scope", [this](auto& ls)
 	{
 		static void* claimedPtr = nullptr;
 		static void* releasedPtr = nullptr;
