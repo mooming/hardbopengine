@@ -7,18 +7,18 @@ Source comments are banned, so a missing page means the contract is nowhere.
 | module | API entries | with a page | missing | test-only | pages addressed from the header | comment lines still in sources |
 |---|---|---|---|---|---|---|
 | Config | 5 | 5 | 0 | 0 | 5 | 0 |
-| Container | 12 | 10 | 2 | 10 | 1 | 55 |
+| Container | 19 | 17 | 2 | 15 | 8 | 55 |
 | Core | 31 | 31 | 0 | 9 | 31 | 0 |
 | Engine | 2 | 2 | 0 | 0 | 0 | 0 |
 | HSTL | 3 | 3 | 0 | 1 | 0 | 0 |
 | Log | 4 | 4 | 0 | 0 | 0 | 0 |
 | Math | 16 | 0 | 16 | 15 | 0 | 127 |
-| Memory | 22 | 0 | 22 | 12 | 0 | 120 |
+| Memory | 23 | 23 | 0 | 12 | 23 | 0 |
 | OSAL | 14 | 0 | 14 | 5 | 0 | 96 |
 | Renderer | 9 | 8 | 1 | 2 | 0 | 250 |
 | Resource | 7 | 7 | 0 | 3 | 0 | 0 |
 | String | 9 | 1 | 8 | 5 | 0 | 14 |
-| Test | 5 | 4 | 1 | 0 | 0 | 125 |
+| Test | 5 | 4 | 1 | 5 | 0 | 125 |
 
 ## Entries
 
@@ -31,6 +31,10 @@ Source comments are banned, so a missing page means the contract is nowhere.
 | Config | EngineConfig | utility header | `Engine/Config/EngineConfig.h` | `docs/Config/EngineConfig/index.html` | 1 | yes | documented |
 | Container | Array | class | `Engine/Container/Array.h` | `docs/Container/Array/index.html` | 14 | yes | documented |
 | Container | ArrayTest | test-only | `Engine/Container/Array.h` | `docs/Container/ArrayTest/index.html` | 0 | — | test-only — owns a Coverage row |
+| Container | AtomicFixedRingMPMC | class | `Engine/Container/AtomicFixedRingMPMC.h` | `docs/Container/AtomicFixedRingMPMC/index.html` | 14 | yes | documented |
+| Container | AtomicFixedRingMPMCTest | test-only | `Engine/Container/AtomicFixedRingMPMC.h` | `docs/Container/AtomicFixedRingMPMCTest/index.html` | 0 | — | test-only — owns a Coverage row |
+| Container | AtomicFixedRingMPSC | class | `Engine/Container/AtomicFixedRingMPSC.h` | `docs/Container/AtomicFixedRingMPSC/index.html` | 13 | yes | documented |
+| Container | AtomicFixedRingMPSCTest | test-only | `Engine/Container/AtomicFixedRingMPSC.h` | `docs/Container/AtomicFixedRingMPSCTest/index.html` | 0 | — | test-only — owns a Coverage row |
 | Container | AtomicStackView | class | `Engine/Container/AtomicStackView.h` | `docs/Container/AtomicStackView/index.html` | 2 | **no** | documented |
 | Container | AtomicStackViewTest | test-only | `Engine/Container/AtomicStackView.h` | `docs/Container/AtomicStackViewTest/index.html` | 0 | — | test-only — owns a Coverage row |
 | Container | BoundedPriorityQueue | class | `Engine/Container/BoundedPriorityQueue.h` | `docs/Container/BoundedPriorityQueue/index.html` | 3 | **no** | documented |
@@ -38,6 +42,14 @@ Source comments are banned, so a missing page means the contract is nowhere.
 | Container | Deque | class | `Engine/Container/Deque.h` | `docs/Container/Deque/index.html` | 4 | **no** | documented |
 | Container | DequeTest | test-only | `Engine/Container/Deque.h` | `docs/Container/DequeTest/index.html` | 0 | — | test-only — owns a Coverage row |
 | Container | EHashEntryState | enum | `Engine/Container/HashMap.h` | `docs/Container/EHashEntryState/index.html` | 0 | — | MISSING |
+| Container | EPopResult | enum | `Engine/Container/EPopResult.h` | `docs/Container/EPopResult/index.html` | 0 | yes | documented |
+| Container | EPushResult | enum | `Engine/Container/EPushResult.h` | `docs/Container/EPushResult/index.html` | 0 | yes | documented |
+| Container | FixedRingBuffer | class | `Engine/Container/FixedRingBuffer.h` | `docs/Container/FixedRingBuffer/index.html` | 1 | **no** | documented |
+| Container | FixedRingBufferTest | test-only | `Engine/Container/FixedRingBuffer.h` | `docs/Container/FixedRingBufferTest/index.html` | 0 | — | test-only — owns a Coverage row |
+| Container | FixedRingMPMC | class | `Engine/Container/FixedRingMPMC.h` | `docs/Container/FixedRingMPMC/index.html` | 8 | yes | documented |
+| Container | FixedRingMPMCTest | test-only | `Engine/Container/FixedRingMPMC.h` | `docs/Container/FixedRingMPMCTest/index.html` | 0 | — | test-only — owns a Coverage row |
+| Container | FixedRingMPSC | class | `Engine/Container/FixedRingMPSC.h` | `docs/Container/FixedRingMPSC/index.html` | 8 | yes | documented |
+| Container | FixedRingMPSCTest | test-only | `Engine/Container/FixedRingMPSC.h` | `docs/Container/FixedRingMPSCTest/index.html` | 0 | — | test-only — owns a Coverage row |
 | Container | HashMap | class | `Engine/Container/HashMap.h` | `docs/Container/HashMap/index.html` | 3 | **no** | documented |
 | Container | HashMapTest | test-only | `Engine/Container/HashMap.h` | `docs/Container/HashMapTest/index.html` | 0 | — | test-only — owns a Coverage row |
 | Container | LinkedList | class | `Engine/Container/LinkedList.h` | `docs/Container/LinkedList/index.html` | 2 | **no** | documented |
@@ -47,8 +59,8 @@ Source comments are banned, so a missing page means the contract is nowhere.
 | Container | MapTest | test-only | `Engine/Container/Map.h` | `docs/Container/MapTest/index.html` | 0 | — | test-only — owns a Coverage row |
 | Container | Queue | class | `Engine/Container/Queue.h` | `docs/Container/Queue/index.html` | 1 | **no** | documented |
 | Container | QueueTest | test-only | `Engine/Container/Queue.h` | `docs/Container/QueueTest/index.html` | 0 | — | test-only — owns a Coverage row |
-| Container | RingQueue | class | `Engine/Container/RingQueue.h` | `docs/Container/RingQueue/index.html` | 1 | **no** | documented |
-| Container | RingQueueTest | test-only | `Engine/Container/RingQueue.h` | `docs/Container/RingQueueTest/index.html` | 0 | — | test-only — owns a Coverage row |
+| Container | RingBuffer | class | `Engine/Container/RingBuffer.h` | `docs/Container/RingBuffer/index.html` | 18 | yes | documented |
+| Container | RingBufferTest | test-only | `Engine/Container/RingBuffer.h` | `docs/Container/RingBufferTest/index.html` | 0 | — | test-only — owns a Coverage row |
 | Container | Vector | class | `Engine/Container/Vector.h` | `docs/Container/Vector/index.html` | 6 | **no** | documented |
 | Container | VectorTest | test-only | `Engine/Container/Vector.h` | `docs/Container/VectorTest/index.html` | 0 | — | test-only — owns a Coverage row |
 | Core | CPUBudget | class | `Engine/Core/CPUBudget.h` | `docs/Core/CPUBudget/index.html` | 9 | yes | documented |
@@ -132,39 +144,40 @@ Source comments are banned, so a missing page means the contract is nowhere.
 | Math | Vector3Test | test-only | `Engine/Math/Vector3.h` | `docs/Math/Vector3Test/index.html` | 0 | — | test-only — owns a Coverage row |
 | Math | Vector4 | class | `Engine/Math/Vector4.h` | `docs/Math/Vector4/index.html` | 0 | — | MISSING |
 | Math | Vector4Test | test-only | `Engine/Math/Vector4.h` | `docs/Math/Vector4Test/index.html` | 0 | — | test-only — owns a Coverage row |
-| Memory | AllocStats | class | `Engine/Memory/AllocStats.h` | `docs/Memory/AllocStats/index.html` | 0 | — | MISSING |
-| Memory | AllocatorID | utility header | `Engine/Memory/AllocatorID.h` | `docs/Memory/AllocatorID/index.html` | 0 | — | MISSING |
-| Memory | AllocatorProxy | class | `Engine/Memory/AllocatorProxy.h` | `docs/Memory/AllocatorProxy/index.html` | 0 | — | MISSING |
-| Memory | AllocatorScope | class | `Engine/Memory/AllocatorScope.h` | `docs/Memory/AllocatorScope/index.html` | 0 | — | MISSING |
+| Memory | AlignedStorage | struct | `Engine/Memory/AlignedStorage.h` | `docs/Memory/AlignedStorage/index.html` | 2 | yes | documented |
+| Memory | AllocStats | class | `Engine/Memory/AllocStats.h` | `docs/Memory/AllocStats/index.html` | 6 | yes | documented |
+| Memory | AllocatorID | utility header | `Engine/Memory/AllocatorID.h` | `docs/Memory/AllocatorID/index.html` | 1 | yes | documented |
+| Memory | AllocatorProxy | class | `Engine/Memory/AllocatorProxy.h` | `docs/Memory/AllocatorProxy/index.html` | 2 | yes | documented |
+| Memory | AllocatorScope | class | `Engine/Memory/AllocatorScope.h` | `docs/Memory/AllocatorScope/index.html` | 2 | yes | documented |
 | Memory | AllocatorScopeTest | test-only | `Engine/Memory/AllocatorScope.h` | `docs/Memory/AllocatorScopeTest/index.html` | 0 | — | test-only — owns a Coverage row |
 | Memory | BaseAllocatorTest | test-only | `Engine/Memory/DefaultAllocator.h` | `docs/Memory/BaseAllocatorTest/index.html` | 0 | — | test-only — owns a Coverage row |
-| Memory | DefaultAllocator | class | `Engine/Memory/DefaultAllocator.h` | `docs/Memory/DefaultAllocator/index.html` | 0 | — | MISSING |
+| Memory | DefaultAllocator | class | `Engine/Memory/DefaultAllocator.h` | `docs/Memory/DefaultAllocator/index.html` | 8 | yes | documented |
 | Memory | GlobalAllocationTest | test-only | `Engine/Memory/MemoryManager.h` | `docs/Memory/GlobalAllocationTest/index.html` | 0 | — | test-only — owns a Coverage row |
-| Memory | InlineMonotonicAllocator | class | `Engine/Memory/InlineMonotonicAllocator.h` | `docs/Memory/InlineMonotonicAllocator/index.html` | 0 | — | MISSING |
+| Memory | InlineMonotonicAllocator | class | `Engine/Memory/InlineMonotonicAllocator.h` | `docs/Memory/InlineMonotonicAllocator/index.html` | 8 | yes | documented |
 | Memory | InlineMonotonicAllocatorTest | test-only | `Engine/Memory/InlineMonotonicAllocator.h` | `docs/Memory/InlineMonotonicAllocatorTest/index.html` | 0 | — | test-only — owns a Coverage row |
-| Memory | InlinePoolAllocator | class | `Engine/Memory/InlinePoolAllocator.h` | `docs/Memory/InlinePoolAllocator/index.html` | 0 | — | MISSING |
+| Memory | InlinePoolAllocator | class | `Engine/Memory/InlinePoolAllocator.h` | `docs/Memory/InlinePoolAllocator/index.html` | 17 | yes | documented |
 | Memory | InlinePoolAllocatorTest | test-only | `Engine/Memory/InlinePoolAllocator.h` | `docs/Memory/InlinePoolAllocatorTest/index.html` | 0 | — | test-only — owns a Coverage row |
-| Memory | Memory | utility header | `Engine/Memory/Memory.h` | `docs/Memory/Memory/index.html` | 0 | — | MISSING |
-| Memory | MemoryManager | class | `Engine/Memory/MemoryManager.h` | `docs/Memory/MemoryManager/index.html` | 0 | — | MISSING |
-| Memory | MonotonicAllocator | class | `Engine/Memory/MonotonicAllocator.h` | `docs/Memory/MonotonicAllocator/index.html` | 0 | — | MISSING |
+| Memory | Memory | utility header | `Engine/Memory/Memory.h` | `docs/Memory/Memory/index.html` | 0 | yes | documented |
+| Memory | MemoryManager | class | `Engine/Memory/MemoryManager.h` | `docs/Memory/MemoryManager/index.html` | 53 | yes | documented |
+| Memory | MonotonicAllocator | class | `Engine/Memory/MonotonicAllocator.h` | `docs/Memory/MonotonicAllocator/index.html` | 8 | yes | documented |
 | Memory | MonotonicAllocatorTest | test-only | `Engine/Memory/MonotonicAllocator.h` | `docs/Memory/MonotonicAllocatorTest/index.html` | 0 | — | test-only — owns a Coverage row |
-| Memory | MultiPoolAllocator | class | `Engine/Memory/MultiPoolAllocator.h` | `docs/Memory/MultiPoolAllocator/index.html` | 0 | — | MISSING |
-| Memory | MultiPoolAllocatorConfig | class | `Engine/Memory/MultiPoolAllocatorConfig.h` | `docs/Memory/MultiPoolAllocatorConfig/index.html` | 0 | — | MISSING |
+| Memory | MultiPoolAllocator | class | `Engine/Memory/MultiPoolAllocator.h` | `docs/Memory/MultiPoolAllocator/index.html` | 14 | yes | documented |
+| Memory | MultiPoolAllocatorConfig | class | `Engine/Memory/MultiPoolAllocatorConfig.h` | `docs/Memory/MultiPoolAllocatorConfig/index.html` | 2 | yes | documented |
 | Memory | MultiPoolAllocatorTest | test-only | `Engine/Memory/MultiPoolAllocator.h` | `docs/Memory/MultiPoolAllocatorTest/index.html` | 0 | — | test-only — owns a Coverage row |
-| Memory | MultiPoolConfigCache | class | `Engine/Memory/MultiPoolConfigCache.h` | `docs/Memory/MultiPoolConfigCache/index.html` | 0 | — | MISSING |
-| Memory | Optional | class | `Engine/Memory/Optional.h` | `docs/Memory/Optional/index.html` | 0 | — | MISSING |
+| Memory | MultiPoolConfigCache | class | `Engine/Memory/MultiPoolConfigCache.h` | `docs/Memory/MultiPoolConfigCache/index.html` | 6 | yes | documented |
+| Memory | Optional | class | `Engine/Memory/Optional.h` | `docs/Memory/Optional/index.html` | 14 | yes | documented |
 | Memory | OptionalTest | test-only | `Engine/Memory/Optional.h` | `docs/Memory/OptionalTest/index.html` | 0 | — | test-only — owns a Coverage row |
-| Memory | PoolAllocator | class | `Engine/Memory/PoolAllocator.h` | `docs/Memory/PoolAllocator/index.html` | 0 | — | MISSING |
+| Memory | PoolAllocator | class | `Engine/Memory/PoolAllocator.h` | `docs/Memory/PoolAllocator/index.html` | 23 | yes | documented |
 | Memory | PoolAllocatorTest | test-only | `Engine/Memory/PoolAllocator.h` | `docs/Memory/PoolAllocatorTest/index.html` | 0 | — | test-only — owns a Coverage row |
-| Memory | PoolConfig | class | `Engine/Memory/PoolConfig.h` | `docs/Memory/PoolConfig/index.html` | 0 | — | MISSING |
-| Memory | PoolConfigUtil | utility header | `Engine/Memory/PoolConfigUtil.h` | `docs/Memory/PoolConfigUtil/index.html` | 0 | — | MISSING |
-| Memory | ScopedAllocator | class | `Engine/Memory/ScopedAllocator.h` | `docs/Memory/ScopedAllocator/index.html` | 0 | — | MISSING |
-| Memory | Shareable | class | `Engine/Memory/Shareable.h` | `docs/Memory/Shareable/index.html` | 0 | — | MISSING |
-| Memory | StackAllocator | class | `Engine/Memory/StackAllocator.h` | `docs/Memory/StackAllocator/index.html` | 0 | — | MISSING |
+| Memory | PoolConfig | class | `Engine/Memory/PoolConfig.h` | `docs/Memory/PoolConfig/index.html` | 2 | yes | documented |
+| Memory | PoolConfigUtil | utility header | `Engine/Memory/PoolConfigUtil.h` | `docs/Memory/PoolConfigUtil/index.html` | 2 | yes | documented |
+| Memory | ScopedAllocator | class | `Engine/Memory/ScopedAllocator.h` | `docs/Memory/ScopedAllocator/index.html` | 3 | yes | documented |
+| Memory | Shareable | class | `Engine/Memory/Shareable.h` | `docs/Memory/Shareable/index.html` | 10 | yes | documented |
+| Memory | StackAllocator | class | `Engine/Memory/StackAllocator.h` | `docs/Memory/StackAllocator/index.html` | 9 | yes | documented |
 | Memory | StackAllocatorTest | test-only | `Engine/Memory/StackAllocator.h` | `docs/Memory/StackAllocatorTest/index.html` | 0 | — | test-only — owns a Coverage row |
-| Memory | SystemAllocator | class | `Engine/Memory/SystemAllocator.h` | `docs/Memory/SystemAllocator/index.html` | 0 | — | MISSING |
+| Memory | SystemAllocator | class | `Engine/Memory/SystemAllocator.h` | `docs/Memory/SystemAllocator/index.html` | 10 | yes | documented |
 | Memory | SystemAllocatorTest | test-only | `Engine/Memory/SystemAllocator.h` | `docs/Memory/SystemAllocatorTest/index.html` | 0 | — | test-only — owns a Coverage row |
-| Memory | ThreadSafeMultiPoolAllocator | class | `Engine/Memory/ThreadSafeMultiPoolAllocator.h` | `docs/Memory/ThreadSafeMultiPoolAllocator/index.html` | 0 | — | MISSING |
+| Memory | ThreadSafeMultiPoolAllocator | class | `Engine/Memory/ThreadSafeMultiPoolAllocator.h` | `docs/Memory/ThreadSafeMultiPoolAllocator/index.html` | 14 | yes | documented |
 | Memory | ThreadSafeMultiPoolAllocatorTest | test-only | `Engine/Memory/ThreadSafeMultiPoolAllocator.h` | `docs/Memory/ThreadSafeMultiPoolAllocatorTest/index.html` | 0 | — | test-only — owns a Coverage row |
 | OSAL | Application | class | `Engine/OSAL/Application.h` | `docs/OSAL/Application/index.html` | 0 | — | MISSING |
 | OSAL | Directory | class | `Engine/OSAL/Directory.h` | `docs/OSAL/Directory/index.html` | 0 | — | MISSING |
@@ -220,6 +233,11 @@ Source comments are banned, so a missing page means the contract is nowhere.
 | String | StringTest | test-only | `Engine/String/String.h` | `docs/String/StringTest/index.html` | 0 | — | test-only — owns a Coverage row |
 | String | StringUtil | utility header | `Engine/String/StringUtil.h` | `docs/String/StringUtil/index.html` | 0 | — | MISSING |
 | String | StringUtilTest | test-only | `Engine/String/StringUtil.h` | `docs/String/StringUtilTest/index.html` | 0 | — | test-only — owns a Coverage row |
+| Test | EPerfGrade | test-only | `Engine/Test/PerfHarness.h` | `docs/Test/EPerfGrade/index.html` | 0 | yes | documented |
+| Test | PerfBenchmark | test-only | `Engine/Test/PerfHarness.h` | `docs/Test/PerfBenchmark/index.html` | 14 | yes | documented |
+| Test | PerfSample | test-only | `Engine/Test/PerfHarness.h` | `docs/Test/PerfSample/index.html` | 0 | yes | documented |
+| Test | RingBufferPerfBenchmarkTest | test-only | `Engine/Test/RingBufferPerf.h` | `docs/Test/RingBufferPerfBenchmarkTest/index.html` | 2 | yes | documented |
+| Test | RingBufferPerfTest | test-only | `Engine/Test/RingBufferPerf.h` | `docs/Test/RingBufferPerfTest/index.html` | 2 | yes | documented |
 | Test | TestCollection | class | `Engine/Test/TestCollection.h` | `docs/Test/TestCollection/index.html` | 16 | **no** | documented |
 | Test | TestEnv | class | `Engine/Test/TestEnv.h` | `docs/Test/TestEnv/index.html` | 10 | **no** | documented |
 | Test | TestHelper | utility header | `Engine/Test/TestHelper.h` | `docs/Test/TestHelper/index.html` | 2 | **no** | documented |

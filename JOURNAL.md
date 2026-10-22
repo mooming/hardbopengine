@@ -1,5 +1,36 @@
 # Journal
 
+## 2026-10-23 00:20 — the Memory module cycle, and the gate that caught its own reviewer
+
+**Cause.** The owner asked for a codebase review and a worklist to apply hb-docs and hb-standards;
+the measured queue was Memory → Container → Renderer → OSAL → Math → String → Test (tree-wide: 42
+missing pages, 645 comment violations, 208 layout violations), and Memory went first because its
+docs were already complete, leaving layout, format and one comment file.
+
+**Closed in this round.** Four commits: the twelve-block layout over six headers (statics above
+instance functions, types above constants, MemoryManager's eight data members moved above the
+function layer with the initialiser list untouched — `--init-order` at 0); the clang-format pass
+over the seven non-conformant files (`prove_format` whitespace-explained all of them, including the
+`concept` body collapse in AllocatorScope.h, which is layer 1's documented preference); the paragraph
+seams (the double blank after six include preambles restored, one stranded blank before a bare scope
+deleted, `prove_regroup --whitespace-only` proven between the two commits); and the five
+parameter-name comments stripped from AllocatorProxy.h with a token-identical proof. The format and
+seam passes land as separate commits because the formatter itself moves non-blank lines — which is
+why `prove_regroup` may only run across the seam commit, never the format commit.
+
+**The two catches.** First, a stash does not rebuild: the "66/66 on HEAD" that seemed to indict the
+reorder had run the binary built from the modified sources; a fresh build of both states passes, and
+the TC13/TC17 task-stream failures are load-sensitive flake. Second, the amended strip commit
+originally carried a pre-existing A3 in AllocatorProxy.h that my post-strip check missed because I
+ran `--paragraphs` (advice mode) instead of the rule check — the scoped `check.sh de41c18` caught
+it, the seam was restored, and the commit amended.
+
+**Verification.** Module-scoped gates all 0: comments, layout (23 files), `--init-order`, blank
+lines, includes, docs coverage, method pages. The detached `gate.sh --all --test` passed 12/12
+targets and 66/66 testlets in Dev, Debug and Release; its exit 1 is the pre-existing tree-wide DEBT
+backlog (the 11-file OSAL include cluster plus the A/B sweep), which the worklist schedules for the
+OSAL and later modules — not Memory's scope.
+
 ## 2026-10-22 10:20 — the branch regrouped into four commits
 
 **Cause.** The owner asked for every commit above master to be regrouped by type — documents apart
