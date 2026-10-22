@@ -16,8 +16,8 @@ namespace hbe
 class AllocatorProxy final
 {
 public:
-	using TAllocBytes = void* (*) (void* /*userData*/, size_t /* allocSize */);
-	using TDeallocBytes = void (*)(void* /*userData*/, void* /* pointer */, size_t /* allocSize */);
+	using TAllocBytes = void* (*) (void*, size_t);
+	using TDeallocBytes = void (*)(void*, void*, size_t);
 
 	TAllocatorID id;
 	AllocatorProxy* next;
