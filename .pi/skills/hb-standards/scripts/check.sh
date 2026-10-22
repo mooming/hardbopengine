@@ -33,6 +33,12 @@
 #                          scripts/layout.py
 #   5. docs_coverage.py    every declared entry owns a page under docs/, which is what makes
 #                          deleting a comment safe. scripts/docs_coverage.py
+#   5b. prove_feature_macros.py
+#                          compile the scope's sources with PROFILE_ENABLED=1 and
+#                          MEMORY_VERIFICATION_ENABLED=1. BuildConfig.h hardwires both to 0, so no
+#                          configuration in layer 6 compiles a single line inside those guards, and
+#                          a block nobody has ever compiled can stay broken without a red gate.
+#                          scripts/prove_feature_macros.py
 #   6. build gate          Dev, Debug, Release, plus EngineTest on request.
 # Layers 2b, 3, 4 and 5 report and never rewrite: no tool here can tell which comment belonged to
 # which member, and reordering data members against each other changes C++ initialisation
@@ -56,7 +62,7 @@
 #     touched before building so a real recompile is forced and the gate cannot
 #     pass vacuously.
 #   * --test must build EngineTest with "build.sh ... -test". The body of main() and
-#     every module's test bodies sit behind #ifdef __UNIT_TEST__, so without the flag
+#     every module's test bodies sit behind #ifdef TEST_ENABLED, so without the flag
 #     the executable has an empty main and exits zero having run nothing (measured on
 #     this tree: 0 tests without -test, 285 with it). Zero tests is a failure.
 #   * Neither timeout(1) nor gtimeout(1) is guaranteed to exist, and on this machine
@@ -425,7 +431,7 @@ if [[ ${#FILES[@]} -gt 0 ]]; then
 		out=$(LC_ALL=C awk -v F="$f" -v OWN="$own" '
 			# phase tracks whether the top-of-file include preamble is still open. The
 			# dominant repo idiom puts further #include directives inside a
-			# "#ifdef __UNIT_TEST__" test block far below the first code body, so the
+			# "#ifdef TEST_ENABLED" test block far below the first code body, so the
 			# preamble must close exactly once, at the first body line, or those later
 			# includes get folded into block 1 and every counter is wrong.
 			BEGIN { phase = "pre" }
@@ -438,7 +444,7 @@ if [[ ${#FILES[@]} -gt 0 ]]; then
 			# Conditionals are transparent while they hug the include region: an #ifdef that
 			# directly wraps includes belongs to it, opens no block, and never ends it.
 			# A blank line before the #ifdef is the tell that this is a NEW region instead -
-			# in this repo that is almost always the "#ifdef __UNIT_TEST__" test block or a
+			# in this repo that is almost always the "#ifdef TEST_ENABLED" test block or a
 			# "#ifdef PLATFORM_x" block far below the preamble. Folding those includes into
 			# the preamble invents mixed <...>/"..." blocks and reports them as unsorted
 			# (measured: ImportanceSampling.cpp, DefaultAllocator.cpp, WindowsDebug.cpp).
@@ -644,6 +650,38 @@ if [[ ${#FILES[@]} -gt 0 ]]; then
 	fi
 fi
 
+# ------------------------------------------------------------ feature-macro compile --
+hdr "feature macros (PROFILE_ENABLED, MEMORY_VERIFICATION_ENABLED)"
+# Layer 5b. Engine/Config/BuildConfig.h hardwires both macros to 0, so layer 6 compiles none of the
+# code behind them and cannot reject it either — measured on this tree: 12 of 17 Engine/Memory
+# sources failed to compile with the macros on, over a single identifier, while all three
+# configurations passed. The probe forces the macros through a -include prelude and reuses the
+# compile database's own flags, so a failure here is a failure the moment anybody turns the feature
+# on. A missing database or a file the build does not know is [NONE] or [SKIP], never a pass.
+declare -a FM_FILES=()
+for f in "${FILES[@]:-}"; do [[ "$f" =~ \.(cpp|cc)$ ]] && FM_FILES+=("$f"); done
+if [[ ${#FM_FILES[@]} -gt 0 ]]; then
+	fm_out=$(python3 "$SCRIPT_DIR/prove_feature_macros.py" "${FM_FILES[@]}" 2>&1); fm_code=$?
+	fm_sum=$(printf '%s\n' "$fm_out" | grep '^feature macros: ' || true)
+	if [[ $fm_code -eq 0 ]]; then
+		printf '%s\n' "$fm_sum"
+	elif [[ $fm_code -eq 3 ]]; then
+		printf '%s\n' "$fm_out"
+		echo "         [NONE] the probe could not run, so the feature-macro paths are unmeasured, not verified"
+	elif [[ $ALL -eq 1 ]]; then
+		printf '%s\n' "$fm_out"
+		echo "         [DEBT] reported, not gated, while the sweep is an open owner decision"
+	else
+		printf '%s\n' "$fm_out"
+		echo "[FAIL] a feature-macro path does not compile — fix it before a configuration turns it on"
+		VIOL=$((VIOL+1))
+	fi
+else
+	# A commit that touches no translation unit cannot have been measured here, and silence reads as a pass
+	# to the next reader — the same trap this script's vacuity guard exists for.
+	echo "         [NONE] no .cpp in scope, so no feature-macro path was compiled by this run"
+fi
+
 # ------------------------------------------------------------------ build gate --
 # Runs last and is mandatory unless --no-build. Proves the reformat did not break
 # compilation in any of the three project configurations.
@@ -696,7 +734,7 @@ if [[ $BUILD -eq 1 ]]; then
 		hdr "unit tests — EngineTest, built with -test"
 		# -test is not optional here, and not for the reason it looks like. Both the body
 		# of TestMain.cpp's main() and every module's test bodies sit behind
-		# #ifdef __UNIT_TEST__, so a binary built without the flag has an EMPTY main: it
+		# #ifdef TEST_ENABLED, so a binary built without the flag has an EMPTY main: it
 		# exits zero having executed nothing at all. Measured on this tree: 0 tests run
 		# without -test, 285 with it. build.sh reconfigures with --fresh on every run, so
 		# the defines never go sticky into a shared tree; they are configured back off at
@@ -752,7 +790,7 @@ if [[ $BUILD -eq 1 ]]; then
 		fi
 
 		# Leave the tree as it was found. build.sh configures --fresh every time, so a
-		# plain reconfigure is all that is needed to drop -D__TEST__ -D__UNIT_TEST__.
+		# plain reconfigure is all that is needed to drop -DTEST_ENABLED.
 		if ! ./build.sh Applications/VulkanExample -dev >/dev/null 2>&1; then
 			echo "  note: could not reconfigure without -test; run ./build.sh <target> -dev to restore"
 		fi
