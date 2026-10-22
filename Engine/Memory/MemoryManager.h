@@ -38,10 +38,38 @@ public:
 	using TLogFunc = std::function<void(std::ostream& out)>;
 	using TPoolConfigs = TVector<PoolConfig>;
 
+	struct UsageRecord final
+	{
+		size_t allocCount = 0;
+		size_t deallocCount = 0;
+		size_t totalUsage = 0;
+		size_t maxUsage = 0;
+		size_t totalCapacity = 0;
+		size_t maxCapacity = 0;
+	};
+
 	static constexpr TId SystemAllocatorID = 0;
 	static constexpr size_t MaxBaseMemory = 8'000'000'000;
 	static thread_local TId scopedAllocatorID;
 
+private:
+	AllocatorProxy allocators[MaxNumAllocators];
+	AtomicStackView<AllocatorProxy> proxyPool;
+
+	std::mutex statsLock;
+	size_t allocCount;
+	size_t deallocCount;
+
+	UsageRecord inlineUsage;
+	UsageRecord usage;
+
+	MultiPoolConfigCache multiPoolConfigCache;
+
+#if PROFILE_ENABLED
+	MultiPoolConfigCache multiPoolConfigLog;
+#endif // PROFILE_ENABLED
+
+public:
 	static StaticStringID GetMultiPoolConfigCacheFilePath();
 	static MemoryManager& GetInstance();
 	static TId GetCurrentAllocatorID();
@@ -70,15 +98,7 @@ public:
 	[[nodiscard]] static size_t GetOSFreeBytes() noexcept;
 	[[nodiscard]] static uint64_t GetOSFreeCount() noexcept;
 
-	struct UsageRecord final
-	{
-		size_t allocCount = 0;
-		size_t deallocCount = 0;
-		size_t totalUsage = 0;
-		size_t maxUsage = 0;
-		size_t totalCapacity = 0;
-		size_t maxCapacity = 0;
-	};
+	static const char* GetName();
 
 public:
 	MemoryManager(const MemoryManager&) = delete;
@@ -90,7 +110,6 @@ public:
 	void PostEngineInit() noexcept;
 	void PreEngineShutdown() noexcept;
 
-	static const char* GetName();
 	const char* GetAllocatorName(TAllocatorID id) const;
 
 	std::lock_guard<std::mutex> AcquireStatsLock()
@@ -229,22 +248,6 @@ public:
 	}
 
 private:
-	AllocatorProxy allocators[MaxNumAllocators];
-	AtomicStackView<AllocatorProxy> proxyPool;
-
-	std::mutex statsLock;
-	size_t allocCount;
-	size_t deallocCount;
-
-	UsageRecord inlineUsage;
-	UsageRecord usage;
-
-	MultiPoolConfigCache multiPoolConfigCache;
-
-#if PROFILE_ENABLED
-	MultiPoolConfigCache multiPoolConfigLog;
-#endif // PROFILE_ENABLED
-
 	[[nodiscard]] static bool IsValid(TAllocatorID id)
 	{
 		return id >= 0 && id < MaxNumAllocators;

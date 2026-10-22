@@ -43,6 +43,23 @@ private:
 	alignas(AlignUnit) uint8_t block[ActualNumBlocks][BlockSizeInBytes];
 
 public:
+	[[nodiscard]] static StaticString GetName()
+	{
+		static StaticString name("InlinePoolAllocator");
+
+		return name;
+	}
+
+	[[nodiscard]] static auto GetBlockSize()
+	{
+		return ActualBlockSize;
+	}
+
+	[[nodiscard]] static auto GetNumBlocks()
+	{
+		return ActualNumBlocks;
+	}
+
 	InlinePoolAllocator()
 		: id(InvalidAllocatorID)
 		, parentID(InvalidAllocatorID)
@@ -91,13 +108,6 @@ public:
 		return TCastedAlloc(GetID());
 	}
 
-	[[nodiscard]] static StaticString GetName()
-	{
-		static StaticString name("InlinePoolAllocator");
-
-		return name;
-	}
-
 	[[nodiscard]] T* allocate(std::size_t n) noexcept
 	{
 		const auto nBytes = n * sizeof(T);
@@ -116,16 +126,6 @@ public:
 		return id;
 	}
 
-	[[nodiscard]] static auto GetBlockSize()
-	{
-		return ActualBlockSize;
-	}
-
-	[[nodiscard]] static auto GetNumBlocks()
-	{
-		return ActualNumBlocks;
-	}
-
 	bool operator==(const InlinePoolAllocator&) const
 	{
 		return false;
@@ -137,6 +137,21 @@ public:
 	}
 
 private:
+	static void WritePointerToNext(void* ptr, void* nextPtr)
+	{
+		void** ptrArray = static_cast<void**>(ptr);
+		auto& pointerToNext = reinterpret_cast<void*&>(ptrArray[0]);
+		pointerToNext = nextPtr;
+	}
+
+	static void* GetPointerToNext(void* ptr)
+	{
+		void** ptrArray = static_cast<void**>(ptr);
+		auto& pointerToNext = reinterpret_cast<void*&>(ptrArray[0]);
+
+		return pointerToNext;
+	}
+
 	void* AllocateBytes(size_t nBytes) noexcept
 	{
 		if (nBytes <= BlockSizeInBytes)
@@ -246,21 +261,6 @@ private:
 		constexpr size_t LastBlockIndex = ActualNumBlocks - 1;
 
 		return block[0] <= ptr && ptr <= block[LastBlockIndex];
-	}
-
-	static void WritePointerToNext(void* ptr, void* nextPtr)
-	{
-		void** ptrArray = static_cast<void**>(ptr);
-		auto& pointerToNext = reinterpret_cast<void*&>(ptrArray[0]);
-		pointerToNext = nextPtr;
-	}
-
-	static void* GetPointerToNext(void* ptr)
-	{
-		void** ptrArray = static_cast<void**>(ptr);
-		auto& pointerToNext = reinterpret_cast<void*&>(ptrArray[0]);
-
-		return pointerToNext;
 	}
 };
 } // namespace hbe

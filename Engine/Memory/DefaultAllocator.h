@@ -29,6 +29,11 @@ private:
 	TAllocatorID allocatorID;
 
 public:
+	[[nodiscard]] static constexpr size_t GetFallbackCount()
+	{
+		return 0;
+	}
+
 	DefaultAllocator()
 		: allocatorID(MemoryManager::GetCurrentAllocatorID())
 	{
@@ -83,11 +88,6 @@ public:
 	[[nodiscard]] auto GetSourceAllocatorID() const
 	{
 		return allocatorID;
-	}
-
-	[[nodiscard]] static constexpr size_t GetFallbackCount()
-	{
-		return 0;
 	}
 };
 } // namespace hbe

@@ -25,15 +25,15 @@ private:
 	TMultiPoolConfigs data;
 
 public:
-	static StaticString GetClassName();
-
-	size_t Serialize(Buffer& outBuffer);
-	bool Deserialize(const Buffer& buffer);
-
 	[[nodiscard]] static auto GetVersion()
 	{
 		return version;
 	}
+
+	static StaticString GetClassName();
+
+	size_t Serialize(Buffer& outBuffer);
+	bool Deserialize(const Buffer& buffer);
 
 	[[nodiscard]] auto& GetData()
 	{

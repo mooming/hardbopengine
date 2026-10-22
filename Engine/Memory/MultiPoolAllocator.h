@@ -21,13 +21,15 @@ class MultiPoolAllocator final
 public:
 	using This = MultiPoolAllocator;
 
+private:
+	using TInitializerList = std::initializer_list<PoolConfig>;
+
+public:
 	static constexpr size_t DefaultMinBlock = 16;
 	static constexpr size_t DefaultBankUnit = 1024ULL * 1024;
 	static constexpr size_t MinNumberOfBlocks = 16;
 
 private:
-	using TInitializerList = std::initializer_list<PoolConfig>;
-
 	TAllocatorID id;
 	TAllocatorID parentID;
 	StaticString name;
@@ -63,13 +65,14 @@ public:
 #endif // PROFILE_ENABLED
 
 private:
+	static size_t CalculateNumberOfBlocks(size_t bankSize, size_t blockSize);
+
 	void* NewBankAllocate(size_t size);
 
 	bool GenerateBanksByCache(MemoryManager& mmgr);
 	[[nodiscard]] size_t GetBankIndex(size_t nBytes) const;
 	[[nodiscard]] size_t GetBankIndex(void* ptr) const;
 	[[nodiscard]] size_t CalculateBlockSize(size_t requested) const;
-	static size_t CalculateNumberOfBlocks(size_t bankSize, size_t blockSize);
 	void GenerateBank(size_t blockSize, size_t numberOfBlocks);
 };
 } // namespace hbe
