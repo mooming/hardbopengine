@@ -415,7 +415,6 @@ void BoundedPriorityQueueTest::Prepare()
 
 		time::TDuration engineTime;
 		time::TDuration stlTime;
-
 		{
 			time::ScopedTime measure(engineTime);
 			BoundedPriorityQueue<TestItem> queue;
@@ -432,7 +431,6 @@ void BoundedPriorityQueueTest::Prepare()
 				}
 			}
 		}
-
 		{
 			time::ScopedTime measure(stlTime);
 			std::priority_queue<TestItem> queue;

@@ -6,6 +6,7 @@
 
 #include "OSAL/Intrinsic.h"
 
+
 namespace hbe
 {
 template <typename T>

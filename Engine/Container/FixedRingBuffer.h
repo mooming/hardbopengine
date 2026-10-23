@@ -11,6 +11,7 @@
 #include "Memory/DefaultAllocator.h"
 #include "Memory/Memory.h"
 
+
 namespace hbe
 {
 /// API reference: docs/Container/FixedRingBuffer/index.html

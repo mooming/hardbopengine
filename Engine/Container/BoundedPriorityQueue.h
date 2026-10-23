@@ -10,6 +10,7 @@
 #include "Container/Deque.h"
 #include "Core/Debug.h"
 
+
 namespace hbe
 {
 /// API reference: docs/Container/BoundedPriorityQueue/index.html
