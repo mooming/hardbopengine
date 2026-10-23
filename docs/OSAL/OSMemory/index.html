@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>OSMemory — OSAL module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a class="current" href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This class</h3>
+  <ul>
+    <li><a href="#description">Class description</a></li>
+    <li><a href="#template">Template parameters</a></li>
+    <li><a href="#properties">Class properties</a></li>
+    <li><a href="#methods">Class methods</a></li>
+    <li><a href="#non-member">Non-member helpers</a></li>
+    <li><a href="#coverage">Coverage</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">OSAL</a> /
+  OSMemory
+</p>
+
+<h1>OSMemory</h1>
+<p class="subtitle">
+  <span class="tag">Engine/OSAL/OSMemory.h</span>
+  <span class="tag">namespace OS</span>
+  <span class="tag">utility header</span>
+  allocation validation, alignment math, page size, and the reserve/free/protect triple of the virtual-memory boundary
+</p>
+
+<h2 id="description">Class description</h2>
+
+<p>
+  A utility header, not a class: free functions at <code>OS::</code> scope for the questions the engine's memory
+  layer asks the operating system — is this pointer a live allocation, how big is the allocation behind it, how
+  big is a page, reserve and release address space, and make a range untouchable. It is the boundary the
+  <a href="../../Memory/index.html"><code>Memory</code></a> module leans on:
+  <code>SystemAllocator</code> reserves through <a href="virtual-alloc.html"><code>VirtualAlloc</code></a>,
+  guards with <a href="protect-memory.html"><code>ProtectMemory</code></a>, and releases with
+  <a href="virtual-free.html"><code>VirtualFree</code></a>; the allocators validate with
+  <a href="check-aligned.html"><code>CheckAligned</code></a> and size with
+  <a href="get-aligned.html"><code>GetAligned</code></a>.
+</p>
+
+<p>
+  One function is a template and one is <code>constexpr</code>, both defined in the header; the other six are
+  declared in <code>Engine/OSAL/OSMemory.h</code> and defined per platform in
+  <code>Engine/OSAL/LinuxMemory.cpp</code>, <code>Engine/OSAL/OSXMemory.cpp</code> and
+  <code>Engine/OSAL/WindowsMemory.cpp</code>. The generic unit <code>Engine/OSAL/OSMemory.cpp</code> defines
+  nothing but the test collection: its implementation chain is dead code while a <code>PLATFORM_*</code> macro
+  is defined — which it always is, because the file fails to compile with none.
+</p>
+
+<div class="note">
+  <strong>The platform units disagree in small, caller-visible ways.</strong> What counts as a valid allocation
+  (<code>MAP_FAILED</code> is a valid non-null pointer on POSIX, so the POSIX units test for it and the Windows
+  unit does not), and whether the page size is queried every call or cached — see the per-function pages.
+</div>
+
+<h2 id="template">Template parameters</h2>
+
+<p>None — the entry declares no class or struct. One function,
+<a href="check-aligned.html"><code>CheckAligned</code></a>, is itself a function template.</p>
+
+<h2 id="properties">Class properties</h2>
+
+<p>The macro, with who reads it — a define nobody reads is a define that can rot:</p>
+
+<table>
+  <tr><th>Name</th><th>Read by</th><th>What it controls</th></tr>
+  <tr>
+    <td><code>HE_ALIGN</code></td>
+    <td><code>Engine/Memory/InlineMonotonicAllocator.h</code></td>
+    <td>Expands to <code>alignas(hbe::Config::DefaultAlign)</code> — how an engine structure asks for the engine's default alignment instead of a magic number</td>
+  </tr>
+</table>
+
+<h2 id="methods">Class methods</h2>
+
+<p>None — the entry is a macro and free functions, and the functions carry real contracts, so each owns a page:</p>
+
+<table class="methods">
+  <tr><th>Name</th><th>Signature</th><th>What a caller depends on</th></tr>
+  <tr><td><a href="is-valid-allocation.html"><code>IsValidAllocation</code></a></td>
+      <td class="sig">[[nodiscard]] bool IsValidAllocation(void* ptr) noexcept</td>
+      <td>Whether the pointer is a live allocation answer — <code>MAP_FAILED</code> counts as invalid on POSIX; no engine code calls it outside the OSAL's own test</td></tr>
+  <tr><td><a href="check-aligned.html"><code>CheckAligned</code></a></td>
+      <td class="sig">template &lt;typename T&gt; [[nodiscard]] bool CheckAligned(T* ptr, uint32_t alignBytes = hbe::Config::DefaultAlign) noexcept</td>
+      <td>Address modulo the alignment, computed inline; the allocators assert on it</td></tr>
+  <tr><td><a href="get-aligned.html"><code>GetAligned</code></a></td>
+      <td class="sig">[[nodiscard]] constexpr size_t GetAligned(size_t size, uint32_t alignBytes = hbe::Config::DefaultAlign) noexcept</td>
+      <td>Round up to the next multiple — usable at compile time, and the sizing every allocator's block math starts from</td></tr>
+  <tr><td><a href="get-alloc-size.html"><code>GetAllocSize</code></a></td>
+      <td class="sig">[[nodiscard]] size_t GetAllocSize(void* ptr) noexcept</td>
+      <td>The size the platform's allocator gave the pointer — the usable size, asked back from the allocator</td></tr>
+  <tr><td><a href="get-page-size.html"><code>GetPageSize</code></a></td>
+      <td class="sig">[[nodiscard]] size_t GetPageSize() noexcept</td>
+      <td>The OS page size — queried per call on Linux, cached on macOS and Windows</td></tr>
+  <tr><td><a href="virtual-alloc.html"><code>VirtualAlloc</code></a></td>
+      <td class="sig">void* VirtualAlloc(size_t size)</td>
+      <td>Reserve and commit address space; the name matches the Windows call, and failure is signalled by the platform's sentinel, not an exception</td></tr>
+  <tr><td><a href="virtual-free.html"><code>VirtualFree</code></a></td>
+      <td class="sig">void VirtualFree(void* address, std::size_t n) noexcept</td>
+      <td>Release a reservation — <code>munmap</code> on POSIX, <code>MEM_RELEASE</code> on Windows, where failure asserts</td></tr>
+  <tr><td><a href="protect-memory.html"><code>ProtectMemory</code></a></td>
+      <td class="sig">void ProtectMemory(void* address, std::size_t n) noexcept</td>
+      <td>Makes the range untouchable — <code>PROT_NONE</code> / <code>PAGE_NOACCESS</code>; the guard-page mechanism, and failure asserts</td></tr>
+</table>
+
+<h2 id="non-member">Non-member helpers</h2>
+
+<p>None — the functions above are the entire surface.</p>
+
+<h2 id="coverage">Coverage</h2>
+
+<table>
+  <tr><th>Not documented here</th><th>Why</th></tr>
+  <tr>
+    <td><code>OSMemoryTest</code></td>
+    <td>The <code>TEST_ENABLED</code> test collection declared at the bottom of the same header — test-only,
+        owning its coverage here rather than a page</td>
+  </tr>
+  <tr>
+    <td>The dead fallback chain in <code>OSMemory.cpp</code></td>
+    <td>Its <code>#elif defined(__linux__)</code>… bodies can never compile while a <code>PLATFORM_*</code>
+        macro is defined, which the file itself requires; the per-platform units own the real
+        implementations</td>
+  </tr>
+</table>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; OSMemory</a></span>
+  <span><a href="index.html#methods">All OSMemory methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

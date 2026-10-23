@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>OSInputOutput::Open — OSAL module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a class="current" href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">OSAL</a> /
+  <a href="index.html">OSInputOutput</a> / Open
+</p>
+
+<h1><span class="fn">Open</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::OSInputOutput</span>
+  <span class="tag">Engine/OSAL/OSInputOutput.h</span>
+  <span class="tag">namespace OS</span>
+  fill the out-handle with the descriptor, or log and fail
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>bool Open(FileHandle&amp; outHandle, hbe::StaticString filePath, FileOpenMode openMode) noexcept</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  Opens a file and hands the descriptor to the out-parameter. The mode word is passed to the platform open call
+  verbatim — <code>::open(path, openMode.value, S_IRUSR | S_IWUSR)</code> on both POSIX units — so what the
+  opening does is exactly what the caller built into the
+  <a href="../FileOpenMode/index.html"><code>FileOpenMode</code></a>. Created files get owner-read and
+  owner-write permissions; nothing else is granted.
+</p>
+
+<pre><code>	auto path = filePath.c_str();
+	int fd = ::open(path, openMode.value, S_IRUSR | S_IWUSR);
+	if (unlikely(fd &lt; 0))
+	{
+		...
+		log.OutWarning([&amp;filePath](auto&amp; ls)
+		{ ls &lt;&lt; "File open failed. path = " &lt;&lt; filePath &lt;&lt; ", reason(" &lt;&lt; std::strerror(errno) &lt;&lt; ')'; });
+
+		return false;
+	}
+
+	outHandle.fd = fd;
+
+	return true;</code></pre>
+<p class="meta">From Engine/OSAL/LinuxInputOutput.cpp, OS::Open(FileHandle&amp;, hbe::StaticString, FileOpenMode) — logging lines elided with the logger setup</p>
+
+<p>
+  Failure is a logged warning carrying the platform's error text, a <code>false</code> return, and an untouched
+  handle — the caller's <code>FileHandle</code> stays invalid, which is safe to destruct. The macOS unit writes
+  the descriptor through its <code>FileHandleHelper::SetHandle</code> reinterpret instead of naming
+  <code>fd</code> (<code>Engine/OSAL/OSXInputOutput.cpp</code>); the storage is the same.
+</p>
+
+<h2 id="parameters">Parameters</h2>
+
+<table>
+  <tr><th>Parameter</th><th>Type</th><th>Requirement</th></tr>
+  <tr><td><code>outHandle</code></td><td><code>FileHandle&amp;</code></td><td>Receives the descriptor on success; expected to be invalid on entry and never closed by this function.</td></tr>
+  <tr><td><code>filePath</code></td><td><code>hbe::StaticString</code></td><td>The path to open, by value.</td></tr>
+  <tr><td><code>openMode</code></td><td><code>FileOpenMode</code></td><td>The flag word for the platform open call — access mode plus behaviour bits; see <a href="../FileOpenMode/index.html"><code>FileOpenMode</code></a>.</td></tr>
+</table>
+
+<h2 id="return">Return value</h2>
+
+<p>
+  <code>true</code> when the descriptor is open and stored in <code>outHandle</code>; <code>false</code> after a
+  logged warning, with the handle left invalid.
+</p>
+
+<h2 id="example">Examples</h2>
+
+<p>
+  The mode word is built by the caller — <code>hbe::BufferUtil::GetWriteOnlyFileBuffer(StaticString path,
+  size_t size)</code> accumulates it — and consumed here, in the generator that function installs:
+</p>
+
+<pre><code>		if (!Open(fh, path, openMode))
+		{
+			log.OutError([path](auto&amp; ls) { ls &lt;&lt; "Failed to open " &lt;&lt; path; });
+
+			return;
+		}</code></pre>
+<p class="meta">From Engine/Resource/BufferUtil.cpp, the generator hbe::BufferUtil::GenerateFileBuffer(StaticString path, OS::FileOpenMode openMode, OS::ProtectionMode protection, size_t size) installs</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; OSInputOutput</a></span>
+  <span><a href="index.html#methods">All OSInputOutput methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Window::GetWidth — OSAL module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a class="current" href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">OSAL</a> /
+  <a href="index.html">Window</a> / GetWidth
+</p>
+
+<h1><span class="fn">GetWidth</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::Window</span>
+  <span class="tag">Engine/OSAL/Window.h</span>
+  the recorded width
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>[[nodiscard]] int GetWidth() const</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  The recorded width — the object's own number, not a fresh query of the window. It is written by
+  <a href="create-window.html"><code>CreateWindow</code></a> and
+  <a href="set-size.html"><code>SetSize</code></a>, and updated by the event pumps when the
+  <em>user</em> resizes (<code>ConfigureEvent</code> on Linux, <code>WM_SIZE</code> on Windows); on macOS there
+  is no user resize to track. Until the window is created it answers <code>0</code>.
+</p>
+
+<p>
+  All three platform units define it identically — return the member
+  (<code>Engine/OSAL/LinuxWindow.cpp</code>, <code>Engine/OSAL/OSXWindow.mm</code>,
+  <code>Engine/OSAL/Win32Window.cpp</code>). The paired getter is
+  <a href="get-height.html"><code>GetHeight</code></a>; the renderer reads both to size its swapchain.
+</p>
+
+<h2 id="parameters">Parameters</h2>
+
+<p>None.</p>
+
+<h2 id="return">Return value</h2>
+
+<p>The recorded width in pixels; <code>0</code> before creation.</p>
+
+<h2 id="example">Examples</h2>
+
+<p>
+  The renderer reads the pair every frame to keep its aspect ratio:
+</p>
+
+<pre><code>	static_cast&lt;float&gt;(extent.width) / static_cast&lt;float&gt;(extent.height), NearZ, FarZ);</code></pre>
+<p class="meta">From Applications/VulkanExample/Main.cpp, main(int, const char**) — the extent comes from renderer.GetExtent(), which the Window's recorded size seeds</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; Window</a></span>
+  <span><a href="index.html#methods">All Window methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

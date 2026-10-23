@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>OSDebug::GetBackTrace — OSAL module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a class="current" href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">OSAL</a> /
+  <a href="index.html">OSDebug</a> / GetBackTrace
+</p>
+
+<h1><span class="fn">GetBackTrace</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::OSDebug</span>
+  <span class="tag">Engine/OSAL/OSDebug.h</span>
+  <span class="tag">namespace OS</span>
+  the call stack as a printable string — 128-frame cap, demangled on POSIX, SymFromAddr on Windows
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>hbe::StaticString GetBackTrace(uint16_t startIndex = 0, uint16_t maxDepth = 512)</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  The current call stack, formatted and returned as an <code>hbe::StaticString</code>. Every platform unit opens
+  the string with <code>"CallStack:\n"</code> and appends one line per frame; the whole answer is built in an 8
+  KiB <code>InlineStringBuilder</code>, so a trace longer than that is cut at the builder's capacity, and the
+  POSIX units never capture more than 128 frames regardless of <code>maxDepth</code>.
+</p>
+
+<p>
+  The frame numbering is where the platforms disagree, and the disagreement is in the parameter's meaning. The
+  POSIX units (<code>Engine/OSAL/LinuxDebug.cpp</code>, <code>Engine/OSAL/OSXDebug.cpp</code>, line-for-line
+  identical) increment <code>startIndex</code> by one before walking, so the default <code>0</code> starts at
+  the <em>caller</em> of <code>GetBackTrace</code> and the printed numbers count from there — the capture frame
+  never appears. The Windows unit (<code>Engine/OSAL/WindowsDebug.cpp</code>) passes <code>startIndex</code> to
+  <code>CaptureStackBackTrace</code> as-is and prints the walk index directly, so the default <code>0</code>
+  includes the frame the POSIX units skip.
+</p>
+
+<pre><code>	++startIndex;
+	...
+	for (int i = startIndex; i &lt; frames &amp;&amp; maxDepth &gt; 0; ++i, --maxDepth)</code></pre>
+<p class="meta">From Engine/OSAL/LinuxDebug.cpp, OS::GetBackTrace(uint16_t, uint16_t) — two non-contiguous lines of one function, elided</p>
+
+<p>
+  On POSIX each line is tokenised; when the symbol line has the expected five tokens, the mangled name is
+  demangled through <code>abi::__cxa_demangle</code> and the line reads
+  <code>&lt;frame&gt;: [&lt;binary&gt;] &lt;module&gt; &lt;demangled name&gt; +&lt;offset&gt;</code>. A line
+  that does not split into five tokens is printed raw. Windows resolves each address with
+  <code>SymFromAddr</code> and prints <code>&lt;index&gt; : &lt;name&gt; (&lt;address&gt;)</code> — no
+  demangling step, different shape.
+</p>
+
+<div class="note">
+  <strong>The parameters are filters, not guarantees.</strong> <code>maxDepth</code> counts frames
+  <em>after</em> the start; the POSIX capture is capped at 128 frames before the filter is applied, so a
+  <code>maxDepth</code> of 512 — the default — can never be filled. A failed platform call is not signalled:
+  an empty or partial stack simply comes back as a short string.
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<table>
+  <tr><th>Parameter</th><th>Type</th><th>Requirement</th></tr>
+  <tr><td><code>startIndex</code></td><td><code>uint16_t</code></td><td>How many leading frames to skip — plus one more, on POSIX, for the capture call itself. Default <code>0</code> begins at the caller on POSIX.</td></tr>
+  <tr><td><code>maxDepth</code></td><td><code>uint16_t</code></td><td>Maximum frames to report after the start; effective ceiling is the platform's capture cap (128 on POSIX). Default <code>512</code>.</td></tr>
+</table>
+
+<h2 id="return">Return value</h2>
+
+<p>
+  An <code>hbe::StaticString</code> holding <code>"CallStack:\n"</code> plus one formatted line per reported
+  frame; never empty, never an error — a failed capture reads as a short trace.
+</p>
+
+<h2 id="example">Examples</h2>
+
+<p>
+  The OSAL's own test prints it whole:
+</p>
+
+<pre><code>	AddTest("Print CallStack", [this](auto&amp; ls)
+	{
+		auto callstack = OS::GetBackTrace();
+		ls &lt;&lt; callstack.c_str() &lt;&lt; lf;
+	});</code></pre>
+<p class="meta">From Engine/OSAL/OSDebug.cpp, hbe::OSDebugTest::Prepare()</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; OSDebug</a></span>
+  <span><a href="index.html#methods">All OSDebug methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

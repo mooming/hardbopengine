@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>OSAbstractLayer::GetFullPath — OSAL module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a class="current" href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">OSAL</a> /
+  <a href="index.html">OSAbstractLayer</a> / GetFullPath
+</p>
+
+<h1><span class="fn">GetFullPath</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::OSAbstractLayer</span>
+  <span class="tag">Engine/OSAL/OSAbstractLayer.h</span>
+  the absolute form of a path — realpath on POSIX, lexical on Windows
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>hbe::HString GetFullPath(const hbe::HString&amp; path)</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  The absolute form of the path, with the platform's own resolution. On Linux and macOS the work is
+  <code>realpath</code> into a <code>PATH_MAX</code> stack buffer, which has two consequences a caller must know:
+  the path has to <em>exist</em> — <code>realpath</code> resolves symlinks and fails on a missing file — and the
+  answer is the fully dereferenced spelling, not a lexical cleanup. On Windows the work is
+  <code>GetFullPathNameA</code>, which resolves lexically against the current directory and does not require
+  existence. Both then hand the result to <code>StringUtil::TrimPath</code>, which normalises backslashes to
+  slashes and removes one trailing slash.
+</p>
+
+<pre><code>	char fullPath[PATH_MAX];
+	void* ptr = realpath(path.c_str(), fullPath);
+	if (ptr != fullPath)
+	{
+		std::cerr &lt;&lt; "[OS::GetFullPath] Failed to get the full path of " &lt;&lt; path &lt;&lt; std::endl;
+
+		return TrimPath(path);
+	}
+
+	return TrimPath(fullPath);</code></pre>
+<p class="meta">From Engine/OSAL/LinuxAbstractLayer.cpp, OS::GetFullPath(const hbe::HString&amp;)</p>
+
+<div class="note">
+  <strong>Failure is quiet and lossy on POSIX.</strong> When <code>realpath</code> fails — a path that does not
+  exist, most commonly — the function writes one line to <code>std::cerr</code> and returns the
+  <em>input</em>, trimmed. The caller cannot distinguish "absolute path" from "the relative string I gave you"
+  except by already knowing. The Windows unit checks nothing at all: it returns whatever
+  <code>GetFullPathNameA</code> left in the buffer.
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<table>
+  <tr><th>Parameter</th><th>Type</th><th>Requirement</th></tr>
+  <tr><td><code>path</code></td><td><code>const hbe::HString&amp;</code></td><td>The path to resolve; on POSIX it must exist for the answer to be more than the input echoed back.</td></tr>
+</table>
+
+<h2 id="return">Return value</h2>
+
+<p>
+  The resolved absolute path, trimmed. On POSIX failure: the trimmed input, after a line on
+  <code>std::cerr</code>.
+</p>
+
+<h2 id="example">Examples</h2>
+
+<p class="note">No call site for this function exists in the repository — no engine code,
+test or application resolves a path through it today. It is declared, defined on all three platforms, and
+waiting for a caller; the only in-tree callers of this header's functions are
+<a href="../Directory/constructors.html"><code>Directory</code></a>'s, and they use the other two.</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; OSAbstractLayer</a></span>
+  <span><a href="index.html#methods">All OSAbstractLayer methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FileHandle — OSAL module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a class="current" href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This class</h3>
+  <ul>
+    <li><a href="#description">Class description</a></li>
+    <li><a href="#template">Template parameters</a></li>
+    <li><a href="#properties">Class properties</a></li>
+    <li><a href="#methods">Class methods</a></li>
+    <li><a href="#non-member">Non-member helpers</a></li>
+    <li><a href="#coverage">Coverage</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">OSAL</a> /
+  FileHandle
+</p>
+
+<h1>FileHandle</h1>
+<p class="subtitle">
+  <span class="tag">Engine/OSAL/OSFileHandle.h</span>
+  <span class="tag">namespace OS</span>
+  <span class="tag">final</span>
+  the movable, non-copyable owner of a platform file descriptor — invalid by default, closes on destruction
+</p>
+
+<h2 id="description">Class description</h2>
+
+<p>
+  <code>OS::FileHandle</code> is the handle the file-input surface travels in: one public anonymous
+  <code>union</code> holding the platform's handle as raw storage, movable but not copyable, invalid by default,
+  and closing its file when it dies. On POSIX the storage is a descriptor — the <code>int fd</code> view — and
+  <code>OS::Open</code>'s implementations write the descriptor straight into it
+  (<code>Engine/OSAL/LinuxInputOutput.cpp</code> assigns <code>outHandle.fd</code>).
+</p>
+
+<p>
+  The handle <em>owns</em> the descriptor. The destructor closes: a valid handle's destructor calls
+  <a href="../index.html#functions"><code>OS::Close</code></a> on itself, so a caller who opens a file and lets
+  the handle go out of scope has still closed it. Ownership transfer is the move constructor, which steals the
+  storage and invalidates the source; the copy constructor is deleted, so there is no second owner by accident.
+  <code>Engine/Resource/BufferUtil.cpp</code> leans on both: it moves the raw storage out of a live handle, then
+  lets the buffer's releaser rebuild a handle from the raw bytes to close the file after the mapping is
+  released.
+</p>
+
+<div class="gap">
+  <strong>Implemented on Linux and macOS only.</strong> The definitions live in
+  <code>Engine/OSAL/LinuxFileHandle.cpp</code> and <code>Engine/OSAL/OSXFileHandle.cpp</code>, each behind its
+  <code>PLATFORM_*</code> guard. There is no <code>WindowsFileHandle.cpp</code>, and
+  <code>Engine/OSAL/WindowsInputOutput.cpp</code>, the only Windows file of the IO surface, is a copyright
+  notice with no code — a Windows build that constructs or passes a <code>FileHandle</code> does not link.
+</div>
+
+<div class="note">
+  <strong>The two platform units reach the descriptor differently, and only one of them is honest about the
+  union.</strong> <code>LinuxFileHandle.cpp</code> reads and writes the <code>fd</code> member directly, as
+  <code>OS::Open</code> does; <code>OSXFileHandle.cpp</code> goes through
+  <code>GetHandle</code> / <code>SetHandle</code> helpers in an anonymous namespace that
+  <code>reinterpret_cast</code> the <code>void* data</code> view to <code>int&amp;</code>. Both spellings alias
+  the same four bytes, so the semantics are identical — but the OSX route is the one that would survive the
+  union's pointer view widening, and the Linux route would not.
+</div>
+
+<h2 id="template">Template parameters</h2>
+
+<p>None — the class is not a template.</p>
+
+<h2 id="properties">Class properties</h2>
+
+<table>
+  <tr><th>Type + Name</th><th>Default Value</th><th>Description</th></tr>
+  <tr><td><code>union { void* data; int fd; };</code> <span class="badge">public</span></td>
+      <td><span class="muted">none in the header</span></td>
+      <td>The platform handle as raw storage — the descriptor on POSIX, readable as an <code>int</code> or a pointer; both names are the same bytes.</td></tr>
+</table>
+
+<h2 id="methods">Class methods</h2>
+
+<table class="methods">
+  <tr><th>Name</th><th>Signature</th><th>What a caller depends on</th></tr>
+  <tr><td><a href="constructors.html"><code>FileHandle</code></a> <span class="badge">2 overloads</span></td>
+      <td class="sig">FileHandle()<br>FileHandle(FileHandle&amp;&amp; rhs)</td>
+      <td>Default constructs to invalid; the move steals the storage and invalidates the source.</td></tr>
+  <tr><td><code>FileHandle(const FileHandle&amp;)</code></td>
+      <td class="sig">FileHandle(const FileHandle&amp;) = delete</td>
+      <td>Deleted — a handle owns its descriptor, and two owners of one descriptor close it twice.</td></tr>
+  <tr><td><a href="destructor.html"><code>~FileHandle</code></a></td>
+      <td class="sig">~FileHandle()</td>
+      <td>Closes the file when the handle is valid; an invalid handle destructs without a call.</td></tr>
+  <tr><td><a href="get-file-size.html"><code>GetFileSize</code></a></td>
+      <td class="sig">[[nodiscard]] size_t GetFileSize() const noexcept</td>
+      <td>The file's current size by <code>fstat</code>; answers <code>0</code> for an invalid handle, a failed query, and an empty file alike.</td></tr>
+  <tr><td><a href="is-valid.html"><code>IsValid</code></a></td>
+      <td class="sig">[[nodiscard]] bool IsValid() const noexcept</td>
+      <td>True exactly when the descriptor is non-negative; no engine code calls it today.</td></tr>
+  <tr><td><a href="invalidate.html"><code>Invalidate</code></a></td>
+      <td class="sig">void Invalidate() noexcept</td>
+      <td>Sets the descriptor to <code>-1</code> without closing anything — the raw-storage escape hatch is the only caller.</td></tr>
+</table>
+
+<h2 id="non-member">Non-member helpers</h2>
+
+<p>None. Everything that operates on a handle is a free function of
+<a href="../index.html#functions"><code>OSInputOutput</code></a> — <code>Open</code>, <code>Close</code>,
+<code>Read</code>, <code>Write</code>, <code>Truncate</code>, <code>MapMemory</code> — which is why the class
+itself carries no I/O method.</p>
+
+<h2 id="coverage">Coverage</h2>
+
+<table>
+  <tr><th>Not documented here</th><th>Why</th></tr>
+  <tr>
+    <td>What <code>Close</code> does to the handle it takes</td>
+    <td><a href="../index.html#functions"><code>OS::Close</code></a> takes the handle by rvalue reference and
+        invalidates it before it touches the descriptor; the contract is on its page in the
+        <a href="../index.html#functions">module functions table</a></td>
+  </tr>
+  <tr>
+    <td>Windows behaviour</td>
+    <td>Nothing can be documented: no Windows definition of any member exists — see the gap above</td>
+  </tr>
+</table>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; FileHandle</a></span>
+  <span><a href="index.html#methods">All FileHandle methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

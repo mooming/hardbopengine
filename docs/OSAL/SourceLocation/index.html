@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SourceLocation — OSAL module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a class="current" href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This class</h3>
+  <ul>
+    <li><a href="#description">Class description</a></li>
+    <li><a href="#template">Template parameters</a></li>
+    <li><a href="#properties">Class properties</a></li>
+    <li><a href="#methods">Class methods</a></li>
+    <li><a href="#non-member">Non-member helpers</a></li>
+    <li><a href="#coverage">Coverage</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">OSAL</a> /
+  SourceLocation
+</p>
+
+<h1>SourceLocation</h1>
+<p class="subtitle">
+  <span class="tag">Engine/OSAL/SourceLocation.h</span>
+  <span class="tag">namespace hbe</span>
+  <span class="tag">final</span>
+  a constexpr record of the call site — file, function, line and column, captured by default arguments
+</p>
+
+<h2 id="description">Class description</h2>
+
+<p>
+  <code>hbe::SourceLocation</code> is a small <code>constexpr</code> value that records where in the source a call
+  happened: a file name, a function name, a line and a column. It exists so that a function which wants to report
+  its caller does not make the caller write anything — the parameters of
+  <a href="current.html"><code>current</code></a> default to the <code>CallerFile()</code> /
+  <code>CallerFunc()</code> / <code>CallerLine()</code> / <code>CallerColumn()</code> macros of
+  <code>Engine/OSAL/Intrinsic.h</code>, and a default argument is evaluated at the <em>caller's</em> site, so a
+  parameter written <code>SourceLocation location = SourceLocation::current()</code> captures the function that
+  omitted the argument. That is the pattern
+  <code>Engine/Memory/PoolAllocator.h</code> uses for its profiling constructor.
+</p>
+
+<p>
+  The consumers are the lock and allocator layers: <code>Engine/Core/ScopedLock.h</code> logs all four fields when
+  a lock times out, and the profiling allocators (<code>PoolAllocator</code>, <code>StackAllocator</code>) store
+  the location they were constructed with and hand it to
+  <code>MemoryManager::DeregisterAllocator(TId id, const SourceLocation&amp; srcLocation)</code> when they die.
+  The assertion family in <code>Engine/Core/Debug.h</code> does not use this class — it captures with the
+  standard library's <code>std::source_location</code>, which answers the same four questions through the same
+  accessor shapes. Every field here is <code>const</code>, so a location is fixed at construction — there is no
+  "update the line later" call to misuse.
+</p>
+
+<div class="note">
+  <strong>The whole class lives in the header, and no per-platform unit touches it.</strong> OSAL's usual shape —
+  a neutral header whose functions the <code>Linux*.cpp</code> / <code>OSX*.mm</code> / <code>Win32*.cpp</code>
+  units define — does not apply here: capture is done entirely by compiler builtins expanded at the call site,
+  so there is nothing for an operating system to answer.
+</div>
+
+<h2 id="template">Template parameters</h2>
+
+<p>None — the class is not a template.</p>
+
+<h2 id="properties">Class properties</h2>
+
+<table>
+  <tr><th>Type + Name</th><th>Default Value</th><th>Description</th></tr>
+  <tr><td><code>const char* fileName;</code> <span class="badge">private</span></td>
+      <td><span class="muted">none in the header</span></td>
+      <td>The file the location was captured in; the <a href="constructors.html">default constructor</a> puts <code>"Invalid"</code> here.</td></tr>
+  <tr><td><code>const char* functionName;</code> <span class="badge">private</span></td>
+      <td><span class="muted">none in the header</span></td>
+      <td>The enclosing function at capture, as the compiler spells it — not demangled, not decorated.</td></tr>
+  <tr><td><code>const std::uint_least32_t lineNumber;</code> <span class="badge">private</span></td>
+      <td><span class="muted">none in the header</span></td>
+      <td>The line of the capture; the <a href="constructors.html">default constructor</a> puts <code>0</code> here.</td></tr>
+  <tr><td><code>const std::uint_least32_t columnOffset;</code> <span class="badge">private</span></td>
+      <td><span class="muted">none in the header</span></td>
+      <td>The column of the capture; on GCC, <code>CallerColumn()</code> always answers <code>0</code>.</td></tr>
+</table>
+
+<h2 id="methods">Class methods</h2>
+
+<table class="methods">
+  <tr><th>Name</th><th>Signature</th><th>What a caller depends on</th></tr>
+  <tr><td><a href="current.html"><code>current</code></a></td>
+      <td class="sig">static constexpr SourceLocation current(const char* fileName = CallerFile(),<br>const char* functionName = CallerFunc(),<br>const uint_least32_t lineNumber = CallerLine(),<br>const uint_least32_t columnOffset = CallerColumn()) noexcept</td>
+      <td>Captures the call site through its default arguments — a caller passes nothing, and the site that calls <code>current()</code> is what is recorded.</td></tr>
+  <tr><td><a href="constructors.html"><code>SourceLocation</code></a> <span class="badge">3 overloads</span></td>
+      <td class="sig">constexpr SourceLocation() noexcept<br>SourceLocation(const SourceLocation&amp; rhs) noexcept = default<br>constexpr SourceLocation(const char* fileName, const char* functionName, const uint_least32_t lineNumber,<br>const uint_least32_t columnOffset) noexcept</td>
+      <td>Default constructs to <code>"Invalid"</code> / <code>"Invalid"</code> / <code>0</code> / <code>0</code>; the four-argument form is what <code>current</code> calls; the copy is the trivial memberwise copy.</td></tr>
+  <tr><td><a href="file-name.html"><code>file_name</code></a></td>
+      <td class="sig">[[nodiscard]] constexpr const char* file_name() const noexcept</td>
+      <td>Reads the captured file name; this is the field <code>Assert</code> prints.</td></tr>
+  <tr><td><a href="name.html"><code>function_name</code></a></td>
+      <td class="sig">[[nodiscard]] constexpr const char* function_name() const noexcept</td>
+      <td>Reads the captured function name.</td></tr>
+  <tr><td><a href="line.html"><code>line</code></a></td>
+      <td class="sig">[[nodiscard]] constexpr uint_least32_t line() const noexcept</td>
+      <td>Reads the captured line number.</td></tr>
+  <tr><td><a href="column.html"><code>column</code></a></td>
+      <td class="sig">[[nodiscard]] constexpr std::uint_least32_t column() const noexcept</td>
+      <td>Reads the captured column; meaningful on Clang and MSVC, always <code>0</code> on GCC.</td></tr>
+</table>
+
+<h2 id="non-member">Non-member helpers</h2>
+
+<p>None. The <code>CallerFile()</code> / <code>CallerFunc()</code> / <code>CallerLine()</code> /
+<code>CallerColumn()</code> macros that feed the defaults are declared in <code>Engine/OSAL/Intrinsic.h</code>
+and tabled on the module page's <a href="../index.html#intrinsic">Intrinsic macros</a> section.</p>
+
+<h2 id="coverage">Coverage</h2>
+
+<p>
+  This page documents the type completely: the four <code>const</code> fields, the static capture point, all
+  three constructors, and the four accessors. There is nothing further to document — the class has no
+  per-platform implementation, no non-member helpers, and no state beyond the four fields above.
+</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; SourceLocation</a></span>
+  <span><a href="index.html#methods">All SourceLocation methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

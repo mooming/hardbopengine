@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Window::Close — OSAL module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a class="current" href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">OSAL</a> /
+  <a href="index.html">Window</a> / Close
+</p>
+
+<h1><span class="fn">Close</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::Window</span>
+  <span class="tag">Engine/OSAL/Window.h</span>
+  destroy the window and mark it closed
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>void Close()</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  Destroys the window and marks it closed. Linux destroys the X11 window and closes the display, clearing both
+  handles (<code>Engine/OSAL/LinuxWindow.cpp</code>); Windows destroys the <code>HWND</code> and clears it
+  (<code>Engine/OSAL/Win32Window.cpp</code>); macOS closes the <code>NSWindow</code> and
+  <em>releases the delegate</em> — the one ownership the class carries, because <code>NSWindow</code> holds its
+  delegate unretained and the <code>Window</code> allocated it
+  (<code>Engine/OSAL/OSXWindow.mm</code>). All three set <code>closedFlag</code> last, even when there was no
+  window to close — the method is safe on an uncreated window, and it is what the
+  <a href="destructor.html">destructor</a> calls.
+</p>
+
+<pre><code>	if (osHandle != nullptr)
+	{
+		auto window = static_cast&lt;NSWindow*&gt;(osHandle);
+		[window close];
+		[window release];
+		osHandle = nullptr;
+	}
+
+	closedFlag = true;</code></pre>
+<p class="meta">From Engine/OSAL/OSXWindow.mm, OS::Window::Close()</p>
+
+<p>
+  After <code>Close</code>, the getters keep answering — the recorded size and the closed flag — but the
+  <a href="get-native-handle.html"><code>native handle</code></a> is gone, and anything the renderer attached
+  to it must have been detached first. There is no re-open: a closed <code>Window</code> object stays closed.
+</p>
+
+<h2 id="parameters">Parameters</h2>
+
+<p>None.</p>
+
+<h2 id="return">Return value</h2>
+
+<p>Not applicable — returns <code>void</code>, and cannot fail.</p>
+
+<h2 id="example">Examples</h2>
+
+<p>
+  The OSAL's own test closes explicitly and checks the flag:
+</p>
+
+<pre><code>			window-&gt;Close();
+			ls &lt;&lt; "Window closed, verifying IsClosed()..." &lt;&lt; lf;
+
+			if (!window-&gt;IsClosed())
+			{
+				ls &lt;&lt; "Window should be closed after Close()" &lt;&lt; lferr;
+			}</code></pre>
+<p class="meta">From Engine/OSAL/Window.cpp, the Close Window testlet of hbe::WindowTest::Prepare()</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; Window</a></span>
+  <span><a href="index.html#methods">All Window methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

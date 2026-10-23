@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Directory — OSAL module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a class="current" href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This class</h3>
+  <ul>
+    <li><a href="#description">Class description</a></li>
+    <li><a href="#template">Template parameters</a></li>
+    <li><a href="#properties">Class properties</a></li>
+    <li><a href="#methods">Class methods</a></li>
+    <li><a href="#non-member">Non-member helpers</a></li>
+    <li><a href="#coverage">Coverage</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">OSAL</a> /
+  Directory
+</p>
+
+<h1>Directory</h1>
+<p class="subtitle">
+  <span class="tag">Engine/OSAL/Directory.h</span>
+  <span class="tag">namespace OS</span>
+  a directory that reads itself at construction — child files by bare name, child directories recursively
+</p>
+
+<h2 id="description">Class description</h2>
+
+<p>
+  <code>OS::Directory</code> is a directory that reads itself at construction and then hands out its children: a
+  public <code>path</code> string, a <code>fileList</code> of the child files, and a <code>dirList</code> of
+  child <code>Directory</code> objects — so a tree walk is a recursion over
+  <a href="dir-list.html"><code>DirList()</code></a>. The reading is done once, in the
+  <a href="constructors.html">constructor</a>, through <code>OS::ListFilesInDirectory</code> and
+  <code>OS::IsDirectory</code> from <a href="../OSAbstractLayer/index.html"><code>OSAbstractLayer</code></a>; nothing
+  refreshes it afterwards.
+</p>
+
+<p>
+  The two lists hold different things: <code>fileList</code> stores each child file as a
+  <code>File</code> carrying its <em>bare name</em> within this directory, while <code>dirList</code> stores
+  child directories whose <code>path</code> is the full child path (<code>parentPath + "/" + name</code>). Dot
+  entries never appear in either list — the constructor skips every name starting with <code>'.'</code>.
+</p>
+
+<div class="gap">
+  <strong>The recursion is unbounded, and directory cycles are not detected.</strong> The constructor recurses
+  into every child that <code>IsDirectory</code> accepts, and <code>IsDirectory</code> answers
+  <code>true</code> for a symlink that resolves to a directory — <code>Engine/OSAL/LinuxAbstractLayer.cpp</code>
+  tests it with <code>opendir</code>, which follows symlinks. A symlink cycle in the tree therefore recurses
+  until the stack or the file system gives out. There is no depth limit and no visited-set.
+</div>
+
+<div class="note">
+  <strong>Nothing in the repository constructs a <code>Directory</code> today.</strong> The class and its
+  helpers are the tree-walking machinery of the OSAL; no engine code, test or application instantiates it, so
+  the recursion above has never run outside a hypothetical caller.
+</div>
+
+<h2 id="template">Template parameters</h2>
+
+<p>None — the class is not a template.</p>
+
+<h2 id="properties">Class properties</h2>
+
+<table>
+  <tr><th>Type + Name</th><th>Default Value</th><th>Description</th></tr>
+  <tr><td><code>const std::string path;</code> <span class="badge">public</span></td>
+      <td><span class="muted">none in the header</span></td>
+      <td>The directory's own path, trimmed by <code>StringUtil::TrimPath</code> at construction; <code>const</code>, so it never changes.</td></tr>
+  <tr><td><code>Files fileList;</code> <span class="badge">private</span></td>
+      <td><span class="muted">none in the header</span></td>
+      <td>The child files, filled at construction; each holds its bare name within this directory.</td></tr>
+  <tr><td><code>Dirs dirList;</code> <span class="badge">private</span></td>
+      <td><span class="muted">none in the header</span></td>
+      <td>The child directories, constructed recursively at construction; each holds its full child path.</td></tr>
+  <tr><td><code>using Dirs = std::vector&lt;Directory&gt;;</code> <span class="badge">member type</span></td>
+      <td><span class="muted">not applicable</span></td>
+      <td>The private alias the <code>dirList</code> member uses; also re-declared at namespace scope as <code>OS::Dirs</code>.</td></tr>
+</table>
+
+<h2 id="methods">Class methods</h2>
+
+<table class="methods">
+  <tr><th>Name</th><th>Signature</th><th>What a caller depends on</th></tr>
+  <tr><td><a href="constructors.html"><code>Directory</code></a></td>
+      <td class="sig">Directory(const char* path)</td>
+      <td>Reads the directory immediately — lists it, recurses into child directories, and skips dot entries; the object is fully loaded when construction returns.</td></tr>
+  <tr><td><code>~Directory()</code></td>
+      <td class="sig">virtual ~Directory() = default</td>
+      <td>Defaulted and virtual — the class is meant to be walked through a base reference, and destruction frees the two child vectors.</td></tr>
+  <tr><td><a href="file-list.html"><code>FileList</code></a></td>
+      <td class="sig">[[nodiscard]] const Files&amp; FileList() const</td>
+      <td>The child files read at construction, as stored — no re-scan happens on access.</td></tr>
+  <tr><td><a href="dir-list.html"><code>DirList</code></a></td>
+      <td class="sig">[[nodiscard]] const Dirs&amp; DirList() const</td>
+      <td>The child directories read at construction, already recursively loaded — the step of a tree walk.</td></tr>
+</table>
+
+<h2 id="non-member">Non-member helpers</h2>
+
+<p>None. The namespace-scope <code>using Dirs = std::vector&lt;Directory&gt;;</code> in
+<code>Engine/OSAL/Directory.h</code> is the public spelling of the child-list type.</p>
+
+<h2 id="coverage">Coverage</h2>
+
+<table>
+  <tr><th>Not documented here</th><th>Why</th></tr>
+  <tr>
+    <td>What <code>ListFilesInDirectory</code> and <code>IsDirectory</code> do on each platform</td>
+    <td>Owned by <a href="../OSAbstractLayer/index.html"><code>OSAbstractLayer</code></a>, whose three free
+        functions do the actual reading; this page documents only how the constructor composes them</td>
+  </tr>
+  <tr>
+    <td>Behaviour on a path that is not a directory, or does not exist</td>
+    <td>The constructor does not check: <code>ListFilesInDirectory</code> answers an empty list for both, so the
+        object constructs "successfully" with empty lists — see the <a href="constructors.html">constructor
+        page</a></td>
+  </tr>
+</table>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; Directory</a></span>
+  <span><a href="index.html#methods">All Directory methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

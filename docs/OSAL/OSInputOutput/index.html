@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>OSInputOutput — OSAL module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a class="current" href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This class</h3>
+  <ul>
+    <li><a href="#description">Class description</a></li>
+    <li><a href="#template">Template parameters</a></li>
+    <li><a href="#properties">Class properties</a></li>
+    <li><a href="#methods">Class methods</a></li>
+    <li><a href="#non-member">Non-member helpers</a></li>
+    <li><a href="#coverage">Coverage</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">OSAL</a> /
+  OSInputOutput
+</p>
+
+<h1>OSInputOutput</h1>
+<p class="subtitle">
+  <span class="tag">Engine/OSAL/OSInputOutput.h</span>
+  <span class="tag">namespace OS</span>
+  <span class="tag">utility header</span>
+  open, close, exist, delete, read, write, truncate, and the map-sync-unmap triple — the file-input surface
+</p>
+
+<h2 id="description">Class description</h2>
+
+<p>
+  A utility header, not a class: free functions at <code>OS::</code> scope for the file-input surface — open,
+  close, exist, delete, read, write, truncate, and the mapping triple
+  <a href="map-memory.html"><code>MapMemory</code></a> / <a href="map-sync.html"><code>MapSync</code></a> /
+  <a href="unmap-memory.html"><code>UnmapMemory</code></a>. Everything travels through a
+  <a href="../FileHandle/index.html"><code>FileHandle</code></a>, whose ownership rules — move-only, closed on
+  destruction — are what make the function set safe to use.
+</p>
+
+<p>
+  The functions are declared once in <code>Engine/OSAL/OSInputOutput.h</code> and defined per platform:
+  <code>Engine/OSAL/LinuxInputOutput.cpp</code> and <code>Engine/OSAL/OSXInputOutput.cpp</code> are the same
+  POSIX story told twice (the macOS unit reaches the descriptor through <code>reinterpret_cast</code> helpers
+  where the Linux unit names <code>fd</code> directly), and the engine's file-backed
+  <a href="../../Resource/index.html"><code>Buffer</code></a> machinery is the main consumer.
+  <code>Engine/OSAL/OSInputOutput.cpp</code> defines none of them — it is the test collection.
+</p>
+
+<div class="gap">
+  <strong>Windows has no implementation.</strong> <code>Engine/OSAL/WindowsInputOutput.cpp</code> is a copyright
+  notice with no code, and no other Windows unit defines any of these functions — a Windows build that calls
+  any of them does not link. The whole surface is Linux-and-macOS today.
+</div>
+
+<h2 id="template">Template parameters</h2>
+
+<p>None — the header declares no types of its own; the four classes it names are forward-declared and defined
+in their own headers (<a href="../FileHandle/index.html"><code>FileHandle</code></a>,
+<a href="../FileOpenMode/index.html"><code>FileOpenMode</code></a>,
+<a href="../ProtectionMode/index.html"><code>ProtectionMode</code></a>,
+<a href="../MapSyncMode/index.html"><code>MapSyncMode</code></a>).</p>
+
+<h2 id="properties">Class properties</h2>
+
+<p>None — the header declares no macros, no aliases, no constants and no data members.</p>
+
+<h2 id="methods">Class methods</h2>
+
+<p>None — the functions are free functions, and their contracts are tabled under
+<a href="#non-member">Non-member helpers</a> below.</p>
+
+<h2 id="non-member">Non-member helpers</h2>
+
+<table>
+  <tr><th>Name</th><th>Signature</th><th>What a caller depends on</th></tr>
+  <tr>
+    <td><a href="open.html"><code>Open</code></a></td>
+    <td class="sig">bool Open(FileHandle&amp; outHandle, hbe::StaticString filePath, FileOpenMode openMode) noexcept</td>
+    <td>Fills the out-handle with the descriptor; failure is a logged warning and <code>false</code>, leaving the handle invalid</td>
+  </tr>
+  <tr>
+    <td><a href="close.html"><code>Close</code></a></td>
+    <td class="sig">bool Close(FileHandle&amp;&amp; handle) noexcept</td>
+    <td>Takes the handle by rvalue reference and invalidates it before touching the descriptor — a closed handle cannot be closed twice</td>
+  </tr>
+  <tr>
+    <td><a href="exist.html"><code>Exist</code></a></td>
+    <td class="sig">bool Exist(hbe::StaticString filePath) noexcept</td>
+    <td>Presence test — a readable path answers <code>true</code>, whatever it is</td>
+  </tr>
+  <tr>
+    <td><a href="delete.html"><code>Delete</code></a></td>
+    <td class="sig">bool Delete(hbe::StaticString filePath) noexcept</td>
+    <td>Removal — files and empty directories; failure is <code>false</code> with no log</td>
+  </tr>
+  <tr>
+    <td><a href="read.html"><code>Read</code></a></td>
+    <td class="sig">size_t Read(const FileHandle&amp; handle, void* buffer, size_t size) noexcept</td>
+    <td>Bytes actually transferred — a short count is possible, and the caller loops; a null buffer or zero size answers <code>0</code> with a warning</td>
+  </tr>
+  <tr>
+    <td><a href="write.html"><code>Write</code></a></td>
+    <td class="sig">size_t Write(const FileHandle&amp; handle, void* buffer, size_t size) noexcept</td>
+    <td>Bytes actually transferred — same short-count rule as <code>Read</code></td>
+  </tr>
+  <tr>
+    <td><a href="truncate.html"><code>Truncate</code></a></td>
+    <td class="sig">bool Truncate(const FileHandle&amp; handle, size_t size) noexcept</td>
+    <td>Resizes the open file to <code>size</code> bytes — growing or shrinking</td>
+  </tr>
+  <tr>
+    <td><a href="map-memory.html"><code>MapMemory</code></a></td>
+    <td class="sig">void* MapMemory(FileHandle&amp; fileHandle, size_t size, ProtectionMode protection, size_t offset) noexcept</td>
+    <td>Maps a file range into the address space — how a large resource is read without a staging buffer; failure is <code>nullptr</code> after an error log</td>
+  </tr>
+  <tr>
+    <td><a href="map-sync.html"><code>MapSync</code></a></td>
+    <td class="sig">bool MapSync(void* ptr, size_t size, MapSyncMode syncMode) noexcept</td>
+    <td>Flushes a writable mapping back to the file — and answers <code>true</code> even when the flush itself failed</td>
+  </tr>
+  <tr>
+    <td><a href="unmap-memory.html"><code>UnmapMemory</code></a></td>
+    <td class="sig">bool UnmapMemory(void* ptr, size_t size) noexcept</td>
+    <td>Releases a mapping — and answers <code>true</code> even when the unmap itself failed</td>
+  </tr>
+</table>
+
+<h2 id="coverage">Coverage</h2>
+
+<table>
+  <tr><th>Not documented here</th><th>Why</th></tr>
+  <tr>
+    <td><code>OSInputOutputTest</code></td>
+    <td>The <code>TEST_ENABLED</code> test collection in <code>Engine/OSAL/OSInputOutput.cpp</code> — test-only,
+        owning its coverage here rather than a page</td>
+  </tr>
+  <tr>
+    <td>How the mode and protection classes build their flag words</td>
+    <td>Owned by <a href="../FileOpenMode/index.html"><code>FileOpenMode</code></a>,
+        <a href="../ProtectionMode/index.html"><code>ProtectionMode</code></a> and
+        <a href="../MapSyncMode/index.html"><code>MapSyncMode</code></a>; these pages cover what the words do
+        once passed in</td>
+  </tr>
+</table>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; OSInputOutput</a></span>
+  <span><a href="index.html#methods">All OSInputOutput methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

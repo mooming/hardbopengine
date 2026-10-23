@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FileHandle::Invalidate — OSAL module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a class="current" href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">OSAL</a> /
+  <a href="index.html">FileHandle</a> / Invalidate
+</p>
+
+<h1><span class="fn">Invalidate</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::FileHandle</span>
+  <span class="tag">Engine/OSAL/OSFileHandle.h</span>
+  writes -1 into the descriptor without closing anything
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>void Invalidate() noexcept</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  Writes <code>-1</code> into the descriptor — and nothing else. This is not a close: a handle that held a real
+  descriptor and is invalidated keeps that descriptor open in the operating system, with no handle left to close
+  it. The method exists for the states where <em>no</em> descriptor is held — the
+  <a href="constructors.html">default constructor</a> calls it, the <a href="constructors.html">move
+  constructor</a> calls it on its emptied source, and <code>OS::Close</code>'s implementations call it on the
+  handle they just closed.
+</p>
+
+<p>
+  It is also the raw-storage escape hatch's reset: <code>Engine/Resource/BufferUtil.cpp</code> copies the union
+  storage out of a live handle, invalidates the handle so its <a href="destructor.html">destructor</a> will not
+  close the file, and hands the raw bytes to the buffer's releaser.
+</p>
+
+<pre><code>	auto handleData = fh.data;
+	fh.Invalidate();</code></pre>
+<p class="meta">From Engine/Resource/BufferUtil.cpp, hbe::BufferUtil::GenerateFileBuffer(StaticString path, OS::FileOpenMode openMode, OS::ProtectionMode protection, size_t size)</p>
+
+<p>
+  The platform units write the same <code>-1</code> through different spellings —
+  <code>Engine/OSAL/LinuxFileHandle.cpp</code> assigns <code>fd</code> directly,
+  <code>Engine/OSAL/OSXFileHandle.cpp</code> through its <code>SetHandle</code> helper.
+</p>
+
+<h2 id="parameters">Parameters</h2>
+
+<p>None.</p>
+
+<h2 id="return">Return value</h2>
+
+<p>Not applicable — the method mutates the handle and returns <code>void</code>.</p>
+
+<h2 id="example">Examples</h2>
+
+<p>
+  The pair to keep straight: <code>Invalidate</code> on a live handle <em>leaks</em> the descriptor, while
+  <a href="../index.html#functions"><code>OS::Close</code></a> closes it and then invalidates. The quote above is
+  the intended use — invalidate only a handle whose storage has already been moved somewhere else.
+</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; FileHandle</a></span>
+  <span><a href="index.html#methods">All FileHandle methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

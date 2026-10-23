@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>OSMemory::ProtectMemory — OSAL module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a class="current" href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">OSAL</a> /
+  <a href="index.html">OSMemory</a> / ProtectMemory
+</p>
+
+<h1><span class="fn">ProtectMemory</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::OSMemory</span>
+  <span class="tag">Engine/OSAL/OSMemory.h</span>
+  <span class="tag">namespace OS</span>
+  make a range untouchable — the guard-page mechanism
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>void ProtectMemory(void* address, std::size_t n) noexcept</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  Makes the range untouchable: <code>mprotect</code> with <code>PROT_NONE</code> on Linux and macOS
+  (<code>Engine/OSAL/LinuxMemory.cpp</code>, <code>Engine/OSAL/OSXMemory.cpp</code>),
+  <code>VirtualProtect</code> with <code>PAGE_NOACCESS</code> on Windows
+  (<code>Engine/OSAL/WindowsMemory.cpp</code>). Any read or write through the range afterwards faults. There is
+  no mode parameter and no way back through this header — the one protection this function applies is
+  <em>none</em>, which is what makes it the guard-page mechanism: the engine's dangling-pointer check
+  (<code>MEMORY_DANGLING_POINTER_CHECK_ENABLED</code>) protects a freed buffer with it, so a stale pointer dies
+  loudly instead of reading stale data.
+</p>
+
+<pre><code>void OS::ProtectMemory(void* address, size_t n) noexcept
+{
+	auto result = mprotect(address, n, PROT_NONE);
+
+	if (unlikely(result != 0))
+	{
+		using namespace std;
+		cerr &lt;&lt; "[OS::ProtectMemory] address = " &lt;&lt; address &lt;&lt; ", n = " &lt;&lt; n &lt;&lt; " : " &lt;&lt; strerror(errno) &lt;&lt; endl;
+
+		hbe::Assert(false);
+	}
+}</code></pre>
+<p class="meta">From Engine/OSAL/LinuxMemory.cpp, OS::ProtectMemory(void*, size_t)</p>
+
+<div class="note">
+  <strong>Failure is loud on every platform.</strong> The POSIX units log to <code>std::cerr</code> and assert;
+  the Windows unit logs through the engine and asserts. A failed protection is treated as a broken invariant,
+  not a condition to continue from — which is the right posture for a debugging mechanism, and the reason this
+  function is only compiled into investigation builds.
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<table>
+  <tr><th>Parameter</th><th>Type</th><th>Requirement</th></tr>
+  <tr><td><code>address</code></td><td><code>void*</code></td><td>Page-aligned base of the range; <code>mprotect</code> and <code>VirtualProtect</code> both require page alignment.</td></tr>
+  <tr><td><code>n</code></td><td><code>std::size_t</code></td><td>Length in bytes; spans whole pages from the base.</td></tr>
+</table>
+
+<h2 id="return">Return value</h2>
+
+<p>Not applicable — returns <code>void</code>. Failure asserts rather than returning a code.</p>
+
+<h2 id="example">Examples</h2>
+
+<p>
+  The dangling-pointer check protecting a freed buffer, in the guard-page allocator's release path:
+</p>
+
+<pre><code>#if MEMORY_DANGLING_POINTER_CHECK_ENABLED
+		OS::ProtectMemory(rawPtr, allocated);
+#else // MEMORY_DANGLING_POINTER_CHECK_ENABLED
+		OS::VirtualFree(rawPtr, allocated);
+#endif // MEMORY_DANGLING_POINTER_CHECK_ENABLED</code></pre>
+<p class="meta">From Engine/Memory/SystemAllocator.h, SystemAllocator::DeallocateBytes(void* ptr, std::size_t nBytes)</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; OSMemory</a></span>
+  <span><a href="index.html#methods">All OSMemory methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

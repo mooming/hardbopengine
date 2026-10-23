@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>OSAbstractLayer — OSAL module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a class="current" href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This class</h3>
+  <ul>
+    <li><a href="#description">Class description</a></li>
+    <li><a href="#template">Template parameters</a></li>
+    <li><a href="#properties">Class properties</a></li>
+    <li><a href="#methods">Class methods</a></li>
+    <li><a href="#non-member">Non-member helpers</a></li>
+    <li><a href="#coverage">Coverage</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">OSAL</a> /
+  OSAbstractLayer
+</p>
+
+<h1>OSAbstractLayer</h1>
+<p class="subtitle">
+  <span class="tag">Engine/OSAL/OSAbstractLayer.h</span>
+  <span class="tag">namespace OS</span>
+  <span class="tag">macro set</span>
+  PATH_MAX and the WINDOWS/POSIX split, plus the path-and-listing primitives Directory is built on
+</p>
+
+<h2 id="description">Class description</h2>
+
+<p>
+  <code>OSAbstractLayer</code> is a header, not a class: its surface is two preprocessor decisions and three free
+  functions at <code>OS::</code> scope — <a href="get-full-path.html"><code>GetFullPath</code></a>,
+  <a href="is-directory.html"><code>IsDirectory</code></a> and
+  <a href="list-files-in-directory.html"><code>ListFilesInDirectory</code></a> — the path and listing primitives
+  that <a href="../Directory/index.html"><code>Directory</code></a> is built on. The functions are declared once
+  in <code>Engine/OSAL/OSAbstractLayer.h</code> and defined once per platform:
+  <code>Engine/OSAL/LinuxAbstractLayer.cpp</code>, <code>Engine/OSAL/OSXAbstractLayer.cpp</code> and
+  <code>Engine/OSAL/WindowsAbstractLayer.cpp</code> — the OSAL pattern in its cleanest form, and one of the few
+  entries implemented on all three platforms.
+</p>
+
+<p>
+  The preprocessor half is the header's own preamble: it defines <code>WINDOWS</code> or <code>POSIX</code> from
+  the compiler's <code>WIN32</code>, and uses that choice to include <code>&lt;windows.h&gt;</code> or
+  <code>&lt;dirent.h&gt;</code> and to spell <code>PATH_MAX</code>. The generic unit
+  <code>Engine/OSAL/OSAbstractLayer.cpp</code> defines nothing — it includes the header and stops, which is how
+  the per-platform units avoid colliding with it.
+</p>
+
+<div class="note">
+  <strong>The two POSIX units are line-for-line identical, and the Windows unit is not.</strong> Linux and macOS
+  both answer through <code>realpath</code>, <code>opendir</code> and <code>readdir</code>; the Windows unit uses
+  <code>GetFullPathNameA</code>, <code>GetFileAttributesA</code> and <code>FindFirstFileA</code>, and its
+  listing filters a different set of names — see
+  <a href="list-files-in-directory.html">that function's page</a> for the divergence.
+</div>
+
+<h2 id="template">Template parameters</h2>
+
+<p>None — the entry declares no types at all.</p>
+
+<h2 id="properties">Class properties</h2>
+
+<p>The macros, with who reads them — a define nobody reads is a define that can rot:</p>
+
+<table>
+  <tr><th>Name</th><th>Read by</th><th>What it controls</th></tr>
+  <tr>
+    <td><code>WINDOWS</code></td>
+    <td><code>Engine/OSAL/OSAbstractLayer.h</code> itself</td>
+    <td>Defined when the compiler predefines <code>WIN32</code>; selects the <code>&lt;windows.h&gt;</code> include and the <code>PATH_MAX</code> spelling</td>
+  </tr>
+  <tr>
+    <td><code>POSIX</code></td>
+    <td><code>Engine/OSAL/OSAbstractLayer.h</code> itself</td>
+    <td>Defined on every other compiler; selects the <code>&lt;dirent.h&gt;</code> include</td>
+  </tr>
+  <tr>
+    <td><code>PATH_MAX</code></td>
+    <td><code>Engine/OSAL/LinuxAbstractLayer.cpp</code>, <code>Engine/OSAL/OSXAbstractLayer.cpp</code> — the <code>realpath</code> buffer; <code>Engine/String/StringUtil.cpp</code> defines its own independent fallback</td>
+    <td><code>MAX_PATH</code> from the Windows SDK on Windows, the system value elsewhere; the size of <code>GetFullPath</code>'s stack buffer</td>
+  </tr>
+</table>
+
+<h2 id="methods">Class methods</h2>
+
+<p>None — the entry is macros and free functions. The functions carry real contracts, so each owns a page:</p>
+
+<table class="methods">
+  <tr><th>Name</th><th>Signature</th><th>What a caller depends on</th></tr>
+  <tr><td><a href="get-full-path.html"><code>GetFullPath</code></a></td>
+      <td class="sig">hbe::HString GetFullPath(const hbe::HString&amp; path)</td>
+      <td>Absolute form of the path — resolved by <code>realpath</code> on POSIX, which requires the path to exist; backslashes normalised to slashes on the way out</td></tr>
+  <tr><td><a href="is-directory.html"><code>IsDirectory</code></a></td>
+      <td class="sig">bool IsDirectory(const char* path)</td>
+      <td><code>true</code> exactly when the path can be opened as a directory — a symlink to a directory answers <code>true</code>, a file and a missing path answer <code>false</code></td></tr>
+  <tr><td><a href="list-files-in-directory.html"><code>ListFilesInDirectory</code></a></td>
+      <td class="sig">hbe::HVector&lt;hbe::HString&gt; ListFilesInDirectory(const char* path)</td>
+      <td>Child names only, one level deep; dot entries are filtered — all of them on POSIX, only <code>.</code> and <code>..</code> on Windows</td></tr>
+</table>
+
+<h2 id="non-member">Non-member helpers</h2>
+
+<p>None — the three functions above are the entire functional surface, and they are the entry.</p>
+
+<h2 id="coverage">Coverage</h2>
+
+<table>
+  <tr><th>Not documented here</th><th>Why</th></tr>
+  <tr>
+    <td>How <code>Directory</code> composes these functions into a tree walk</td>
+    <td>Owned by <a href="../Directory/index.html"><code>Directory</code></a>, whose constructor is the only
+        in-tree caller of <code>IsDirectory</code> and <code>ListFilesInDirectory</code></td>
+  </tr>
+  <tr>
+    <td>What <code>StringUtil::TrimPath</code> does to the results</td>
+    <td>A String-module utility — backslashes to slashes, one trailing slash removed — cited where the
+        functions apply it</td>
+  </tr>
+  <tr>
+    <td>Call sites for <code>GetFullPath</code></td>
+    <td>None exist outside the function's own definitions; its page says so rather than inventing a caller</td>
+  </tr>
+</table>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; OSAbstractLayer</a></span>
+  <span><a href="index.html#methods">All OSAbstractLayer methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

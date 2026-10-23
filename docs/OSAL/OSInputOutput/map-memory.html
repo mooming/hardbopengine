@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>OSInputOutput::MapMemory — OSAL module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a class="current" href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">OSAL</a> /
+  <a href="index.html">OSInputOutput</a> / MapMemory
+</p>
+
+<h1><span class="fn">MapMemory</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::OSInputOutput</span>
+  <span class="tag">Engine/OSAL/OSInputOutput.h</span>
+  <span class="tag">namespace OS</span>
+  map a file range into the address space
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>void* MapMemory(FileHandle&amp; fileHandle, size_t size, ProtectionMode protection, size_t offset) noexcept</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  Maps <code>size</code> bytes of the file, starting at byte <code>offset</code>, into the address space:
+  <code>mmap(nullptr, size, protection.value, MAP_SHARED, fd, offset)</code> on the POSIX units
+  (<code>Engine/OSAL/LinuxInputOutput.cpp</code>, <code>Engine/OSAL/OSXInputOutput.cpp</code>). The protection
+  word from <a href="../ProtectionMode/index.html"><code>ProtectionMode</code></a> is passed verbatim;
+  <code>MAP_SHARED</code> is fixed, which is what lets writes through the mapping reach the file — and what
+  makes <a href="map-sync.html"><code>MapSync</code></a> meaningful.
+</p>
+
+<p>
+  Two guard paths answer <code>nullptr</code> with a warning: an invalid handle and a zero size. A failed
+  <code>mmap</code> answers <code>nullptr</code> after an <em>error</em>-level log that prints the handle, size,
+  protection word and offset. This is how a large resource is read without a staging buffer — the engine's
+  file-backed <a href="../../Resource/index.html"><code>Buffer</code></a> machinery lives on it.
+</p>
+
+<h2 id="parameters">Parameters</h2>
+
+<table>
+  <tr><th>Parameter</th><th>Type</th><th>Requirement</th></tr>
+  <tr><td><code>fileHandle</code></td><td><code>FileHandle&amp;</code></td><td>An open handle to the file; taken by non-const reference though the implementations only read the descriptor.</td></tr>
+  <tr><td><code>size</code></td><td><code>size_t</code></td><td>Bytes to map; zero answers <code>nullptr</code> with a warning. The file must be at least <code>offset + size</code> bytes for the mapping to be readable.</td></tr>
+  <tr><td><code>protection</code></td><td><code>ProtectionMode</code></td><td>The protection word for the mapping; see <a href="../ProtectionMode/index.html"><code>ProtectionMode</code></a>.</td></tr>
+  <tr><td><code>offset</code></td><td><code>size_t</code></td><td>Byte offset into the file; POSIX requires it to be a multiple of the page size.</td></tr>
+</table>
+
+<h2 id="return">Return value</h2>
+
+<p>
+  The base address of the mapping; <code>nullptr</code> for the guard paths and after a failed
+  <code>mmap</code> (logged at error level). Release it with
+  <a href="unmap-memory.html"><code>UnmapMemory</code></a>.
+</p>
+
+<h2 id="example">Examples</h2>
+
+<p>
+  The map-modify-sync cycle from the OSAL's own IO test:
+</p>
+
+<pre><code>			ProtectionMode protection;
+			protection.SetReadable();
+			protection.SetWritable();
+
+			auto ptr = MapMemory(fh, TestSize, protection, 0);
+			if (ptr == nullptr)
+			{
+				Close(std::move(fh));
+				Delete(path);
+				...
+				return;
+			}</code></pre>
+<p class="meta">From Engine/OSAL/OSInputOutput.cpp, the MapMemory testlet of hbe::OSInputOutputTest::Prepare() — middle lines elided</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; OSInputOutput</a></span>
+  <span><a href="index.html#methods">All OSInputOutput methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

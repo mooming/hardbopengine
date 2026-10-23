@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Application — OSAL module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a class="current" href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This class</h3>
+  <ul>
+    <li><a href="#description">Class description</a></li>
+    <li><a href="#template">Template parameters</a></li>
+    <li><a href="#properties">Class properties</a></li>
+    <li><a href="#methods">Class methods</a></li>
+    <li><a href="#non-member">Non-member helpers</a></li>
+    <li><a href="#coverage">Coverage</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">OSAL</a> /
+  Application
+</p>
+
+<h1>Application</h1>
+<p class="subtitle">
+  <span class="tag">Engine/OSAL/Application.h</span>
+  <span class="tag">namespace OS</span>
+  the OS application facade — an NSApplication story on macOS, empty bodies elsewhere
+</p>
+
+<h2 id="description">Class description</h2>
+
+<p>
+  The platform-independent application facade: it creates the OS application object and pumps its events, and
+  the public interface is identical on every operating system. What differs is the implementation unit behind it
+  — <code>Engine/OSAL/LinuxApplication.cpp</code>, <code>Engine/OSAL/OSXApplication.mm</code>,
+  <code>Engine/OSAL/Win32Application.cpp</code>, selected at build time by the <code>PLATFORM_*</code> macros —
+  and here the difference is extreme: <strong>only the macOS unit does anything</strong>. The Linux and Windows
+  definitions are empty bodies; the whole OS-application story of this engine is a macOS story, because
+  <code>NSApplication</code> is the one platform where the window server requires an application object to
+  exist.
+</p>
+
+<p>
+  On macOS, <a href="initialize.html"><code>Initialize</code></a> takes the process-wide
+  <code>NSApplication</code> singleton, sets a regular activation policy, installs a delegate that refuses to
+  terminate on last-window-closed, and finishes launching; <a href="poll-events.html"><code>PollEvents</code></a>
+  drains every queued event and dispatches it; the <a href="destructor.html">destructor</a> stops the run loop —
+  deliberately not <code>[app terminate:]</code>, which would end in <code>exit()</code> and discard
+  <code>main()</code>'s return value. The private <code>platformHandle</code> holds the <code>NSApplication*</code>
+  there, and <code>nullptr</code> everywhere else.
+</p>
+
+<p>
+  The <a href="../../Engine/index.html#engine"><code>Engine</code></a> creates and owns the application when
+  <code>EInitLevel::Application</code> is requested, checks it with a <code>FatalAssert</code>, and hands the
+  pointer out through <code>GetApplication()</code>.
+</p>
+
+<h2 id="template">Template parameters</h2>
+
+<p>None — the class is not a template.</p>
+
+<h2 id="properties">Class properties</h2>
+
+<table>
+  <tr><th>Type + Name</th><th>Default Value</th><th>Description</th></tr>
+  <tr><td><code>void* platformHandle;</code> <span class="badge">private</span></td>
+      <td><span class="muted">none in the header</span></td>
+      <td>The opaque per-platform handle — the <code>NSApplication*</code> on macOS; every constructor sets it to <code>nullptr</code>, and only macOS ever writes anything else.</td></tr>
+</table>
+
+<h2 id="methods">Class methods</h2>
+
+<table class="methods">
+  <tr><th>Name</th><th>Signature</th><th>What a caller depends on</th></tr>
+  <tr><td><a href="constructors.html"><code>Application</code></a></td>
+      <td class="sig">Application() noexcept</td>
+      <td>Constructs to a null handle on every platform — nothing is taken from the operating system until <code>Initialize</code>.</td></tr>
+  <tr><td><a href="destructor.html"><code>~Application</code></a></td>
+      <td class="sig">~Application()</td>
+      <td>On macOS, stops the run loop without terminating the process; empty elsewhere.</td></tr>
+  <tr><td><a href="initialize.html"><code>Initialize</code></a></td>
+      <td class="sig">void Initialize()</td>
+      <td>Takes the OS application object — the <code>NSApplication</code> singleton on macOS; a no-op on Linux and Windows. Idempotent on macOS.</td></tr>
+  <tr><td><a href="poll-events.html"><code>PollEvents</code></a></td>
+      <td class="sig">void PollEvents()</td>
+      <td>Drains and dispatches <em>all</em> queued events on macOS; a no-op on Linux and Windows. The engine's own loop never calls it — only the Vulkan example does.</td></tr>
+</table>
+
+<h2 id="non-member">Non-member helpers</h2>
+
+<table>
+  <tr><th>Name</th><th>Signature</th><th>What a caller depends on</th></tr>
+  <tr>
+    <td><a href="create-application.html"><code>CreateApplication</code></a></td>
+    <td class="sig">[[nodiscard]] std::unique_ptr&lt;Application&gt; CreateApplication() noexcept</td>
+    <td>Creates an Application owned by the caller; defined once in <code>Engine/OSAL/Application.cpp</code>, no platform unit behind it</td>
+  </tr>
+</table>
+
+<h2 id="coverage">Coverage</h2>
+
+<table>
+  <tr><th>Not documented here</th><th>Why</th></tr>
+  <tr>
+    <td>What the Linux and Windows application objects would do</td>
+    <td>Nothing can be documented: their implementation units define empty bodies, so the facade has no
+        Linux or Windows behaviour — see the description</td>
+  </tr>
+  <tr>
+    <td>The <code>AppDelegate</code> Objective-C class</td>
+    <td>Defined inside <code>Engine/OSAL/OSXApplication.mm</code>; its one behaviour — refusing to terminate
+        after the last window closes — is described on the <a href="initialize.html"><code>Initialize</code></a>
+        page</td>
+  </tr>
+</table>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; Application</a></span>
+  <span><a href="index.html#methods">All Application methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

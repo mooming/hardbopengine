@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>OSThread::SetThreadAffinity — OSAL module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a class="current" href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">OSAL</a> /
+  <a href="index.html">OSThread</a> / SetThreadAffinity
+</p>
+
+<h1><span class="fn">SetThreadAffinity</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::OSThread</span>
+  <span class="tag">Engine/OSAL/OSThread.h</span>
+  <span class="tag">namespace OS</span>
+  pin a thread to cores — ignored entirely on macOS
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>void SetThreadAffinity(std::thread&amp; thread, uint64_t mask) noexcept</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  Pins a thread to a set of cores, one bit per core in <code>mask</code>. The Linux unit builds a
+  <code>cpu_set_t</code> from the low 64 bits and applies it with <code>sched_setaffinity</code> on the thread's
+  native handle (<code>Engine/OSAL/LinuxThread.cpp</code>); the Windows unit hands the mask straight to
+  <code>SetThreadAffinityMask</code> (<code>Engine/OSAL/WindowsThread.cpp</code>). The macOS unit's definition
+  is an empty body — affinity is simply not applied on macOS (<code>Engine/OSAL/OSXThread.cpp</code>).
+</p>
+
+<pre><code>	cpu_set_t set;
+	CPU_ZERO(&amp;set);
+	for (size_t i = 0; i &lt; sizeof(uint64_t); ++i)
+	{
+		if (((mask &gt;&gt; i) &amp; 1) == 0)
+			continue;
+
+		CPU_SET(i, &amp;set);
+	}</code></pre>
+<p class="meta">From Engine/OSAL/LinuxThread.cpp, OS::SetThreadAffinity(std::thread&amp;, uint64_t) — mask decoding; the sched_setaffinity call follows</p>
+
+<p>
+  The failure story differs as much as the mechanism: the Linux unit logs an error through the logger when
+  <code>sched_setaffinity</code> fails; the Windows unit ignores <code>SetThreadAffinityMask</code>'s return
+  entirely; macOS cannot fail because it does nothing.
+</p>
+
+<h2 id="parameters">Parameters</h2>
+
+<table>
+  <tr><th>Parameter</th><th>Type</th><th>Requirement</th></tr>
+  <tr><td><code>thread</code></td><td><code>std::thread&amp;</code></td><td>The thread to pin; its native handle is used.</td></tr>
+  <tr><td><code>mask</code></td><td><code>uint64_t</code></td><td>One bit per core, bit <code>i</code> meaning core <code>i</code>; a mask of zero is meaningless on every unit.</td></tr>
+</table>
+
+<h2 id="return">Return value</h2>
+
+<p>Not applicable — returns <code>void</code>. Failures log or vanish; nothing throws or asserts.</p>
+
+<h2 id="example">Examples</h2>
+
+<p class="note">No production call site exists in the repository — no engine code pins a
+thread today. The task system spreads work by scheduling, not by affinity, so this is the boundary's spelling
+of an operation nothing uses yet.</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; OSThread</a></span>
+  <span><a href="index.html#methods">All OSThread methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

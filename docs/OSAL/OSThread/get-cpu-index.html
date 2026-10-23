@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>OSThread::GetCPUIndex — OSAL module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a class="current" href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">OSAL</a> /
+  <a href="index.html">OSThread</a> / GetCPUIndex
+</p>
+
+<h1><span class="fn">GetCPUIndex</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::OSThread</span>
+  <span class="tag">Engine/OSAL/OSThread.h</span>
+  <span class="tag">namespace OS</span>
+  which core this thread is on right now
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>[[nodiscard]] int GetCPUIndex() noexcept</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  Which core this thread is running on <em>right now</em> — a value that can change between the call and the
+  next instruction, because the scheduler may migrate the thread at any time. Linux answers
+  <code>sched_getcpu()</code> (<code>Engine/OSAL/LinuxThread.cpp</code>); Windows answers
+  <code>GetCurrentProcessorNumber()</code> (<code>Engine/OSAL/WindowsThread.cpp</code>); macOS answers
+  <code>pthread_cpu_number_np</code> and returns <code>-1</code> after logging if that call fails
+  (<code>Engine/OSAL/OSXThread.cpp</code>).
+</p>
+
+<p>
+  The negative answer is macOS-only: the Linux and Windows units have no failure path in their definitions, so
+  a caller checking <code>index &lt; 0</code> is really checking "did the macOS query fail".
+</p>
+
+<h2 id="parameters">Parameters</h2>
+
+<p>None.</p>
+
+<h2 id="return">Return value</h2>
+
+<p>
+  The current core index, zero-based; <code>-1</code> only from the macOS unit's failure path.
+</p>
+
+<h2 id="example">Examples</h2>
+
+<p>
+  The OSAL's own test treats a negative index as the one failure there is:
+</p>
+
+<pre><code>		auto cpuIndex = OS::GetCPUIndex();
+		ls &lt;&lt; "CPU Index: " &lt;&lt; cpuIndex &lt;&lt; lf;
+
+		if (cpuIndex &lt; 0)
+		{
+			ls &lt;&lt; "Invalid CPU index" &lt;&lt; lferr;
+
+			return;
+		}</code></pre>
+<p class="meta">From Engine/OSAL/OSThread.cpp, the GetCPUIndex testlet of hbe::OSThreadTest::Prepare()</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; OSThread</a></span>
+  <span><a href="index.html#methods">All OSThread methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

@@ -127,8 +127,19 @@ def declarations(header, cls):
         while lines and not lines[-1].strip():
             lines.pop()
         text = '\n'.join(lines).strip()
-        if '(' not in text or text.startswith(('using ', 'static constexpr', 'friend ')):
+        if '(' not in text or text.startswith('using '):
             continue
+        # A `static constexpr` chunk is data when the `=` sits before the first `(` — the initialiser —
+        # and a function when the `(` comes first, with any `=` inside the parameter list a default
+        # argument. `static constexpr SourceLocation current(...)` was once skipped wholesale, which left
+        # a factory function owning no page and its page unverifiable.
+        if text.startswith('static constexpr'):
+            eq, paren = text.find('='), text.find('(')
+            if paren < 0 or (0 <= eq < paren):
+                continue
+        # `friend` declarations were skipped wholesale, which left an in-class friend operator owning no
+        # page — the same shape the operator search below exists to catch. A friend declaration without a
+        # parenthesis is a class friendship and is dropped by the paren test above.
         # `operator<(` has no identifier before its parenthesis, so the plain-name pattern finds nothing
         # and an operator's declaration silently owns no page.
         operator = re.search(r'\boperator\s*([^\s(]+)\s*\(', text)

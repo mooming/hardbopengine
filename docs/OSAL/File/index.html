@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>File — OSAL module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a class="current" href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This class</h3>
+  <ul>
+    <li><a href="#description">Class description</a></li>
+    <li><a href="#template">Template parameters</a></li>
+    <li><a href="#properties">Class properties</a></li>
+    <li><a href="#methods">Class methods</a></li>
+    <li><a href="#non-member">Non-member helpers</a></li>
+    <li><a href="#coverage">Coverage</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">OSAL</a> /
+  File
+</p>
+
+<h1>File</h1>
+<p class="subtitle">
+  <span class="tag">Engine/OSAL/File.h</span>
+  <span class="tag">namespace OS</span>
+  a path that orders and prints itself — one string, value-copyable, the element of OS::Files
+</p>
+
+<h2 id="description">Class description</h2>
+
+<p>
+  <code>OS::File</code> is a path that can be stored, ordered and printed: one private <code>std::string</code>,
+  copyable and movable, ordered lexicographically by <a href="operator-less.html"><code>operator&lt;</code></a>,
+  and stream-printable through the friend <a href="operator-left-shift.html"><code>operator&lt;&lt;</code></a>.
+  The namespace-scope alias <code>OS::Files</code> is <code>std::vector&lt;File&gt;</code> — the list type the
+  engine passes around. It is a value type with no behaviour beyond the path: no open, no stat, no existence
+  test — the file-input surface lives in <a href="../index.html#functions"><code>OSInputOutput</code></a>, which
+  works on <a href="../FileHandle/index.html"><code>FileHandle</code></a> and path strings instead.
+</p>
+
+<p>
+  Its one in-tree producer is <a href="../Directory/constructors.html"><code>Directory</code></a>'s constructor,
+  which fills a <code>Files</code> list with the child <em>files</em> of a directory — and stores the bare names,
+  not full paths, in them. Nothing in <code>Engine/</code> outside OSAL, and nothing in
+  <code>Applications/</code>, constructs or touches an <code>OS::File</code> today.
+</p>
+
+<div class="note">
+  <strong>Every member is defined in the header.</strong> There is no <code>File.cpp</code>: the constructors,
+  the assignments, the ordering, the printing and the getter are all inline in <code>Engine/OSAL/File.h</code>.
+  The class is pure string plumbing, so no per-platform unit has anything to add — the OSAL pattern of neutral
+  header plus platform implementation does not apply to it.
+</div>
+
+<h2 id="template">Template parameters</h2>
+
+<p>None — the class is not a template.</p>
+
+<h2 id="properties">Class properties</h2>
+
+<table>
+  <tr><th>Type + Name</th><th>Default Value</th><th>Description</th></tr>
+  <tr><td><code>std::string path;</code> <span class="badge">private</span></td>
+      <td><span class="muted">none in the header</span></td>
+      <td>The path — or, for files a <a href="../Directory/index.html"><code>Directory</code></a> produced, the bare name within that directory.</td></tr>
+  <tr><td><code>using Files = std::vector&lt;File&gt;;</code> <span class="badge">alias</span></td>
+      <td><span class="muted">not applicable</span></td>
+      <td>Namespace-scope alias at <code>OS::</code>; the list type <code>Directory::FileList()</code> returns.</td></tr>
+</table>
+
+<h2 id="methods">Class methods</h2>
+
+<table class="methods">
+  <tr><th>Name</th><th>Signature</th><th>What a caller depends on</th></tr>
+  <tr><td><a href="constructors.html"><code>File</code></a> <span class="badge">3 overloads</span></td>
+      <td class="sig">explicit File(const char* path)<br>File(const File&amp; src)<br>File(File&amp;&amp; src) noexcept</td>
+      <td>Constructs from a C string or copies/moves another file's path; only the char* form is explicit, so a bare string literal converts nowhere by accident.</td></tr>
+  <tr><td><a href="operator-assign.html"><code>operator=</code></a> <span class="badge">2 overloads</span></td>
+      <td class="sig">File&amp; operator=(const File&amp; src)<br>File&amp; operator=(File&amp;&amp; src) noexcept</td>
+      <td>Copy and move assignment of the path; what lets a <code>std::vector&lt;File&gt;</code> reorganise itself.</td></tr>
+  <tr><td><a href="operator-less.html"><code>operator&lt;</code></a></td>
+      <td class="sig">bool operator&lt;(const File&amp; rhs) const</td>
+      <td>Lexicographic order on the path strings — the ordering a sorted container of files would use.</td></tr>
+  <tr><td><a href="operator-left-shift.html"><code>operator&lt;&lt;</code></a></td>
+      <td class="sig">std::ostream&amp; operator&lt;&lt;(std::ostream&amp; os, const File&amp; file)</td>
+      <td>Prints the path; the friend is what makes a whole <code>Files</code> vector printable element by element.</td></tr>
+  <tr><td><a href="get-path.html"><code>GetPath</code></a></td>
+      <td class="sig">[[nodiscard]] const auto&amp; GetPath() const</td>
+      <td>The path as a <code>const std::string&amp;</code>, deduced; the only read access to the state.</td></tr>
+</table>
+
+<h2 id="non-member">Non-member helpers</h2>
+
+<p>None. The printing operator is a friend declared inside the class, so it is tabled with the methods above.</p>
+
+<h2 id="coverage">Coverage</h2>
+
+<table>
+  <tr><th>Not documented here</th><th>Why</th></tr>
+  <tr>
+    <td>Call sites for the ordering, printing and assignment</td>
+    <td>None exist: the engine constructs <code>File</code>s and stores them, and no code compares, prints or
+        explicitly assigns one today. The pages for those methods say so rather than inventing a caller</td>
+  </tr>
+  <tr>
+    <td>Directory-level behaviour</td>
+    <td>Owned by <a href="../Directory/index.html"><code>Directory</code></a>, whose constructor is the only
+        producer of <code>File</code> values</td>
+  </tr>
+</table>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; File</a></span>
+  <span><a href="index.html#methods">All File methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

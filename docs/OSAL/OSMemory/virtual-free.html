@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>OSMemory::VirtualFree — OSAL module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a class="current" href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">OSAL</a> /
+  <a href="index.html">OSMemory</a> / VirtualFree
+</p>
+
+<h1><span class="fn">VirtualFree</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::OSMemory</span>
+  <span class="tag">Engine/OSAL/OSMemory.h</span>
+  <span class="tag">namespace OS</span>
+  release a reservation — silent munmap on POSIX, asserting VirtualFree on Windows
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>void VirtualFree(void* address, std::size_t n) noexcept</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  Releases a reservation made by <a href="virtual-alloc.html"><code>VirtualAlloc</code></a>. On Linux and macOS
+  the work is <code>munmap(address, size)</code> (<code>Engine/OSAL/LinuxMemory.cpp</code>,
+  <code>Engine/OSAL/OSXMemory.cpp</code>) — and the return value is ignored, so a failed unmap is silent. On
+  Windows it is <code>::VirtualFree(address, n, MEM_RELEASE)</code>, and a failure is neither silent nor
+  survivable: the unit logs nothing and calls <code>hbe::Assert(false)</code>
+  (<code>Engine/OSAL/WindowsMemory.cpp</code>).
+</p>
+
+<pre><code>void OS::VirtualFree(void* address, std::size_t size) noexcept
+{
+	munmap(address, size);
+}</code></pre>
+<p class="meta">From Engine/OSAL/LinuxMemory.cpp, OS::VirtualFree(void*, std::size_t)</p>
+
+<div class="note">
+  <strong>The size must match what was mapped, and the address must be the mapping's base.</strong>
+  <code>munmap</code> unmaps the given range; <code>::VirtualFree</code> with <code>MEM_RELEASE</code> requires
+  the base address returned by the allocation and treats the size as the whole reservation. A caller that frees
+  a sub-range or a shifted pointer corrupts or fails — on POSIX silently, on Windows with an assert.
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<table>
+  <tr><th>Parameter</th><th>Type</th><th>Requirement</th></tr>
+  <tr><td><code>address</code></td><td><code>void*</code></td><td>The base address <a href="virtual-alloc.html"><code>VirtualAlloc</code></a> returned.</td></tr>
+  <tr><td><code>n</code></td><td><code>std::size_t</code></td><td>The size of the reservation; on Windows the whole reservation is released regardless.</td></tr>
+</table>
+
+<h2 id="return">Return value</h2>
+
+<p>Not applicable — returns <code>void</code>. POSIX failure is silent; Windows failure asserts.</p>
+
+<h2 id="example">Examples</h2>
+
+<p>
+  The guard-page allocator releases its reservation when the memory-investigation build frees a buffer:
+</p>
+
+<pre><code>		OS::VirtualFree(rawPtr, allocated);</code></pre>
+<p class="meta">From Engine/Memory/SystemAllocator.h, SystemAllocator::DeallocateBytes(void* ptr, std::size_t nBytes)</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; OSMemory</a></span>
+  <span><a href="index.html#methods">All OSMemory methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

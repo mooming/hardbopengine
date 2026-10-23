@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SourceLocation::current — OSAL module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a class="current" href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">OSAL</a> /
+  <a href="index.html">SourceLocation</a> / current
+</p>
+
+<h1><span class="fn">current</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::SourceLocation</span>
+  <span class="tag">Engine/OSAL/SourceLocation.h</span>
+  <span class="tag">static constexpr</span>
+  captures the call site through its Caller* default arguments
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>static constexpr SourceLocation current(const char* fileName = CallerFile(),
+											const char* functionName = CallerFunc(),
+											const uint_least32_t lineNumber = CallerLine(),
+											const uint_least32_t columnOffset = CallerColumn()) noexcept</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  The capture point. It is <code>static</code> and takes no argument a caller must supply: every parameter has a
+  default, and the defaults are the <code>CallerFile()</code> / <code>CallerFunc()</code> /
+  <code>CallerLine()</code> / <code>CallerColumn()</code> macros from <code>Engine/OSAL/Intrinsic.h</code>, which
+  expand to <code>__builtin_FILE</code> and friends. A default argument is evaluated where the <em>call</em>
+  appears, not where the function is defined, so <code>SourceLocation::current()</code> written anywhere records
+  the statement it is written on.
+</p>
+
+<p>
+  That evaluation site is what makes the default-argument pattern work: a function that declares a parameter as
+  <code>SourceLocation location = SourceLocation::current()</code> — the way
+  <code>Engine/Memory/PoolAllocator.h</code> declares its profiling constructor — captures <em>its</em> caller,
+  without the caller writing a single macro. The parameter keeps its full value: any caller who wants to report a
+  different site can still pass an explicit <code>SourceLocation</code>.
+</p>
+
+<div class="note">
+  <strong><code>CallerFunc()</code> is <code>__builtin_FUNCTION()</code>: the enclosing function's spelling, not a
+  pretty signature.</strong> What lands in <code>function_name()</code> is whatever the compiler calls the
+  function at that point — for a member function on Clang and GCC that is the bare name, not the class-qualified
+  spelling. GCC additionally answers <code>0</code> for <code>CallerColumn()</code>, so a location captured there
+  reports line but not column.
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<p>None that a caller passes. The four parameters exist only to carry the <code>Caller*</code> defaults; passing
+them explicitly is how a caller fakes or relocates a location.</p>
+
+<h2 id="return">Return value</h2>
+
+<p>
+  A <code>SourceLocation</code> by value, <code>constexpr</code>-constructible: the four pointers and integers the
+  builtins answered at the evaluation site. <code>noexcept</code> — nothing here can fail; a capture in a
+  translation unit the compiler cannot attribute still yields the file and line it has.
+</p>
+
+<h2 id="example">Examples</h2>
+
+<p>
+  The declared-but-omitted parameter is the intended use, and the engine's allocator layer is where it is used:
+</p>
+
+<pre><code>	PoolAllocator(const char* inName, TSize inBlockSize, TSize inNumberOfBlocks,
+				  SourceLocation location = SourceLocation::current());</code></pre>
+<p class="meta">From Engine/Memory/PoolAllocator.h, PoolAllocator constructor (PROFILE_ENABLED build)</p>
+
+<p>
+  A caller that constructs a <code>PoolAllocator</code> without a location argument gets the constructor's own
+  call site recorded; the allocator keeps it alongside its profiling stats for the allocator's lifetime.
+</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; SourceLocation</a></span>
+  <span><a href="index.html#methods">All SourceLocation methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

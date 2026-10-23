@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Window::CreateWindow — OSAL module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a class="current" href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">OSAL</a> /
+  <a href="index.html">Window</a> / CreateWindow
+</p>
+
+<h1><span class="fn">CreateWindow</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::Window</span>
+  <span class="tag">Engine/OSAL/Window.h</span>
+  the member and the OS-scope factory: create and show the real window
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>[[nodiscard]] bool CreateWindow(const hbe::HString&amp; title, int width, int height)
+
+[[nodiscard]] std::unique_ptr&lt;Window&gt; CreateWindow(const hbe::HString&amp; title, int width, int height)</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  Two spells of one operation: the <strong>member</strong> creates the platform window on an existing
+  <code>Window</code> object; the <strong>free factory</strong> at <code>OS::</code> scope constructs the object
+  and calls the member, handing back <code>nullptr</code> when creation failed. The factory is the intended
+  entry point — it is what the Vulkan example and the OSAL's own tests call
+  (<code>Engine/OSAL/Window.cpp</code>):
+</p>
+
+<pre><code>	auto window = std::make_unique&lt;Window&gt;();
+
+	if (window-&gt;CreateWindow(title, width, height))
+	{
+		return window;
+	}
+
+	return nullptr;</code></pre>
+<p class="meta">From Engine/OSAL/Window.cpp, OS::CreateWindow(const hbe::HString&amp;, int, int)</p>
+
+<p>
+  What the member does per platform: Linux opens the X11 display and creates a simple window, stores the title,
+  and <em>maps</em> it — the window is on screen when the call returns
+  (<code>Engine/OSAL/LinuxWindow.cpp</code>). macOS allocates an <code>NSWindow</code> with a titled, closable,
+  miniaturizable style mask — <strong>not resizable</strong> — sets the title, orders it front and centres it,
+  and installs the close-button delegate (<code>Engine/OSAL/OSXWindow.mm</code>). Windows registers its window
+  class, creates the window with <code>WS_OVERLAPPEDWINDOW</code> and shows it
+  (<code>Engine/OSAL/Win32Window.cpp</code>). All three record the width and height, and the window is on
+  screen when the call returns — on Linux and Windows through the create call itself, on macOS through
+  <code>makeKeyAndOrderFront</code> and the <code>visibleFlag</code> it sets.
+</p>
+
+<div class="note">
+  <strong>The member refuses to run twice on macOS</strong> — it returns <code>false</code> when
+  <code>osHandle</code> is already set — while the Linux and Windows units would overwrite their handles. One
+  <code>Window</code> object, one window: call the member once, or make a new object.
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<table>
+  <tr><th>Parameter</th><th>Type</th><th>Requirement</th></tr>
+  <tr><td><code>title</code></td><td><code>const hbe::HString&amp;</code></td><td>The window title, applied at creation by every platform.</td></tr>
+  <tr><td><code>width</code></td><td><code>int</code></td><td>Initial width in pixels; recorded even where the platform picks its own frame (macOS positions at a fixed offset).</td></tr>
+  <tr><td><code>height</code></td><td><code>int</code></td><td>Initial height in pixels.</td></tr>
+</table>
+
+<h2 id="return">Return value</h2>
+
+<p>
+  The member: <code>true</code> when the platform window exists and is visible, <code>false</code> on failure or
+  — on macOS — on a second call. The factory: the created window, or <code>nullptr</code> when the member said
+  no.
+</p>
+
+<h2 id="example">Examples</h2>
+
+<p>
+  The engine-facing acquisition, from the Vulkan example:
+</p>
+
+<pre><code>	auto window =
+			OS::CreateWindow("VulkanExample - Rotating Quad (Vulkan)", RequestedWindowWidth, RequestedWindowHeight);
+	if (!window)
+	{
+		std::cerr &lt;&lt; "Error: Failed to create window" &lt;&lt; std::endl;
+
+		return 1;
+	}</code></pre>
+<p class="meta">From Applications/VulkanExample/Main.cpp, main(int, const char**)</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; Window</a></span>
+  <span><a href="index.html#methods">All Window methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

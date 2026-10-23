@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FileHandle::FileHandle — OSAL module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a class="current" href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">OSAL</a> /
+  <a href="index.html">FileHandle</a> / FileHandle
+</p>
+
+<h1><span class="fn">FileHandle</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::FileHandle</span>
+  <span class="tag">Engine/OSAL/OSFileHandle.h</span>
+  default-constructs to invalid; the move steals the descriptor and empties the source
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>FileHandle()
+
+FileHandle(const FileHandle&amp;) = delete
+
+FileHandle(FileHandle&amp;&amp; rhs)</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  Two constructors, and the pair is the handle's ownership story. The default constructor calls
+  <a href="invalidate.html"><code>Invalidate</code></a>, so a fresh handle holds descriptor <code>-1</code> —
+  valid to destruct, valid to pass to <code>OS::Open</code>'s out-parameter, never a dangling descriptor. The
+  move constructor copies the raw union storage and then invalidates the source, so ownership of the descriptor
+  ends with exactly one handle; the copy constructor is deleted, so there is no second owner by accident.
+</p>
+
+<p>
+  The two platform units define the pair identically in effect and differently in spelling:
+  <code>Engine/OSAL/LinuxFileHandle.cpp</code> touches <code>fd</code> directly,
+  <code>Engine/OSAL/OSXFileHandle.cpp</code> goes through its <code>reinterpret_cast</code>
+  <code>GetHandle</code> / <code>SetHandle</code> helpers. Both alias the same union storage.
+</p>
+
+<p>
+  The default constructor is one call: <code>Invalidate()</code>, leaving descriptor <code>-1</code>. The move
+  constructor is the ownership transfer — copy the raw union storage, then invalidate the source:
+</p>
+
+<pre><code>FileHandle::FileHandle(FileHandle&amp;&amp; rhs)
+	: data(rhs.data)
+{
+	rhs.Invalidate();
+}</code></pre>
+<p class="meta">From Engine/OSAL/LinuxFileHandle.cpp, OS::FileHandle::FileHandle(FileHandle&amp;&amp; rhs)</p>
+
+<p>
+  The OSX unit defines both identically in effect through its <code>reinterpret_cast</code>
+  <code>GetHandle</code> / <code>SetHandle</code> helpers (<code>Engine/OSAL/OSXFileHandle.cpp</code>). Both
+  spellings alias the same union storage.
+</p>
+
+<h2 id="parameters">Parameters</h2>
+
+<table>
+  <tr><th>Parameter</th><th>Type</th><th>Requirement</th></tr>
+  <tr><td><code>rhs</code></td><td><code>FileHandle&amp;&amp;</code></td><td>A handle to take the descriptor from; it is left invalid and may be destructed or re-opened safely.</td></tr>
+</table>
+
+<h2 id="return">Return value</h2>
+
+<p>Not applicable — constructors return nothing.</p>
+
+<h2 id="example">Examples</h2>
+
+<p>
+  The default-construct-then-open shape every caller shares:
+</p>
+
+<pre><code>		if (!Open(fh, path, openMode))
+		{
+			log.OutError([path](auto&amp; ls) { ls &lt;&lt; "Failed to open " &lt;&lt; path; });
+
+			return;
+		}</code></pre>
+<p class="meta">From Engine/Resource/BufferUtil.cpp, the generator hbe::BufferUtil::GenerateFileBuffer(StaticString path, OS::FileOpenMode openMode, OS::ProtectionMode protection, size_t size) installs</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; FileHandle</a></span>
+  <span><a href="index.html#methods">All FileHandle methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

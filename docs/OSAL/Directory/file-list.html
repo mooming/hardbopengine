@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Directory::FileList — OSAL module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a class="current" href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">OSAL</a> /
+  <a href="index.html">Directory</a> / FileList
+</p>
+
+<h1><span class="fn">FileList</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::Directory</span>
+  <span class="tag">Engine/OSAL/Directory.h</span>
+  the child files read at construction, each by bare name
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>[[nodiscard]] const Files&amp; FileList() const</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  The child files, as stored at construction: a <code>const Files&amp;</code> —
+  <code>const std::vector&lt;File&gt;&amp;</code> — with one <code>File</code> per child file, each holding its
+  <em>bare name</em> within this directory, not a path from the root. The list never re-scans: what
+  <a href="constructors.html">the constructor</a> read is what this returns for the object's lifetime, and the
+  reference is into the object's own vector.
+</p>
+
+<p>
+  Names starting with <code>'.'</code> never appear — the constructor skips them — and neither do
+  <code>.</code> or <code>..</code>, which <code>ListFilesInDirectory</code> filters before the constructor sees
+  them.
+</p>
+
+<h2 id="parameters">Parameters</h2>
+
+<p>None.</p>
+
+<h2 id="return">Return value</h2>
+
+<p>
+  A <code>const std::vector&lt;File&gt;&amp;</code> into the directory's own storage; valid as long as the
+  <code>Directory</code> is. Empty when the directory had no child files — or when it could not be read at all.
+</p>
+
+<h2 id="example">Examples</h2>
+
+<p class="note">No call site exists in the repository — nothing outside the OSAL constructs a
+<code>Directory</code> or reads its lists today. The getter is the read half of the constructor's work.</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; Directory</a></span>
+  <span><a href="index.html#methods">All Directory methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

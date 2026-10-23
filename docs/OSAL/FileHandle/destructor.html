@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FileHandle::~FileHandle — OSAL module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a class="current" href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">OSAL</a> /
+  <a href="index.html">FileHandle</a> / ~FileHandle
+</p>
+
+<h1><span class="fn">~FileHandle</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::FileHandle</span>
+  <span class="tag">Engine/OSAL/OSFileHandle.h</span>
+  closes the file when the handle is valid; an invalid handle destructs silently
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>~FileHandle()</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  The destructor closes the file — but only when the handle is valid. An invalid handle (descriptor
+  <code>-1</code>, which is what the <a href="constructors.html">default constructor</a> leaves and what a move
+  leaves behind) destructs without touching the operating system. A valid handle calls
+  <a href="../index.html#functions"><code>OS::Close</code></a> on itself, by rvalue reference, which closes the
+  descriptor and invalidates the handle before the storage dies.
+</p>
+
+<pre><code>FileHandle::~FileHandle()
+{
+	returnIf(fd &lt; 0);
+
+	Close(std::move(*this));
+}</code></pre>
+<p class="meta">From Engine/OSAL/LinuxFileHandle.cpp, OS::FileHandle::~FileHandle()</p>
+
+<p>
+  The OSX unit defines the same destructor through its <code>GetHandle</code> helper, reading the descriptor out
+  of the <code>void* data</code> view (<code>Engine/OSAL/OSXFileHandle.cpp</code>); the guard is the same
+  <code>fd &lt; 0</code> test under a different spelling.
+</p>
+
+<div class="note">
+  <strong>The destructor discards the close result.</strong> <code>OS::Close</code> logs a warning and returns
+  <code>false</code> when the platform close fails, and nothing retries — a descriptor that refused to close is
+  gone from the handle's point of view, because the handle is already invalid by then. This is the normal
+  destructor trade-off and the reason the class pairs so naturally with
+  <a href="../index.html#functions"><code>OS::Open</code></a>: acquire in a scope, release by leaving it.
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<p>None.</p>
+
+<h2 id="return">Return value</h2>
+
+<p>Not applicable — destructors return nothing.</p>
+
+<h2 id="example">Examples</h2>
+
+<p>
+  Scope-based release is the intended use: on every early-exit path of the buffer generator, the local
+  <code>FileHandle</code> goes out of scope and the destructor closes whatever
+  <a href="../index.html#functions"><code>OS::Open</code></a> left in it. The long-distance version is the
+  buffer releaser, which rebuilds a handle from raw storage so the close happens when the mapping is released:
+</p>
+
+<pre><code>		FileHandle fh;
+		fh.data = handleData;
+
+		Assert(size &gt; 0);
+		auto ptr = static_cast&lt;void*&gt;(data);
+
+		MapSyncMode syncMode;
+		syncMode.SetSync();
+
+		MapSync(ptr, size, syncMode);
+		UnmapMemory((void*) data, size);
+
+		OS::Close(std::move(fh));</code></pre>
+<p class="meta">From Engine/Resource/BufferUtil.cpp, the releaser hbe::BufferUtil::GenerateFileBuffer(StaticString path, OS::FileOpenMode openMode, OS::ProtectionMode protection, size_t size) installs</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; FileHandle</a></span>
+  <span><a href="index.html#methods">All FileHandle methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

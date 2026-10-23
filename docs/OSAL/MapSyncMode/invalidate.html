@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MapSyncMode::Invalidate — OSAL module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a class="current" href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">OSAL</a> /
+  <a href="index.html">MapSyncMode</a> / Invalidate
+</p>
+
+<h1><span class="fn">Invalidate</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::MapSyncMode</span>
+  <span class="tag">Engine/OSAL/OSMapSyncMode.h</span>
+  ORs MS_INVALIDATE into value — drop stale cached copies of the pages
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>void Invalidate() noexcept</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  ORs <code>MS_INVALIDATE</code> into <code>value</code>, asking <code>msync</code> to invalidate cached copies of
+  the mapped pages so every mapping of the file re-reads what was just written back. The body is one OR of the
+  <code>&lt;sys/mman.h&gt;</code> constant, and the identical definition exists in
+  <code>Engine/OSAL/LinuxMapSyncMode.cpp</code> (<code>OS::MapSyncMode::Invalidate()</code>) and
+  <code>Engine/OSAL/OSXMapSyncMode.cpp</code> (<code>OS::MapSyncMode::Invalidate()</code>), each behind its
+  platform guard. No Windows definition exists — see the
+  <a href="../index.html#description">class page</a>.
+</p>
+
+<p>
+  The name is the POSIX one — this is a cache-invalidation flag on a sync call, not the "make this handle empty"
+  operation that <code>OS::FileHandle::Invalidate</code> performs.
+  Nothing is cleared first; the flag combines freely with <a href="set-async.html"><code>SetAsync</code></a> and
+  <a href="set-sync.html"><code>SetSync</code></a>.
+</p>
+
+<h2 id="parameters">Parameters</h2>
+
+<p>None.</p>
+
+<h2 id="return">Return value</h2>
+
+<p>Not applicable — the method mutates <code>value</code> and returns <code>void</code>.</p>
+
+<h2 id="example">Examples</h2>
+
+<p class="note">No call site for this method exists in the repository. The engine's mappings are single-owner —
+one <code>Buffer</code>, one mapping, flushed and unmapped by the same code — so cache invalidation across
+mappings is a capability the class offers and nothing uses yet.</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; MapSyncMode</a></span>
+  <span><a href="index.html#methods">All MapSyncMode methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

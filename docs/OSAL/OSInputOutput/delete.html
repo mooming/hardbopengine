@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>OSInputOutput::Delete — OSAL module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a class="current" href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">OSAL</a> /
+  <a href="index.html">OSInputOutput</a> / Delete
+</p>
+
+<h1><span class="fn">Delete</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::OSInputOutput</span>
+  <span class="tag">Engine/OSAL/OSInputOutput.h</span>
+  <span class="tag">namespace OS</span>
+  remove a file or empty directory
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>bool Delete(hbe::StaticString filePath) noexcept</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  Removes the path: <code>remove(path)</code> on the POSIX units, which deletes a file — or an empty directory —
+  and answers <code>false</code> when the removal failed
+  (<code>Engine/OSAL/LinuxInputOutput.cpp</code>, <code>Engine/OSAL/OSXInputOutput.cpp</code>). There is no log
+  on failure: the <code>bool</code> is the whole error report, and the caller decides whether a failed deletion
+  matters. A non-empty directory answers <code>false</code> — <code>remove</code> does not recurse.
+</p>
+
+<h2 id="parameters">Parameters</h2>
+
+<table>
+  <tr><th>Parameter</th><th>Type</th><th>Requirement</th></tr>
+  <tr><td><code>filePath</code></td><td><code>hbe::StaticString</code></td><td>The path to remove, by value; a missing path answers <code>false</code>.</td></tr>
+</table>
+
+<h2 id="return">Return value</h2>
+
+<p><code>true</code> when the path was removed; <code>false</code> when it was not — including when it did not exist.</p>
+
+<h2 id="example">Examples</h2>
+
+<p>
+  The OSAL's own IO test cleans up after itself through it:
+</p>
+
+<pre><code>		if (Delete(path))
+		{
+			ls &lt;&lt; "File removal succeeded. path = " &lt;&lt; path &lt;&lt; lf;
+		}</code></pre>
+<p class="meta">From Engine/OSAL/OSInputOutput.cpp, the Open/Close/Delete testlet of hbe::OSInputOutputTest::Prepare()</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; OSInputOutput</a></span>
+  <span><a href="index.html#methods">All OSInputOutput methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

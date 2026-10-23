@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FileHandle::IsValid — OSAL module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a class="current" href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">OSAL</a> /
+  <a href="index.html">FileHandle</a> / IsValid
+</p>
+
+<h1><span class="fn">IsValid</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::FileHandle</span>
+  <span class="tag">Engine/OSAL/OSFileHandle.h</span>
+  true exactly when the descriptor is non-negative
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>[[nodiscard]] bool IsValid() const noexcept</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  True exactly when the descriptor is non-negative. The invalid state is <code>fd == -1</code>, which is what the
+  <a href="constructors.html">default constructor</a> and <a href="invalidate.html"><code>Invalidate</code></a>
+  write and what a move leaves in its source — so "invalid" has one meaning across the handle's whole life: no
+  descriptor is held. A valid handle holds a descriptor that some <code>OS::Open</code> implementation wrote.
+</p>
+
+<p>
+  The platform units agree on the test and differ on the spelling:
+  <code>Engine/OSAL/LinuxFileHandle.cpp</code> compares <code>fd</code> directly,
+  <code>Engine/OSAL/OSXFileHandle.cpp</code> reads it through its <code>GetHandle</code> helper.
+</p>
+
+<h2 id="parameters">Parameters</h2>
+
+<p>None.</p>
+
+<h2 id="return">Return value</h2>
+
+<p><code>true</code> when the handle holds a descriptor, <code>false</code> when it holds <code>-1</code>.</p>
+
+<h2 id="example">Examples</h2>
+
+<p class="note">No engine or application code calls this method today — the declared
+callers of the handle check validity by other means (<code>OS::Open</code>'s return value,
+<code>fd &lt; 0</code> inside the OSAL's own units). The method is the public spelling of the test the
+platform units apply internally, offered for callers who hold a handle across a boundary where
+<a href="../index.html#functions"><code>OS::Open</code></a>'s result is no longer in reach.</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; FileHandle</a></span>
+  <span><a href="index.html#methods">All FileHandle methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>OSAbstractLayer::IsDirectory — OSAL module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a class="current" href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">OSAL</a> /
+  <a href="index.html">OSAbstractLayer</a> / IsDirectory
+</p>
+
+<h1><span class="fn">IsDirectory</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::OSAbstractLayer</span>
+  <span class="tag">Engine/OSAL/OSAbstractLayer.h</span>
+  true exactly when the path opens as a directory, symlinks followed
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>bool IsDirectory(const char* path)</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  Answers whether the path can be opened as a directory — not what it is. On Linux and macOS the test is
+  <code>opendir</code> followed by <code>closedir</code>: a directory answers <code>true</code>, a regular file
+  answers <code>false</code>, a missing path answers <code>false</code>, and — because <code>opendir</code>
+  follows symlinks — a symlink that resolves to a directory answers <code>true</code>. On Windows the test is
+  <code>GetFileAttributesA</code>: the attributes must exist and carry <code>FILE_ATTRIBUTE_DIRECTORY</code>,
+  which also follows symlinks.
+</p>
+
+<pre><code>bool IsDirectory(const char* path)
+{
+	DIR* dir = opendir(path);
+
+	if (dir != nullptr)
+	{
+		closedir(dir);
+
+		return true;
+	}
+
+	return false;
+}</code></pre>
+<p class="meta">From Engine/OSAL/LinuxAbstractLayer.cpp, OS::IsDirectory(const char*)</p>
+
+<p>
+  The distinction matters to the one in-tree caller: <a href="../Directory/constructors.html">
+  <code>Directory</code></a>'s constructor recurses into every child for which this answers
+  <code>true</code>, so a symlink cycle in a tree makes that recursion unbounded.
+</p>
+
+<h2 id="parameters">Parameters</h2>
+
+<table>
+  <tr><th>Parameter</th><th>Type</th><th>Requirement</th></tr>
+  <tr><td><code>path</code></td><td><code>const char*</code></td><td>The path to test, NUL-terminated; missing paths answer <code>false</code> rather than failing.</td></tr>
+</table>
+
+<h2 id="return">Return value</h2>
+
+<p>
+  <code>true</code> when the path resolves to something openable as a directory (following symlinks),
+  <code>false</code> for a file, a broken symlink, or a path that does not exist.
+</p>
+
+<h2 id="example">Examples</h2>
+
+<p>
+  The recursion decision in <code>Directory</code>'s constructor — the only in-tree caller:
+</p>
+
+<pre><code>		if (IsDirectory(childPath.c_str()))
+		{
+			dirList.push_back(Directory(childPath.c_str()));
+		}
+		else
+		{
+			File file(name);
+			fileList.push_back(file);
+		}</code></pre>
+<p class="meta">From Engine/OSAL/Directory.cpp, OS::Directory::Directory(const char* path)</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; OSAbstractLayer</a></span>
+  <span><a href="index.html#methods">All OSAbstractLayer methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

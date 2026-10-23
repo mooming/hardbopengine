@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>OSThread::GetThreadCPUTime — OSAL module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a class="current" href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">OSAL</a> /
+  <a href="index.html">OSThread</a> / GetThreadCPUTime
+</p>
+
+<h1><span class="fn">GetThreadCPUTime</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::OSThread</span>
+  <span class="tag">Engine/OSAL/OSThread.h</span>
+  <span class="tag">namespace OS</span>
+  busy time of the calling thread — what budgets are charged from
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>[[nodiscard]] std::chrono::nanoseconds GetThreadCPUTime() noexcept</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  CPU time the <em>calling</em> thread has consumed so far, user plus system time combined. Busy time, not wall
+  time: a thread that sleeps or waits on a lock advances this by almost nothing. Task budgets are charged from
+  it precisely so that work which is merely waiting cannot spend a budget it never executed —
+  <a href="../../Core/index.html#functions"><code>CPUBudget</code></a> brackets each task with two calls and
+  charges the difference.
+</p>
+
+<p>
+  It is the calling thread that is measured, which is what lets a stream budget itself without a handle on any
+  other thread. Linux and macOS read <code>clock_gettime(CLOCK_THREAD_CPUTIME_ID)</code>
+  (<code>Engine/OSAL/LinuxThread.cpp</code>, <code>Engine/OSAL/OSXThread.cpp</code>, identical definitions);
+  Windows reads <code>GetThreadTimes</code> on its own pseudo-handle and adds kernel and user time
+  (<code>Engine/OSAL/WindowsThread.cpp</code>).
+</p>
+
+<pre><code>	struct timespec timeValue{};
+	if (clock_gettime(CLOCK_THREAD_CPUTIME_ID, &amp;timeValue) != 0)
+	{
+		return std::chrono::nanoseconds::zero();
+	}
+
+	return std::chrono::seconds(timeValue.tv_sec) + std::chrono::nanoseconds(timeValue.tv_nsec);</code></pre>
+<p class="meta">From Engine/OSAL/LinuxThread.cpp, OS::GetThreadCPUTime()</p>
+
+<div class="note">
+  <strong>Zero means the platform call failed — and a budget then charges nothing.</strong> The failure mode is
+  deliberately fail-open: a reader that returned garbage would bill work that never ran, so the zero answer
+  costs a budget nothing and lets the stream keep taking work. On Windows the reading is coarser than the
+  nanosecond type suggests: <code>GetThreadTimes</code> reports at the granularity of the system clock tick, so
+  budgets charged from it are quantised there in a way the POSIX clock readings are not.
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<p>None. There is no thread parameter — the measurement is always the calling thread.</p>
+
+<h2 id="return">Return value</h2>
+
+<p>
+  The CPU time consumed, user plus system, as <code>std::chrono::nanoseconds</code>;
+  <code>std::chrono::nanoseconds::zero()</code> if the platform call failed.
+</p>
+
+<h2 id="example">Examples</h2>
+
+<p>
+  The budget bracket that charges a task for what it actually executed:
+</p>
+
+<pre><code>void hbe::CPUBudget::BeginTask() noexcept
+{
+	taskStart = OS::GetThreadCPUTime();
+	isMeasuring = true;
+}</code></pre>
+<p class="meta">From Engine/Core/CPUBudget.cpp, hbe::CPUBudget::BeginTask()</p>
+
+<p>
+  and the OSAL's own test proves the two halves of the contract: busy work advances the counter, an 80 ms sleep
+  must not.
+</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; OSThread</a></span>
+  <span><a href="index.html#methods">All OSThread methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

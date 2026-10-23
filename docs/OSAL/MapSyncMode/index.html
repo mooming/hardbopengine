@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MapSyncMode — OSAL module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a class="current" href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This class</h3>
+  <ul>
+    <li><a href="#description">Class description</a></li>
+    <li><a href="#template">Template parameters</a></li>
+    <li><a href="#properties">Class properties</a></li>
+    <li><a href="#methods">Class methods</a></li>
+    <li><a href="#non-member">Non-member helpers</a></li>
+    <li><a href="#coverage">Coverage</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">OSAL</a> /
+  MapSyncMode
+</p>
+
+<h1>MapSyncMode</h1>
+<p class="subtitle">
+  <span class="tag">Engine/OSAL/OSMapSyncMode.h</span>
+  <span class="tag">namespace OS</span>
+  <span class="tag">final</span>
+  the flag word OS::MapSync passes to msync — async, sync, invalidate; setters OR, nothing clears
+</p>
+
+<h2 id="description">Class description</h2>
+
+<p>
+  <code>OS::MapSyncMode</code> is the argument builder for
+  <a href="../OSInputOutput/map-sync.html"><code>OS::MapSync</code></a>: a public <code>int value</code>, zero by
+  default, that the <code>Set…</code> methods accumulate the POSIX <code>msync</code> flags into —
+  <code>MS_ASYNC</code>, <code>MS_SYNC</code>, <code>MS_INVALIDATE</code> from <code>&lt;sys/mman.h&gt;</code>.
+  The implementations of <code>OS::MapSync</code> hand <code>value</code> to <code>msync</code> verbatim:
+  <code>Engine/OSAL/LinuxInputOutput.cpp</code> passes it as the flags argument.
+</p>
+
+<div class="gap">
+  <strong>The setters are defined on Linux and macOS only.</strong> The identical bodies live in
+  <code>Engine/OSAL/LinuxMapSyncMode.cpp</code> and <code>Engine/OSAL/OSXMapSyncMode.cpp</code>, each behind its
+  <code>PLATFORM_*</code> guard, and no Windows unit exists anywhere in the repository —
+  <code>Engine/OSAL/CMakeLists.txt</code> lists none, and <code>Engine/OSAL/WindowsInputOutput.cpp</code>, the
+  only Windows file of the IO surface, is a copyright notice with no code. A Windows build that calls any setter
+  does not link.
+</div>
+
+<div class="note">
+  <strong>Accumulation is the whole model: setters only OR, nothing clears.</strong> A fresh
+  <code>MapSyncMode</code> is the only reset. <code>MS_ASYNC</code> and <code>MS_SYNC</code> are mutually
+  exclusive in POSIX semantics — one returns as soon as the flush is queued, the other blocks until it is done —
+  and the class does not enforce the exclusivity. Every in-tree caller sets exactly one:
+  <code>SetSync</code>, in <code>Engine/Resource/BufferUtil.cpp</code>'s buffer releaser and in the OSAL's own IO
+  test.
+</div>
+
+<h2 id="template">Template parameters</h2>
+
+<p>None — the class is not a template.</p>
+
+<h2 id="properties">Class properties</h2>
+
+<table>
+  <tr><th>Type + Name</th><th>Default Value</th><th>Description</th></tr>
+  <tr><td><code>int value;</code> <span class="badge">public</span></td>
+      <td><code>0</code></td>
+      <td>The accumulated flag word the <code>msync</code> call consumes verbatim; the <code>Set…</code> methods are its only writers.</td></tr>
+</table>
+
+<h2 id="methods">Class methods</h2>
+
+<table class="methods">
+  <tr><th>Name</th><th>Signature</th><th>What a caller depends on</th></tr>
+  <tr><td><a href="constructors.html"><code>MapSyncMode</code></a></td>
+      <td class="sig">MapSyncMode() noexcept</td>
+      <td>Starts at zero — an empty flag word, and the only reset the class offers.</td></tr>
+  <tr><td><a href="set-async.html"><code>SetAsync</code></a></td>
+      <td class="sig">void SetAsync() noexcept</td>
+      <td>ORs <code>MS_ASYNC</code> into <code>value</code> — queue the flush and return.</td></tr>
+  <tr><td><a href="set-sync.html"><code>SetSync</code></a></td>
+      <td class="sig">void SetSync() noexcept</td>
+      <td>ORs <code>MS_SYNC</code> into <code>value</code> — block until the flush is done; the only mode in-tree callers use.</td></tr>
+  <tr><td><a href="invalidate.html"><code>Invalidate</code></a></td>
+      <td class="sig">void Invalidate() noexcept</td>
+      <td>ORs <code>MS_INVALIDATE</code> into <code>value</code> — ask the kernel to drop stale cached copies of the pages.</td></tr>
+</table>
+
+<h2 id="non-member">Non-member helpers</h2>
+
+<p>None. The class is consumed only through <a href="../OSInputOutput/map-sync.html"><code>OS::MapSync</code></a>.</p>
+
+<h2 id="coverage">Coverage</h2>
+
+<table>
+  <tr><th>Not documented here</th><th>Why</th></tr>
+  <tr>
+    <td>How <code>value</code> reaches the operating system call, and what MapSync returns when <code>msync</code> fails</td>
+    <td>Owned by <a href="../OSInputOutput/map-sync.html"><code>OS::MapSync</code></a>'s platform implementations; this
+        page documents only how the word is built</td>
+  </tr>
+  <tr>
+    <td>What the flag word means on Windows</td>
+    <td>Nothing can be documented: no Windows definition of the setters exists and the IO surface has no Windows
+        implementation — see the gap above</td>
+  </tr>
+</table>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; MapSyncMode</a></span>
+  <span><a href="index.html#methods">All MapSyncMode methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

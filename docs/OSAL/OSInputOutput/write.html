@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>OSInputOutput::Write — OSAL module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a class="current" href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">OSAL</a> /
+  <a href="index.html">OSInputOutput</a> / Write
+</p>
+
+<h1><span class="fn">Write</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::OSInputOutput</span>
+  <span class="tag">Engine/OSAL/OSInputOutput.h</span>
+  <span class="tag">namespace OS</span>
+  bytes actually transferred
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>size_t Write(const FileHandle&amp; handle, void* buffer, size_t size) noexcept</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  Writes up to <code>size</code> bytes from <code>buffer</code> and answers how many actually landed — the same
+  short-count contract as <a href="read.html"><code>Read</code></a>, with the same three guard paths answering
+  <code>0</code> with a warning before any system call: invalid handle, null buffer, zero size
+  (<code>Engine/OSAL/LinuxInputOutput.cpp</code>, <code>Engine/OSAL/OSXInputOutput.cpp</code>). The write starts
+  at the file's current position unless the mode word carried
+  <a href="../FileOpenMode/set-append.html"><code>O_APPEND</code></a>.
+</p>
+
+<div class="note">
+  <strong>The buffer parameter is <code>void*</code>, not <code>const void*</code> — the signature does not
+  promise not to modify the buffer, but the implementations only read it.</strong> Callers cast away const at
+  their own edge; the engine's own callers pass non-const buffers.
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<table>
+  <tr><th>Parameter</th><th>Type</th><th>Requirement</th></tr>
+  <tr><td><code>handle</code></td><td><code>const FileHandle&amp;</code></td><td>An open handle; an invalid one answers <code>0</code> with a warning.</td></tr>
+  <tr><td><code>buffer</code></td><td><code>void*</code></td><td>Source; must hold at least <code>size</code> readable bytes.</td></tr>
+  <tr><td><code>size</code></td><td><code>size_t</code></td><td>Maximum bytes to write; zero answers <code>0</code> with a warning.</td></tr>
+</table>
+
+<h2 id="return">Return value</h2>
+
+<p>Bytes actually transferred — possibly fewer than <code>size</code>; <code>0</code> for the guard paths.</p>
+
+<h2 id="example">Examples</h2>
+
+<p>
+  The OSAL's own IO test fills a file through it before mapping:
+</p>
+
+<pre><code>			{
+				uint8_t buffer[TestSize];
+				Write(fh, buffer, TestSize);
+			}</code></pre>
+<p class="meta">From Engine/OSAL/OSInputOutput.cpp, the MapMemory testlet of hbe::OSInputOutputTest::Prepare()</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; OSInputOutput</a></span>
+  <span><a href="index.html#methods">All OSInputOutput methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

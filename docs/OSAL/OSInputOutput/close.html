@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>OSInputOutput::Close — OSAL module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a class="current" href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">OSAL</a> /
+  <a href="index.html">OSInputOutput</a> / Close
+</p>
+
+<h1><span class="fn">Close</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::OSInputOutput</span>
+  <span class="tag">Engine/OSAL/OSInputOutput.h</span>
+  <span class="tag">namespace OS</span>
+  close by rvalue reference — the handle is invalid afterwards
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>bool Close(FileHandle&amp;&amp; handle) noexcept</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  Closes a file and takes the handle by <em>rvalue reference</em> — the signature is the safety argument. A
+  caller must write <code>Close(std::move(fh))</code>, and after the call the handle is invalid: the
+  implementations move it in, read the descriptor out, and invalidate the handle
+  <em>before</em> touching the descriptor, so a handle cannot be closed twice and a closed handle cannot be
+  passed to <code>Read</code> or <code>Write</code> by accident.
+</p>
+
+<pre><code>	auto handle = std::move(inHandle);
+
+	int fd = handle.fd;
+	handle.Invalidate();
+
+	if (unlikely(fd &lt; 0))
+	{
+		log.OutWarning([fd](auto&amp; ls) { ls &lt;&lt; "File Close (fd:" &lt;&lt; fd &lt;&lt; ") failed."; });
+
+		return false;
+	}
+
+	auto result = close(fd);
+	if (unlikely(result &lt; 0))
+	{
+		...
+		return false;
+	}
+
+	return true;</code></pre>
+<p class="meta">From Engine/OSAL/LinuxInputOutput.cpp, OS::Close(FileHandle&amp;&amp;) — the failure log elided</p>
+
+<p>
+  Two failure paths, both a logged warning and <code>false</code>: closing an already-invalid handle, and a
+  platform close that failed. In the second case the handle is already invalid — the descriptor, if it is still
+  open, is no longer reachable through any handle. The macOS unit does the same work through its
+  <code>FileHandleHelper</code> reinterpret helpers (<code>Engine/OSAL/OSXInputOutput.cpp</code>).
+</p>
+
+<h2 id="parameters">Parameters</h2>
+
+<table>
+  <tr><th>Parameter</th><th>Type</th><th>Requirement</th></tr>
+  <tr><td><code>handle</code></td><td><code>FileHandle&amp;&amp;</code></td><td>The handle to close — moved from, and invalid after the call whether the close succeeded or not.</td></tr>
+</table>
+
+<h2 id="return">Return value</h2>
+
+<p>
+  <code>true</code> when the descriptor was closed; <code>false</code> — after a logged warning — for an invalid
+  handle or a failed platform close.
+</p>
+
+<h2 id="example">Examples</h2>
+
+<p>
+  The explicit-move shape the signature demands, from the OSAL's own IO test:
+</p>
+
+<pre><code>		if (Close(std::move(fh)))
+		{
+			ls &lt;&lt; "File close succeeded. path = " &lt;&lt; path &lt;&lt; lf;
+		}</code></pre>
+<p class="meta">From Engine/OSAL/OSInputOutput.cpp, the Open/Close/Delete testlet of hbe::OSInputOutputTest::Prepare()</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; OSInputOutput</a></span>
+  <span><a href="index.html#methods">All OSInputOutput methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

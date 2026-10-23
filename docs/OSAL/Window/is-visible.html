@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Window::IsVisible — OSAL module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a class="current" href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">OSAL</a> /
+  <a href="index.html">Window</a> / IsVisible
+</p>
+
+<h1><span class="fn">IsVisible</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::Window</span>
+  <span class="tag">Engine/OSAL/Window.h</span>
+  the visibility flag — or a live query on Windows
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>[[nodiscard]] bool IsVisible() const</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  Whether the window is visible — and the three platforms answer from different sources. Linux and macOS return
+  the recorded <code>visibleFlag</code> (<code>Engine/OSAL/LinuxWindow.cpp</code>,
+  <code>Engine/OSAL/OSXWindow.mm</code>); Windows returns a live <code>IsWindowVisible</code> query on the
+  <code>HWND</code>, and <code>false</code> when there is no window at all
+  (<code>Engine/OSAL/Win32Window.cpp</code>).
+</p>
+
+<div class="note">
+  <strong>An uncreated window answers differently by platform.</strong> Linux's constructor starts
+  <code>visibleFlag</code> at <code>true</code>, macOS's at <code>false</code>, and Windows falls back to
+  <code>false</code> for a null handle — so "is the window visible?" before
+  <a href="create-window.html"><code>CreateWindow</code></a> has three answers. After creation all three agree,
+  because all three create the window on screen.
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<p>None.</p>
+
+<h2 id="return">Return value</h2>
+
+<p><code>true</code> when the window is shown; see the note for the pre-creation answers.</p>
+
+<h2 id="example">Examples</h2>
+
+<p>
+  The Vulkan example gates nothing on it, but the OSAL's test asserts a freshly created window is visible:
+</p>
+
+<pre><code>			if (!window-&gt;IsVisible())
+			{
+				ls &lt;&lt; "Window should be visible" &lt;&lt; lferr;
+			}</code></pre>
+<p class="meta">From Engine/OSAL/Window.cpp, the Create Window testlet of hbe::WindowTest::Prepare()</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; Window</a></span>
+  <span><a href="index.html#methods">All Window methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

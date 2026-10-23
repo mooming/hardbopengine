@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>OSMemory::GetAllocSize — OSAL module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a class="current" href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">OSAL</a> /
+  <a href="index.html">OSMemory</a> / GetAllocSize
+</p>
+
+<h1><span class="fn">GetAllocSize</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::OSMemory</span>
+  <span class="tag">Engine/OSAL/OSMemory.h</span>
+  <span class="tag">namespace OS</span>
+  the usable size the platform allocator gave the pointer
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>[[nodiscard]] size_t GetAllocSize(void* ptr) noexcept</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  The size the platform's own allocator gave the pointer — asked <em>back</em> from the allocator, not stored by
+  the engine. Linux answers <code>malloc_usable_size</code> (<code>Engine/OSAL/LinuxMemory.cpp</code>), macOS
+  <code>malloc_size</code> (<code>Engine/OSAL/OSXMemory.cpp</code>), Windows <code>_msize</code>
+  (<code>Engine/OSAL/WindowsMemory.cpp</code>). The three agree on the contract and differ on the exact figure:
+  the platform may hand back more than was requested, so this is the <em>usable</em> size, which is at least the
+  requested one.
+</p>
+
+<p>
+  The engine's global allocation tracking uses it exactly that way — when the caller did not record a size, the
+  allocator's own figure is taken:
+</p>
+
+<pre><code>		RecordDeallocation(size != 0 ? size : OS::GetAllocSize(ptr), caller);</code></pre>
+<p class="meta">From Engine/Memory/GlobalAllocation.cpp, hbe::Deallocate(void* ptr, size_t size, void* caller)</p>
+
+<div class="note">
+  <strong>The pointer must be one the platform allocator owns.</strong> <code>malloc_usable_size</code> and
+  friends are undefined for a pointer that did not come from <code>malloc</code>/<code>new</code> — notably, a
+  pointer from <a href="virtual-alloc.html"><code>VirtualAlloc</code></a> is mmap memory, not heap memory, and
+  this function has nothing to say about it. The engine's guard-page allocator knows its sizes and never asks.
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<table>
+  <tr><th>Parameter</th><th>Type</th><th>Requirement</th></tr>
+  <tr><td><code>ptr</code></td><td><code>void*</code></td><td>A pointer the platform heap allocator gave out; anything else is undefined behaviour.</td></tr>
+</table>
+
+<h2 id="return">Return value</h2>
+
+<p>The usable size in bytes — at least what was requested, possibly more.</p>
+
+<h2 id="example">Examples</h2>
+
+<p>
+  The second in-tree use — the guard-page allocator reading back what it got, so its page math matches the
+  allocation it actually holds:
+</p>
+
+<pre><code>		const auto allocated = OS::GetAllocSize(ptr);</code></pre>
+<p class="meta">From Engine/Memory/SystemAllocator.h, SystemAllocator::AllocateBytes(std::size_t nBytes)</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; OSMemory</a></span>
+  <span><a href="index.html#methods">All OSMemory methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

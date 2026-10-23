@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>OSThread — OSAL module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a class="current" href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This class</h3>
+  <ul>
+    <li><a href="#description">Class description</a></li>
+    <li><a href="#template">Template parameters</a></li>
+    <li><a href="#properties">Class properties</a></li>
+    <li><a href="#methods">Class methods</a></li>
+    <li><a href="#non-member">Non-member helpers</a></li>
+    <li><a href="#coverage">Coverage</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">OSAL</a> /
+  OSThread
+</p>
+
+<h1>OSThread</h1>
+<p class="subtitle">
+  <span class="tag">Engine/OSAL/OSThread.h</span>
+  <span class="tag">namespace OS</span>
+  <span class="tag">utility header</span>
+  yield, sleep, core index, affinity, priority — and the CPU-time clock the task budgets are charged from
+</p>
+
+<h2 id="description">Class description</h2>
+
+<p>
+  A utility header, not a class: free functions at <code>OS::</code> scope for what a thread asks the operating
+  system to do — yield, sleep, learn which core it is on, and set or read scheduling properties of another
+  thread. Two of them (<a href="yield.html"><code>Yield</code></a>,
+  <a href="sleep.html"><code>Sleep</code></a>) are defined once in <code>Engine/OSAL/OSThread.cpp</code> on top
+  of the standard library's <code>std::this_thread</code>; the rest are defined per platform in
+  <code>Engine/OSAL/LinuxThread.cpp</code>, <code>Engine/OSAL/OSXThread.cpp</code> and
+  <code>Engine/OSAL/WindowsThread.cpp</code>.
+</p>
+
+<p>
+  The consumer that shapes this header is the task system:
+  <code>Engine/Core/TaskStream.cpp</code> lowers each stream thread's priority at spawn, and
+  <a href="../../Core/index.html#functions"><code>CPUBudget</code></a> charges stream budgets from
+  <a href="get-thread-cpu-time.html"><code>GetThreadCPUTime</code></a> — busy time, not wall time, which is the
+  distinction the whole budgeting story rests on.
+</p>
+
+<div class="gap">
+  <strong>One function is defined on macOS only.</strong>
+  <a href="get-thread-priority.html"><code>GetThreadPriority</code></a> is declared for every platform, but the
+  only definition in the repository is in <code>Engine/OSAL/OSXThread.cpp</code> — no Linux or Windows unit
+  defines it, so a call from a Linux or Windows build does not link. The setter exists on all three; the getter
+  does not.
+</div>
+
+<div class="note">
+  <strong>Affinity has a platform ceiling.</strong> The Linux unit applies a 64-bit mask through
+  <code>sched_setaffinity</code>; the Windows unit hands the mask to <code>SetThreadAffinityMask</code>; the
+  macOS unit's definition is an <em>empty body</em> — affinity is not applied at all on macOS, where the
+  engine's scheduler must get by without it.
+</div>
+
+<h2 id="template">Template parameters</h2>
+
+<p>None — the header declares no types at all.</p>
+
+<h2 id="properties">Class properties</h2>
+
+<p>None — the header declares no macros, no aliases, no constants and no data members.</p>
+
+<h2 id="methods">Class methods</h2>
+
+<p>None — the functions are free functions, and their contracts are tabled under
+<a href="#non-member">Non-member helpers</a> below.</p>
+
+<h2 id="non-member">Non-member helpers</h2>
+
+<table>
+  <tr><th>Name</th><th>Signature</th><th>What a caller depends on</th></tr>
+  <tr>
+    <td><a href="yield.html"><code>Yield</code></a></td>
+    <td class="sig">void Yield() noexcept</td>
+    <td>Hands the core to another runnable thread — <code>std::this_thread::yield()</code>, identical on every platform</td>
+  </tr>
+  <tr>
+    <td><a href="sleep.html"><code>Sleep</code></a></td>
+    <td class="sig">void Sleep(uint32_t milliseconds) noexcept</td>
+    <td>Blocks this thread for the given milliseconds — distinct from <code>hbe::time::Sleep</code>, which sits on the clock side of the boundary</td>
+  </tr>
+  <tr>
+    <td><a href="get-cpu-index.html"><code>GetCPUIndex</code></a></td>
+    <td class="sig">[[nodiscard]] int GetCPUIndex() noexcept</td>
+    <td>Which core this thread is on right now — <code>-1</code> on macOS failure, never negative on Linux and Windows</td>
+  </tr>
+  <tr>
+    <td><a href="get-thread-priority.html"><code>GetThreadPriority</code></a></td>
+    <td class="sig">[[nodiscard]] int GetThreadPriority(std::thread&amp; thread) noexcept</td>
+    <td>The thread's priority as an OS number — defined on macOS only; a Linux or Windows call does not link</td>
+  </tr>
+  <tr>
+    <td><a href="set-thread-affinity.html"><code>SetThreadAffinity</code></a></td>
+    <td class="sig">void SetThreadAffinity(std::thread&amp; thread, uint64_t mask) noexcept</td>
+    <td>One bit per core; applied on Linux and Windows, silently ignored on macOS</td>
+  </tr>
+  <tr>
+    <td><a href="set-thread-priority.html"><code>SetThreadPriority</code></a></td>
+    <td class="sig">void SetThreadPriority(std::thread&amp; thread, int priority) noexcept</td>
+    <td>Sets the OS priority; failures log, none of the units treat a failed set as fatal</td>
+  </tr>
+  <tr>
+    <td><a href="get-thread-cpu-time.html"><code>GetThreadCPUTime</code></a></td>
+    <td class="sig">[[nodiscard]] std::chrono::nanoseconds GetThreadCPUTime() noexcept</td>
+    <td>CPU time this calling thread has consumed, user plus system — busy time, not wall time; zero if the platform call fails</td>
+  </tr>
+</table>
+
+<h2 id="coverage">Coverage</h2>
+
+<table>
+  <tr><th>Not documented here</th><th>Why</th></tr>
+  <tr>
+    <td><code>OSThreadTest</code></td>
+    <td>The <code>TEST_ENABLED</code> test collection declared at the bottom of the same header — test-only,
+        owning its coverage here rather than a page</td>
+  </tr>
+  <tr>
+    <td>What the priority numbers mean per platform</td>
+    <td><code>sched_priority</code> under <code>SCHED_FIFO</code>, <code>setpriority</code> nice values and
+        Windows priority classes are three different scales; the header passes them through as
+        <code>int</code> and no unit translates</td>
+  </tr>
+</table>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; OSThread</a></span>
+  <span><a href="index.html#methods">All OSThread methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

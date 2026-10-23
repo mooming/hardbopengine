@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SourceLocation::SourceLocation — OSAL module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a class="current" href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">OSAL</a> /
+  <a href="index.html">SourceLocation</a> / SourceLocation
+</p>
+
+<h1><span class="fn">SourceLocation</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::SourceLocation</span>
+  <span class="tag">Engine/OSAL/SourceLocation.h</span>
+  default to Invalid, copy trivially, or capture four explicit values
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>constexpr SourceLocation() noexcept
+		: fileName("Invalid")
+		, functionName("Invalid")
+		, lineNumber(0)
+		, columnOffset(0)
+
+SourceLocation(const SourceLocation&amp; rhs) noexcept = default
+
+constexpr SourceLocation(const char* fileName, const char* functionName, const uint_least32_t lineNumber,
+							 const uint_least32_t columnOffset) noexcept
+
+		: fileName(fileName)
+		, functionName(functionName)
+		, lineNumber(lineNumber)
+		, columnOffset(columnOffset)</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  Three constructors, and each one answers "where did this location come from". The default constructor produces
+  the deliberately uninformative location — file and function set to the string <code>"Invalid"</code>, line and
+  column <code>0</code> — so a <code>SourceLocation</code> that was never captured is recognisable in a log
+  instead of printing a stale or empty path. It is <code>constexpr</code>, so a static or member location can be
+  built at compile time.
+</p>
+
+<p>
+  The four-argument constructor is the capture path: it is what
+  <a href="current.html"><code>current</code></a> calls with the values the <code>Caller*</code> builtins
+  produced, and it is <code>constexpr</code> for the same reason. It takes the pointers as given and copies
+  nothing — the pointed-to strings must outlive the location, which the builtins guarantee because they answer
+  string literals with static storage.
+</p>
+
+<p>
+  The copy constructor is <code>= default</code>: a location is a value of four <code>const</code> members, and
+  copying it copies those four words. There is no move constructor declared, so a move is a copy — and there is
+  nothing to move that a copy would not do.
+</p>
+
+<div class="note">
+  <strong>All four data members are <code>const</code>, so no constructor can be re-run on a live
+  location.</strong> A <code>SourceLocation</code> is written once, at construction, and assignment is the
+  memberwise copy of an already-fixed value. There is no setter and no "update the line" call — where a different
+  location is wanted, a new one is captured.
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<table>
+  <tr><th>Parameter</th><th>Type</th><th>Requirement</th></tr>
+  <tr><td><code>fileName</code></td><td><code>const char*</code></td><td>A string that outlives the location; in practice a literal, which is what <code>CallerFile()</code> answers.</td></tr>
+  <tr><td><code>functionName</code></td><td><code>const char*</code></td><td>A string that outlives the location; in practice a literal, which is what <code>CallerFunc()</code> answers.</td></tr>
+  <tr><td><code>lineNumber</code></td><td><code>const uint_least32_t</code></td><td>The line to record; <code>CallerLine()</code> supplies it in the capture path.</td></tr>
+  <tr><td><code>columnOffset</code></td><td><code>const uint_least32_t</code></td><td>The column to record; <code>CallerColumn()</code> supplies it in the capture path, and answers <code>0</code> on GCC.</td></tr>
+</table>
+
+<h2 id="return">Return value</h2>
+
+<p>Not applicable — constructors return nothing.</p>
+
+<h2 id="example">Examples</h2>
+
+<p>
+  The four-argument form is reached through <a href="current.html"><code>current</code></a> rather than written by
+  hand; the default form is what a zero-initialised location reads as. The engine's lock code prints a captured
+  location when a <code>ScopedLock</code> times out, which is the shape every consumer shares:
+</p>
+
+<pre><code>			ls &lt;&lt; "[file: " &lt;&lt; srcLoc.file_name() &lt;&lt; '(' &lt;&lt; srcLoc.line() &lt;&lt; ':' &lt;&lt; srcLoc.column() &lt;&lt; ") "
+			   &lt;&lt; srcLoc.function_name() &lt;&lt; ": TimedOut! "</code></pre>
+<p class="meta">From Engine/Core/ScopedLock.h, ScopedLock lock-timeout logging</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; SourceLocation</a></span>
+  <span><a href="index.html#methods">All SourceLocation methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

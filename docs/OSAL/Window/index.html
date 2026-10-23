@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Window — OSAL module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a class="current" href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This class</h3>
+  <ul>
+    <li><a href="#description">Class description</a></li>
+    <li><a href="#template">Template parameters</a></li>
+    <li><a href="#properties">Class properties</a></li>
+    <li><a href="#methods">Class methods</a></li>
+    <li><a href="#non-member">Non-member helpers</a></li>
+    <li><a href="#coverage">Coverage</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">OSAL</a> /
+  Window
+</p>
+
+<h1>Window</h1>
+<p class="subtitle">
+  <span class="tag">Engine/OSAL/Window.h</span>
+  <span class="tag">namespace OS</span>
+  a window on X11, Cocoa or Win32 — same interface, and the close button is detected on macOS only
+</p>
+
+<h2 id="description">Class description</h2>
+
+<p>
+  A window on whichever toolkit the platform chose: created with a size and a title, polled for events, and
+  closed explicitly. The public interface is identical on every operating system; the implementation units —
+  <code>Engine/OSAL/LinuxWindow.cpp</code> (X11), <code>Engine/OSAL/OSXWindow.mm</code> (Cocoa),
+  <code>Engine/OSAL/Win32Window.cpp</code> (Win32) — differ in what they actually do, and the differences reach
+  a caller: initial visibility, resize handling, and whether the close button is detected at all.
+</p>
+
+<p>
+  <a href="get-native-handle.html"><code>GetNativeHandle</code></a> is the deliberate leak: the
+  <code>intptr_t</code> — an X11 <code>Window</code> id, an <code>NSWindow*</code>, or an <code>HWND</code> —
+  is what the <a href="../../Renderer/index.html">renderer</a> passes to the graphics API to attach a surface.
+  Every other method is portable; anything using the handle is not, which is why the renderer is where that
+  call happens.
+</p>
+
+<div class="gap">
+  <strong>The close button is detected on macOS only.</strong> The macOS unit installs a delegate whose
+  <code>windowShouldClose:</code> writes the shared <code>closedFlag</code> directly. The Linux unit's
+  <code>PollEvents</code> has an unimplemented stub where the close message would be handled, and the Windows
+  unit records the close in a <code>shouldCloseFlag</code> that <em>nothing reads</em> —
+  <a href="is-closed.html"><code>IsClosed</code></a> reports <code>closedFlag</code>, which only
+  <a href="close.html"><code>Close</code></a> sets. A user clicking the window's X flips
+  <code>IsClosed()</code> on macOS and on no other platform.
+</div>
+
+<div class="note">
+  <strong>Two smaller divergences a caller meets.</strong> The default-constructed <code>visibleFlag</code> is
+  <code>true</code> on Linux and Windows but <code>false</code> on macOS; and the macOS window is created
+  without <code>NSWindowStyleMaskResizable</code>, so it is not user-resizable there — while
+  <a href="set-size.html"><code>SetSize</code></a> works and the Linux and Windows units track
+  user resizes through their event pumps.
+</div>
+
+<h2 id="template">Template parameters</h2>
+
+<p>None — the class is not a template.</p>
+
+<h2 id="properties">Class properties</h2>
+
+<table>
+  <tr><th>Type + Name</th><th>Default Value</th><th>Description</th></tr>
+  <tr><td><code>int width;</code> <span class="badge">private</span></td>
+      <td><span class="muted">none in the header</span></td>
+      <td>Current width in pixels; updated by <code>SetSize</code> and by the platform's own resize events on Linux and Windows.</td></tr>
+  <tr><td><code>int height;</code> <span class="badge">private</span></td>
+      <td><span class="muted">none in the header</span></td>
+      <td>Current height in pixels; same sources as <code>width</code>.</td></tr>
+  <tr><td><code>bool visibleFlag;</code> <span class="badge">private</span></td>
+      <td><span class="muted">none in the header</span></td>
+      <td>Track of visibility; the constructors initialise it to <code>true</code> on Linux and Windows, <code>false</code> on macOS.</td></tr>
+  <tr><td><code>bool closedFlag;</code> <span class="badge">private</span></td>
+      <td><span class="muted">none in the header</span></td>
+      <td>The shared close flag — set by <code>Close</code> and, on macOS, by the window delegate.</td></tr>
+  <tr><td><code>void* display;</code> <span class="badge">private</span></td>
+      <td><span class="muted">none in the header</span></td>
+      <td>Linux only — the X11 <code>Display*</code>, guarded by <code>PLATFORM_LINUX</code>.</td></tr>
+  <tr><td><code>intptr_t window;</code> <span class="badge">private</span></td>
+      <td><span class="muted">none in the header</span></td>
+      <td>Linux only — the X11 <code>Window</code> id, guarded by <code>PLATFORM_LINUX</code>.</td></tr>
+  <tr><td><code>void* hwnd;</code> <span class="badge">private</span></td>
+      <td><span class="muted">none in the header</span></td>
+      <td>Windows only — the <code>HWND</code>, guarded by <code>PLATFORM_WINDOWS</code>.</td></tr>
+  <tr><td><code>bool shouldCloseFlag;</code> <span class="badge">private</span></td>
+      <td><span class="muted">none in the header</span></td>
+      <td>Windows only — set by <code>WM_DESTROY</code> and read by nothing; see the gap above.</td></tr>
+  <tr><td><code>void* osHandle;</code> <span class="badge">private</span></td>
+      <td><span class="muted">none in the header</span></td>
+      <td>macOS only — the <code>NSWindow*</code>, guarded by <code>PLATFORM_OSX</code>.</td></tr>
+  <tr><td><code>void* osDelegate;</code> <span class="badge">private</span></td>
+      <td><span class="muted">none in the header</span></td>
+      <td>macOS only — the <code>NSWindowDelegate</code> observing the close button; <code>NSWindow</code> holds its delegate unretained, so the <code>Window</code> owns the reference and releases it in <code>Close</code>.</td></tr>
+</table>
+
+<h2 id="methods">Class methods</h2>
+
+<table class="methods">
+  <tr><th>Name</th><th>Signature</th><th>What a caller depends on</th></tr>
+  <tr><td><a href="constructors.html"><code>Window</code></a></td>
+      <td class="sig">Window() noexcept</td>
+      <td>A handle-less window with zero size; the initial <code>visibleFlag</code> differs by platform.</td></tr>
+  <tr><td><a href="destructor.html"><code>~Window</code></a></td>
+      <td class="sig">~Window()</td>
+      <td>Calls <a href="close.html"><code>Close</code></a> — the window does not outlive its object.</td></tr>
+  <tr><td><a href="create-window.html"><code>CreateWindow</code></a></td>
+      <td class="sig">[[nodiscard]] bool CreateWindow(const hbe::HString&amp; title, int width, int height)</td>
+      <td>Creates and shows the real window; failure is <code>false</code> with the object left handle-less. On macOS the window is created non-resizable.</td></tr>
+  <tr><td><a href="set-title.html"><code>SetTitle</code></a></td>
+      <td class="sig">void SetTitle(const hbe::HString&amp; title)</td>
+      <td>Renames the window; silently does nothing before creation.</td></tr>
+  <tr><td><a href="set-size.html"><code>SetSize</code></a></td>
+      <td class="sig">void SetSize(int width, int height)</td>
+      <td>Resizes and records the new size; silently does nothing before creation.</td></tr>
+  <tr><td><a href="set-visible.html"><code>SetVisible</code></a></td>
+      <td class="sig">void SetVisible(bool visible)</td>
+      <td>Shows or hides the window — <strong>defined on macOS and Windows only; a Linux call does not link</strong>.</td></tr>
+  <tr><td><a href="poll-events.html"><code>PollEvents</code></a></td>
+      <td class="sig">void PollEvents()</td>
+      <td>Drains the platform's event queue once; updates size on Linux and Windows, detects the close button on macOS.</td></tr>
+  <tr><td><a href="close.html"><code>Close</code></a></td>
+      <td class="sig">void Close()</td>
+      <td>Destroys the window and marks it closed; safe to call on an uncreated window.</td></tr>
+  <tr><td><a href="get-width.html"><code>GetWidth</code></a></td>
+      <td class="sig">[[nodiscard]] int GetWidth() const</td>
+      <td>The recorded width — the object's own number, not a fresh query of the window.</td></tr>
+  <tr><td><a href="get-height.html"><code>GetHeight</code></a></td>
+      <td class="sig">[[nodiscard]] int GetHeight() const</td>
+      <td>The recorded height, same rule as <code>GetWidth</code>.</td></tr>
+  <tr><td><a href="is-visible.html"><code>IsVisible</code></a></td>
+      <td class="sig">[[nodiscard]] bool IsVisible() const</td>
+      <td>The visibility flag on Linux and macOS; a live <code>IsWindowVisible</code> query on Windows.</td></tr>
+  <tr><td><a href="is-closed.html"><code>IsClosed</code></a></td>
+      <td class="sig">[[nodiscard]] bool IsClosed() const</td>
+      <td>The shared close flag — flipped by <code>Close</code> everywhere, and by the close button on macOS only.</td></tr>
+  <tr><td><a href="get-native-handle.html"><code>GetNativeHandle</code></a></td>
+      <td class="sig">[[nodiscard]] intptr_t GetNativeHandle() const</td>
+      <td>The deliberate leak: the platform window id as an integer, for the renderer's surface attachment.</td></tr>
+</table>
+
+<h2 id="non-member">Non-member helpers</h2>
+
+<table>
+  <tr><th>Name</th><th>Signature</th><th>What a caller depends on</th></tr>
+  <tr>
+    <td><a href="create-window.html"><code>CreateWindow</code></a></td>
+    <td class="sig">[[nodiscard]] std::unique_ptr&lt;Window&gt; CreateWindow(const hbe::HString&amp; title, int width, int height)</td>
+    <td>The free factory at <code>OS::</code> scope — creates the window and hands back <code>nullptr</code> when creation failed; defined once in <code>Engine/OSAL/Window.cpp</code>; it shares <a href="create-window.html">its page</a> with the member of the same name</td>
+  </tr>
+</table>
+
+<h2 id="coverage">Coverage</h2>
+
+<table>
+  <tr><th>Not documented here</th><th>Why</th></tr>
+  <tr>
+    <td><code>WindowTest</code></td>
+    <td>The <code>TEST_ENABLED</code> test collection at the bottom of the same header — test-only, owning its
+        coverage here rather than a page</td>
+  </tr>
+  <tr>
+    <td>The Win32 <code>WindowProc</code></td>
+    <td>A file-local static in <code>Engine/OSAL/Win32Window.cpp</code>; its two handled messages
+        (<code>WM_DESTROY</code>, <code>WM_SIZE</code>) are described on the
+        <a href="poll-events.html"><code>PollEvents</code></a> and
+        <a href="is-closed.html"><code>IsClosed</code></a> pages</td>
+  </tr>
+  <tr>
+    <td>Event contents</td>
+    <td>The facade exposes no event objects — no callback, no queue a caller can inspect; what a key press or a
+        mouse move <em>does</em> is currently nothing, on every platform</td>
+  </tr>
+</table>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; Window</a></span>
+  <span><a href="index.html#methods">All Window methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

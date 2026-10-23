@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FileHandle::GetFileSize — OSAL module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a class="current" href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">OSAL</a> /
+  <a href="index.html">FileHandle</a> / GetFileSize
+</p>
+
+<h1><span class="fn">GetFileSize</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::FileHandle</span>
+  <span class="tag">Engine/OSAL/OSFileHandle.h</span>
+  the file's size by fstat — zero for invalid, failure, and empty alike
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>[[nodiscard]] size_t GetFileSize() const noexcept</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  The file's current size, queried with <code>fstat</code> on the handle's descriptor. An invalid handle answers
+  <code>0</code> without touching the operating system; a failed <code>fstat</code> also answers <code>0</code>.
+  The platform units pin the width with <code>static_assert(sizeof(size_t) == sizeof(statValue.st_size))</code>,
+  so the descriptor's size type and the engine's are the same width on any platform this compiles on.
+</p>
+
+<p>
+  The three zeros are indistinguishable by design of the signature: an invalid handle, a failed query, and a
+  genuinely empty file all answer <code>0</code>. A caller that must tell them apart checks
+  <a href="is-valid.html"><code>IsValid</code></a> first. The platform units spell the guarantee identically —
+  <code>Engine/OSAL/LinuxFileHandle.cpp</code> reads <code>fd</code> directly,
+  <code>Engine/OSAL/OSXFileHandle.cpp</code> through its <code>GetHandle</code> helper — and both are
+  <code>noexcept</code> as the header declares.
+</p>
+
+<pre><code>size_t FileHandle::GetFileSize() const
+{
+	if (unlikely(fd &lt; 0))
+		return 0;
+
+	struct stat statValue;
+	int result = fstat(fd, &amp;statValue);
+
+	if (unlikely(result != 0))
+		return 0;
+
+	static_assert(sizeof(size_t) == sizeof(statValue.st_size));
+
+	return statValue.st_size;
+}</code></pre>
+<p class="meta">From Engine/OSAL/LinuxFileHandle.cpp, OS::FileHandle::GetFileSize()</p>
+
+<h2 id="parameters">Parameters</h2>
+
+<p>None.</p>
+
+<h2 id="return">Return value</h2>
+
+<p>
+  The size in bytes as <code>st_size</code> reports it; <code>0</code> for an invalid handle, a failed
+  <code>fstat</code>, or an empty file.
+</p>
+
+<h2 id="example">Examples</h2>
+
+<p>
+  The file-buffer generator reads the size to decide what to map — and overrides it when the caller asked for an
+  explicit size, truncating first:
+</p>
+
+<pre><code>		auto fileSize = fh.GetFileSize();
+		if (size != 0)
+		{
+			fileSize = size;
+			if (!Truncate(fh, fileSize))
+			{
+				log.OutWarning([path, size](auto&amp; ls)
+				{ ls &lt;&lt; "Failed to resize the file " &lt;&lt; path &lt;&lt; " to the given size " &lt;&lt; size; });
+
+				return;
+			}
+		}</code></pre>
+<p class="meta">From Engine/Resource/BufferUtil.cpp, the generator hbe::BufferUtil::GenerateFileBuffer(StaticString path, OS::FileOpenMode openMode, OS::ProtectionMode protection, size_t size) installs</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; FileHandle</a></span>
+  <span><a href="index.html#methods">All FileHandle methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

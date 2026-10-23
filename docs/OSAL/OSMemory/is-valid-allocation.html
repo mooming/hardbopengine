@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>OSMemory::IsValidAllocation — OSAL module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a class="current" href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">OSAL</a> /
+  <a href="index.html">OSMemory</a> / IsValidAllocation
+</p>
+
+<h1><span class="fn">IsValidAllocation</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::OSMemory</span>
+  <span class="tag">Engine/OSAL/OSMemory.h</span>
+  <span class="tag">namespace OS</span>
+  recognises the allocation sentinels VirtualAlloc returns
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>[[nodiscard]] bool IsValidAllocation(void* ptr) noexcept</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  Whether the pointer counts as a live allocation answer. The POSIX units
+  (<code>Engine/OSAL/LinuxMemory.cpp</code>, <code>Engine/OSAL/OSXMemory.cpp</code>) accept a pointer only when
+  it is neither <code>nullptr</code> nor <code>reinterpret_cast&lt;void*&gt;(-1)</code> — the second test is
+  what recognises <code>MAP_FAILED</code>, the sentinel <a href="virtual-alloc.html"><code>VirtualAlloc</code></a>
+  returns on failure there. The Windows unit (<code>Engine/OSAL/WindowsMemory.cpp</code>) tests only
+  <code>ptr != nullptr</code>, which is Windows' own allocation sentinel.
+</p>
+
+<pre><code>bool OS::IsValidAllocation(void* ptr) noexcept
+{
+	return ptr != nullptr &amp;&amp; ptr != reinterpret_cast&lt;void*&gt;(-1);
+}</code></pre>
+<p class="meta">From Engine/OSAL/LinuxMemory.cpp, OS::IsValidAllocation(void*)</p>
+
+<p>
+  The function does not ask the operating system anything: it recognises the sentinels the allocation functions
+  of this same header return. It is the companion of
+  <a href="virtual-alloc.html"><code>VirtualAlloc</code></a>, and only of it.
+</p>
+
+<h2 id="parameters">Parameters</h2>
+
+<table>
+  <tr><th>Parameter</th><th>Type</th><th>Requirement</th></tr>
+  <tr><td><code>ptr</code></td><td><code>void*</code></td><td>The pointer to test — typically straight out of <a href="virtual-alloc.html"><code>VirtualAlloc</code></a>.</td></tr>
+</table>
+
+<h2 id="return">Return value</h2>
+
+<p>
+  <code>true</code> when the pointer is neither <code>nullptr</code> nor the platform's allocation-failure
+  sentinel; <code>false</code> when it is either.
+</p>
+
+<h2 id="example">Examples</h2>
+
+<p>
+  The OSAL's own test is the only in-tree caller — the round-trip test checks the allocation before writing to
+  it:
+</p>
+
+<pre><code>		void* ptr = OS::VirtualAlloc(allocSize);
+
+		if (!OS::IsValidAllocation(ptr))
+		{
+			ls &lt;&lt; "VirtualAlloc failed" &lt;&lt; lferr;
+
+			return;
+		}</code></pre>
+<p class="meta">From Engine/OSAL/OSMemory.cpp, the VirtualAlloc VirtualFree Round Trip testlet of hbe::OSMemoryTest::Prepare()</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; OSMemory</a></span>
+  <span><a href="index.html#methods">All OSMemory methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>
