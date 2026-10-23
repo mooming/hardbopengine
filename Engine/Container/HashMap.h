@@ -15,6 +15,7 @@
 
 namespace hbe
 {
+/// API reference: docs/Container/EHashEntryState/index.html
 enum class EHashEntryState : uint8_t
 {
 	Empty,

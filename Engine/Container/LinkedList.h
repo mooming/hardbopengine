@@ -12,6 +12,7 @@
 namespace hbe
 {
 /// @brief Node structure for doubly-linked list containing value and pointers to adjacent nodes
+/// API reference: docs/Container/LinkedListNode/index.html
 template <typename TType>
 struct LinkedListNode final
 {
