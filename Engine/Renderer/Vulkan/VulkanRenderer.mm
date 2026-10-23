@@ -1,6 +1,5 @@
 // Copyright (c) 2026 Hansol Park (mooming.go@gmail.com). All rights reserved.
 
-// VulkanRenderer.mm - macOS platform surface (Vulkan <-> Metal interop).
 
 #include "Vulkan/VulkanRenderer.h"
 
@@ -40,8 +39,6 @@ bool VulkanRenderer::CreateMetalSurface() noexcept
 		return false;
 	}
 
-	// MRC: MTLCreateSystemDefaultDevice follows the create rule, so it is released below
-	// once the layer has retained it.
 	id<MTLDevice> metalDevice = MTLCreateSystemDefaultDevice();
 	if (metalDevice == nil)
 	{
@@ -71,20 +68,14 @@ bool VulkanRenderer::CreateMetalSurface() noexcept
 	layer.pixelFormat = MTLPixelFormatBGRA8Unorm;
 	layer.framebufferOnly = YES;
 
-	// contentsScale 1.0 keeps drawable pixels equal to points. AppKit sizes the layer to
-	// the view bounds, so CAMetalLayer.drawableSize - and therefore the swapchain extent -
-	// follows the window's content rect; CreateSwapchain reads the authoritative size from
-	// VkSurfaceCapabilitiesKHR::currentExtent instead of assuming the requested window size.
 	layer.contentsScale = 1.0;
 
-	// AppKit ignores +layerClass here (it installs its own NSViewBackingLayer), so the
-	// CAMetalLayer is created explicitly and adopted by the layer-backed view.
 	contentView.wantsLayer = YES;
 	contentView.autoresizingMask = NSViewWidthSizable | NSViewHeightSizable;
 	contentView.layer = layer;
 
 	[nsWindow setContentView:contentView];
-	[contentView release]; // the window retains its content view
+	[contentView release];
 
 	VkMetalSurfaceCreateInfoEXT info{};
 	info.sType = VK_STRUCTURE_TYPE_METAL_SURFACE_CREATE_INFO_EXT;
