@@ -45,6 +45,8 @@ public:
 		TNumber a[order];
 	};
 
+#include "VectorCommonImpl.inl"
+
 public:
 	Vector4() noexcept
 		: This(0, 0, 0, 0)
@@ -115,8 +117,6 @@ public:
 	{
 		return reinterpret_cast<const TVec3&>(*this);
 	}
-
-#include "VectorCommonImpl.inl"
 };
 
 template <typename T>

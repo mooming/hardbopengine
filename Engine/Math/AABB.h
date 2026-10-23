@@ -18,11 +18,13 @@ template <typename TVec>
 class AABB final
 {
 	using This = AABB;
-	static constexpr auto MAX = std::numeric_limits<float>::max();
 
 public:
 	TVec min;
 	TVec max;
+
+private:
+	static constexpr auto MAX = std::numeric_limits<float>::max();
 
 public:
 	explicit AABB(std::nullptr_t) noexcept

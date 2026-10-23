@@ -24,6 +24,14 @@ class PerlinNoise final
 public:
 	static constexpr TUInt permutationMask = 255;
 
+private:
+	TUInt seed = 0;
+
+	/// @brief Separate from seed so GetSeed() stays reportable while shuffling consumes state.
+	TUInt randomState = 0;
+	std::array<TByte, (permutationMask + 1) * 2> p = {};
+
+public:
 	explicit PerlinNoise(TUInt seed = 0) noexcept;
 
 	/// @brief Noise value at a point; exactly zero when all coordinates are integers.
@@ -46,12 +54,6 @@ public:
 	}
 
 private:
-	/// @brief Double-permutation lookup, already masked and offset.
-	[[nodiscard]] TUInt At(TUInt x, TUInt y, TUInt z) const noexcept
-	{
-		return p[p[p[x] + y] + z];
-	}
-
 	static TReal Grad(TUInt hash, TReal x, TReal y, TReal z) noexcept;
 
 	[[nodiscard]] static TReal Fade(TReal t) noexcept
@@ -64,14 +66,14 @@ private:
 		return a + t * (b - a);
 	}
 
+	/// @brief Double-permutation lookup, already masked and offset.
+	[[nodiscard]] TUInt At(TUInt x, TUInt y, TUInt z) const noexcept
+	{
+		return p[p[p[x] + y] + z];
+	}
+
 	/// @brief Deterministic replacement for std::shuffle's internals.
 	TUInt NextRandom() noexcept;
-
-	TUInt seed = 0;
-
-	/// @brief Separate from seed so GetSeed() stays reportable while shuffling consumes state.
-	TUInt randomState = 0;
-	std::array<TByte, (permutationMask + 1) * 2> p = {};
 };
 } // namespace hbe
 

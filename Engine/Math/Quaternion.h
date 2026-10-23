@@ -123,6 +123,35 @@ public:
 		return result;
 	}
 
+	[[nodiscard]] static This Lerp(const This& from, const This& to, float t) noexcept
+	{
+		This result = from.vector * (1.0f - t) + to.vector * t;
+		result.Normalize();
+
+		return result;
+	}
+
+
+	[[nodiscard]] static This Slerp(const This& from, const This& to, float t) noexcept
+	{
+		AssertMessage(from.IsUnity(), "Quaternion slerp should have unit length", ", but ", from.vector.Length());
+		AssertMessage(to.IsUnity(), "Quaternion slerp should have unit length", ", but ", to.vector.Length());
+
+		auto angle = std::acos(from.vector.Dot(to.vector));
+
+		if (angle < Epsilon)
+		{
+			return Lerp(from, to, t);
+		}
+
+		const auto nt = 1.0f - t;
+		const auto sinA = static_cast<TNumber>(std::sin(nt * angle));
+		const auto sinB = static_cast<TNumber>(std::sin(t * angle));
+
+		return (from.vector * sinA + to.vector * sinB) / std::sin(angle);
+	}
+
+
 	Quaternion() noexcept
 		: v()
 		, s(1.0f)
@@ -502,36 +531,9 @@ public:
 		return Lerp(*this, to, t);
 	}
 
-	[[nodiscard]] static This Lerp(const This& from, const This& to, float t) noexcept
-	{
-		This result = from.vector * (1.0f - t) + to.vector * t;
-		result.Normalize();
-
-		return result;
-	}
-
 	[[nodiscard]] Quaternion SlerpTo(Quaternion to, float t) noexcept
 	{
 		return Slerp(*this, to, t);
-	}
-
-	[[nodiscard]] static This Slerp(const This& from, const This& to, float t) noexcept
-	{
-		AssertMessage(from.IsUnity(), "Quaternion slerp should have unit length", ", but ", from.vector.Length());
-		AssertMessage(to.IsUnity(), "Quaternion slerp should have unit length", ", but ", to.vector.Length());
-
-		auto angle = std::acos(from.vector.Dot(to.vector));
-
-		if (angle < Epsilon)
-		{
-			return Lerp(from, to, t);
-		}
-
-		const auto nt = 1.0f - t;
-		const auto sinA = static_cast<TNumber>(std::sin(nt * angle));
-		const auto sinB = static_cast<TNumber>(std::sin(t * angle));
-
-		return (from.vector * sinA + to.vector * sinB) / std::sin(angle);
 	}
 
 	void LookAt(const TVec3& forward, const TVec3& up) noexcept

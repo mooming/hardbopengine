@@ -42,6 +42,8 @@ public:
 		TNumber a[order];
 	};
 
+#include "VectorCommonImpl.inl"
+
 public:
 	Vector3() noexcept
 		: This(0, 0, 0)
@@ -88,8 +90,6 @@ public:
 	{
 		return reinterpret_cast<const TVec2&>(*this);
 	}
-
-#include "VectorCommonImpl.inl"
 
 public:
 	[[nodiscard]] Vector3 Cross(const Vector3& rhs) const noexcept

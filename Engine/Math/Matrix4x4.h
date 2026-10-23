@@ -80,6 +80,8 @@ public:
 		return mat;
 	}
 
+#include "MatrixCommonImpl.inl"
+
 	Matrix4x4() noexcept
 		: element{1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1}
 	{
@@ -355,8 +357,6 @@ public:
 		m32 = sx * cy;
 		m33 = cx * cy;
 	}
-
-#include "MatrixCommonImpl.inl"
 };
 
 template <typename T>

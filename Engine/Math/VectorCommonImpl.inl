@@ -1,5 +1,33 @@
 public:
 
+	[[nodiscard]] static This Lerp(const This& from, const This& to, float t) noexcept
+	{
+		return from * (1.0f - t) + to * t;
+	}
+
+	[[nodiscard]] static This Slerp(const This& from, const This& to, float t) noexcept
+	{
+		auto a = from.Normalized();
+		auto b = to.Normalized();
+
+		auto angle = acosf(static_cast<float>(a.Dot(b)));
+
+		if (angle < Epsilon)
+			return Lerp(from, to, t).Normalized();
+
+		const auto nt = 1.0f - t;
+		const auto sinA = sin(nt * angle);
+		const auto sinB = sin(t * angle);
+		auto dir = (a * sinA + b * sinB) / sin(angle);
+
+		auto lengthA = from.Length();
+		auto lengthB = to.Length();
+
+		auto length = (lengthA * nt) + (lengthB * t);
+
+		return dir * length;
+	}
+
 	[[nodiscard]] This operator+(const This& rhs) const noexcept
 	{
 		This result(*this);
@@ -239,35 +267,7 @@ public:
 		return Lerp(*this, to, t);
 	}
 
-	[[nodiscard]] static This Lerp(const This& from, const This& to, float t) noexcept
-	{
-		return from * (1.0f - t) + to * t;
-	}
-
 	[[nodiscard]] This Slerp(const This& to, float t) const noexcept
 	{
 		return Slerp(*this, to, t);
-	}
-
-	[[nodiscard]] static This Slerp(const This& from, const This& to, float t) noexcept
-	{
-		auto a = from.Normalized();
-		auto b = to.Normalized();
-
-		auto angle = acosf(static_cast<float>(a.Dot(b)));
-
-		if (angle < Epsilon)
-			return Lerp(from, to, t).Normalized();
-
-		const auto nt = 1.0f - t;
-		const auto sinA = sin(nt * angle);
-		const auto sinB = sin(t * angle);
-		auto dir = (a * sinA + b * sinB) / sin(angle);
-
-		auto lengthA = from.Length();
-		auto lengthB = to.Length();
-
-		auto length = (lengthA * nt) + (lengthB * t);
-
-		return dir * length;
 	}

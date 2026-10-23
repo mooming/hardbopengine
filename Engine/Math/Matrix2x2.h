@@ -43,6 +43,8 @@ public:
 		};
 	};
 
+#include "MatrixCommonImpl.inl"
+
 public:
 	Matrix2x2() noexcept
 		: element{1, 0, 0, 1}
@@ -88,8 +90,6 @@ public:
 	{
 		return IsZero(rows[0].Dot(rows[1])) && rows[0].IsUnity() && rows[1].IsUnity();
 	}
-
-#include "MatrixCommonImpl.inl"
 };
 
 template <typename T>

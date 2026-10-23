@@ -33,6 +33,8 @@ public:
 		TNumber a[order];
 	};
 
+#include "VectorCommonImpl.inl"
+
 public:
 	Vector2() noexcept
 		: This(0, 0)
@@ -48,8 +50,6 @@ public:
 	explicit Vector2(std::nullptr_t) noexcept
 	{
 	}
-
-#include "VectorCommonImpl.inl"
 };
 
 template <typename T>

@@ -63,6 +63,8 @@ public:
 		return mat;
 	}
 
+#include "MatrixCommonImpl.inl"
+
 	Matrix3x3() noexcept
 		: element{1, 0, 0, 0, 1, 0, 0, 0, 1}
 	{
@@ -267,8 +269,6 @@ public:
 		m32 = sx * cy;
 		m33 = cx * cy;
 	}
-
-#include "MatrixCommonImpl.inl"
 };
 
 template <typename T>
