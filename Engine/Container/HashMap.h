@@ -23,6 +23,7 @@ enum class EHashEntryState : uint8_t
 	Tombstone
 };
 
+/// API reference: docs/Container/HashMap/index.html
 template <typename TKey, typename TValue, class THash = std::hash<TKey>, class TKeyEqual = std::equal_to<TKey>,
 		  class TAllocator = DefaultAllocator<uint8_t>>
 class HashMap final

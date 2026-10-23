@@ -12,6 +12,7 @@ namespace hbe
 template <typename T>
 concept CNext = requires(T t) { t.next; };
 
+/// API reference: docs/Container/AtomicStackView/index.html
 template <CNext T>
 class AtomicStackView final
 {

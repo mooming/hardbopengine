@@ -14,6 +14,7 @@
 
 namespace hbe
 {
+/// API reference: docs/Container/FixedRingBuffer/index.html
 template <typename TElement, class TAllocator = DefaultAllocator<TElement>>
 class FixedRingBuffer final
 {

@@ -14,6 +14,7 @@
 
 namespace hbe
 {
+/// API reference: docs/Container/Deque/index.html
 template <typename TElement, class TAllocator = DefaultAllocator<TElement>>
 class Deque final
 {

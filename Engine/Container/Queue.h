@@ -11,6 +11,7 @@
 
 namespace hbe
 {
+/// API reference: docs/Container/Queue/index.html
 template <typename TElement, class TContainer = Deque<TElement>>
 class Queue final
 {

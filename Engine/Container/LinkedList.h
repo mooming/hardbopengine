@@ -62,6 +62,7 @@ struct LinkedListNode final
 };
 
 /// @brief Doubly-linked list implementation with custom allocator support
+/// API reference: docs/Container/LinkedList/index.html
 template <typename TType, class TAllocator = DefaultAllocator<LinkedListNode<TType>>>
 class LinkedList final
 {

@@ -26,6 +26,7 @@ namespace hbe
 /// @tparam BucketSizeHint Capacity a bucket is created with, for a priority known to be busy. Zero
 ///          leaves the deque to its own default. Only priorities actually used pay this, so setting it
 ///          costs nothing on the levels a stream never uses.
+/// API reference: docs/Container/BoundedPriorityQueue/index.html
 template <typename T, std::size_t MaxPriority = 256, std::size_t BucketSizeHint = 0>
 class BoundedPriorityQueue final
 {
