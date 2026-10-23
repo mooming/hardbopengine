@@ -50,7 +50,6 @@
     <li><a href="size.html">Size</a></li>
     <li><a href="is-valid-index.html">IsValidIndex</a></li>
     <li><a href="clear.html">Clear</a></li>
-    <li><a href="resize.html">Resize</a></li>
     <li><a href="swap.html">Swap</a></li>
     <li><a href="get-index.html">GetIndex</a></li>
   </ul>
@@ -74,8 +73,8 @@
 
 <h2 id="signature">Signature</h2>
 
-<pre><code><span class="kw">template</span>&lt;<span class="kw">typename</span>... Types&gt;
-<span class="ty">Element</span>&amp; <span class="fn">Emplace</span>(<span class="ty">TIndex</span> index, Types&amp;&amp;... args) <span class="kw">noexcept</span>;</code></pre>
+<pre><code>template &lt;typename... Types&gt;
+	Element&amp; Emplace(TIndex index, Types&amp;&amp;... args) noexcept</code></pre>
 
 <h2 id="description">Function description</h2>
 
@@ -89,9 +88,9 @@
 
 <p>
   Because the new object is built in the storage the old one occupied, <strong>the element's address is
-  stable</strong>. This is the one mutating operation on <code>Array</code> that does not invalidate anything: a
-  pointer or reference to that slot still names the same address, now holding a different object. Contrast
-  <a href="resize.html"><code>Resize</code></a>, which moves every element and invalidates all of them.
+  stable</strong>. This is the one mutating operation on <code>Array</code>, and it invalidates nothing: the
+  array is fixed-capacity, so no operation relocates the buffer — a pointer or reference to that slot still
+  names the same address, now holding a different object.
 </p>
 
 <p>
@@ -107,7 +106,7 @@
   <code>FatalAssert(IsValidIndex(index))</code> is active in every configuration including Release, per
   <a href="../../Core/index.html#functions">Core: Debug</a>. An index that is one past the end — the natural
   mistake when <code>Emplace</code> is mistaken for a push — stops the process rather than growing the array.
-  Room is made with <a href="resize.html"><code>Resize</code></a> first, never by the call itself.
+  The capacity is chosen at construction and never grows.
 </div>
 
 <div class="gap">

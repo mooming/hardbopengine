@@ -50,7 +50,6 @@
     <li><a class="current" href="size.html">Size</a></li>
     <li><a href="is-valid-index.html">IsValidIndex</a></li>
     <li><a href="clear.html">Clear</a></li>
-    <li><a href="resize.html">Resize</a></li>
     <li><a href="swap.html">Swap</a></li>
     <li><a href="get-index.html">GetIndex</a></li>
   </ul>
@@ -74,7 +73,7 @@
 
 <h2 id="signature">Signature</h2>
 
-<pre><code>[[nodiscard]] <span class="ty">TIndex</span> <span class="fn">Size</span>() <span class="kw">const</span> <span class="kw">noexcept</span>;</code></pre>
+<pre><code>[[nodiscard]] TIndex Size() const noexcept</code></pre>
 
 <h2 id="description">Function description</h2>
 
@@ -84,9 +83,8 @@
 
 <p>
   <code>Array</code> has no <code>Capacity</code> to ask about, because the allocation is always exactly the
-  element count — see <a href="resize.html"><code>Resize</code></a> for what that costs and what it buys. Code
-  ported from <code>std::vector</code> that expected <code>size()</code> and <code>capacity()</code> to differ
-  finds only one number here.
+  element count. Code ported from <code>std::vector</code> that expected <code>size()</code> and
+  <code>capacity()</code> to differ finds only one number here.
 </p>
 
 <h2 id="parameters">Parameters</h2>
@@ -101,8 +99,8 @@
     <td><a href="index.html#properties"><code>TIndex</code></a> (<code>int</code>)</td>
     <td>
       Number of constructed elements, <code>0</code> for an array that holds nothing.
-      <code>[[nodiscard]]</code>, so throwing the call away is a compile error. A negative value means something
-      <a href="resize.html">resized the array to a negative count</a> — that is corruption, not an empty array
+      <code>[[nodiscard]]</code>, so throwing the call away is a compile error. A negative value is corruption
+      (<a href="constructors.html">constructors</a> documents how that state arises), not an empty array
     </td>
   </tr>
 </table>

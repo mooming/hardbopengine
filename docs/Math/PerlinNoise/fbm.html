@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PerlinNoise::Fbm — Math module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a class="current" href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Math</a> /
+  <a href="index.html">PerlinNoise</a> / Fbm
+</p>
+
+<h1><span class="fn">Fbm</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::PerlinNoise</span>
+  <span class="tag">Engine/Math/PerlinNoise.cpp</span>
+  fractal Brownian motion — octaves of Noise, normalized by the summed amplitude
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>[[nodiscard]] TReal Fbm(TReal x, TReal y, TReal z, TUInt octaves, TReal frequency = 1.0f, TReal lacunarity = 2.0f,
+							TReal gain = 0.5f) const noexcept</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>Defined in <code>Engine/Math/PerlinNoise.cpp</code> as <code>PerlinNoise::Fbm()</code>. Sums <code>amplitude * Noise(x·freq, y·freq, z·freq)</code> over <code>octaves</code> iterations, multiplying <code>freq</code> by <code>lacunarity</code> and <code>amplitude</code> by <code>gain</code> each octave, then divides by the summed amplitude. The normalization is the contract: the return stays inside a single <code>Noise</code> call's range no matter how many octaves — the <code>Fbm Normalisation</code> test pins it for octaves 1 through 6 — and zero octaves returns <code>0.0f</code> (the normalisation is zero, and the guard returns zero rather than dividing by it).</p>
+
+<h2 id="parameters">Parameters</h2>
+
+<table>
+  <tr><th>Parameter</th><th>Type</th><th>Requirement</th></tr>
+  <tr><td><code>x</code>, <code>y</code>, <code>z</code></td><td><code>TReal</code></td><td>The sample point.</td></tr>
+  <tr><td><code>octaves</code></td><td><code>TUInt</code></td><td>Octave count; zero returns zero.</td></tr>
+  <tr><td><code>frequency</code></td><td><code>TReal</code></td><td>First octave's frequency; defaults to 1.</td></tr>
+  <tr><td><code>lacunarity</code></td><td><code>TReal</code></td><td>Frequency multiplier per octave; defaults to 2.</td></tr>
+  <tr><td><code>gain</code></td><td><code>TReal</code></td><td>Amplitude multiplier per octave; defaults to 0.5.</td></tr>
+</table>
+
+<h2 id="return">Return value</h2>
+
+<table>
+  <tr><th>Type</th><th>What you get</th></tr>
+  <tr><td><code>TReal</code></td><td>The normalized fBm value, within a single <code>Noise</code> call's range.</td></tr>
+</table>
+
+<h2 id="example">Examples</h2>
+
+<pre><code>const float basic = noise.Noise(x, y, z);
+const float fbm = noise.Fbm(x, y, z, 5);</code></pre>
+<p class="meta">From Engine/Math/PerlinNoise.cpp, PerlinNoiseTest::Prepare() — the Range Bounds test</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; PerlinNoise</a></span>
+  <span><a href="index.html#methods">All PerlinNoise methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

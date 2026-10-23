@@ -50,7 +50,6 @@
     <li><a href="size.html">Size</a></li>
     <li><a class="current" href="is-valid-index.html">IsValidIndex</a></li>
     <li><a href="clear.html">Clear</a></li>
-    <li><a href="resize.html">Resize</a></li>
     <li><a href="swap.html">Swap</a></li>
     <li><a href="get-index.html">GetIndex</a></li>
   </ul>
@@ -74,7 +73,7 @@
 
 <h2 id="signature">Signature</h2>
 
-<pre><code>[[nodiscard]] <span class="kw">bool</span> <span class="fn">IsValidIndex</span>(<span class="ty">TIndex</span> index) <span class="kw">const</span> <span class="kw">noexcept</span>;</code></pre>
+<pre><code>[[nodiscard]] bool IsValidIndex(TIndex index) const noexcept</code></pre>
 
 <h2 id="description">Function description</h2>
 
@@ -90,8 +89,8 @@
   <code>int</code>. Against an unsigned index that test is trivially true and a negative value would be admitted
   as an enormous positive one; here a negative index is rejected on its own terms. It also means
   <code>IsValidIndex</code> answers <code>false</code> for every index, <code>0</code> included, when the array
-  has been <a href="resize.html">resized to a negative count</a> — the one case where "no valid index" is the
-  correct answer for the wrong reason.
+  has a negative length (<a href="constructors.html">constructors</a> documents how that state arises) — the one
+  case where "no valid index" is the correct answer for the wrong reason.
 </p>
 
 <div class="note">
@@ -161,8 +160,8 @@ the same test and returns a static <code>"Unknown"</code> string instead of inde
 
 <div class="gap">
   <strong>Checking and then indexing is only safe if nothing changes the array in between.</strong> A
-  successful <code>IsValidIndex</code> followed by a <a href="resize.html">shrink</a> or a
-  <a href="clear.html">clear</a> and then an <code>operator[]</code> reaches the assert anyway. The engine's own
+  successful <code>IsValidIndex</code> followed by a <a href="clear.html">clear</a> and then an
+  <code>operator[]</code> reaches the assert anyway. The engine's own
   header says this in as many words on <code>TaskSystem::HasStream</code>: the test "is not a lifetime guarantee
   across the call: a concurrent <code>JoinAndClear</code> can retire the stream between the test and the use." In
   a multi-threaded reader it is a diagnostic, not a lock.

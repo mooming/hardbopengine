@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Matrix2x2 — Math module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a class="current" href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This class</h3>
+  <ul>
+    <li><a href="#description">Class description</a></li>
+    <li><a href="#template">Template parameters</a></li>
+    <li><a href="#properties">Class properties</a></li>
+    <li><a href="#methods">Class methods</a></li>
+    <li><a href="#non-member">Non-member helper functions</a></li>
+    <li><a href="#coverage">Coverage</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Math</a> /
+  Matrix2x2
+</p>
+
+<h1>Matrix2x2</h1>
+<p class="subtitle">
+  <span class="tag">Engine/Math/Matrix2x2.h</span>
+  a 2-by-2 row-major matrix: identity by default, shared matrix arithmetic, and its own inverse, determinant and transpose
+</p>
+
+<h2 id="description">Class description</h2>
+
+<p>
+  <code>Matrix2x2</code> is a fixed 2-by-2 matrix stored row-major: <code>rows[row]</code> of
+  <code>Vector2</code>, aliased with a <code>TNumber m[2][2]</code> array, a flat
+  <code>std::array</code>, and named elements <code>m11</code>…<code>m22</code>. The shared arithmetic lives
+  in <code>Engine/Math/MatrixCommonImpl.inl</code>, included into the class body and shared with
+  <code>Matrix3x3</code> and <code>Matrix4x4</code>; the class adds the 2-by-2 inverse, determinant,
+  orthogonality test, and an in-place transpose.
+</p>
+
+<p>
+  The default constructor is the identity — <code>element{1, 0, 0, 1}</code> — which is why
+  <code>Identity</code> is defined as a default-constructed matrix and why the shared
+  <code>CreateDiagonal</code> can start from one. Vectors sit on the right of <code>operator*</code> and are
+  applied as column vectors: <code>result.a[i] = rows[i].Dot(v)</code>.
+</p>
+
+<div class="gap">
+  <strong>The named elements are <code>float</code>, whatever <code>TNumber</code> is.</strong> The union's
+  struct arm declares <code>float m11, m12, m21, m22;</code> — untemplated. For
+  <code>Matrix2x2&lt;float&gt;</code> (the only instantiation the engine builds) this is the same storage as
+  <code>m[2][2]</code>; for any wider <code>TNumber</code> the names would read 32-bit slices of 64-bit
+  elements. <code>Inverse()</code> and <code>Determinant()</code> compute through these names.
+</div>
+
+<table>
+  <tr><th>Piece</th><th>What it is</th><th>Where the contract lives</th></tr>
+  <tr><td>Storage</td><td><code>rows[row]</code>, <code>m</code>, <code>element</code>,
+      <code>m11</code>…<code>m22</code> — one storage, four views</td>
+      <td><a href="#properties">Class properties</a></td></tr>
+  <tr><td>Named constants</td><td><code>Zero</code>, <code>Identity</code></td>
+      <td><a href="#properties">Class properties</a></td></tr>
+  <tr><td>Shared arithmetic</td><td>The <code>MatrixCommonImpl.inl</code> surface: products, equality,
+      diagonal factory, transpose, column gather</td><td><a href="#methods">Class methods</a></td></tr>
+  <tr><td>2×2 members</td><td><code>Inverse</code>, <code>Transpse</code>, <code>Determinant</code>,
+      <code>IsOrthogonal</code></td><td><a href="#methods">Class methods</a></td></tr>
+</table>
+
+<h2 id="template">Template parameters</h2>
+
+<table>
+  <tr><th>Parameter</th><th>Kind</th><th>What it must satisfy</th></tr>
+  <tr>
+    <td><code>TNumber</code></td>
+    <td><code>typename</code></td>
+    <td>
+      The element type. The engine instantiates <code>float</code> only (<code>TFloat2x2</code>), and the
+      named-element struct arm is <code>float</code> regardless — see the note above. The shared
+      implementation compares through <code>MathUtil</code>'s <code>float</code> tolerances
+    </td>
+  </tr>
+</table>
+
+<h2 id="properties">Class properties</h2>
+
+<table>
+  <tr><th>Type + Name</th><th>Default Value</th><th>Description</th></tr>
+  <tr><td><code>using This = Matrix2x2;</code> <span class="badge">member type</span></td>
+      <td><span class="muted">not applicable</span></td>
+      <td>The class's own name, as the shared implementation writes it.</td></tr>
+  <tr><td><code>using TVec = Vector2&lt;TNumber&gt;;</code> <span class="badge">member type</span></td>
+      <td><span class="muted">not applicable</span></td>
+      <td>The row and column vector type this matrix multiplies.</td></tr>
+  <tr><td><code>constexpr static int row = 2;</code> <span class="badge">public</span></td>
+      <td><code>2</code></td>
+      <td>Row count; the loop bound of the shared implementation.</td></tr>
+  <tr><td><code>constexpr static int column = 2;</code> <span class="badge">public</span></td>
+      <td><code>2</code></td>
+      <td>Column count.</td></tr>
+  <tr><td><code>constexpr static int numberOfElements = row * column;</code> <span class="badge">public</span></td>
+      <td><code>4</code></td>
+      <td>Size of the flat <code>std::array</code> view.</td></tr>
+  <tr><td><code>const static This Zero;</code> <span class="badge">public</span></td>
+      <td><code>({0, 0, 0, 0})</code></td>
+      <td>All elements zero, built through the array constructor.</td></tr>
+  <tr><td><code>const static This Identity;</code> <span class="badge">public</span></td>
+      <td><code>Matrix2x2()</code> — <code>{1, 0, 0, 1}</code></td>
+      <td>The default-constructed identity.</td></tr>
+  <tr><td><code>TVec rows[row];</code> <span class="badge">public</span></td>
+      <td><span class="muted">none in the header</span></td>
+      <td>The row vectors — what <code>Multiply</code>, <code>Column</code> and
+        <code>IsOrthogonal</code> read.</td></tr>
+  <tr><td><code>TNumber m[row][column];</code> <span class="badge">public</span></td>
+      <td><span class="muted">none in the header</span></td>
+      <td>The two-dimensional view; <code>m[i][j]</code> is row <code>i</code>, column <code>j</code>
+        (row-major).</td></tr>
+  <tr><td><code>std::array&lt;TNumber, numberOfElements&gt; element;</code> <span class="badge">public</span></td>
+      <td><span class="muted">none in the header</span></td>
+      <td>The flat view the constructors and the scalar <code>Multiply</code> walk.</td></tr>
+  <tr><td><code>float m11, m12;</code> <span class="badge">public</span></td>
+      <td><span class="muted">none in the header</span></td>
+      <td>Named first-row elements — declared <code>float</code> regardless of <code>TNumber</code>; see the
+        description.</td></tr>
+  <tr><td><code>float m21, m22;</code> <span class="badge">public</span></td>
+      <td><span class="muted">none in the header</span></td>
+      <td>Named second-row elements — declared <code>float</code> regardless of <code>TNumber</code>.</td></tr>
+</table>
+
+<h2 id="methods">Class methods</h2>
+
+<table class="methods">
+  <tr><th>Name</th><th>Signature</th><th>What a caller depends on</th></tr>
+  <tr><td><a href="constructors.html"><code>constructors</code></a><span class="badge">3 overloads</span></td>
+      <td class="sig">Matrix2x2() noexcept<br>explicit Matrix2x2(std::nullptr_t) noexcept<br>explicit Matrix2x2(std::array&lt;TNumber, numberOfElements&gt;&amp;&amp; values) noexcept</td>
+      <td>The default form is the identity; the <code>nullptr</code> form initializes nothing; the array form
+        takes four elements in row-major order.</td></tr>
+  <tr><td><a href="inverse.html"><code>Inverse</code></a></td>
+      <td class="sig">[[nodiscard]] This Inverse() const noexcept</td>
+      <td>The adjugate over the determinant, with <code>FatalAssert(det != 0)</code> — a singular matrix
+        terminates, in every build.</td></tr>
+  <tr><td><a href="transpse.html"><code>Transpse</code></a></td>
+      <td class="sig">void Transpse() noexcept</td>
+      <td>Swaps <code>m12</code> and <code>m21</code> in place. Spelled as declared — the
+        copy-returning transpose is <code>Transposed</code>.</td></tr>
+  <tr><td><a href="determinant.html"><code>Determinant</code></a></td>
+      <td class="sig">[[nodiscard]] TNumber Determinant() const noexcept</td>
+      <td><code>m11*m22 - m12*m21</code>, read through the <code>float</code> named elements.</td></tr>
+  <tr><td><a href="is-orthogonal.html"><code>IsOrthogonal</code></a></td>
+      <td class="sig">[[nodiscard]] bool IsOrthogonal() const noexcept</td>
+      <td>Rows mutually orthogonal (dot products <code>IsZero</code>) and each unit
+        (<code>IsUnity</code>) — the precondition <code>Quaternion</code>'s matrix constructor
+        demands.</td></tr>
+  <tr><td><a href="create-diagonal.html"><code>CreateDiagonal</code></a><span class="badge">2 overloads</span></td>
+      <td class="sig">[[nodiscard]] static This CreateDiagonal(const TNumber diagonal) noexcept<br>[[nodiscard]] static This CreateDiagonal(const TVec&amp; diagonal) noexcept</td>
+      <td>A diagonal matrix with zeros elsewhere; scalar puts one value on every diagonal entry.</td></tr>
+  <tr><td><a href="operator-multiply.html"><code>operator*</code></a><span class="badge">2 overloads</span></td>
+      <td class="sig">[[nodiscard]] This operator*(const This&amp; rhs) const noexcept<br>[[nodiscard]] TVec operator*(const TVec&amp; rhs) const noexcept</td>
+      <td>Row-major product; the vector sits on the right and is applied as a column vector.</td></tr>
+  <tr><td><a href="operator-equal.html"><code>operator==</code></a></td>
+      <td class="sig">[[nodiscard]] bool operator==(const This&amp; rhs) const noexcept</td>
+      <td>Per-row tolerance equality within <code>Epsilon</code>.</td></tr>
+  <tr><td><a href="operator-not-equal.html"><code>operator!=</code></a></td>
+      <td class="sig">[[nodiscard]] bool operator!=(const This&amp; rhs) const noexcept</td>
+      <td>The negation of the tolerance equality.</td></tr>
+  <tr><td><a href="is-invertible.html"><code>IsInvertible</code></a></td>
+      <td class="sig">[[nodiscard]] bool IsInvertible() const noexcept</td>
+      <td>Determinant exactly non-zero — no tolerance.</td></tr>
+  <tr><td><a href="is-identity.html"><code>IsIdentity</code></a></td>
+      <td class="sig">[[nodiscard]] bool IsIdentity() const noexcept</td>
+      <td>Off-diagonals <code>IsZero</code>, diagonals <code>IsEqual(…, 1.0f)</code> — float
+        tolerances.</td></tr>
+  <tr><td><a href="transposed.html"><code>Transposed</code></a></td>
+      <td class="sig">[[nodiscard]] This Transposed() const noexcept</td>
+      <td>A transposed copy; the original untouched.</td></tr>
+  <tr><td><a href="multiply.html"><code>Multiply</code></a><span class="badge">3 overloads</span></td>
+      <td class="sig">[[nodiscard]] This Multiply(const TNumber value) const noexcept<br>[[nodiscard]] This Multiply(const This&amp; rhs) const noexcept<br>[[nodiscard]] TVec Multiply(const TVec&amp; rhs) const noexcept</td>
+      <td>Scale (with a NaN guard), row-major product, or column-vector application — all returning
+        copies.</td></tr>
+  <tr><td><a href="column.html"><code>Column</code></a></td>
+      <td class="sig">[[nodiscard]] TVec Column(int index) const noexcept</td>
+      <td>Gathers column <code>index</code> into a vector; index asserted in range in Debug and
+        Dev.</td></tr>
+</table>
+
+<h2 id="non-member">Non-member helper functions</h2>
+
+<table>
+  <tr><th>Name</th><th>Signature</th><th>What a caller depends on</th></tr>
+  <tr><td><code>operator&lt;&lt;</code></td>
+      <td class="sig">template &lt;typename T&gt; std::ostream&amp; operator&lt;&lt;(std::ostream&amp; os, const Matrix2x2&lt;T&gt;&amp; mat) noexcept</td>
+      <td>Prints <code>"Matrix 2x2"</code> and the rows, comma-separated. Bound to <code>std::ostream</code>,
+        unlike the vector stream operators, which take any stream type.</td></tr>
+</table>
+
+<h2 id="coverage">Coverage</h2>
+
+<table>
+  <tr><th>Gap</th><th>Detail</th></tr>
+  <tr>
+    <td>Shared-implementation methods documented from the <code>.inl</code></td>
+    <td>Every method above except <code>constructors</code>, <code>Inverse</code>,
+      <code>Transpse</code>, <code>Determinant</code> and <code>IsOrthogonal</code> is declared in
+      <code>Engine/Math/MatrixCommonImpl.inl</code>, included into the class body. Their pages cite the
+      <code>.inl</code> as the definition site; <code>docs_pass.py signatures</code> verifies them against a
+      header with the <code>.inl</code> inlined, because the checker reads the <code>.h</code> alone.</td>
+  </tr>
+  <tr>
+    <td>No caller, no test fixture</td>
+    <td><code>Matrix2x2.h</code> is included by <code>Matrix3x3.h</code> and <code>Matrix4x4.h</code>, and
+      <code>Matrix2x2.cpp</code> only instantiates <code>Matrix2x2&lt;float&gt;</code>. The header declares no
+      test collection and no code in <code>Engine/</code> or <code>Applications/</code> outside
+      <code>Engine/Math/</code> uses the type. Every example on the method pages is therefore
+      illustrative.</td>
+  </tr>
+  <tr>
+    <td>The <code>Transpse</code> spelling</td>
+    <td>The header declares the in-place transpose as <code>Transpse</code> — as written. The correctly
+      spelled <code>Transposed()</code> comes from the shared implementation and returns a copy; there is no
+      in-place <code>Transpose()</code> on this class.</td>
+  </tr>
+</table>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; Matrix2x2</a></span>
+  <span><a href="index.html#methods">All Matrix2x2 methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

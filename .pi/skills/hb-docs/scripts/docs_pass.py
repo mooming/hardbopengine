@@ -89,6 +89,12 @@ def declarations(header, cls):
     one destructor in a class with six members.
     """
     src = strip_comments(open(header, encoding='utf-8').read())
+    # Expand the in-class `.inl` include in place: the fragment's members belong to the class that
+    # includes it — exactly how `docs_methods.py` reads them from the AST — and a text parser that
+    # leaves the directive in place reports every shared-impl method as NOT IN HEADER.
+    src = re.sub(r'#include\s*"([^"]+\.inl)"',
+                 lambda m: open(os.path.join(os.path.dirname(os.path.abspath(header)), m.group(1)),
+                                encoding='utf-8').read(), src)
     # `class` or `struct`, and anything the name may wear in between: `struct TaskID final` and
     # `class alignas(std::uint64_t) ResultPacket final` are both declarations of the entry being asked about,
     # and a literal `class <name>` search finds neither and reads the whole header as one declaration.
@@ -142,9 +148,11 @@ def declarations(header, cls):
         # page — the same shape the operator search below exists to catch. A friend declaration without a
         # parenthesis is a class friendship and is dropped by the paren test above.
         # `operator<(` has no identifier before its parenthesis, so the plain-name pattern finds nothing
-        # and an operator's declaration silently owns no page.
-        operator = re.search(r'\boperator\s*([^\s(]+)\s*\(', text)
-        name = 'operator' + operator.group(1) if operator else None
+        # and an operator's declaration silently owns no page. `operator()` is the sharper case: the
+        # parenthesis pair IS the operator's spelling, so the group must admit an empty-ish match —
+        # the alternation `\(\)` captures it where `[^(]+` cannot.
+        operator = re.search(r'\boperator\s*(\(\)|[^\s(]+)?\s*\(', text)
+        name = ('operator' + operator.group(1)) if (operator and operator.group(1)) else None
         if name is None:
             match = re.search(r'([A-Za-z_~]\w*)\s*\(', text)
             name = match.group(1) if match else None

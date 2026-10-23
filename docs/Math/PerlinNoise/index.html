@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PerlinNoise — Math module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a class="current" href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This class</h3>
+  <ul>
+    <li><a href="#description">Class description</a></li>
+    <li><a href="#template">Template parameters</a></li>
+    <li><a href="#properties">Class properties</a></li>
+    <li><a href="#methods">Class methods</a></li>
+    <li><a href="#non-member">Non-member helper functions</a></li>
+    <li><a href="#coverage">Coverage</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Math</a> /
+  PerlinNoise
+</p>
+
+<h1>PerlinNoise</h1>
+<p class="subtitle">
+  <span class="tag">Engine/Math/PerlinNoise.h</span>
+  deterministic 3D gradient noise with fractal Brownian motion, seeded by a specified shuffle
+</p>
+
+<h2 id="description">Class description</h2>
+
+<p>
+  <code>PerlinNoise</code> is deterministic 3D gradient noise — Ken Perlin's "improved noise" — with fractal
+  Brownian motion on top. The permutation table is shuffled by an explicitly specified generator: a
+  golden-ratio counter fed through the Murmur3 finalizer, driving a hand-written Fisher-Yates pass over the
+  256 entries. Nothing uses <code>std::shuffle</code>, whose algorithm the standard leaves unspecified — a
+  voxel terrain generated from a seed has to come out identical on every platform and compiler, and the
+  <code>Noise Determinism</code> test pins that: same seed, identical field; different seed, different
+  field.
+</p>
+
+<p>
+  Two properties are load bearing and pinned by unit tests:
+</p>
+
+<table>
+  <tr><th>Property</th><th>What the tests pin</th></tr>
+  <tr>
+    <td>Zero at the lattice</td>
+    <td><a href="noise.html"><code>Noise</code></a> is exactly <code>0.0f</code> at every integer
+      coordinate — the <code>Lattice Zeros</code> test walks a 9×9×9 block around the origin and demands not
+      one non-zero value</td>
+  </tr>
+  <tr>
+    <td>Bounded output</td>
+    <td><code>Noise</code> never leaves <code>[-1, 1]</code>; the true bound is about ±0.87. The
+      <code>Range Bounds</code> test samples negative coordinates and coordinates past the table period and
+      demands finite values within the bound — for <code>Noise</code> and
+      <a href="fbm.html"><code>Fbm</code></a> alike</td>
+  </tr>
+</table>
+
+<p>
+  A third test pins <a href="noise.html"><code>Noise</code></a>'s continuity — the largest single-step jump
+  over 2000 steps of 0.02 must stay small, which is what catches a wrong fade or a seam at the table
+  period.
+</p>
+
+<table>
+  <tr><th>Piece</th><th>What it is</th><th>Where the contract lives</th></tr>
+  <tr><td>State</td><td><code>seed</code>, <code>randomState</code>, and the doubled permutation table
+      <code>p</code></td><td><a href="#properties">Class properties</a></td></tr>
+  <tr><td>Public surface</td><td><code>Noise</code>, <code>Fbm</code>, <code>GetSeed</code>, the
+      constructor</td><td><a href="#methods">Class methods</a></td></tr>
+  <tr><td>Internals</td><td><code>Grad</code>, <code>Fade</code>, <code>Lerp</code>, <code>At</code>,
+      <code>NextRandom</code> — private, one page each</td><td><a href="#methods">Class methods</a></td></tr>
+</table>
+
+<h2 id="template">Template parameters</h2>
+
+<p><code>PerlinNoise</code> is not a template. Its scalars are the engine-wide typedefs from
+<code>Core/Types.h</code>: <code>TUInt</code>, <code>TByte</code> and <code>TReal</code>.</p>
+
+<h2 id="properties">Class properties</h2>
+
+<table>
+  <tr><th>Type + Name</th><th>Default Value</th><th>Description</th></tr>
+  <tr><td><code>static constexpr TUInt permutationMask = 255;</code> <span class="badge">public</span></td>
+      <td><code>255</code></td>
+      <td>The table period — coordinates are masked with it, and it sizes the table.</td></tr>
+  <tr><td><code>TUInt seed = 0;</code> <span class="badge">private</span></td>
+      <td><code>0</code></td>
+      <td>The seed the instance was built with; <code>GetSeed</code> reports it and nothing else reads
+        it.</td></tr>
+  <tr><td><code>TUInt randomState = 0;</code> <span class="badge">private</span></td>
+      <td><code>0</code></td>
+      <td>The generator's counter, seeded from <code>seed</code> and consumed by the shuffle — kept separate
+        so <code>GetSeed</code> stays reportable while shuffling consumes state.</td></tr>
+  <tr><td><code>std::array&lt;TByte, (permutationMask + 1) * 2&gt; p = {};</code> <span class="badge">private</span></td>
+      <td><code>{}</code></td>
+      <td>The doubled permutation table: 512 bytes. Only the low half is shuffled; the high half repeats it
+        so <code>At</code>'s lookups never need a mask.</td></tr>
+</table>
+
+<h2 id="methods">Class methods</h2>
+
+<table class="methods">
+  <tr><th>Name</th><th>Signature</th><th>What a caller depends on</th></tr>
+  <tr><td><a href="constructors.html"><code>constructors</code></a></td>
+      <td class="sig">explicit PerlinNoise(TUInt seed = 0) noexcept</td>
+      <td>Builds the permutation table deterministically from the seed — identity fill, Fisher-Yates with
+        the instance's own generator, then the doubling pass. Same seed, same table.</td></tr>
+  <tr><td><a href="noise.html"><code>Noise</code></a></td>
+      <td class="sig">[[nodiscard]] TReal Noise(TReal x, TReal y, TReal z) const noexcept</td>
+      <td>The noise value at a point — exactly zero at integer coordinates, bounded to
+        <code>[-1, 1]</code>.</td></tr>
+  <tr><td><a href="fbm.html"><code>Fbm</code></a></td>
+      <td class="sig">[[nodiscard]] TReal Fbm(TReal x, TReal y, TReal z, TUInt octaves, TReal frequency = 1.0f, TReal lacunarity = 2.0f, TReal gain = 0.5f) const noexcept</td>
+      <td>Octaves of <code>Noise</code> normalized by the summed amplitude, so the result stays in a single
+        <code>Noise</code> call's range regardless of octave count; zero octaves returns zero.</td></tr>
+  <tr><td><a href="get-seed.html"><code>GetSeed</code></a></td>
+      <td class="sig">[[nodiscard]] TUInt GetSeed() const noexcept</td>
+      <td>The seed the instance was constructed with — unaffected by the shuffle.</td></tr>
+  <tr><td><a href="grad.html"><code>Grad</code></a><span class="badge">private</span></td>
+      <td class="sig">static TReal Grad(TUInt hash, TReal x, TReal y, TReal z) noexcept</td>
+      <td>Perlin's reference gradient selection over <code>hash &amp; 15</code> — including the reference's
+        own duplicated cases.</td></tr>
+  <tr><td><a href="fade.html"><code>Fade</code></a><span class="badge">private</span></td>
+      <td class="sig">static TReal Fade(TReal t) noexcept</td>
+      <td>The quintic fade <code>t³(t(6t−15)+10)</code> — what makes the lattice zeros exact and the field
+        C1 continuous.</td></tr>
+  <tr><td><a href="lerp.html"><code>Lerp</code></a><span class="badge">private</span></td>
+      <td class="sig">static TReal Lerp(TReal t, TReal a, TReal b) noexcept</td>
+      <td><code>a + t * (b - a)</code> — the scalar blend the corner interpolation is built from; unrelated
+        to the vector classes' <code>Lerp</code>.</td></tr>
+  <tr><td><a href="at.html"><code>At</code></a><span class="badge">private</span></td>
+      <td class="sig">TUInt At(TUInt x, TUInt y, TUInt z) const noexcept</td>
+      <td>The double-permutation lookup <code>p[p[p[x] + y] + z]</code>, already masked and offset by the
+        caller.</td></tr>
+  <tr><td><a href="next-random.html"><code>NextRandom</code></a><span class="badge">private</span></td>
+      <td class="sig">TUInt NextRandom() noexcept</td>
+      <td>The golden-ratio counter plus Murmur3 finalizer — arithmetic specified down to the constants, so
+        the shuffle cannot drift between platforms.</td></tr>
+</table>
+
+<h2 id="non-member">Non-member helper functions</h2>
+
+<p>None. <code>PerlinNoise.h</code> declares the class and, under <code>TEST_ENABLED</code>, the test
+collection — nothing at namespace scope in between.</p>
+
+<h2 id="coverage">Coverage</h2>
+
+<table>
+  <tr><th>Gap</th><th>Detail</th></tr>
+  <tr>
+    <td>Definitions live in the <code>.cpp</code></td>
+    <td>The constructor, <code>Noise</code>, <code>Fbm</code>, <code>Grad</code> and
+      <code>NextRandom</code> are defined in <code>Engine/Math/PerlinNoise.cpp</code>; their pages cite it.
+      <code>GetSeed</code>, <code>Fade</code>, <code>Lerp</code> and <code>At</code> are defined in the
+      header.</td>
+  </tr>
+  <tr>
+    <td>The pinned properties</td>
+    <td>Stated in the description with the test names that pin them — <code>Lattice Zeros</code>,
+      <code>Range Bounds</code>, <code>Noise Determinism</code>, <code>Continuity</code>,
+      <code>Fbm Normalisation</code> — all in <code>Engine/Math/PerlinNoise.cpp</code> under
+      <code>TEST_ENABLED</code>.</td>
+  </tr>
+  <tr>
+    <td>Callers outside the module</td>
+    <td>None found in <code>Engine/</code> outside <code>Engine/Math/</code> or in
+      <code>Applications/</code>; the fixture above is the only exerciser.</td>
+  </tr>
+</table>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; PerlinNoise</a></span>
+  <span><a href="index.html#methods">All PerlinNoise methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

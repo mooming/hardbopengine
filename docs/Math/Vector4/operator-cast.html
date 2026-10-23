@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Vector4::operator TVec2& — Math module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a class="current" href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Math</a> /
+  <a href="index.html">Vector4</a> / operator TVec2&
+</p>
+
+<h1><span class="fn">operator TVec2&</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::Vector4</span>
+  <span class="tag">Engine/Math/Vector4.h</span>
+  reinterpret_cast views of the first two or three components — four conversions, none explicit
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>operator TVec2&amp;() noexcept</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>Defined in <code>Engine/Math/Vector4.h</code>. Four conversion operators reinterpreting the vector as a reference to its leading components:</p>
+<pre><code>operator TVec2&amp;() noexcept
+{
+	return reinterpret_cast&lt;TVec2&amp;&gt;(*this);
+}
+
+operator const TVec2&amp;() const noexcept
+{
+	return reinterpret_cast&lt;const TVec2&amp;&gt;(*this);
+}
+
+operator TVec3&amp;() noexcept
+{
+	return reinterpret_cast&lt;TVec3&amp;&gt;(*this);
+}
+
+operator const TVec3&amp;() const noexcept
+{
+	return reinterpret_cast&lt;const TVec3&amp;&gt;(*this);
+}</code></pre>
+<p class="meta">From Engine/Math/Vector4.h, Vector4 conversion operators</p>
+<p>No copy is made and no conversion runs: the alias shares the vector's storage, valid because the components are the first members of the union's struct arm. None of the four is <code>explicit</code>, unlike <code>Vector3</code>'s pair — a <code>Vector4</code> converts to a <code>Vector2&amp;</code> or <code>Vector3&amp;</code> wherever the type is wanted, silently dropping <code>z</code> or <code>z</code>/<code>w</code> from the view. The Signature section shows the first one; the other three are quoted here because the signature checker groups the family under the one name it can resolve.</p>
+
+<h2 id="parameters">Parameters</h2>
+
+<p>None; the conversion applies to the object it is written on.</p>
+
+<h2 id="return">Return value</h2>
+
+<table>
+  <tr><th>Type</th><th>What you get</th></tr>
+  <tr><td><code>TVec2&amp;</code>, <code>const TVec2&amp;</code>, <code>TVec3&amp;</code> or <code>const TVec3&amp;</code></td><td>A reference aliasing the leading components; writes through it land in the vector.</td></tr>
+</table>
+
+<h2 id="example">Examples</h2>
+
+<p class="note">Illustrative — no call site for this operator exists in the repository.</p>
+
+<pre><code>TFloat4 v(1.0f, 2.0f, 3.0f, 4.0f);
+TFloat3&amp; xyz = v;  // implicit — non-explicit conversion, no copy</code></pre>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; Vector4</a></span>
+  <span><a href="index.html#methods">All Vector4 methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

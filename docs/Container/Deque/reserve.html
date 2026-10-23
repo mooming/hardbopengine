@@ -95,8 +95,7 @@
 <div class="gap">
   <strong>It cannot shrink, and a failed allocation is not checked.</strong> A request at or below the current capacity
   returns without doing anything, so unused capacity can never be handed back except by destroying the deque; and the
-  allocation result is written through immediately, so a null return is a crash rather than a no-op — unlike
-  <a href="../Array/resize.html"><code>Array::Resize</code></a>, which tests the pointer and keeps its old state. Every
+  allocation result is written through immediately, so a null return is a crash rather than a no-op. Every
   pointer, reference and iterator into the deque is invalidated by a reserve that does anything, because the elements are
   moved into a new buffer.
 </div>

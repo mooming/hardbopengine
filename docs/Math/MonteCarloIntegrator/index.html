@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MonteCarloIntegrator — Math module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a class="current" href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This class</h3>
+  <ul>
+    <li><a href="#description">Class description</a></li>
+    <li><a href="#template">Template parameters</a></li>
+    <li><a href="#properties">Class properties</a></li>
+    <li><a href="#methods">Class methods</a></li>
+    <li><a href="#non-member">Non-member helper functions</a></li>
+    <li><a href="#coverage">Coverage</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Math</a> /
+  MonteCarloIntegrator
+</p>
+
+<h1>MonteCarloIntegrator</h1>
+<p class="subtitle">
+  <span class="tag">Engine/Math/MonteCarloIntegrator.h</span>
+  a stateless callable: the importance-sampled mean of f(x)/p(x), averaged over draws
+</p>
+
+<h2 id="description">Class description</h2>
+
+<p>
+  <code>MonteCarloIntegrator</code> is a stateless callable for importance-sampled integration: it holds no
+  data and exists so <code>Integrator(result, f, p, sample, numIterations)</code> reads as a function call.
+  The estimate it computes is the mean of <code>f(x) / p(x)</code> over <code>numIterations</code> draws of
+  <code>sample()</code> — the standard Monte Carlo estimator of the integral of <code>f</code> under the
+  probability density <code>p</code>. The "Calculate Pi" test in
+  <code>Engine/Math/MonteCarloIntegrator.cpp</code> integrates the unit-disk indicator under a uniform
+  density and averages repeated runs, reporting the mean and standard deviation.
+</p>
+
+<p>
+  Failure is a return value, not an exception: the member returns <code>false</code> when
+  <code>numIterations</code> is not positive or any draw's density is not positive — in both cases
+  <code>result</code> has already been zeroed, so a failed call leaves a defined zero.
+</p>
+
+<table>
+  <tr><th>Piece</th><th>What it is</th><th>Where the contract lives</th></tr>
+  <tr><td>State</td><td>None — the class holds no data members</td>
+      <td><a href="#properties">Class properties</a></td></tr>
+  <tr><td>The estimator</td><td><code>operator()</code>, the only member</td>
+      <td><a href="#methods">Class methods</a></td></tr>
+</table>
+
+<h2 id="template">Template parameters</h2>
+
+<table>
+  <tr><th>Parameter</th><th>Kind</th><th>What it must satisfy</th></tr>
+  <tr>
+    <td><code>TInput</code></td>
+    <td><code>typename</code>, defaults to <code>double</code></td>
+    <td>The sample type <code>sample()</code> returns and <code>f</code>/<code>p</code> take by const
+      reference</td>
+  </tr>
+  <tr>
+    <td><code>TOutput</code></td>
+    <td><code>typename</code>, defaults to <code>double</code></td>
+    <td>The result type — what <code>f</code> returns and <code>result</code> accumulates; must support
+      <code>+=</code> and division by <code>TInteger</code></td>
+  </tr>
+  <tr>
+    <td><code>TReal</code></td>
+    <td><code>typename</code>, defaults to <code>double</code></td>
+    <td>The density's return type; <code>static_assert</code> requires a floating-point type</td>
+  </tr>
+  <tr>
+    <td><code>TInteger</code></td>
+    <td><code>typename</code>, defaults to <code>uint32_t</code></td>
+    <td>The iteration count type; <code>static_assert</code> requires an integral type</td>
+  </tr>
+</table>
+
+<h2 id="properties">Class properties</h2>
+
+<p>None. The class declares no data members — it is a callable wrapper around one loop.</p>
+
+<h2 id="methods">Class methods</h2>
+
+<table class="methods">
+  <tr><th>Name</th><th>Signature</th><th>What a caller depends on</th></tr>
+  <tr><td><a href="operator-call.html"><code>operator()</code></a></td>
+      <td class="sig">template &lt;typename TFunction, typename TPDF, typename TRandomGen&gt;<br>[[nodiscard]] bool operator()(TOutput&amp; result, const TFunction&amp; f, const TPDF&amp; p, const TRandomGen&amp; sample, const TInteger numIterations) noexcept</td>
+      <td>Zeros <code>result</code> first; returns <code>false</code> for a non-positive iteration count or a
+        non-positive density on any draw, otherwise the mean of <code>f(x)/p(x)</code>.</td></tr>
+</table>
+
+<h2 id="non-member">Non-member helper functions</h2>
+
+<p>None. <code>MonteCarloIntegrator.h</code> declares the class and, under <code>TEST_ENABLED</code>, the
+test collection — nothing at namespace scope in between.</p>
+
+<h2 id="coverage">Coverage</h2>
+
+<table>
+  <tr><th>Gap</th><th>Detail</th></tr>
+  <tr>
+    <td>The defaulted constructor and destructor</td>
+    <td>Both are <code>= default</code> and own no page — a defaulted special member has no behavior of its
+      own.</td>
+  </tr>
+  <tr>
+    <td>The <code>operator-call</code> page's signature check</td>
+    <td><code>docs_pass.py signatures</code> resolves the page's stem to the name <code>operator()</code>,
+      while its parser groups the declaration under <code>operator</code> — so the checker reports
+      <code>NOT IN HEADER</code> for this one page regardless of content. The Signature section was verified
+      byte-identical to the header by hand.</td>
+  </tr>
+  <tr>
+    <td>Callers outside the module</td>
+    <td>None found in <code>Engine/</code> outside <code>Engine/Math/</code> or in
+      <code>Applications/</code>. The <code>MonteCarloIntegrationTest</code> fixture is registered in
+      <code>Engine/Test/UnitTestCollection.cpp</code> and defined in
+      <code>Engine/Math/MonteCarloIntegrator.cpp</code>.</td>
+  </tr>
+</table>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; MonteCarloIntegrator</a></span>
+  <span><a href="index.html#methods">All MonteCarloIntegrator methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

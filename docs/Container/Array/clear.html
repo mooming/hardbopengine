@@ -50,7 +50,6 @@
     <li><a href="size.html">Size</a></li>
     <li><a href="is-valid-index.html">IsValidIndex</a></li>
     <li><a class="current" href="clear.html">Clear</a></li>
-    <li><a href="resize.html">Resize</a></li>
     <li><a href="swap.html">Swap</a></li>
     <li><a href="get-index.html">GetIndex</a></li>
   </ul>
@@ -74,7 +73,7 @@
 
 <h2 id="signature">Signature</h2>
 
-<pre><code><span class="kw">void</span> <span class="fn">Clear</span>() <span class="kw">noexcept</span>;</code></pre>
+<pre><code>void Clear() noexcept</code></pre>
 
 <h2 id="description">Function description</h2>
 
@@ -93,8 +92,8 @@
   <code>Capacity()</code> unchanged, while <code>Array::Clear</code> drops the allocation entirely, because for
   this container the allocation and the element count are the same number. Refilling an array after a clear
   therefore costs a fresh allocation plus a full construction pass; if the intent is "empty it but keep the room",
-  the container that wants that job is <code>Vector</code>, or an <a href="resize.html">explicit resize</a> back
-  up to the size you still want.
+  the container that wants that job is <a href="../Vector/index.html"><code>Vector</code></a>, whose capacity
+  survives its <a href="../Vector/clear.html"><code>Clear</code></a>.
 </p>
 
 <div class="gap">

@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ImportanceResampling — Math module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a class="current" href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This class</h3>
+  <ul>
+    <li><a href="#description">Class description</a></li>
+    <li><a href="#template">Template parameters</a></li>
+    <li><a href="#properties">Class properties</a></li>
+    <li><a href="#methods">Class methods</a></li>
+    <li><a href="#non-member">Non-member helper functions</a></li>
+    <li><a href="#coverage">Coverage</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Math</a> /
+  ImportanceResampling
+</p>
+
+<h1>ImportanceResampling</h1>
+<p class="subtitle">
+  <span class="tag">Engine/Math/ImportanceResampling.h</span>
+  importance resampling for Monte Carlo integration: draw and weight, then pick, perturb and average
+</p>
+
+<h2 id="description">Class description</h2>
+
+<p>
+  <code>ImportanceResampling</code> is importance resampling for Monte Carlo integration, in two stages.
+  <a href="resample.html"><code>Resample</code></a> draws source samples, weights each by
+  <code>norm(f(x) / p(x))</code> — the magnitude of the integrand over the source density — and accumulates
+  them with their normalized weights. <a href="integrate.html"><code>Integrate</code></a> then runs the
+  actual estimate: pick a stored sample by its normalized weight through a discrete sampler, perturb it by a
+  uniform sampler, and average <code>f(x) / q(x)</code> over the iterations. The result is an estimate built
+  from more equally weighted samples than raw importance sampling gives — the "Calculate Pi"-style tests in
+  <code>Engine/Math/ImportanceSampling.cpp</code> drive both stages and compare them against a plain
+  <code>MonteCarloIntegrator</code> run.
+</p>
+
+<p>
+  All three sample stores are public-readable through the <code>Get*</code> members and are ordinary engine
+  <code>HVector</code>s: <a href="clear-resampled-data.html"><code>ClearResampledData</code></a> empties
+  their contents and <a href="reset.html"><code>Reset</code></a> releases their buffers by swapping with
+  fresh vectors.
+</p>
+
+<table>
+  <tr><th>Piece</th><th>What it is</th><th>Where the contract lives</th></tr>
+  <tr><td>State</td><td><code>totalWeight</code>, <code>weights</code>, <code>samples</code>,
+      <code>normalizedWeights</code></td><td><a href="#properties">Class properties</a></td></tr>
+  <tr><td>Resampling stage</td><td><code>Resample</code> — draw, weight, accumulate</td>
+      <td><a href="#methods">Class methods</a></td></tr>
+  <tr><td>Integration stage</td><td><code>Integrate</code> — pick, perturb, average</td>
+      <td><a href="#methods">Class methods</a></td></tr>
+  <tr><td>Housekeeping</td><td><code>Reset</code>, <code>ClearResampledData</code>, the
+      <code>Get*</code> readers</td><td><a href="#methods">Class methods</a></td></tr>
+</table>
+
+<h2 id="template">Template parameters</h2>
+
+<table>
+  <tr><th>Parameter</th><th>Kind</th><th>What it must satisfy</th></tr>
+  <tr>
+    <td><code>TInput</code></td>
+    <td><code>typename</code>, defaults to <code>double</code></td>
+    <td>The sample type: what the source sampler returns and <code>f</code>/<code>p</code> take</td>
+  </tr>
+  <tr>
+    <td><code>TOutput</code></td>
+    <td><code>typename</code>, defaults to <code>double</code></td>
+    <td>What <code>f</code> returns and <code>norm</code> reduces to a weight; must support
+      <code>/</code> by <code>TReal</code> and <code>+=</code> into <code>result</code></td>
+  </tr>
+  <tr>
+    <td><code>TReal</code></td>
+    <td><code>typename</code>, defaults to <code>double</code></td>
+    <td>The weight type; <code>static_assert</code> requires a floating-point type</td>
+  </tr>
+  <tr>
+    <td><code>TInteger</code></td>
+    <td><code>typename</code>, defaults to <code>uint32_t</code></td>
+    <td>Sample and iteration counts; <code>static_assert</code> requires an integral type</td>
+  </tr>
+</table>
+
+<h2 id="properties">Class properties</h2>
+
+<table>
+  <tr><th>Type + Name</th><th>Default Value</th><th>Description</th></tr>
+  <tr><td><code>TReal totalWeight;</code> <span class="badge">private</span></td>
+      <td><span class="muted">none in the header</span></td>
+      <td>The accumulated sum of all accepted weights across every <code>Resample</code> call — the
+        denominator of the normalization.</td></tr>
+  <tr><td><code>hbe::HVector&lt;TReal&gt; weights;</code> <span class="badge">private</span></td>
+      <td><span class="muted">none in the header</span></td>
+      <td>One raw weight per accepted sample; appended by <code>Resample</code>, read back through
+        <code>GetWeights</code>.</td></tr>
+  <tr><td><code>hbe::HVector&lt;TInput&gt; samples;</code> <span class="badge">private</span></td>
+      <td><span class="muted">none in the header</span></td>
+      <td>The stored inputs, index-aligned with <code>weights</code>.</td></tr>
+  <tr><td><code>hbe::HVector&lt;TReal&gt; normalizedWeights;</code> <span class="badge">private</span></td>
+      <td><span class="muted">none in the header</span></td>
+      <td>Each weight scaled by <code>numSamples / totalWeight</code>, recomputed over the whole accumulated
+        history at the end of every successful <code>Resample</code>; what
+        <code>Integrate</code>'s discrete sampler indexes into.</td></tr>
+</table>
+
+<h2 id="methods">Class methods</h2>
+
+<table class="methods">
+  <tr><th>Name</th><th>Signature</th><th>What a caller depends on</th></tr>
+  <tr><td><a href="get-weights.html"><code>GetWeights</code></a></td>
+      <td class="sig">[[nodiscard]] auto&amp; GetWeights() const noexcept</td>
+      <td>The raw weights — a const reference to the live vector, valid until the next
+        <code>Resample</code>/<code>Reset</code>/<code>ClearResampledData</code>.</td></tr>
+  <tr><td><a href="get-samples.html"><code>GetSamples</code></a></td>
+      <td class="sig">[[nodiscard]] auto&amp; GetSamples() const noexcept</td>
+      <td>The stored inputs, index-aligned with the weights.</td></tr>
+  <tr><td><a href="get-normalized-weights.html"><code>GetNormalizedWeights</code></a></td>
+      <td class="sig">[[nodiscard]] auto&amp; GetNormalizedWeights() const noexcept</td>
+      <td>The weights scaled by <code>numSamples / totalWeight</code> — the discrete PDF
+        <code>Integrate</code> samples.</td></tr>
+  <tr><td><a href="reset.html"><code>Reset</code></a></td>
+      <td class="sig">void Reset() noexcept</td>
+      <td>Zeros <code>totalWeight</code> and swaps all three vectors with fresh empties — contents and
+        buffers released.</td></tr>
+  <tr><td><a href="clear-resampled-data.html"><code>ClearResampledData</code></a></td>
+      <td class="sig">void ClearResampledData() noexcept</td>
+      <td>Zeros <code>totalWeight</code> and clears the three vectors' contents — the fixture calls it to
+        reuse the integrator with a growing sample budget.</td></tr>
+  <tr><td><a href="resample.html"><code>Resample</code></a></td>
+      <td class="sig">template &lt;typename TFunction, typename TPDF, typename TRandomSampler, typename TOutputNorm&gt;<br>[[nodiscard]] bool Resample(const TFunction&amp; f, const TPDF&amp; p, const TRandomSampler&amp; sampler, const TOutputNorm&amp; norm, const TInteger numSourceSamples) noexcept</td>
+      <td>Draws, weights by <code>norm(f(x)/p(x))</code>, rejects zero weights and non-positive densities;
+        returns <code>false</code> on a non-positive count, a rejected density, or an all-zero weight
+        sum.</td></tr>
+  <tr><td><a href="integrate.html"><code>Integrate</code></a></td>
+      <td class="sig">template &lt;typename TFunction, typename TDiscreteSampler, typename TUniformSampler&gt;<br>[[nodiscard]] bool Integrate(TOutput&amp; result, const TFunction&amp; f, const TDiscreteSampler&amp; discreteSampler, const TUniformSampler&amp; uniformSampler, const TInteger numIterations) noexcept</td>
+      <td>Averages <code>f(x + delta) / q(x)</code> over the iterations, where <code>x</code> is a stored
+        sample and <code>q</code> its normalized weight; returns <code>false</code> for a zero count, empty
+        stores, or a drawn weight that is not positive.</td></tr>
+</table>
+
+<h2 id="non-member">Non-member helper functions</h2>
+
+<p>None. <code>ImportanceResampling.h</code> declares the class and, under <code>TEST_ENABLED</code>, the
+test collection — nothing at namespace scope in between.</p>
+
+<h2 id="coverage">Coverage</h2>
+
+<table>
+  <tr><th>Gap</th><th>Detail</th></tr>
+  <tr>
+    <td>The defaulted constructor and destructor</td>
+    <td>Both are <code>= default</code> and own no page.</td>
+  </tr>
+  <tr>
+    <td>The <code>f == nullptr</code> guard in <code>Integrate</code></td>
+    <td>Stated on <code>Integrate</code>'s page: it is a function-pointer idiom. Captureless lambdas convert
+      to function pointers, so the comparison compiles and is always false — the fixture's lambdas are
+      captureless. A capturing callable does not convert, and a call with one does not compile.</td>
+  </tr>
+  <tr>
+    <td>Callers outside the module</td>
+    <td>None found in <code>Engine/</code> outside <code>Engine/Math/</code> or in
+      <code>Applications/</code>. The <code>ImportanceResamplingTest</code> fixture is registered in
+      <code>Engine/Test/UnitTestCollection.cpp</code> and defined in
+      <code>Engine/Math/ImportanceSampling.cpp</code>, which the pages quote.</td>
+  </tr>
+</table>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; ImportanceResampling</a></span>
+  <span><a href="index.html#methods">All ImportanceResampling methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Transform::constructors — Math module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a class="current" href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Math</a> /
+  <a href="index.html">Transform</a> / constructors
+</p>
+
+<h1><span class="fn">constructors</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::Transform</span>
+  <span class="tag">Engine/Math/Transform.h</span>
+  detached and cache-free, by default, uninitialized, or from a transform
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>Transform(const Transform&amp;) = delete
+
+Transform() noexcept
+		: trs()
+		, parent(nullptr)
+
+explicit Transform(std::nullptr_t) noexcept
+		: trs(nullptr)
+		, parent(nullptr)
+
+explicit Transform(const TUTransform&amp; trs) noexcept
+		: trs(trs)
+		, parent(nullptr)</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>Defined in <code>Engine/Math/Transform.h</code> as <code>Transform::Transform()</code>. Three constructors, all starting detached — <code>parent = nullptr</code> — with an empty world cache. The default form default-constructs <code>trs</code> (identity rotation, scale 1, zero translation). The <code>nullptr</code> form is explicit and leaves <code>trs</code> uninitialized. The <code>UniformTransform</code> form copies the given local transform. The deleted copy constructor appears in the Signature section with them: a node is not copyable.</p>
+
+<h2 id="parameters">Parameters</h2>
+
+<table>
+  <tr><th>Parameter</th><th>Type</th><th>Requirement</th></tr>
+  <tr><td><code>trs</code></td><td><code>const TUTransform&amp;</code></td><td>The local transform to start from.</td></tr>
+  <tr><td><em>(unnamed)</em></td><td><code>std::nullptr_t</code></td><td>Token only — selects the uninitialized form. Internal use.</td></tr>
+</table>
+
+<h2 id="return">Return value</h2>
+
+<p>None; construction is not assignment.</p>
+
+<h2 id="example">Examples</h2>
+
+<pre><code>TFTransform root;
+TFTransform a;
+root.Attach(a);</code></pre>
+<p class="meta">From Engine/Math/Transform.cpp, TransformTest::Prepare()</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; Transform</a></span>
+  <span><a href="index.html#methods">All Transform methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

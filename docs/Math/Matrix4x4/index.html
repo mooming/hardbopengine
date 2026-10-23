@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Matrix4x4 — Math module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a class="current" href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This class</h3>
+  <ul>
+    <li><a href="#description">Class description</a></li>
+    <li><a href="#template">Template parameters</a></li>
+    <li><a href="#properties">Class properties</a></li>
+    <li><a href="#methods">Class methods</a></li>
+    <li><a href="#non-member">Non-member helper functions</a></li>
+    <li><a href="#coverage">Coverage</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Math</a> /
+  Matrix4x4
+</p>
+
+<h1>Matrix4x4</h1>
+<p class="subtitle">
+  <span class="tag">Engine/Math/Matrix4x4.h</span>
+  a 4-by-4 homogeneous matrix: translation and rotation members, inverse, determinant, and the shared matrix arithmetic
+</p>
+
+<h2 id="description">Class description</h2>
+
+<p>
+  <code>Matrix4x4</code> is the fixed 4-by-4 row-major matrix for homogeneous transforms:
+  <code>rows[4]</code> of <code>Vector4</code>, aliased with <code>TNumber m[4][4]</code>, a flat
+  <code>std::array</code>, and named elements <code>m11</code>…<code>m44</code>. It shares
+  <code>Engine/Math/MatrixCommonImpl.inl</code> with the smaller matrices, and adds translation and rotation
+  members for the fourth column and row: <code>CreateTranslation</code>,
+  <a href="set-translation.html"><code>SetTranslation</code></a>, the rotation setters, and
+  <a href="euler-angles.html"><code>EulerAngles</code></a> — here a <em>setter</em> that writes the 3-by-3
+  rotation block, not a getter.
+</p>
+
+<p>
+  Units, per member: <a href="set-rotation-x.html"><code>SetRotationX/Y/Z</code></a> and
+  <a href="euler-angles.html"><code>EulerAngles</code></a> take <em>radians</em> (the trig is called on the
+  argument directly), unlike <code>Matrix3x3</code>'s degree-taking <code>SetEulerAngles</code>.
+  <a href="inverse.html"><code>Inverse()</code></a> is the full adjugate over the determinant, scaled once,
+  and guarded by <code>FatalAssert</code> — a singular matrix terminates in every build, unlike
+  <code>Matrix3x3</code>'s Debug-and-Dev <code>Assert</code>.
+</p>
+
+<div class="gap">
+  <strong>One defect a caller must know about.</strong>
+  <a href="set-rotation-z.html"><code>SetRotationZ()</code></a> writes <code>m33 = 0.0f</code> where the
+  rotation needs <code>c</code> — the same write <code>Matrix3x3::SetEulerZ()</code> makes — so its result is
+  not a rotation about z. The page quotes the code; build z rotations through
+  <a href="set-rotation-x.html"><code>SetRotationX</code></a>/Y and a correct z source instead.
+</div>
+
+<table>
+  <tr><th>Piece</th><th>What it is</th><th>Where the contract lives</th></tr>
+  <tr><td>Storage</td><td><code>rows[row]</code>, <code>m</code>, <code>element</code>,
+      <code>m11</code>…<code>m44</code> — one storage, four views</td>
+      <td><a href="#properties">Class properties</a></td></tr>
+  <tr><td>Named constants</td><td><code>Zero</code>, <code>Identity</code></td>
+      <td><a href="#properties">Class properties</a></td></tr>
+  <tr><td>Transform members</td><td><code>CreateTranslation</code>, <code>SetTranslation</code>,
+      <code>SetRotationX/Y/Z</code>, <code>EulerAngles</code></td>
+      <td><a href="#methods">Class methods</a></td></tr>
+  <tr><td>Shared arithmetic</td><td>The <code>MatrixCommonImpl.inl</code> surface</td>
+      <td><a href="#methods">Class methods</a></td></tr>
+  <tr><td>4×4 members</td><td><code>Inverse</code>, <code>Transpose</code>, <code>Determinant</code>,
+      <code>IsOrthogonal</code>, conversions to and assignment from the smaller matrices</td>
+      <td><a href="#methods">Class methods</a></td></tr>
+</table>
+
+<h2 id="template">Template parameters</h2>
+
+<table>
+  <tr><th>Parameter</th><th>Kind</th><th>What it must satisfy</th></tr>
+  <tr>
+    <td><code>TNumber</code></td>
+    <td><code>typename</code></td>
+    <td>
+      The element type. The engine instantiates <code>float</code> only (<code>TFloat4x4</code>), and the
+      named-element struct arm is <code>float</code> regardless. The translation and rotation members work
+      in <code>float</code> throughout, whatever <code>TNumber</code> is
+    </td>
+  </tr>
+</table>
+
+<h2 id="properties">Class properties</h2>
+
+<table>
+  <tr><th>Type + Name</th><th>Default Value</th><th>Description</th></tr>
+  <tr><td><code>using This = Matrix4x4;</code> <span class="badge">member type</span></td>
+      <td><span class="muted">not applicable</span></td>
+      <td>The class's own name, as the shared implementation writes it.</td></tr>
+  <tr><td><code>using TVec = Vector4&lt;TNumber&gt;;</code> <span class="badge">member type</span></td>
+      <td><span class="muted">not applicable</span></td>
+      <td>The row and column vector type this matrix multiplies.</td></tr>
+  <tr><td><code>using TVec3 = Vector3&lt;TNumber&gt;;</code> <span class="badge">member type</span></td>
+      <td><span class="muted">not applicable</span></td>
+      <td>The three-component type the translation members take.</td></tr>
+  <tr><td><code>using TMat2x2 = Matrix2x2&lt;TNumber&gt;;</code> <span class="badge">member type</span></td>
+      <td><span class="muted">not applicable</span></td>
+      <td>The 2-by-2 counterpart, for a constructor, an <code>operator=</code> and a conversion
+        operator.</td></tr>
+  <tr><td><code>using TMat3x3 = Matrix3x3&lt;TNumber&gt;;</code> <span class="badge">member type</span></td>
+      <td><span class="muted">not applicable</span></td>
+      <td>The 3-by-3 counterpart, for the same three members.</td></tr>
+  <tr><td><code>constexpr static int row = 4;</code> <span class="badge">public</span></td>
+      <td><code>4</code></td>
+      <td>Row count; the loop bound of the shared implementation.</td></tr>
+  <tr><td><code>constexpr static int column = 4;</code> <span class="badge">public</span></td>
+      <td><code>4</code></td>
+      <td>Column count.</td></tr>
+  <tr><td><code>constexpr static int numberOfElements = row * column;</code> <span class="badge">public</span></td>
+      <td><code>16</code></td>
+      <td>Size of the flat <code>std::array</code> view.</td></tr>
+  <tr><td><code>const static This Zero;</code> <span class="badge">public</span></td>
+      <td><code>({0})</code> — the one-element list zero-fills the rest</td>
+      <td>All elements zero, built through the array constructor.</td></tr>
+  <tr><td><code>const static This Identity;</code> <span class="badge">public</span></td>
+      <td><code>Matrix4x4()</code> — <code>{1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1}</code></td>
+      <td>The default-constructed identity.</td></tr>
+  <tr><td><code>TVec rows[row];</code> <span class="badge">public</span></td>
+      <td><span class="muted">none in the header</span></td>
+      <td>The row vectors — what <code>Multiply</code>, <code>Column</code> and <code>IsOrthogonal</code>
+        read.</td></tr>
+  <tr><td><code>TNumber m[row][column];</code> <span class="badge">public</span></td>
+      <td><span class="muted">none in the header</span></td>
+      <td>The two-dimensional view; <code>m[i][j]</code> is row <code>i</code>, column <code>j</code>
+        (row-major).</td></tr>
+  <tr><td><code>std::array&lt;TNumber, numberOfElements&gt; element;</code> <span class="badge">public</span></td>
+      <td><span class="muted">none in the header</span></td>
+      <td>The flat view the constructors and the scalar <code>Multiply</code> walk.</td></tr>
+  <tr><td><code>float m11, m12, m13, m14;</code> <span class="badge">public</span></td>
+      <td><span class="muted">none in the header</span></td>
+      <td>Named first-row elements — declared <code>float</code> regardless of <code>TNumber</code>;
+        <code>m14</code> is the translation x.</td></tr>
+  <tr><td><code>float m21, m22, m23, m24;</code> <span class="badge">public</span></td>
+      <td><span class="muted">none in the header</span></td>
+      <td>Named second-row elements; <code>m24</code> is the translation y.</td></tr>
+  <tr><td><code>float m31, m32, m33, m34;</code> <span class="badge">public</span></td>
+      <td><span class="muted">none in the header</span></td>
+      <td>Named third-row elements; <code>m34</code> is the translation z.</td></tr>
+  <tr><td><code>float m41, m42, m43, m44;</code> <span class="badge">public</span></td>
+      <td><span class="muted">none in the header</span></td>
+      <td>Named fourth-row elements; the bottom row stays <code>{0, 0, 0, 1}</code> in every transform this
+        class builds.</td></tr>
+</table>
+
+<h2 id="methods">Class methods</h2>
+
+<table class="methods">
+  <tr><th>Name</th><th>Signature</th><th>What a caller depends on</th></tr>
+  <tr><td><a href="create-translation.html"><code>CreateTranslation</code></a></td>
+      <td class="sig">[[nodiscard]] static This CreateTranslation(const TVec3&amp; v) noexcept</td>
+      <td>A translation matrix: identity with <code>v.x</code>, <code>v.y</code>, <code>v.z</code> in
+        <code>m14</code>, <code>m24</code>, <code>m34</code>.</td></tr>
+  <tr><td><a href="constructors.html"><code>constructors</code></a><span class="badge">6 overloads</span></td>
+      <td class="sig">Matrix4x4() noexcept<br>explicit Matrix4x4(std::nullptr_t) noexcept<br>explicit Matrix4x4(const std::array&lt;TNumber, numberOfElements&gt;&amp; values) noexcept<br>explicit Matrix4x4(std::array&lt;TNumber, numberOfElements&gt;&amp;&amp; values) noexcept<br>explicit Matrix4x4(const TMat2x2&amp; rhs) noexcept<br>explicit Matrix4x4(const TMat3x3&amp; rhs) noexcept</td>
+      <td>The default form is the identity; the <code>nullptr</code> form initializes nothing; the array forms
+        take sixteen elements row-major; the smaller-matrix forms copy the block and complete the
+        identity.</td></tr>
+  <tr><td><a href="operator-assign.html"><code>operator=</code></a><span class="badge">2 overloads</span></td>
+      <td class="sig">This&amp; operator=(const TMat2x2&amp; rhs) noexcept<br>This&amp; operator=(const TMat3x3&amp; rhs) noexcept</td>
+      <td>Copies the smaller matrix's block and leaves the rest of the matrix as it was — no reset to
+        identity.</td></tr>
+  <tr><td><a href="operator-cast.html"><code>operator TMat2x2</code></a><span class="badge">2 overloads</span></td>
+      <td class="sig">operator TMat2x2() const noexcept<br>operator TMat3x3() const noexcept</td>
+      <td>New smaller matrices built from the corresponding block; non-explicit, so they apply in implicit
+        conversions.</td></tr>
+  <tr><td><a href="inverse.html"><code>Inverse</code></a></td>
+      <td class="sig">[[nodiscard]] This Inverse() const noexcept</td>
+      <td>The adjugate over the determinant, scaled once; <code>FatalAssert</code> terminates on a singular
+        matrix in every build.</td></tr>
+  <tr><td><a href="transpose.html"><code>Transpose</code></a></td>
+      <td class="sig">void Transpose() noexcept</td>
+      <td>Swaps the six off-diagonal pairs in place.</td></tr>
+  <tr><td><a href="determinant.html"><code>Determinant</code></a></td>
+      <td class="sig">[[nodiscard]] TNumber Determinant() const noexcept</td>
+      <td>The full 4-by-4 cofactor expansion, through the <code>float</code> named elements.</td></tr>
+  <tr><td><a href="is-orthogonal.html"><code>IsOrthogonal</code></a></td>
+      <td class="sig">[[nodiscard]] bool IsOrthogonal() const noexcept</td>
+      <td>All four rows mutually orthogonal and unit length, through the vector tolerances.</td></tr>
+  <tr><td><a href="set-translation.html"><code>SetTranslation</code></a></td>
+      <td class="sig">void SetTranslation(const TVec3&amp; translation) noexcept</td>
+      <td>Writes <code>m14</code>, <code>m24</code>, <code>m34</code> only — the rotation block and bottom
+        row untouched. What <code>ToMatrix()</code> on the transform types calls.</td></tr>
+  <tr><td><a href="set-rotation-x.html"><code>SetRotationX</code></a></td>
+      <td class="sig">void SetRotationX(float radian) noexcept</td>
+      <td>Rotation about x, <em>radians</em>, written into the 3-by-3 block; the fourth column and row are
+        not touched.</td></tr>
+  <tr><td><a href="set-rotation-y.html"><code>SetRotationY</code></a></td>
+      <td class="sig">void SetRotationY(float radian) noexcept</td>
+      <td>Rotation about y, <em>radians</em>.</td></tr>
+  <tr><td><a href="set-rotation-z.html"><code>SetRotationZ</code></a></td>
+      <td class="sig">void SetRotationZ(float radian) noexcept</td>
+      <td>Rotation about z, <em>radians</em> — but <code>m33</code> is written <code>0.0f</code>, so the
+        result is not a rotation; see the page.</td></tr>
+  <tr><td><a href="euler-angles.html"><code>EulerAngles</code></a></td>
+      <td class="sig">void EulerAngles(float x, float y, float z) noexcept</td>
+      <td>Full Euler rotation from <em>radians</em>, overwriting the 3-by-3 block only — a setter, despite
+        the getter-like name.</td></tr>
+  <tr><td><a href="create-diagonal.html"><code>CreateDiagonal</code></a><span class="badge">2 overloads</span></td>
+      <td class="sig">[[nodiscard]] static This CreateDiagonal(const TNumber diagonal) noexcept<br>[[nodiscard]] static This CreateDiagonal(const TVec&amp; diagonal) noexcept</td>
+      <td>A diagonal matrix with zeros elsewhere; <code>UniformTransform::ToMatrix()</code> builds its scale
+        block with the vector form.</td></tr>
+  <tr><td><a href="operator-multiply.html"><code>operator*</code></a><span class="badge">2 overloads</span></td>
+      <td class="sig">[[nodiscard]] This operator*(const This&amp; rhs) const noexcept<br>[[nodiscard]] TVec operator*(const TVec&amp; rhs) const noexcept</td>
+      <td>Row-major product; the vector sits on the right as a column vector.</td></tr>
+  <tr><td><a href="operator-equal.html"><code>operator==</code></a></td>
+      <td class="sig">[[nodiscard]] bool operator==(const This&amp; rhs) const noexcept</td>
+      <td>Per-row tolerance equality within <code>Epsilon</code>.</td></tr>
+  <tr><td><a href="operator-not-equal.html"><code>operator!=</code></a></td>
+      <td class="sig">[[nodiscard]] bool operator!=(const This&amp; rhs) const noexcept</td>
+      <td>The negation of the tolerance equality.</td></tr>
+  <tr><td><a href="is-invertible.html"><code>IsInvertible</code></a></td>
+      <td class="sig">[[nodiscard]] bool IsInvertible() const noexcept</td>
+      <td>Determinant exactly non-zero — no tolerance.</td></tr>
+  <tr><td><a href="is-identity.html"><code>IsIdentity</code></a></td>
+      <td class="sig">[[nodiscard]] bool IsIdentity() const noexcept</td>
+      <td>Off-diagonals <code>IsZero</code>, diagonals <code>IsEqual(…, 1.0f)</code> — float
+        tolerances.</td></tr>
+  <tr><td><a href="transposed.html"><code>Transposed</code></a></td>
+      <td class="sig">[[nodiscard]] This Transposed() const noexcept</td>
+      <td>A transposed copy; the original untouched.</td></tr>
+  <tr><td><a href="multiply.html"><code>Multiply</code></a><span class="badge">3 overloads</span></td>
+      <td class="sig">[[nodiscard]] This Multiply(const TNumber value) const noexcept<br>[[nodiscard]] This Multiply(const This&amp; rhs) const noexcept<br>[[nodiscard]] TVec Multiply(const TVec&amp; rhs) const noexcept</td>
+      <td>Scale (with a NaN guard), row-major product, or column-vector application — all returning
+        copies.</td></tr>
+  <tr><td><a href="column.html"><code>Column</code></a></td>
+      <td class="sig">[[nodiscard]] TVec Column(int index) const noexcept</td>
+      <td>Gathers column <code>index</code> into a vector; index asserted in range in Debug and
+        Dev.</td></tr>
+</table>
+
+<h2 id="non-member">Non-member helper functions</h2>
+
+<table>
+  <tr><th>Name</th><th>Signature</th><th>What a caller depends on</th></tr>
+  <tr><td><code>operator&lt;&lt;</code></td>
+      <td class="sig">template &lt;typename T&gt; std::ostream&amp; operator&lt;&lt;(std::ostream&amp; os, const Matrix4x4&lt;T&gt;&amp; mat) noexcept</td>
+      <td>Prints <code>"Matrix 4x4"</code> and the rows, comma-separated. Bound to
+        <code>std::ostream</code>.</td></tr>
+</table>
+
+<h2 id="coverage">Coverage</h2>
+
+<table>
+  <tr><th>Gap</th><th>Detail</th></tr>
+  <tr>
+    <td>Shared-implementation methods documented from the <code>.inl</code></td>
+    <td>Every method above except <code>CreateTranslation</code>, <code>constructors</code>,
+      <code>operator=</code>, the conversion operators, <code>Inverse</code>, <code>Transpose</code>,
+      <code>Determinant</code>, <code>IsOrthogonal</code>, <code>SetTranslation</code>,
+      <code>SetRotationX/Y/Z</code> and <code>EulerAngles</code> is declared in
+      <code>Engine/Math/MatrixCommonImpl.inl</code>, included into the class body. Their pages cite the
+      <code>.inl</code> as the definition site; <code>docs_pass.py signatures</code> verifies them against a
+      header with the <code>.inl</code> inlined, because the checker reads the <code>.h</code> alone.</td>
+  </tr>
+  <tr>
+    <td><code>SetRotationZ()</code></td>
+    <td>Carries the <code>m33 = 0.0f</code> defect, stated and quoted on its page. The page documents the
+      code as it stands.</td>
+  </tr>
+  <tr>
+    <td>Callers outside the module</td>
+    <td>None found in <code>Engine/</code> outside <code>Engine/Math/</code> or in
+      <code>Applications/</code>. Inside the module, <code>UniformTransform</code> and
+      <code>RigidTransform</code> build their matrices through <code>CreateDiagonal</code>,
+      <code>SetTranslation</code> and <code>ToMat4x4</code>; the transform pages quote those call
+      sites.</td>
+  </tr>
+</table>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; Matrix4x4</a></span>
+  <span><a href="index.html#methods">All Matrix4x4 methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

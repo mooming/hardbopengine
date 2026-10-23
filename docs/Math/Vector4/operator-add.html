@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Vector4::operator+ — Math module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a class="current" href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Math</a> /
+  <a href="index.html">Vector4</a> / operator+
+</p>
+
+<h1><span class="fn">operator+</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::Vector4</span>
+  <span class="tag">Engine/Math/VectorCommonImpl.inl</span>
+  a copy of the vector with rhs added
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>[[nodiscard]] This operator+(const This&amp; rhs) const noexcept</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>Defined in <code>Engine/Math/VectorCommonImpl.inl</code> as <code>Vector4::operator+()</code>; the file is included into the class body, so this is a member of every vector class, not a free function. Copies <code>*this</code>, runs <a href="add.html"><code>Add</code></a> on the copy, and returns it. The operands are untouched; <code>noexcept</code> throughout.</p>
+
+<h2 id="parameters">Parameters</h2>
+
+<table>
+  <tr><th>Parameter</th><th>Type</th><th>Requirement</th></tr>
+  <tr><td><code>rhs</code></td><td><code>const This&amp;</code></td><td>The addend.</td></tr>
+</table>
+
+<h2 id="return">Return value</h2>
+
+<table>
+  <tr><th>Type</th><th>What you get</th></tr>
+  <tr><td><code>This</code></td><td>The componentwise sum.</td></tr>
+</table>
+
+<h2 id="example">Examples</h2>
+
+<p class="note">Illustrative — no call site for this method exists in the repository.</p>
+
+<pre><code>TFloat4 sum = a + b;  // componentwise; operands untouched</code></pre>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; Vector4</a></span>
+  <span><a href="index.html#methods">All Vector4 methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

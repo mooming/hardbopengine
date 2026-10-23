@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Matrix3x3::Inverse — Math module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a class="current" href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Math</a> /
+  <a href="index.html">Matrix3x3</a> / Inverse
+</p>
+
+<h1><span class="fn">Inverse</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::Matrix3x3</span>
+  <span class="tag">Engine/Math/Matrix3x3.h</span>
+  the adjugate scaled by 1/det twice — exact only for determinant-1 matrices
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>[[nodiscard]] This Inverse() const noexcept</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>Defined in <code>Engine/Math/Matrix3x3.h</code> as <code>Matrix3x3::Inverse()</code>. The determinant is asserted non-zero with <code>Assert</code> — compiled out of Release builds, where a singular matrix divides by zero and produces infinities. Every entry of the result is the cofactor term already scaled by <code>invDet</code>, and then the whole matrix is scaled again:</p>
+<pre><code>temp.m31 = invDet * (m21 * m32 - m22 * m31);
+temp.m32 = invDet * (m12 * m31 - m11 * m32);
+temp.m33 = invDet * (m11 * m22 - m12 * m21);
+
+return temp.Multiply(invDet);</code></pre>
+<p class="meta">From Engine/Math/Matrix3x3.h, Matrix3x3::Inverse() — the tail</p>
+<p>The returned matrix is therefore the adjugate over <code>det²</code>, not over <code>det</code>. For a rotation matrix (determinant 1) the two coincide and the result is correct; for any other matrix the result is off by a factor of <code>1/det</code>. Read <a href="is-invertible.html"><code>IsInvertible</code></a> and the determinant before trusting the result on non-rotation input.</p>
+
+<h2 id="parameters">Parameters</h2>
+
+<p>None.</p>
+
+<h2 id="return">Return value</h2>
+
+<table>
+  <tr><th>Type</th><th>What you get</th></tr>
+  <tr><td><code>This</code></td><td>The adjugate over <code>det²</code> — equal to the true inverse only when the determinant is 1.</td></tr>
+</table>
+
+<h2 id="example">Examples</h2>
+
+<p class="note">Illustrative — no call site for this method exists in the repository.</p>
+
+<pre><code>TFloat3x3 inv = rotation.Inverse();  // sound for rotations (det = 1)</code></pre>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; Matrix3x3</a></span>
+  <span><a href="index.html#methods">All Matrix3x3 methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

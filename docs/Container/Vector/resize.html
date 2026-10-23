@@ -78,12 +78,13 @@
 </p>
 
 <p>
-  This is a different contract from <a href="../Array/resize.html"><code>Array::Resize</code></a>, and the
-  difference is the reason two containers both called "dynamic array" exist. <code>Array</code> allocates exactly
-  the element count and so reallocates on every size change, reporting a failed allocation and keeping its old
-  state; <code>Vector</code> reallocates only when capacity runs out, keeps its capacity when you shrink, and says
-  nothing at all when an allocation fails. Where a size is decided once and must not move, the <code>Array</code>
-  contract is the one that fits; where a count oscillates, this one avoids the repeated allocation.
+  This is a different contract from <a href="../Array/index.html"><code>Array</code></a>'s, and the difference
+  is the reason two containers both called "dynamic array" exist. <code>Array</code> has no resize at all: it
+  allocates exactly the element count once, at construction, and its size never changes.
+  <code>Vector</code> reallocates only when capacity runs out, keeps its capacity when you shrink, and says
+  nothing at all when an allocation fails. Where a size is decided once and must not move, the
+  <code>Array</code> contract is the one that fits; where a count oscillates, this one avoids the repeated
+  allocation.
 </p>
 
 <p>
@@ -129,9 +130,8 @@
 <h2 id="return">Return value</h2>
 
 <p>
-  <code>void</code>, and unlike <a href="../Array/resize.html"><code>Array::Resize</code></a> there is no
-  failure-with-old-state case to detect: a failed allocation inside the growth is unchecked, so this either
-  appears to work or corrupts. <code>Size()</code> after the call tells you the count it recorded, and
+  <code>void</code>, and there is no failure-with-old-state case to detect: a failed allocation inside the
+  growth is unchecked, so this either appears to work or corrupts. <code>Size()</code> after the call tells you the count it recorded, and
   <code>Capacity()</code> tells you whether a reallocation happened.
 </p>
 

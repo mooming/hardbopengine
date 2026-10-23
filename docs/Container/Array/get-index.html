@@ -50,7 +50,6 @@
     <li><a href="size.html">Size</a></li>
     <li><a href="is-valid-index.html">IsValidIndex</a></li>
     <li><a href="clear.html">Clear</a></li>
-    <li><a href="resize.html">Resize</a></li>
     <li><a href="swap.html">Swap</a></li>
     <li><a class="current" href="get-index.html">GetIndex</a></li>
   </ul>
@@ -74,7 +73,7 @@
 
 <h2 id="signature">Signature</h2>
 
-<pre><code><span class="ty">TIndex</span> <span class="fn">GetIndex</span>(<span class="kw">const</span> <span class="ty">Element</span>&amp; element) <span class="kw">const</span> <span class="kw">noexcept</span>;</code></pre>
+<pre><code>TIndex GetIndex(const Element&amp; element) const noexcept</code></pre>
 
 <h2 id="description">Function description</h2>
 
@@ -104,9 +103,8 @@
   at a lower address always gives a negative difference — but an object in another allocation <em>above</em> this
   buffer can produce a difference that lands inside <code>[0, Size())</code>, and the function then returns it as
   a confident, wrong index. There is no way to tell that case from a correct answer. Treat a non-negative result
-  as meaningful only for a reference you took out of this array, and remember that an
-  <a href="resize.html">resize</a> or a <a href="swap.html">swap</a> leaves the address you are holding in a buffer
-  that no longer belongs to the array.
+  as meaningful only for a reference you took out of this array, and remember that a
+  <a href="swap.html">swap</a> leaves the address you are holding in a buffer that no longer belongs to the array.
 </div>
 
 <div class="note">
@@ -161,7 +159,7 @@
 <span class="kw">if</span> (slot == <span class="nu">-1</span>)
 {
         <span class="cm">// The reference is not an element of this array — most often because the array was</span>
-        <span class="cm">// resized or swapped since it was taken. Do not index with it.</span>
+        <span class="cm">// swapped since it was taken. Do not index with it.</span>
         <span class="kw">return</span>;
 }
 

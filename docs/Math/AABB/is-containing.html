@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AABB::IsContaining — Math module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a class="current" href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Math</a> /
+  <a href="index.html">AABB</a> / IsContaining
+</p>
+
+<h1><span class="fn">IsContaining</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::AABB</span>
+  <span class="tag">Engine/Math/AABB.h</span>
+  exact per-axis range test for a point or a box
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>[[nodiscard]] bool IsContaining(const TVec&amp; point) const noexcept
+
+[[nodiscard]] bool IsContaining(const This&amp; aabb) const noexcept</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>Defined in <code>Engine/Math/AABB.h</code> as <code>AABB::IsContaining()</code>. Two overloads. The point form returns false immediately for an empty box, then tests <code>min.a[i] &gt; point.a[i]</code> and <code>max.a[i] &lt; point.a[i]</code> per axis — exact comparisons, no epsilon, boundaries inclusive. The box form requires both corners of <code>aabb</code> to be contained, so a box contains itself and a contained box's corners may sit on the boundary.</p>
+
+<h2 id="parameters">Parameters</h2>
+
+<table>
+  <tr><th>Parameter</th><th>Type</th><th>Requirement</th></tr>
+  <tr><td><code>point</code></td><td><code>const TVec&amp;</code></td><td>Point form: the query point.</td></tr>
+  <tr><td><code>aabb</code></td><td><code>const This&amp;</code></td><td>Box form: both its corners must fit.</td></tr>
+</table>
+
+<h2 id="return">Return value</h2>
+
+<table>
+  <tr><th>Type</th><th>What you get</th></tr>
+  <tr><td><code>bool</code></td><td><code>true</code> when the query fits; an empty box contains nothing.</td></tr>
+</table>
+
+<h2 id="example">Examples</h2>
+
+<pre><code>if (!bbox.IsContaining(bbox))
+{
+	ls &lt;&lt; "AABB should contain itself! " &lt;&lt; bbox &lt;&lt; lferr;
+}</code></pre>
+<p class="meta">From Engine/Math/AABB.cpp, AABBTest::Prepare()</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; AABB</a></span>
+  <span><a href="index.html#methods">All AABB methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

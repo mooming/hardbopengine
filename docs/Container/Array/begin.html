@@ -50,7 +50,6 @@
     <li><a href="size.html">Size</a></li>
     <li><a href="is-valid-index.html">IsValidIndex</a></li>
     <li><a href="clear.html">Clear</a></li>
-    <li><a href="resize.html">Resize</a></li>
     <li><a href="swap.html">Swap</a></li>
     <li><a href="get-index.html">GetIndex</a></li>
   </ul>
@@ -74,10 +73,9 @@
 
 <h2 id="signature">Signature</h2>
 
-<p>One page for the name; the pair differs only in const-ness, and overload resolution picks one:</p>
+<pre><code>Iterator begin()
 
-<pre><code><span class="ty">Iterator</span> <span class="fn">begin</span>();                       <span class="cm">// Element*</span>
-<span class="ty">ConstIterator</span> <span class="fn">begin</span>() <span class="kw">const</span>;        <span class="cm">// const Element*</span></code></pre>
+ConstIterator begin() const</code></pre>
 
 <h2 id="description">Function description</h2>
 
@@ -106,14 +104,12 @@
   reference to what a null pointer "points at" before taking its address; in practice every compiler you will
   meet produces a null iterator, and the empty range <code>[nullptr, nullptr)</code> is harmless because nothing
   dereferences it. What is not harmless is an empty range that is <em>assumed</em> non-empty: test
-  <a href="size.html"><code>Size</code></a> before dereferencing what you get back, and read
-  <a href="resize.html"><code>Resize</code></a>'s note about a negative length, which turns this into an iterator
-  arithmetic past a null base.
+  <a href="size.html"><code>Size</code></a> before dereferencing what you get back.
 </div>
 
 <div class="note">
   <strong>Iterators are invalidated by anything that changes the buffer, and by nothing else.</strong> A
-  <a href="resize.html">resize</a> or a <a href="clear.html">clear</a> frees the buffer these point into; a
+  <a href="clear.html">clear</a> frees the buffer these point into; a
   <a href="swap.html"><code>Swap</code></a> leaves the addresses alone but moves them into the other array, so an
   iterator you kept across a swap is now pointing at somebody else's elements. There is no debug iterator layer
   to catch either case, because the iterator is a pointer.

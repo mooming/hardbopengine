@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Quaternion::constructors — Math module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a class="current" href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Math</a> /
+  <a href="index.html">Quaternion</a> / constructors
+</p>
+
+<h1><span class="fn">constructors</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::Quaternion</span>
+  <span class="tag">Engine/Math/Quaternion.h</span>
+  identity by default, Euler angles in degrees, components, a vector, a matrix, or uninitialized
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>Quaternion() noexcept
+		: v()
+		, s(1.0f)
+
+Quaternion(const TVec3&amp; eulerAngles) noexcept
+		: Quaternion(nullptr)
+
+Quaternion(float x, float y, float z) noexcept
+		: Quaternion(nullptr)
+
+Quaternion(float x, float y, float z, float w) noexcept
+		: vector(x, y, z, w)
+
+Quaternion(const TVec4&amp; vector) noexcept
+		: vector(vector)
+
+Quaternion(const TMat3x3&amp; mat) noexcept
+
+explicit Quaternion(std::nullptr_t) noexcept</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>Defined in <code>Engine/Math/Quaternion.h</code> as <code>Quaternion::Quaternion()</code>. Seven constructors. The default form leaves <code>v</code> zero and <code>s = 1.0f</code> — the identity rotation. The Euler forms take <em>degrees</em>: from a <code>Vector3</code> of angles or three floats, both delegating to <a href="set-euler-angles.html"><code>SetEulerAngles</code></a>. The four-float form copies the components directly. The <code>Vector4</code> form copies the vector. The matrix form is the expensive one: it asserts the matrix is orthogonal and its determinant is 1 (<code>Assert</code>, Debug and Dev), extracts the rotation by the branch on the trace, and normalizes the result — it is the price of <a href="look-at.html"><code>LookAt</code></a> and every matrix-to-quaternion conversion. The <code>nullptr</code> form initializes nothing.</p>
+
+<h2 id="parameters">Parameters</h2>
+
+<table>
+  <tr><th>Parameter</th><th>Type</th><th>Requirement</th></tr>
+  <tr><td><code>eulerAngles</code></td><td><code>const TVec3&amp;</code></td><td>Euler angles in degrees.</td></tr>
+  <tr><td><code>x</code>, <code>y</code>, <code>z</code>, <code>w</code></td><td><code>float</code></td><td>Three-float form: Euler angles in degrees. Four-float form: the components themselves.</td></tr>
+  <tr><td><code>vector</code></td><td><code>const TVec4&amp;</code></td><td>The components as a <code>Vector4</code>.</td></tr>
+  <tr><td><code>mat</code></td><td><code>const TMat3x3&amp;</code></td><td>Must be orthogonal with determinant 1 (asserted).</td></tr>
+  <tr><td><em>(unnamed)</em></td><td><code>std::nullptr_t</code></td><td>Token only — selects the uninitialized form. Internal use.</td></tr>
+</table>
+
+<h2 id="return">Return value</h2>
+
+<p>None; construction is not assignment.</p>
+
+<h2 id="example">Examples</h2>
+
+<pre><code>static const TQuat x(90.0f, 0.0f, 0.0f);
+static const TQuat y(0.0f, 90.0f, 0.0f);
+static const TQuat z(0.0f, 0.0f, 90.0f);</code></pre>
+<p class="meta">From Engine/Math/Quaternion.cpp, QuaternionTest::Prepare() — the three-float Euler form, degrees</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; Quaternion</a></span>
+  <span><a href="index.html#methods">All Quaternion methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

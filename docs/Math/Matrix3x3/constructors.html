@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Matrix3x3::constructors — Math module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a class="current" href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Math</a> /
+  <a href="index.html">Matrix3x3</a> / constructors
+</p>
+
+<h1><span class="fn">constructors</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::Matrix3x3</span>
+  <span class="tag">Engine/Math/Matrix3x3.h</span>
+  identity by default, uninitialized on request, nine elements, or grown from a 2x2
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>Matrix3x3() noexcept
+		: element
+
+explicit Matrix3x3(std::nullptr_t) noexcept
+
+explicit Matrix3x3(std::array&lt;TNumber, numberOfElements&gt;&amp;&amp; values) noexcept
+		: element(std::move(values))
+
+explicit Matrix3x3(const TMat2x2&amp; rhs) noexcept</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>Four constructors. The default form is the <em>identity</em> — <code>element{1, 0, 0, 0, 1, 0, 0, 0, 1}</code> — which is what the <code>Identity</code> constant is defined as. The <code>nullptr</code> form is explicit and initializes nothing; the shared implementation builds result matrices through it. The array form is explicit and takes nine elements in row-major order via <code>std::move</code>. The <code>Matrix2x2</code> form copies its four elements into the top-left block, writes 0 in <code>m13</code>, <code>m23</code>, <code>m31</code>, <code>m32</code> and 1 in <code>m33</code> — completing the identity.</p>
+
+<h2 id="parameters">Parameters</h2>
+
+<table>
+  <tr><th>Parameter</th><th>Type</th><th>Requirement</th></tr>
+  <tr><td><code>values</code></td><td><code>std::array&lt;TNumber, 9&gt;&amp;&amp;</code></td><td>Row-major order.</td></tr>
+  <tr><td><code>rhs</code></td><td><code>const TMat2x2&amp;</code></td><td>The 2-by-2 whose elements fill the top-left block.</td></tr>
+  <tr><td><em>(unnamed)</em></td><td><code>std::nullptr_t</code></td><td>Token only — selects the uninitialized form. Internal use.</td></tr>
+</table>
+
+<h2 id="return">Return value</h2>
+
+<p>None; construction is not assignment.</p>
+
+<h2 id="example">Examples</h2>
+
+<p class="note">Illustrative — no call site for these constructors exists in the repository.</p>
+
+<pre><code>TFloat3x3 id;   // identity
+TFloat3x3 m(std::array&lt;float, 9&gt;{...});  // row-major
+TFloat3x3 m2(static_cast&lt;TFloat3x3&amp;&gt;(TFloat2x2::Identity));  // top-left block + identity tail</code></pre>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; Matrix3x3</a></span>
+  <span><a href="index.html#methods">All Matrix3x3 methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

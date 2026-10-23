@@ -99,9 +99,8 @@
   returned pointer is used unconditionally: the very next statement is
   <code>new (&amp;newData[i]) TElement(...)</code>, and for an empty vector — where the copy loop is skipped —
   <code>data</code> becomes the null pointer while <code>capacity</code> becomes the requested size, so
-  <code>Capacity()</code> reports room that does not exist and the next push writes to address zero. Contrast
-  <a href="../Array/resize.html"><code>Array::Resize</code></a>, which tests the pointer, asserts and keeps its old
-  state. Nothing in this function can tell you it failed, so a caller that cannot afford this either reserves
+  <code>Capacity()</code> reports room that does not exist and the next push writes to address zero. Nothing in
+  this function can tell you it failed, so a caller that cannot afford this either reserves
   early enough that the allocator has not fragmented, or uses <a href="../Array/index.html"><code>Array</code></a>
   and checks <a href="../Array/size.html"><code>Size</code></a> after every resize.
 </div>
@@ -110,10 +109,8 @@
   <strong>Every iterator, pointer and reference into the vector is invalidated by a real reserve.</strong> The
   elements keep their values — they are moved, not copied — but they live at new addresses, and the buffer they
   were in is returned to the allocator before the function returns. This includes pointers to elements you did not
-  touch, which is the part that surprises: <a
-  href="../Array/resize.html"><code>Array::Resize</code></a> carries the same rule, and the reason both state it
-  is that neither can help it. An element whose address escapes the container does not belong in a container that
-  reallocates.
+  touch, which is the part that surprises — the rule is stated because nothing can help it. An element whose
+  address escapes the container does not belong in a container that reallocates.
 </div>
 
 <div class="note">

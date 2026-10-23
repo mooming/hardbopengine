@@ -1,0 +1,323 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Vector4 — Math module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a class="current" href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This class</h3>
+  <ul>
+    <li><a href="#description">Class description</a></li>
+    <li><a href="#template">Template parameters</a></li>
+    <li><a href="#properties">Class properties</a></li>
+    <li><a href="#methods">Class methods</a></li>
+    <li><a href="#non-member">Non-member helper functions</a></li>
+    <li><a href="#coverage">Coverage</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Math</a> /
+  Vector4
+</p>
+
+<h1>Vector4</h1>
+<p class="subtitle">
+  <span class="tag">Engine/Math/Vector4.h</span>
+  a four-component vector: the shared vector arithmetic, w-defaulting constructors, and reinterpret views of its leading components
+</p>
+
+<h2 id="description">Class description</h2>
+
+<p>
+  <code>Vector4</code> is the fixed-size four-component vector: <code>x</code>, <code>y</code>,
+  <code>z</code>, <code>w</code> in an anonymous union with a raw array <code>a[4]</code>. It shares
+  <code>Engine/Math/VectorCommonImpl.inl</code> with <code>Vector2</code> and <code>Vector3</code>, and adds
+  what the homogeneous fourth component is for: constructors from a <code>Vector2</code> or a
+  <code>Vector3</code> with <code>w</code> defaulting to 1, assignment from either, and four non-explicit
+  conversion operators that reinterpret a <code>Vector4</code> as a reference to its first two or three
+  components. The <code>w</code> default of 1 is the point-like convention — positions, not directions.
+</p>
+
+<p>
+  The named axes carry a surprise a caller cannot see from the type: <code>X</code>, <code>Y</code>,
+  <code>Z</code> and <code>W</code> pass all four components (<code>w = 0</code>), but
+  <code>Right</code>, <code>Up</code> and <code>Forward</code> pass only three, so the constructor default
+  gives them <code>w = 1</code>. They are points by construction, not directions, and they follow the same
+  handedness branches as <code>Vector3</code>'s.
+</p>
+
+<table>
+  <tr><th>Piece</th><th>What it is</th><th>Where the contract lives</th></tr>
+  <tr><td>Components</td><td><code>x</code>, <code>y</code>, <code>z</code>, <code>w</code>, aliasing
+      <code>a[order]</code></td><td><a href="#properties">Class properties</a></td></tr>
+  <tr><td>Named constants</td><td><code>Zero</code>, <code>Unity</code>, <code>X</code>, <code>Y</code>,
+      <code>Z</code>, <code>W</code>, and the handedness-dependent <code>Right</code>, <code>Up</code>,
+      <code>Forward</code></td><td><a href="#properties">Class properties</a></td></tr>
+  <tr><td>Shared arithmetic</td><td>The <code>VectorCommonImpl.inl</code> surface: operators,
+      <code>Dot</code>, <code>Length</code>, <code>Normalize</code>, interpolation</td>
+      <td><a href="#methods">Class methods</a></td></tr>
+  <tr><td>Narrowing</td><td>Assignment from and conversion to <code>Vector2</code> and
+      <code>Vector3</code></td><td><a href="#methods">Class methods</a></td></tr>
+</table>
+
+<h2 id="template">Template parameters</h2>
+
+<table>
+  <tr><th>Parameter</th><th>Kind</th><th>What it must satisfy</th></tr>
+  <tr>
+    <td><code>TNumber</code></td>
+    <td><code>typename</code></td>
+    <td>
+      The component type. <code>float</code> is what the engine instantiates (<code>TFloat4</code>, the type
+      the stream operator is bound to). The shared implementation casts through <code>float</code> for
+      <code>sqrtf</code>, <code>acosf</code> and the tolerance tests, and
+      <a href="length.html"><code>Length</code></a> returns <code>float</code> regardless
+    </td>
+  </tr>
+</table>
+
+<h2 id="properties">Class properties</h2>
+
+<table>
+  <tr><th>Type + Name</th><th>Default Value</th><th>Description</th></tr>
+  <tr><td><code>using This = Vector4;</code> <span class="badge">member type</span></td>
+      <td><span class="muted">not applicable</span></td>
+      <td>The class's own name, as the shared implementation writes it.</td></tr>
+  <tr><td><code>using TVec2 = Vector2&lt;TNumber&gt;;</code> <span class="badge">member type</span></td>
+      <td><span class="muted">not applicable</span></td>
+      <td>The two-component counterpart, for the constructor, <code>operator=</code> and conversion that take
+        one.</td></tr>
+  <tr><td><code>using TVec3 = Vector3&lt;TNumber&gt;;</code> <span class="badge">member type</span></td>
+      <td><span class="muted">not applicable</span></td>
+      <td>The three-component counterpart, for the same three members.</td></tr>
+  <tr><td><code>static constexpr int order = 4;</code> <span class="badge">public</span></td>
+      <td><code>4</code></td>
+      <td>The component count; the loop bound of every shared-implementation member.</td></tr>
+  <tr><td><code>static const This Zero;</code> <span class="badge">public</span></td>
+      <td><code>(0, 0, 0, 0)</code></td>
+      <td>The additive identity.</td></tr>
+  <tr><td><code>static const This Unity;</code> <span class="badge">public</span></td>
+      <td><code>(1, 1, 1, 1)</code></td>
+      <td>All components one.</td></tr>
+  <tr><td><code>static const This X;</code> <span class="badge">public</span></td>
+      <td><code>(1, 0, 0, 0)</code></td>
+      <td>The x axis with <code>w = 0</code> — a direction.</td></tr>
+  <tr><td><code>static const This Y;</code> <span class="badge">public</span></td>
+      <td><code>(0, 1, 0, 0)</code></td>
+      <td>The y axis with <code>w = 0</code>.</td></tr>
+  <tr><td><code>static const This Z;</code> <span class="badge">public</span></td>
+      <td><code>(0, 0, 1, 0)</code></td>
+      <td>The z axis with <code>w = 0</code>.</td></tr>
+  <tr><td><code>static const This W;</code> <span class="badge">public</span></td>
+      <td><code>(0, 0, 0, 1)</code></td>
+      <td>The homogeneous basis vector.</td></tr>
+  <tr><td><code>static const This Right;</code> <span class="badge">public</span></td>
+      <td><code>(1, 0, 0, 1)</code> — three arguments, so the constructor default gives <code>w = 1</code></td>
+      <td>The right axis as a <em>point</em> (<code>w = 1</code>), in both handedness branches.</td></tr>
+  <tr><td><code>static const This Up;</code> <span class="badge">public</span></td>
+      <td><code>(0, 0, 1, 1)</code> with <code>RIGHT_HANDED_COORDINATE</code>, <code>(0, 1, 0, 1)</code>
+        without</td>
+      <td>The up axis as a point — z in the default right-handed build, y otherwise.</td></tr>
+  <tr><td><code>static const This Forward;</code> <span class="badge">public</span></td>
+      <td><code>(0, 1, 0, 1)</code> with <code>RIGHT_HANDED_COORDINATE</code>, <code>(0, 0, 1, 1)</code>
+        without</td>
+      <td>The forward axis as a point — y in the default right-handed build, z otherwise; the vector
+        <a href="normalize.html"><code>Normalize</code></a> substitutes for a zero-length input.</td></tr>
+  <tr><td><code>TNumber x;</code> <span class="badge">public</span></td>
+      <td><span class="muted">none in the header</span></td>
+      <td>First component; storage shared with <code>a[0]</code> through the anonymous union.</td></tr>
+  <tr><td><code>TNumber y;</code> <span class="badge">public</span></td>
+      <td><span class="muted">none in the header</span></td>
+      <td>Second component; storage shared with <code>a[1]</code>.</td></tr>
+  <tr><td><code>TNumber z;</code> <span class="badge">public</span></td>
+      <td><span class="muted">none in the header</span></td>
+      <td>Third component; storage shared with <code>a[2]</code>.</td></tr>
+  <tr><td><code>TNumber w;</code> <span class="badge">public</span></td>
+      <td><span class="muted">none in the header</span></td>
+      <td>Fourth component; storage shared with <code>a[3]</code>.</td></tr>
+  <tr><td><code>TNumber a[order];</code> <span class="badge">public</span></td>
+      <td><span class="muted">none in the header</span></td>
+      <td>The array view of the same four components — what the shared implementation's loops touch.</td></tr>
+</table>
+
+<h2 id="methods">Class methods</h2>
+
+<table class="methods">
+  <tr><th>Name</th><th>Signature</th><th>What a caller depends on</th></tr>
+  <tr><td><a href="constructors.html"><code>constructors</code></a><span class="badge">5 overloads</span></td>
+      <td class="sig">Vector4() noexcept<br>explicit Vector4(std::nullptr_t) noexcept<br>Vector4(TNumber x, TNumber y, TNumber z = 0, TNumber w = 1) noexcept<br>explicit Vector4(const TVec2&amp; v, TNumber z = 0, TNumber w = 1) noexcept<br>explicit Vector4(const TVec3&amp; v, TNumber w = 1) noexcept</td>
+      <td>The default form is the zero vector; the <code>nullptr</code> form initializes nothing; every
+        remaining form defaults <code>w</code> to 1 — the point-like convention.</td></tr>
+  <tr><td><a href="operator-assign.html"><code>operator=</code></a><span class="badge">2 overloads</span></td>
+      <td class="sig">This&amp; operator=(const TVec2&amp; v) noexcept<br>This&amp; operator=(const TVec3&amp; v) noexcept</td>
+      <td>Copies the source components into <code>x</code>, <code>y</code> (and <code>z</code>), leaving the
+        rest — <code>z</code>/<code>w</code> — untouched.</td></tr>
+  <tr><td><a href="operator-cast.html"><code>operator TVec2&amp;</code></a><span class="badge">4 overloads</span></td>
+      <td class="sig">operator TVec2&amp;() noexcept<br>operator const TVec2&amp;() const noexcept<br>operator TVec3&amp;() noexcept<br>operator const TVec3&amp;() const noexcept</td>
+      <td><code>reinterpret_cast</code> views of the first two or three components — no copy; non-explicit, so
+        they apply in implicit conversions.</td></tr>
+  <tr><td><a href="add.html"><code>Add</code></a></td>
+      <td class="sig">void Add(const This&amp; rhs) noexcept</td>
+      <td>Componentwise addition in place.</td></tr>
+  <tr><td><a href="sub.html"><code>Sub</code></a></td>
+      <td class="sig">void Sub(const This&amp; rhs) noexcept</td>
+      <td>Componentwise subtraction in place.</td></tr>
+  <tr><td><a href="multiply.html"><code>Multiply</code></a><span class="badge">2 overloads</span></td>
+      <td class="sig">void Multiply(TNumber value) noexcept<br>void Multiply(const This&amp; rhs) noexcept</td>
+      <td>Scale by a scalar or a componentwise product, in place.</td></tr>
+  <tr><td><a href="divide.html"><code>Divide</code></a></td>
+      <td class="sig">void Divide(const This&amp; rhs) noexcept</td>
+      <td>Componentwise division in place; each divisor asserted non-zero in Debug and Dev only.</td></tr>
+  <tr><td><a href="negate.html"><code>Negate</code></a></td>
+      <td class="sig">void Negate() noexcept</td>
+      <td>Flips the sign of every component in place.</td></tr>
+  <tr><td><a href="dot.html"><code>Dot</code></a></td>
+      <td class="sig">[[nodiscard]] TNumber Dot(const This&amp; rhs) const noexcept</td>
+      <td>The sum of componentwise products, <code>w</code> included.</td></tr>
+  <tr><td><a href="sqr-length.html"><code>SqrLength</code></a></td>
+      <td class="sig">[[nodiscard]] TNumber SqrLength() const noexcept</td>
+      <td><code>Dot(*this)</code> — for a point-like vector this includes the <code>w</code> contribution.</td></tr>
+  <tr><td><a href="length.html"><code>Length</code></a></td>
+      <td class="sig">[[nodiscard]] float Length() const noexcept</td>
+      <td><code>sqrtf(SqrLength())</code> — always <code>float</code>.</td></tr>
+  <tr><td><a href="normalize.html"><code>Normalize</code></a></td>
+      <td class="sig">float Normalize() noexcept</td>
+      <td>Scales to unit length in place and returns the length it had; a zero-length vector is replaced by
+        <code>Forward</code> — itself a <code>w = 1</code> point.</td></tr>
+  <tr><td><a href="normalized.html"><code>Normalized</code></a></td>
+      <td class="sig">[[nodiscard]] This Normalized() const noexcept</td>
+      <td>A unit-length copy; the original is untouched.</td></tr>
+  <tr><td><a href="is-zero.html"><code>IsZero</code></a></td>
+      <td class="sig">[[nodiscard]] bool IsZero() const noexcept</td>
+      <td>Sum of absolute components below <code>Epsilon</code>.</td></tr>
+  <tr><td><a href="is-unity.html"><code>IsUnity</code></a></td>
+      <td class="sig">[[nodiscard]] bool IsUnity() const noexcept</td>
+      <td>Squared length within <code>SqrEpsilon</code> of 1.</td></tr>
+  <tr><td><a href="to-absolute.html"><code>ToAbsolute</code></a></td>
+      <td class="sig">This&amp; ToAbsolute() noexcept</td>
+      <td>Absolute value per component, in place.</td></tr>
+  <tr><td><a href="get-absolute.html"><code>GetAbsolute</code></a></td>
+      <td class="sig">[[nodiscard]] This GetAbsolute() const noexcept</td>
+      <td>The non-mutating counterpart of <code>ToAbsolute</code>.</td></tr>
+  <tr><td><a href="lerp.html"><code>Lerp</code></a><span class="badge">2 overloads</span></td>
+      <td class="sig">[[nodiscard]] static This Lerp(const This&amp; from, const This&amp; to, float t) noexcept<br>[[nodiscard]] This Lerp(const This&amp; to, float t) const noexcept</td>
+      <td>Linear interpolation over all four components; <code>t</code> is <code>float</code> and is not
+        clamped.</td></tr>
+  <tr><td><a href="slerp.html"><code>Slerp</code></a><span class="badge">2 overloads</span></td>
+      <td class="sig">[[nodiscard]] static This Slerp(const This&amp; from, const This&amp; to, float t) noexcept<br>[[nodiscard]] This Slerp(const This&amp; to, float t) const noexcept</td>
+      <td>Spherical direction blend with linearly interpolated length, over all four components.</td></tr>
+  <tr><td><a href="operator-add.html"><code>operator+</code></a></td>
+      <td class="sig">[[nodiscard]] This operator+(const This&amp; rhs) const noexcept</td>
+      <td>The componentwise sum as a new vector.</td></tr>
+  <tr><td><a href="operator-subtract.html"><code>operator-</code></a><span class="badge">2 overloads</span></td>
+      <td class="sig">[[nodiscard]] This operator-() const noexcept<br>[[nodiscard]] This operator-(const This&amp; rhs) const noexcept</td>
+      <td>Negation, and the componentwise difference as a new vector.</td></tr>
+  <tr><td><a href="operator-multiply.html"><code>operator*</code></a><span class="badge">2 overloads</span></td>
+      <td class="sig">[[nodiscard]] This operator*(const TNumber rhs) const noexcept<br>[[nodiscard]] This operator*(const This&amp; rhs) const noexcept</td>
+      <td>Scalar scaling or componentwise product as a new vector.</td></tr>
+  <tr><td><a href="operator-divide.html"><code>operator/</code></a><span class="badge">2 overloads</span></td>
+      <td class="sig">[[nodiscard]] This operator/(const TNumber rhs) const noexcept<br>[[nodiscard]] This operator/(const This&amp; rhs) const noexcept</td>
+      <td>The scalar form multiplies by the reciprocal after asserting <code>rhs != 0</code>; the vector form
+        divides componentwise — asserts gone in Release.</td></tr>
+  <tr><td><a href="operator-equal.html"><code>operator==</code></a></td>
+      <td class="sig">[[nodiscard]] bool operator==(const This&amp; rhs) const noexcept</td>
+      <td>Tolerance equality through <code>IsZero</code> of the difference.</td></tr>
+  <tr><td><a href="operator-not-equal.html"><code>operator!=</code></a></td>
+      <td class="sig">[[nodiscard]] bool operator!=(const This&amp; rhs) const noexcept</td>
+      <td>The negation of the tolerance equality.</td></tr>
+  <tr><td><a href="operator-add-assign.html"><code>operator+=</code></a></td>
+      <td class="sig">This&amp; operator+=(const This&amp; rhs) noexcept</td>
+      <td>Adds in place and returns <code>*this</code>.</td></tr>
+  <tr><td><a href="operator-subtract-assign.html"><code>operator-=</code></a></td>
+      <td class="sig">This&amp; operator-=(const This&amp; rhs) noexcept</td>
+      <td>Subtracts in place and returns <code>*this</code>.</td></tr>
+  <tr><td><a href="operator-multiply-assign.html"><code>operator*=</code></a><span class="badge">2 overloads</span></td>
+      <td class="sig">This&amp; operator*=(const TNumber rhs) noexcept<br>This&amp; operator*=(const This&amp; rhs) noexcept</td>
+      <td>Scales or multiplies componentwise in place through <code>Multiply</code>.</td></tr>
+  <tr><td><a href="operator-divide-assign.html"><code>operator/=</code></a></td>
+      <td class="sig">This&amp; operator/=(const TNumber rhs) noexcept</td>
+      <td>Scalar only: asserts <code>rhs != 0</code>, then multiplies by the reciprocal.</td></tr>
+</table>
+
+<h2 id="non-member">Non-member helper functions</h2>
+
+<table>
+  <tr><th>Name</th><th>Signature</th><th>What a caller depends on</th></tr>
+  <tr><td><code>operator*</code></td>
+      <td class="sig">template &lt;typename TNumber&gt; [[nodiscard]] Vector4&lt;TNumber&gt; operator*(TNumber value, Vector4&lt;TNumber&gt; vector) noexcept</td>
+      <td>Scalar-on-the-left multiplication, defined as <code>vector * value</code>. Defined at namespace scope
+        in <code>Engine/Math/Vector4.h</code>.</td></tr>
+  <tr><td><code>operator&lt;&lt;</code></td>
+      <td class="sig">template &lt;class TOutStream&gt; TOutStream&amp; operator&lt;&lt;(TOutStream&amp; os, const TFloat4&amp; v) noexcept</td>
+      <td>Writes <code>"(x, y, z, w), norm = L"</code> — it calls <code>Length()</code>, so streaming a vector
+        costs a square root. Bound to <code>TFloat4</code> specifically.</td></tr>
+</table>
+
+<h2 id="coverage">Coverage</h2>
+
+<table>
+  <tr><th>Gap</th><th>Detail</th></tr>
+  <tr>
+    <td>Shared-implementation methods documented from the <code>.inl</code></td>
+    <td>Every method above except <code>constructors</code>, <code>operator=</code> and the conversion
+      operators is declared in <code>Engine/Math/VectorCommonImpl.inl</code>, included into the class body.
+      Their pages cite the <code>.inl</code> as the definition site; <code>docs_pass.py signatures</code>
+      verifies them against a header with the <code>.inl</code> inlined, because the checker reads the
+      <code>.h</code> alone.</td>
+  </tr>
+  <tr>
+    <td>No caller outside the module</td>
+    <td><code>Vector4.h</code> is included by <code>Quaternion.h</code>, and the class is exercised by the
+      <code>Vector4Test</code> fixture in <code>Engine/Math/Vector4.cpp</code>. Nothing in
+      <code>Engine/</code> outside <code>Engine/Math/</code> or in <code>Applications/</code> instantiates
+      it.</td>
+  </tr>
+  <tr>
+    <td><code>Vector4Test</code></td>
+    <td>Declared under <code>TEST_ENABLED</code>, defined in <code>Vector4.cpp</code>; a test fixture, not
+      engine API.</td>
+  </tr>
+  <tr>
+    <td>The <code>w = 1</code> axes</td>
+    <td><code>Right</code>, <code>Up</code> and <code>Forward</code> are constructed with three arguments, so
+      the constructor default gives them <code>w = 1</code> while <code>X</code>, <code>Y</code>,
+      <code>Z</code>, <code>W</code> carry <code>w = 0</code>. Stated in the property table because it decides
+      what <code>Length()</code>, <code>SqrLength()</code> and <code>Normalize()</code> compute on
+      them.</td>
+  </tr>
+</table>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; Vector4</a></span>
+  <span><a href="index.html#methods">All Vector4 methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

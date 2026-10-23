@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Matrix3x3 — Math module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a class="current" href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This class</h3>
+  <ul>
+    <li><a href="#description">Class description</a></li>
+    <li><a href="#template">Template parameters</a></li>
+    <li><a href="#properties">Class properties</a></li>
+    <li><a href="#methods">Class methods</a></li>
+    <li><a href="#non-member">Non-member helper functions</a></li>
+    <li><a href="#coverage">Coverage</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Math</a> /
+  Matrix3x3
+</p>
+
+<h1>Matrix3x3</h1>
+<p class="subtitle">
+  <span class="tag">Engine/Math/Matrix3x3.h</span>
+  a 3-by-3 row-major matrix: rotation factories and setters, LookAt, inverse, determinant, and the shared matrix arithmetic
+</p>
+
+<h2 id="description">Class description</h2>
+
+<p>
+  <code>Matrix3x3</code> is a fixed 3-by-3 row-major matrix: <code>rows[3]</code> of <code>Vector3</code>,
+  aliased with <code>TNumber m[3][3]</code>, a flat <code>std::array</code>, and named elements
+  <code>m11</code>…<code>m33</code>. It shares <code>Engine/Math/MatrixCommonImpl.inl</code> with
+  <code>Matrix2x2</code> and <code>Matrix4x4</code>, and adds rotation factories and setters, a
+  <code>LookAt</code> basis builder, the 3-by-3 inverse and determinant, and conversion to and from
+  <code>Matrix2x2</code>.
+</p>
+
+<p>
+  Units are mixed and each setter's contract says which: <a href="create-rotation.html">
+  <code>CreateRotation</code></a> and <a href="set-euler-angles.html"><code>SetEulerAngles</code></a> take
+  <em>degrees</em> (they convert through <code>DegreeToRadian</code>), while
+  <a href="set-euler-x.html"><code>SetEulerX</code></a>, <a href="set-euler-y.html">
+  <code>SetEulerY</code></a> and <a href="set-euler-z.html"><code>SetEulerZ</code></a> take
+  <em>radians</em> (they call <code>RotationCos</code>/<code>RotationSin</code> directly). All rotation trig
+  goes through <code>CoordinateOrientation</code>, so handedness is the build's
+  <code>RIGHT_HANDED_COORDINATE</code> decision.
+</p>
+
+<div class="gap">
+  <strong>Two defects a caller must know about.</strong> <a href="inverse.html"><code>Inverse()</code></a>
+  scales the adjugate by <code>1/det</code> twice — the returned matrix is the adjugate over
+  <code>det²</code>, exact only for determinant-1 (rotation) matrices. And
+  <a href="set-euler-z.html"><code>SetEulerZ()</code></a> writes <code>m33 = 0.0f</code> where the rotation
+  needs <code>c</code>, so its result is not a rotation about z. Both are stated on their pages with the
+  code quoted.
+</div>
+
+<table>
+  <tr><th>Piece</th><th>What it is</th><th>Where the contract lives</th></tr>
+  <tr><td>Storage</td><td><code>rows[row]</code>, <code>m</code>, <code>element</code>,
+      <code>m11</code>…<code>m33</code> — one storage, four views</td>
+      <td><a href="#properties">Class properties</a></td></tr>
+  <tr><td>Named constants</td><td><code>Zero</code>, <code>Identity</code></td>
+      <td><a href="#properties">Class properties</a></td></tr>
+  <tr><td>Rotation</td><td><code>CreateRotation</code>, <code>SetEulerX/Y/Z</code>,
+      <code>SetEulerAngles</code>, <code>LookAt</code></td><td><a href="#methods">Class methods</a></td></tr>
+  <tr><td>Shared arithmetic</td><td>The <code>MatrixCommonImpl.inl</code> surface</td>
+      <td><a href="#methods">Class methods</a></td></tr>
+  <tr><td>3×3 members</td><td><code>Inverse</code>, <code>Transpose</code>, <code>Determinant</code>,
+      <code>IsOrthogonal</code>, <code>Matrix2x2</code> conversion and assignment</td>
+      <td><a href="#methods">Class methods</a></td></tr>
+</table>
+
+<h2 id="template">Template parameters</h2>
+
+<table>
+  <tr><th>Parameter</th><th>Kind</th><th>What it must satisfy</th></tr>
+  <tr>
+    <td><code>TNumber</code></td>
+    <td><code>typename</code></td>
+    <td>
+      The element type. The engine instantiates <code>float</code> only (<code>TFloat3x3</code>), and the
+      named-element struct arm is <code>float</code> regardless. The rotation setters work in
+      <code>float</code> throughout, whatever <code>TNumber</code> is
+    </td>
+  </tr>
+</table>
+
+<h2 id="properties">Class properties</h2>
+
+<table>
+  <tr><th>Type + Name</th><th>Default Value</th><th>Description</th></tr>
+  <tr><td><code>using This = Matrix3x3;</code> <span class="badge">member type</span></td>
+      <td><span class="muted">not applicable</span></td>
+      <td>The class's own name, as the shared implementation writes it.</td></tr>
+  <tr><td><code>using TVec = Vector3&lt;TNumber&gt;;</code> <span class="badge">member type</span></td>
+      <td><span class="muted">not applicable</span></td>
+      <td>The row and column vector type this matrix multiplies.</td></tr>
+  <tr><td><code>using TMat2x2 = Matrix2x2&lt;TNumber&gt;;</code> <span class="badge">member type</span></td>
+      <td><span class="muted">not applicable</span></td>
+      <td>The 2-by-2 counterpart, for the conversion constructor, <code>operator=</code> and conversion
+        operator that involve one.</td></tr>
+  <tr><td><code>constexpr static int row = 3;</code> <span class="badge">public</span></td>
+      <td><code>3</code></td>
+      <td>Row count; the loop bound of the shared implementation.</td></tr>
+  <tr><td><code>constexpr static int column = 3;</code> <span class="badge">public</span></td>
+      <td><code>3</code></td>
+      <td>Column count.</td></tr>
+  <tr><td><code>constexpr static int numberOfElements = row * column;</code> <span class="badge">public</span></td>
+      <td><code>9</code></td>
+      <td>Size of the flat <code>std::array</code> view.</td></tr>
+  <tr><td><code>const static This Zero;</code> <span class="badge">public</span></td>
+      <td><code>({0, 0, 0, 0, 0, 0, 0, 0, 0})</code></td>
+      <td>All elements zero, built through the array constructor.</td></tr>
+  <tr><td><code>const static This Identity;</code> <span class="badge">public</span></td>
+      <td><code>Matrix3x3()</code> — <code>{1, 0, 0, 0, 1, 0, 0, 0, 1}</code></td>
+      <td>The default-constructed identity.</td></tr>
+  <tr><td><code>TVec rows[row];</code> <span class="badge">public</span></td>
+      <td><span class="muted">none in the header</span></td>
+      <td>The row vectors — what <code>Multiply</code>, <code>Column</code>, <code>IsOrthogonal</code> and
+        <code>LookAt</code> read or write.</td></tr>
+  <tr><td><code>TNumber m[row][column];</code> <span class="badge">public</span></td>
+      <td><span class="muted">none in the header</span></td>
+      <td>The two-dimensional view; <code>m[i][j]</code> is row <code>i</code>, column <code>j</code>
+        (row-major).</td></tr>
+  <tr><td><code>std::array&lt;TNumber, numberOfElements&gt; element;</code> <span class="badge">public</span></td>
+      <td><span class="muted">none in the header</span></td>
+      <td>The flat view the constructors and the scalar <code>Multiply</code> walk.</td></tr>
+  <tr><td><code>float m11, m12, m13;</code> <span class="badge">public</span></td>
+      <td><span class="muted">none in the header</span></td>
+      <td>Named first-row elements — declared <code>float</code> regardless of <code>TNumber</code>.</td></tr>
+  <tr><td><code>float m21, m22, m23;</code> <span class="badge">public</span></td>
+      <td><span class="muted">none in the header</span></td>
+      <td>Named second-row elements — declared <code>float</code> regardless of <code>TNumber</code>.</td></tr>
+  <tr><td><code>float m31, m32, m33;</code> <span class="badge">public</span></td>
+      <td><span class="muted">none in the header</span></td>
+      <td>Named third-row elements — declared <code>float</code> regardless of <code>TNumber</code>.</td></tr>
+</table>
+
+<h2 id="methods">Class methods</h2>
+
+<table class="methods">
+  <tr><th>Name</th><th>Signature</th><th>What a caller depends on</th></tr>
+  <tr><td><a href="create-rotation.html"><code>CreateRotation</code></a><span class="badge">2 overloads</span></td>
+      <td class="sig">[[nodiscard]] static This CreateRotation(float x, float y, float z) noexcept<br>[[nodiscard]] static This CreateRotation(const TVec euler) noexcept</td>
+      <td>A rotation matrix from Euler angles in <em>degrees</em>, via <code>SetEulerAngles</code>; built on an
+        uninitialized matrix and fully written by the setter.</td></tr>
+  <tr><td><a href="constructors.html"><code>constructors</code></a><span class="badge">4 overloads</span></td>
+      <td class="sig">Matrix3x3() noexcept<br>explicit Matrix3x3(std::nullptr_t) noexcept<br>explicit Matrix3x3(std::array&lt;TNumber, numberOfElements&gt;&amp;&amp; values) noexcept<br>explicit Matrix3x3(const TMat2x2&amp; rhs) noexcept</td>
+      <td>The default form is the identity; the <code>nullptr</code> form initializes nothing; the array form
+        takes nine elements row-major; the <code>Matrix2x2</code> form copies its four elements and completes
+        the identity.</td></tr>
+  <tr><td><a href="operator-assign.html"><code>operator=</code></a></td>
+      <td class="sig">This&amp; operator=(const TMat2x2&amp; rhs) noexcept</td>
+      <td>Copies the 2-by-2's four elements and leaves the rest of the matrix as it was — no reset to
+        identity.</td></tr>
+  <tr><td><a href="operator-cast.html"><code>operator TMat2x2</code></a></td>
+      <td class="sig">explicit operator TMat2x2() const noexcept</td>
+      <td>Builds a <code>Matrix2x2</code> from <code>m11</code>, <code>m12</code>, <code>m21</code>,
+        <code>m22</code>; explicit, so it happens only where written.</td></tr>
+  <tr><td><a href="inverse.html"><code>Inverse</code></a></td>
+      <td class="sig">[[nodiscard]] This Inverse() const noexcept</td>
+      <td>The adjugate scaled by <code>1/det</code> <em>twice</em> — correct only for determinant-1 matrices;
+        singular input asserts in Debug and Dev and divides by zero in Release.</td></tr>
+  <tr><td><a href="transpose.html"><code>Transpose</code></a></td>
+      <td class="sig">void Transpose() noexcept</td>
+      <td>Swaps the three off-diagonal pairs in place.</td></tr>
+  <tr><td><a href="determinant.html"><code>Determinant</code></a></td>
+      <td class="sig">[[nodiscard]] TNumber Determinant() const noexcept</td>
+      <td>The full 3-by-3 cofactor expansion, through the <code>float</code> named elements.</td></tr>
+  <tr><td><a href="is-orthogonal.html"><code>IsOrthogonal</code></a></td>
+      <td class="sig">[[nodiscard]] bool IsOrthogonal() const noexcept</td>
+      <td>All three rows mutually orthogonal and unit length, through the vector tolerances.</td></tr>
+  <tr><td><a href="look-at.html"><code>LookAt</code></a></td>
+      <td class="sig">void LookAt(const TVec&amp; forward, TVec up) noexcept</td>
+      <td>Builds a rotation basis from unit <code>forward</code> and <code>up</code>, asserted non-parallel;
+        fills the rows with right/forward/up and transposes in place. The left-handed branch does not
+        compile — see the page.</td></tr>
+  <tr><td><a href="set-euler-x.html"><code>SetEulerX</code></a></td>
+      <td class="sig">void SetEulerX(float radian) noexcept</td>
+      <td>Rotation about x, <em>radians</em>, written into the 3-by-3 block; fourth-column behavior does not
+        exist here.</td></tr>
+  <tr><td><a href="set-euler-y.html"><code>SetEulerY</code></a></td>
+      <td class="sig">void SetEulerY(float radian) noexcept</td>
+      <td>Rotation about y, <em>radians</em>.</td></tr>
+  <tr><td><a href="set-euler-z.html"><code>SetEulerZ</code></a></td>
+      <td class="sig">void SetEulerZ(float radian) noexcept</td>
+      <td>Rotation about z, <em>radians</em> — but <code>m33</code> is written <code>0.0f</code>, so the
+        result is not a rotation; see the page.</td></tr>
+  <tr><td><a href="set-euler-angles.html"><code>SetEulerAngles</code></a><span class="badge">2 overloads</span></td>
+      <td class="sig">void SetEulerAngles(const TVec&amp; euler) noexcept<br>void SetEulerAngles(float x, float y, float z) noexcept</td>
+      <td>Full 3-by-3 Euler rotation from <em>degrees</em>; overwrites the 3-by-3 block only.</td></tr>
+  <tr><td><a href="create-diagonal.html"><code>CreateDiagonal</code></a><span class="badge">2 overloads</span></td>
+      <td class="sig">[[nodiscard]] static This CreateDiagonal(const TNumber diagonal) noexcept<br>[[nodiscard]] static This CreateDiagonal(const TVec&amp; diagonal) noexcept</td>
+      <td>A diagonal matrix with zeros elsewhere.</td></tr>
+  <tr><td><a href="operator-multiply.html"><code>operator*</code></a><span class="badge">2 overloads</span></td>
+      <td class="sig">[[nodiscard]] This operator*(const This&amp; rhs) const noexcept<br>[[nodiscard]] TVec operator*(const TVec&amp; rhs) const noexcept</td>
+      <td>Row-major product; the vector sits on the right as a column vector — the test fixture rotates
+        axes this way.</td></tr>
+  <tr><td><a href="operator-equal.html"><code>operator==</code></a></td>
+      <td class="sig">[[nodiscard]] bool operator==(const This&amp; rhs) const noexcept</td>
+      <td>Per-row tolerance equality within <code>Epsilon</code>.</td></tr>
+  <tr><td><a href="operator-not-equal.html"><code>operator!=</code></a></td>
+      <td class="sig">[[nodiscard]] bool operator!=(const This&amp; rhs) const noexcept</td>
+      <td>The negation of the tolerance equality.</td></tr>
+  <tr><td><a href="is-invertible.html"><code>IsInvertible</code></a></td>
+      <td class="sig">[[nodiscard]] bool IsInvertible() const noexcept</td>
+      <td>Determinant exactly non-zero — no tolerance.</td></tr>
+  <tr><td><a href="is-identity.html"><code>IsIdentity</code></a></td>
+      <td class="sig">[[nodiscard]] bool IsIdentity() const noexcept</td>
+      <td>Off-diagonals <code>IsZero</code>, diagonals <code>IsEqual(…, 1.0f)</code> — float
+        tolerances.</td></tr>
+  <tr><td><a href="transposed.html"><code>Transposed</code></a></td>
+      <td class="sig">[[nodiscard]] This Transposed() const noexcept</td>
+      <td>A transposed copy; the original untouched.</td></tr>
+  <tr><td><a href="multiply.html"><code>Multiply</code></a><span class="badge">3 overloads</span></td>
+      <td class="sig">[[nodiscard]] This Multiply(const TNumber value) const noexcept<br>[[nodiscard]] This Multiply(const This&amp; rhs) const noexcept<br>[[nodiscard]] TVec Multiply(const TVec&amp; rhs) const noexcept</td>
+      <td>Scale (with a NaN guard), row-major product, or column-vector application — all returning
+        copies.</td></tr>
+  <tr><td><a href="column.html"><code>Column</code></a></td>
+      <td class="sig">[[nodiscard]] TVec Column(int index) const noexcept</td>
+      <td>Gathers column <code>index</code> into a vector; index asserted in range in Debug and
+        Dev.</td></tr>
+</table>
+
+<h2 id="non-member">Non-member helper functions</h2>
+
+<table>
+  <tr><th>Name</th><th>Signature</th><th>What a caller depends on</th></tr>
+  <tr><td><code>operator&lt;&lt;</code></td>
+      <td class="sig">template &lt;typename T&gt; std::ostream&amp; operator&lt;&lt;(std::ostream&amp; os, const Matrix3x3&lt;T&gt;&amp; mat) noexcept</td>
+      <td>Prints <code>"Matrix 3x3"</code> and the rows, comma-separated. Bound to
+        <code>std::ostream</code>.</td></tr>
+</table>
+
+<h2 id="coverage">Coverage</h2>
+
+<table>
+  <tr><th>Gap</th><th>Detail</th></tr>
+  <tr>
+    <td>Shared-implementation methods documented from the <code>.inl</code></td>
+    <td>Every method above except the rotation members, <code>constructors</code>,
+      <code>operator=</code>, <code>operator TMat2x2</code>, <code>Inverse</code>,
+      <code>Transpose</code>, <code>Determinant</code>, <code>IsOrthogonal</code> and <code>LookAt</code> is
+      declared in <code>Engine/Math/MatrixCommonImpl.inl</code>, included into the class body. Their pages
+      cite the <code>.inl</code> as the definition site; <code>docs_pass.py signatures</code> verifies them
+      against a header with the <code>.inl</code> inlined, because the checker reads the <code>.h</code>
+      alone.</td>
+  </tr>
+  <tr>
+    <td><code>Inverse()</code> and <code>SetEulerZ()</code></td>
+    <td>Both carry defects stated and quoted on their pages: the double
+      <code>1/det</code> scaling, and the <code>m33 = 0.0f</code> write. The pages document the code as it
+      stands; they do not describe the intended behavior.</td>
+  </tr>
+  <tr>
+    <td>Callers outside the module</td>
+    <td>None found in <code>Engine/</code> outside <code>Engine/Math/</code> or in
+      <code>Applications/</code>. The class is exercised by the <code>Matrix3x3Test</code> fixture in
+      <code>Engine/Math/Matrix3x3.cpp</code>, which the rotation pages quote.</td>
+  </tr>
+  <tr>
+    <td><code>Matrix3x3Test</code></td>
+    <td>Declared under <code>TEST_ENABLED</code>, defined in <code>Matrix3x3.cpp</code>; a test fixture, not
+      engine API.</td>
+  </tr>
+</table>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; Matrix3x3</a></span>
+  <span><a href="index.html#methods">All Matrix3x3 methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

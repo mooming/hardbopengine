@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PerlinNoise::constructors — Math module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a class="current" href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Math</a> /
+  <a href="index.html">PerlinNoise</a> / constructors
+</p>
+
+<h1><span class="fn">constructors</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::PerlinNoise</span>
+  <span class="tag">Engine/Math/PerlinNoise.cpp</span>
+  the permutation table, built deterministically from the seed
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>explicit PerlinNoise(TUInt seed = 0) noexcept</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>Defined in <code>Engine/Math/PerlinNoise.cpp</code> as <code>PerlinNoise::PerlinNoise()</code>. Initializes <code>seed</code> and <code>randomState</code> from the argument, fills <code>p[0..255]</code> with the identity, runs a Fisher-Yates shuffle over the low half — drawing each swap index from <a href="next-random.html"><code>NextRandom</code></a> — and then copies the low half into the high half, so <a href="at.html"><code>At</code></a>'s lookups never need a mask. The shuffle consumes <code>randomState</code> but never <code>seed</code>, which is why <a href="get-seed.html"><code>GetSeed</code></a> keeps reporting the construction seed.</p>
+
+<h2 id="parameters">Parameters</h2>
+
+<table>
+  <tr><th>Parameter</th><th>Type</th><th>Requirement</th></tr>
+  <tr><td><code>seed</code></td><td><code>TUInt</code></td><td>Defaults to 0. Any value; it seeds the shuffle.</td></tr>
+</table>
+
+<h2 id="return">Return value</h2>
+
+<p>None; construction is not assignment.</p>
+
+<h2 id="example">Examples</h2>
+
+<pre><code>PerlinNoise a(12345);
+PerlinNoise b(12345);
+PerlinNoise c(999);</code></pre>
+<p class="meta">From Engine/Math/PerlinNoise.cpp, PerlinNoiseTest::Prepare() — the determinism test's instances</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; PerlinNoise</a></span>
+  <span><a href="index.html#methods">All PerlinNoise methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

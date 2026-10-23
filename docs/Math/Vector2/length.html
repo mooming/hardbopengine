@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Vector2::Length — Math module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a class="current" href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Math</a> /
+  <a href="index.html">Vector2</a> / Length
+</p>
+
+<h1><span class="fn">Length</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::Vector2</span>
+  <span class="tag">Engine/Math/VectorCommonImpl.inl</span>
+  the Euclidean length, as float
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>[[nodiscard]] float Length() const noexcept</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>Defined in <code>Engine/Math/VectorCommonImpl.inl</code> as <code>Vector2::Length()</code>; the file is included into the class body, so this is a member of every vector class, not a free function. Returns <code>sqrtf(SqrLength())</code>. The return type is <code>float</code> regardless of <code>TNumber</code> — a <code>Vector3&lt;double&gt;</code> narrows here. Comparisons that do not need the root should use <a href="sqr-length.html"><code>SqrLength</code></a>.</p>
+
+<h2 id="parameters">Parameters</h2>
+
+<p>None.</p>
+
+<h2 id="return">Return value</h2>
+
+<table>
+  <tr><th>Type</th><th>What you get</th></tr>
+  <tr><td><code>float</code></td><td>The Euclidean length; <code>0.0f</code> for the zero vector.</td></tr>
+</table>
+
+<h2 id="example">Examples</h2>
+
+<pre><code>auto length = Length();
+if (hbe::IsZero(length))
+{
+	*this = This::Forward;
+
+	return length;
+}</code></pre>
+<p class="meta">From Engine/Math/VectorCommonImpl.inl, Vector2::Normalize()</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; Vector2</a></span>
+  <span><a href="index.html#methods">All Vector2 methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

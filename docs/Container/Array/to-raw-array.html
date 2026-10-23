@@ -50,7 +50,6 @@
     <li><a href="size.html">Size</a></li>
     <li><a href="is-valid-index.html">IsValidIndex</a></li>
     <li><a href="clear.html">Clear</a></li>
-    <li><a href="resize.html">Resize</a></li>
     <li><a href="swap.html">Swap</a></li>
     <li><a href="get-index.html">GetIndex</a></li>
   </ul>
@@ -75,8 +74,9 @@
 
 <h2 id="signature">Signature</h2>
 
-<pre><code>[[nodiscard]] <span class="ty">Element</span>* <span class="fn">ToRawArray</span>() <span class="kw">noexcept</span>;
-[[nodiscard]] <span class="kw">const</span> <span class="ty">Element</span>* <span class="kw">const</span> <span class="fn">ToRawArray</span>() <span class="kw">const</span> <span class="kw">noexcept</span>;</code></pre>
+<pre><code>[[nodiscard]] Element* ToRawArray() noexcept
+
+[[nodiscard]] const Element* const ToRawArray() const noexcept</code></pre>
 
 <h2 id="description">Function description</h2>
 
@@ -104,9 +104,8 @@
 </p>
 
 <div class="gap">
-  <strong>The pointer is valid only as long as the buffer is, and four things end that.</strong>
-  <a href="resize.html"><code>Resize</code></a> frees the buffer it was allocated from after moving the elements
-  out of it, <a href="clear.html"><code>Clear</code></a> frees it outright, the
+  <strong>The pointer is valid only as long as the buffer is, and three things end that.</strong>
+  <a href="clear.html"><code>Clear</code></a> frees the buffer outright, the
   <a href="destructor.html">destructor</a> frees it, and a <a href="swap.html"><code>Swap</code></a> or a move
   assignment leaves it owned by a different array — the bytes stay valid, but they are another array's elements
   now. Any of those leaves the pointer you are holding pointing into freed memory with nothing to detect it: this
@@ -133,7 +132,7 @@
     <td><code>Element*</code> / <code>const Element* const</code></td>
     <td>
       The first element's address, or <code>nullptr</code> if the array holds nothing. The memory belongs to the
-      array: do not free it, and do not keep it past the next resize, clear, swap or destruction
+      array: do not free it, and do not keep it past the next clear, swap or destruction
     </td>
   </tr>
 </table>

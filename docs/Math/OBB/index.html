@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>OBB — Math module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a class="current" href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This class</h3>
+  <ul>
+    <li><a href="#description">Class description</a></li>
+    <li><a href="#template">Template parameters</a></li>
+    <li><a href="#properties">Class properties</a></li>
+    <li><a href="#methods">Class methods</a></li>
+    <li><a href="#non-member">Non-member helper functions</a></li>
+    <li><a href="#coverage">Coverage</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Math</a> /
+  OBB
+</p>
+
+<h1>OBB</h1>
+<p class="subtitle">
+  <span class="tag">Engine/Math/OBB.h</span>
+  an oriented bounding box: center, half-extents and a rotation quaternion
+</p>
+
+<h2 id="description">Class description</h2>
+
+<p>
+  <code>OBB</code> is an oriented bounding box: a <code>center</code> point, <code>half</code>-extents along
+  the box's own axes, and a <code>rotation</code> quaternion orienting those axes. It is the tighter cousin
+  of <a href="../AABB/index.html"><code>AABB</code></a> for anything that turns — the same volume, plus a
+  rotation — and it is built around one convention the parameter names make easy to miss: the query methods
+  take a point, subtract the center, and apply the <em>inverse</em> rotation, so the caller passes the point
+  in the space the box lives in and the members work in the box's local frame.
+</p>
+
+<div class="gap">
+  <strong>Two absences a caller must know.</strong> <a href="has-intersection.html">
+  <code>HasIntersection</code></a> is a stub that always returns <code>false</code> — no intersection test
+  exists yet. And <a href="closest.html"><code>Closest</code></a> rounds-trips through two private
+  conversions that are not inverses of each other: <code>ToObjectSpace</code> subtracts the center where the
+  inverse of <code>ToOBBSpace</code> would add it, so for a box with a non-zero center the returned point is
+  displaced by <code>-2 * center</code>. Both are stated on their pages with the code quoted.
+</div>
+
+<table>
+  <tr><th>Piece</th><th>What it is</th><th>Where the contract lives</th></tr>
+  <tr><td>Storage</td><td><code>center</code>, <code>half</code>, <code>rotation</code></td>
+      <td><a href="#properties">Class properties</a></td></tr>
+  <tr><td>Construction</td><td>From parts, or from an <code>AABB</code> plus a rotation</td>
+      <td><a href="#methods">Class methods</a></td></tr>
+  <tr><td>Queries</td><td><code>IsContaining</code>, <code>Closest</code>, <code>HasIntersection</code></td>
+      <td><a href="#methods">Class methods</a></td></tr>
+  <tr><td>Space conversion</td><td>The private <code>ToOBBSpace</code> / <code>ToObjectSpace</code> pair</td>
+      <td><a href="#methods">Class methods</a></td></tr>
+</table>
+
+<h2 id="template">Template parameters</h2>
+
+<table>
+  <tr><th>Parameter</th><th>Kind</th><th>What it must satisfy</th></tr>
+  <tr>
+    <td><code>TNumber</code></td>
+    <td><code>typename</code></td>
+    <td>
+      The scalar type. The member aliases name the companions: <code>TVec3 = Vector3&lt;TNumber&gt;</code>
+      and <code>TQuat = Quaternion&lt;TNumber&gt;</code>. The engine instantiates <code>float</code>
+      (<code>TFloat3</code>, <code>TQuat</code>)
+    </td>
+  </tr>
+</table>
+
+<h2 id="properties">Class properties</h2>
+
+<table>
+  <tr><th>Type + Name</th><th>Default Value</th><th>Description</th></tr>
+  <tr><td><code>TVec3 center;</code> <span class="badge">public</span></td>
+      <td><code>TVec3()</code> — the zero vector</td>
+      <td>The box's center, offset from the object-space origin.</td></tr>
+  <tr><td><code>TVec3 half;</code> <span class="badge">public</span></td>
+      <td><code>TVec3()</code> — the zero vector</td>
+      <td>Half-extents along the box's own axes, offset from the center.</td></tr>
+  <tr><td><code>TQuat rotation;</code> <span class="badge">public</span></td>
+      <td><code>TQuat()</code> — the identity rotation</td>
+      <td>The orientation of the box's axes, in object space; unit quaternion assumed, like every
+        <code>Quaternion</code>.</td></tr>
+</table>
+
+<h2 id="methods">Class methods</h2>
+
+<table class="methods">
+  <tr><th>Name</th><th>Signature</th><th>What a caller depends on</th></tr>
+  <tr><td><a href="constructors.html"><code>constructors</code></a><span class="badge">4 overloads</span></td>
+      <td class="sig">OBB() noexcept<br>explicit OBB(std::nullptr_t) noexcept<br>OBB(const TVec3&amp; center, const TVec3&amp; half, const TQuat&amp; rotation) noexcept<br>OBB(const AABB&lt;TVec3&gt;&amp; aabb, const TQuat&amp; rotation) noexcept</td>
+      <td>The default form is a zero box with identity rotation; the <code>nullptr</code> form initializes
+        nothing; the <code>AABB</code> form takes the box's center and half-extents and attaches the given
+        rotation.</td></tr>
+  <tr><td><a href="is-containing.html"><code>IsContaining</code></a></td>
+      <td class="sig">[[nodiscard]] bool IsContaining(const TVec3&amp; objSpacePoint) const noexcept</td>
+      <td>Converts the point with <code>ToOBBSpace</code>, then compares each axis against
+        <code>half</code> exactly — no epsilon; boundary points count as contained.</td></tr>
+  <tr><td><a href="closest.html"><code>Closest</code></a></td>
+      <td class="sig">[[nodiscard]] TVec3 Closest(const TVec3&amp; objSpacePoint) const noexcept</td>
+      <td>Clamps the OBB-space point into <code>[-h, h]</code> per axis and converts back — but the two
+        conversions are not inverses, so with a non-zero center the result is displaced by
+        <code>-2 * center</code>.</td></tr>
+  <tr><td><a href="has-intersection.html"><code>HasIntersection</code></a></td>
+      <td class="sig">[[nodiscard]] bool HasIntersection(const OBB&amp; obb, const TVec3&amp; objPosition, const TQuat&amp; objRot) noexcept</td>
+      <td>A stub — returns <code>false</code> unconditionally. No OBB-OBB intersection test exists
+        yet.</td></tr>
+  <tr><td><a href="to-obb-space.html"><code>ToOBBSpace</code></a><span class="badge">private</span></td>
+      <td class="sig">[[nodiscard]] TVec3 ToOBBSpace(const TVec3&amp; objSpacePoint) const noexcept</td>
+      <td><code>point - center</code>, then <code>rotation.Inverse() * point</code> — into the box's local
+        frame.</td></tr>
+  <tr><td><a href="to-object-space.html"><code>ToObjectSpace</code></a><span class="badge">private</span></td>
+      <td class="sig">[[nodiscard]] TVec3 ToObjectSpace(const TVec3&amp; obbSpacePoint) const noexcept</td>
+      <td><code>rotation * point</code>, then <code>-= center</code> — note the subtraction, where the
+        inverse of <code>ToOBBSpace</code> would add.</td></tr>
+</table>
+
+<h2 id="non-member">Non-member helper functions</h2>
+
+<p>None. <code>OBB.h</code> declares the class, its aliases, and the test collection — nothing at namespace
+scope in between.</p>
+
+<h2 id="coverage">Coverage</h2>
+
+<table>
+  <tr><th>Gap</th><th>Detail</th></tr>
+  <tr>
+    <td>Callers, tests</td>
+    <td>No code in <code>Engine/</code> outside <code>Engine/Math/</code> or in <code>Applications/</code>
+      instantiates <code>OBB</code>, and the <code>OBBTest</code> fixture in <code>Engine/Math/OBB.cpp</code>
+      is empty — it runs no test. Every example on the method pages is therefore illustrative.</td>
+  </tr>
+  <tr>
+    <td><code>HasIntersection</code> and <code>Closest</code></td>
+    <td>The stub and the center-displacement are stated and quoted on their pages; the pages document the
+      code as it stands.</td>
+  </tr>
+  <tr>
+    <td>Space naming</td>
+    <td>The parameters are named <code>objSpacePoint</code> while the conversion produces what the class
+      calls OBB space. The pages describe what the code computes — subtract the center, unrotate — and leave
+      the naming question to the header.</td>
+  </tr>
+</table>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; OBB</a></span>
+  <span><a href="index.html#methods">All OBB methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

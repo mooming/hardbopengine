@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>UniformTransform::constructors — Math module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a class="current" href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Math</a> /
+  <a href="index.html">UniformTransform</a> / constructors
+</p>
+
+<h1><span class="fn">constructors</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::UniformTransform</span>
+  <span class="tag">Engine/Math/UniformTransform.h</span>
+  identity by default, from parts, or from a matrix
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>UniformTransform() noexcept
+		: scale(1)
+
+explicit UniformTransform(std::nullptr_t) noexcept
+		: rotation(nullptr)
+		, translation(nullptr)
+
+UniformTransform(const TVec3&amp; translation, const TQuat&amp; rotation, TNumber scale) noexcept
+		: rotation(rotation)
+		, scale(scale)
+		, translation(translation)
+
+explicit UniformTransform(const TMat4x4&amp; mat) noexcept</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>Defined in <code>Engine/Math/UniformTransform.h</code> as <code>UniformTransform::UniformTransform()</code>. Four constructors. The default form sets <code>scale(1)</code> and default-constructs <code>rotation</code> and <code>translation</code> — the identity transform. The <code>nullptr</code> form is explicit and initializes nothing. The parts form takes translation, rotation and scale in that argument order. The <code>Matrix4x4</code> form is the expensive one: it asserts the matrix is orthogonal (<code>Assert</code>, Debug and Dev), extracts the three columns of the 3-by-3 block, averages their normalized lengths into <code>scale</code>, rebuilds a rotation matrix from the normalized columns, and converts it through <code>Quaternion</code>'s matrix constructor.</p>
+<div class="gap"><strong>The scale asserts compare against post-normalization columns.</strong> After <code>scale = (c1.Normalize() + c2.Normalize() + c3.Normalize()) * oneThird</code>, the columns are unit length — and the next lines assert <code>IsEqual(scale, c2.Normalize())</code> and <code>IsEqual(scale, c3.Normalize())</code>, whose arguments are now <code>1.0f</code>. For any uniform scale other than 1, both asserts fire in Debug and Dev; in Release they are compiled out and the transform comes out with the correct scale.</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<table>
+  <tr><th>Parameter</th><th>Type</th><th>Requirement</th></tr>
+  <tr><td><code>translation</code></td><td><code>const TVec3&amp;</code></td><td>Position.</td></tr>
+  <tr><td><code>rotation</code></td><td><code>const TQuat&amp;</code></td><td>Orientation; unit assumed.</td></tr>
+  <tr><td><code>scale</code></td><td><code>TNumber</code></td><td>The uniform factor.</td></tr>
+  <tr><td><code>mat</code></td><td><code>const TMat4x4&amp;</code></td><td>Must be orthogonal (asserted); the 3-by-3 block carries rotation and scale.</td></tr>
+  <tr><td><em>(unnamed)</em></td><td><code>std::nullptr_t</code></td><td>Token only — selects the uninitialized form. Internal use.</td></tr>
+</table>
+
+<h2 id="return">Return value</h2>
+
+<p>None; construction is not assignment.</p>
+
+<h2 id="example">Examples</h2>
+
+<pre><code>TFTransform root;
+ls &lt;&lt; root &lt;&lt; lf;</code></pre>
+<p class="meta">From Engine/Math/Transform.cpp, TransformTest::Prepare() — the default form in use via <code>Transform</code>'s default constructor</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; UniformTransform</a></span>
+  <span><a href="index.html#methods">All UniformTransform methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

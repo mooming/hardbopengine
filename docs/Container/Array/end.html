@@ -50,7 +50,6 @@
     <li><a href="size.html">Size</a></li>
     <li><a href="is-valid-index.html">IsValidIndex</a></li>
     <li><a href="clear.html">Clear</a></li>
-    <li><a href="resize.html">Resize</a></li>
     <li><a href="swap.html">Swap</a></li>
     <li><a href="get-index.html">GetIndex</a></li>
   </ul>
@@ -74,10 +73,9 @@
 
 <h2 id="signature">Signature</h2>
 
-<p>One page for the name; the pair differs only in const-ness:</p>
+<pre><code>Iterator end()
 
-<pre><code><span class="ty">Iterator</span> <span class="fn">end</span>();                     <span class="cm">// Element*</span>
-<span class="ty">ConstIterator</span> <span class="fn">end</span>() <span class="kw">const</span>;          <span class="cm">// const Element*</span></code></pre>
+ConstIterator end() const</code></pre>
 
 <h2 id="description">Function description</h2>
 
@@ -100,18 +98,19 @@
 </p>
 
 <div class="gap">
-  <strong>On an array that holds nothing, the arithmetic runs off a null base.</strong> A default-constructed,
-  cleared or zero-resized <code>Array</code> has <code>data == nullptr</code> and <code>length == 0</code>, so
+  <strong>On an array that holds nothing, the arithmetic runs off a null base.</strong> A default-constructed or
+  cleared <code>Array</code> has <code>data == nullptr</code> and <code>length == 0</code>, so
   <code>end()</code> forms <code>&amp;nullptr[0]</code>; in practice the answer is a null pointer, and the empty
   range is safe as long as nothing dereferences it. A <em>negative</em> length is the case that actually hurts:
   <code>end()</code> then compares <em>before</em> <a href="begin.html"><code>begin()</code></a>, so loops written
   as <code>while (it != array.end())</code> never terminate instead of finishing immediately. A negative length
-  can only come from <a href="resize.html">resizing to a negative count</a>, which is not diagnosed.
+  can only come from the one-argument constructor's unguarded <code>allocate</code>
+  (<a href="constructors.html">constructors</a>), which is not diagnosed.
 </div>
 
 <div class="note">
-  <strong>Both halves of the range are invalidated together.</strong> A <a href="resize.html">resize</a> or a
-  <a href="clear.html">clear</a> frees the buffer they point into; a <a href="swap.html">swap</a> keeps the
+  <strong>Both halves of the range are invalidated together.</strong> A <a href="clear.html">clear</a> frees the
+  buffer they point into; a <a href="swap.html">swap</a> keeps the
   addresses but hands them to the other array. Because <code>end()</code> is derived from
   <code>length</code> at the moment of the call, holding a stale <code>end()</code> across a growth is the quiet
   version of the bug: the loop simply stops early, and no assert fires.

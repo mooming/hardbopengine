@@ -50,7 +50,6 @@
     <li><a href="size.html">Size</a></li>
     <li><a href="is-valid-index.html">IsValidIndex</a></li>
     <li><a href="clear.html">Clear</a></li>
-    <li><a href="resize.html">Resize</a></li>
     <li><a href="swap.html">Swap</a></li>
     <li><a href="get-index.html">GetIndex</a></li>
   </ul>
@@ -73,15 +72,11 @@
   direct element access, guarded by an assertion rather than by a fallback value
 </p>
 
-<h2 id="signature">Signatures</h2>
+<h2 id="signature">Signature</h2>
 
-<p>One page for the name, because both overloads state one contract and differ only in const-ness:</p>
+<pre><code>Element&amp; operator[](TIndex index) noexcept
 
-<pre><code><span class="cm">/// mutable view of the element at `index`</span>
-<span class="ty">Element</span>&amp; <span class="fn">operator[]</span>(<span class="ty">TIndex</span> index) <span class="kw">noexcept</span>;
-
-<span class="cm">/// read-only view of the element at `index`</span>
-<span class="kw">const</span> <span class="ty">Element</span>&amp; <span class="fn">operator[]</span>(<span class="ty">TIndex</span> index) <span class="kw">const</span> <span class="kw">noexcept</span>;</code></pre>
+const Element&amp; operator[](TIndex index) const noexcept</code></pre>
 
 <h2 id="description">Function description</h2>
 
@@ -121,8 +116,7 @@
     <td>
       The element itself, so <code>array[i] = value;</code> writes in place and <code>&amp;array[i]</code> is a
       pointer into the array's buffer. That pointer is good until something
-      <a href="resize.html">resizes</a>, <a href="clear.html">clears</a> or destroys the array — not until the
-      element's value changes
+      <a href="clear.html">clears</a> or destroys the array — not until the element's value changes
     </td>
   </tr>
 </table>
@@ -150,9 +144,8 @@
   <strong><code>FatalAssert</code> is active in every configuration, Release included.</strong> The bounds check
   is not compiled out of a shipped build, so an out-of-range index stops the process where it happened rather
   than reading garbage — see
-  <a href="../../Core/index.html#functions">Core: Debug</a> for the assert family. Contrast
-  <a href="resize.html"><code>Resize</code></a>, whose failed-allocation report uses <code>Assert</code>, which
-  <em>is</em> limited to Debug and Dev builds.
+  <a href="../../Core/index.html#functions">Core: Debug</a> for the assert family, and for the
+  <code>Assert</code> calls that <em>are</em> limited to Debug and Dev builds.
 </div>
 
 <footer class="prevnext">

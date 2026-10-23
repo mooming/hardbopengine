@@ -256,16 +256,17 @@
 <h2 id="array">Array (<code>Engine/Container/Array.h</code>)</h2>
 
 <p>
-  Contiguous array whose size is a decision you make: construction sizes it, and it changes only when you call
-  <a href="Array/resize.html"><code>Resize</code></a>. It is non-copyable, so a size chosen to fit a memory layout cannot be
+  Contiguous array whose size is a decision you make once: construction sizes it, and nothing changes it
+  afterwards — there is no resize. It is non-copyable, so a size chosen to fit a memory layout cannot be
   duplicated behind your back. Class page: <a href="Array/index.html"><code>Array</code></a>.
 </p>
 
-<div class="gap">
-  <strong>Correcting the old guide.</strong> This module used to be described as "fixed-size, no resizing".
-  <a href="Array/resize.html"><code>Array::Resize</code></a> exists now, so that sentence is no longer true — but the reason
-  it was written that way is worth keeping: an <a href="Array/index.html"><code>Array</code></a> was the container you reached
-  for precisely because it never grew on its own. It still does not grow implicitly.
+<div class="note">
+  <strong>The size is final.</strong> <code>Array::Resize</code> existed between 2026-09-19 and 2026-09-21 and
+  was removed with the result-container sizing chain it served (<code>ac496e6</code>); the older description
+  "fixed-size, no resizing" is true again. The reason it was written that way is worth keeping: an
+  <a href="Array/index.html"><code>Array</code></a> is the container you reach for precisely because it never
+  grows, not even on request.
 </div>
 
 <div class="gap">
@@ -276,13 +277,9 @@
 </div>
 
 <table>
-  <tr><th><code>Resize</code> behaviour</th><th>Contract, from the header</th></tr>
-  <tr><td>Growing</td><td>Every element below the old <code>Size()</code> keeps its value, moved into the new buffer; the new tail is default-constructed</td></tr>
-  <tr><td>Shrinking</td><td>Elements from <code>newSize</code> up are destroyed and their memory returned</td></tr>
-  <tr><td>Same size</td><td>Returns immediately — nothing is touched</td></tr>
-  <tr><td>Zero</td><td>Not a failure: empties the array and gives the buffer back</td></tr>
-  <tr><td>Allocation failure</td><td>Asserts and leaves the array exactly as it was, at its old size with its old buffer, so a caller can ask again later</td></tr>
-  <tr><td>What must not live here</td><td>An element that is expensive to move, or one whose address someone else holds: every element is moved on resize, so a pointer into a resized array points into a freed buffer</td></tr>
+  <tr><th>What an <code>Array</code> element must satisfy</th><th>Why</th></tr>
+  <tr><td>Default-constructible</td><td>The sized constructor value-initialises every element it allocates</td></tr>
+  <tr><td>Nothing else</td><td>The array is fixed-capacity: nothing moves elements, nothing reallocates behind a held pointer, and a pointer into the buffer stays valid until the array is cleared or destroyed</td></tr>
 </table>
 
 <p>
@@ -290,7 +287,7 @@
   <a href="Array/destructor.html">destructor</a>, <a href="Array/operator-assign.html">operator=</a>,
   <a href="Array/operator-index.html">operator[]</a>, <a href="Array/begin.html">begin</a>,
   <a href="Array/end.html">end</a>, <a href="Array/size.html">Size</a>,
-  <a href="Array/is-valid-index.html">IsValidIndex</a>, <a href="Array/resize.html">Resize</a>,
+  <a href="Array/is-valid-index.html">IsValidIndex</a>,
   <a href="Array/emplace.html">Emplace</a>, <a href="Array/get-index.html">GetIndex</a>,
   <a href="Array/to-raw-array.html">ToRawArray</a>, <a href="Array/clear.html">Clear</a>,
   <a href="Array/swap.html">Swap</a>.

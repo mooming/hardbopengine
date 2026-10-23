@@ -94,9 +94,9 @@
   <strong>Two facts a caller cannot see from the type.</strong> Every growth moves all the elements, so pointers,
   references and iterators into a vector are valid only until the append that crosses the capacity boundary — see
   <a href="push-back.html"><code>PushBack</code></a>. And no path in this class checks the allocator's return
-  value: a failed allocation is not a declined append or a failed resize, it is a null buffer behind a plausible
-  <code>Capacity()</code>. That is a deliberate difference from <a href="../Array/resize.html"><code>Array</code></a>,
-  and the reason <a href="../../Memory/index.html#allocators">which allocator you bind</a> is a decision here.
+  value: a failed allocation is not a declined append, it is a null buffer behind a plausible
+  <code>Capacity()</code>. That is deliberate — nothing in this class second-guesses the allocator — and it is
+  the reason <a href="../../Memory/index.html#allocators">which allocator you bind</a> is a decision here.
 </div>
 
 <h2 id="template">Template parameters</h2>

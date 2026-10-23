@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Transform::Set — Math module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a class="current" href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Math</a> /
+  <a href="index.html">Transform</a> / Set
+</p>
+
+<h1><span class="fn">Set</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::Transform</span>
+  <span class="tag">Engine/Math/Transform.h</span>
+  the supported mutation path — compare, write, invalidate
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>void Set(const TQuat&amp; r, TNumber s, const TVec3&amp; t) noexcept
+
+void Set(const TQuat&amp; r) noexcept
+
+void Set(TNumber s) noexcept
+
+void Set(const TVec3&amp; t) noexcept</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>Defined in <code>Engine/Math/Transform.h</code> as <code>Transform::Set()</code>. Four overloads: rotation+scale+translation together, rotation alone, scale alone, translation alone. Each compares against the current value first and returns without writing when nothing changed; otherwise it assigns and calls <a href="invalidate.html"><code>Invalidate</code></a>. This is the only mutation path that keeps the cached world transforms honest — the fixture's rotation test moves nodes with <code>Set</code> and reads correct world transforms back.</p>
+
+<h2 id="parameters">Parameters</h2>
+
+<table>
+  <tr><th>Parameter</th><th>Type</th><th>Requirement</th></tr>
+  <tr><td><code>r</code></td><td><code>const TQuat&amp;</code></td><td>The new rotation.</td></tr>
+  <tr><td><code>s</code></td><td><code>TNumber</code></td><td>The new scale.</td></tr>
+  <tr><td><code>t</code></td><td><code>const TVec3&amp;</code></td><td>The new translation.</td></tr>
+</table>
+
+<h2 id="return">Return value</h2>
+
+<p>None; the change lands in <code>trs</code> and the subtree cache is dropped.</p>
+
+<h2 id="example">Examples</h2>
+
+<pre><code>a.Set(TFloat3(0, 0, 1));
+b.Set(TFloat3(0, 1, 0));
+c.Set(TFloat3(1, 0, 0));</code></pre>
+<p class="meta">From Engine/Math/Transform.cpp, TransformTest::Prepare() — the translation overload</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; Transform</a></span>
+  <span><a href="index.html#methods">All Transform methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

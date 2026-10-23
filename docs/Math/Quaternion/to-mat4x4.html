@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Quaternion::ToMat4x4 — Math module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a class="current" href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Math</a> /
+  <a href="index.html">Quaternion</a> / ToMat4x4
+</p>
+
+<h1><span class="fn">ToMat4x4</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::Quaternion</span>
+  <span class="tag">Engine/Math/Quaternion.h</span>
+  the rotation as a homogeneous 4-by-4 matrix
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>[[nodiscard]] TMat4x4 ToMat4x4() const noexcept</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>Defined in <code>Engine/Math/Quaternion.h</code> as <code>Quaternion::ToMat4x4()</code>. The same nine formulas as <a href="to-mat3x3.html"><code>ToMat3x3</code></a>, written into the 3-by-3 block; the fourth column and row are zero except <code>m44 = 1</code> — no translation, no scale.</p>
+
+<h2 id="parameters">Parameters</h2>
+
+<p>None.</p>
+
+<h2 id="return">Return value</h2>
+
+<table>
+  <tr><th>Type</th><th>What you get</th></tr>
+  <tr><td><code>TMat4x4</code></td><td>The rotation in homogeneous form.</td></tr>
+</table>
+
+<h2 id="example">Examples</h2>
+
+<pre><code>TMat4x4 mat = rotation.ToMat4x4();
+mat.SetTranslation(translation);</code></pre>
+<p class="meta">From Engine/Math/RigidTransform.h, RigidTransform::ToMatrix()</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; Quaternion</a></span>
+  <span><a href="index.html#methods">All Quaternion methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

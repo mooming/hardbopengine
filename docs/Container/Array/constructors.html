@@ -50,7 +50,6 @@
     <li><a href="size.html">Size</a></li>
     <li><a href="is-valid-index.html">IsValidIndex</a></li>
     <li><a href="clear.html">Clear</a></li>
-    <li><a href="resize.html">Resize</a></li>
     <li><a href="swap.html">Swap</a></li>
     <li><a href="get-index.html">GetIndex</a></li>
   </ul>
@@ -74,13 +73,20 @@
 
 <h2 id="signature">Signature</h2>
 
-<pre><code><span class="fn">Array</span>(<span class="kw">const</span> <span class="ty">Array</span>&amp;) = <span class="kw">delete</span>;                              <span class="cm">// no copy — see below</span>
+<pre><code>Array(const Array&amp;) = delete
 
-<span class="fn">Array</span>() <span class="kw">noexcept</span>;                                             <span class="cm">// empty; allocates nothing</span>
-<span class="kw">explicit</span> <span class="fn">Array</span>(<span class="ty">TIndex</span> size);                                  <span class="cm">// allocates, then value-initialises</span>
-<span class="fn">Array</span>(<span class="kw">const</span> <span class="ty">TAllocator</span>&amp; inAllocator, <span class="ty">TIndex</span> size);           <span class="cm">// the one that names its memory</span>
-<span class="fn">Array</span>(std::initializer_list&lt;<span class="ty">Element</span>&gt; list);                   <span class="cm">// delegates to Array(size)</span>
-<span class="fn">Array</span>(<span class="ty">Array</span>&amp;&amp; rhs) <span class="kw">noexcept</span>;                                  <span class="cm">// delegates to Array() then Swap</span></code></pre>
+Array() noexcept
+		: length(0)
+		, data(nullptr)
+
+explicit Array(TIndex size)
+		: length(size)
+
+Array(std::initializer_list&lt;Element&gt; list)
+		: Array(static_cast&lt;TIndex&gt;(list.size()))
+
+Array(Array&amp;&amp; rhs) noexcept
+		: Array()</code></pre>
 
 <h2 id="description">Function description</h2>
 
@@ -127,7 +133,6 @@
   array that reports <code>size</code> elements through <a href="size.html"><code>Size</code></a> while
   <code>data</code> is null: <a href="operator-index.html"><code>operator[]</code></a> passes
   <a href="is-valid-index.html"><code>IsValidIndex</code></a> and then subscript a null pointer. Contrast
-  <a href="resize.html"><code>Resize</code></a>, which tests the pointer and keeps the old state, and
   <code>Array(const TAllocator&amp;, TIndex)</code>, which at least short-circuits a non-positive size.
 </div>
 
@@ -136,7 +141,7 @@
   <code>returnIf(length &lt;= 0)</code> means no memory is taken, which is the documented "capacity not yet given"
   state; the one-argument form has no such guard, so the negative value reaches
   <code>allocate</code>, is converted to an enormous <code>size_t</code>, and the array ends up with a negative
-  length — the corrupt state described on <a href="resize.html"><code>Resize</code></a>.
+  length — a corrupt state no later call diagnoses.
 </div>
 
 <h2 id="parameters">Parameters</h2>
@@ -208,8 +213,7 @@
 
 <p>
   <code>FrameAllocator</code> and <code>frameAllocator</code> stand for whichever allocator you use;
-  <a href="../../Memory/index.html#allocators">Memory: allocators</a> says what they draw from, and
-  <a href="resize.html"><code>Resize</code></a> is where the choice made here gets reused.
+  <a href="../../Memory/index.html#allocators">Memory: allocators</a> says what they draw from.
 </p>
 
 <footer class="prevnext">

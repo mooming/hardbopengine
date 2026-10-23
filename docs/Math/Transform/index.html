@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Transform — Math module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a class="current" href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This class</h3>
+  <ul>
+    <li><a href="#description">Class description</a></li>
+    <li><a href="#template">Template parameters</a></li>
+    <li><a href="#properties">Class properties</a></li>
+    <li><a href="#methods">Class methods</a></li>
+    <li><a href="#non-member">Non-member helper functions</a></li>
+    <li><a href="#coverage">Coverage</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Math</a> /
+  Transform
+</p>
+
+<h1>Transform</h1>
+<p class="subtitle">
+  <span class="tag">Engine/Math/Transform.h</span>
+  a hierarchical transform: parent, children, and a cached world transform the Set overloads keep honest
+</p>
+
+<h2 id="description">Class description</h2>
+
+<p>
+  <code>Transform</code> is a scene-graph node: a local <code>UniformTransform</code> — accessible as
+  <code>trs</code> or as its <code>rotation</code>/<code>scale</code>/<code>translation</code> members
+  through one anonymous union — plus a parent pointer, a child list, and a cached world transform. The
+  design shows in the pair of <a href="get-world-transform.html"><code>GetWorldTransform</code></a>
+  overloads: the non-const form returns the cache and rebuilds it only when it is missing, while the const
+  form computes on every call without caching, because a const reader must not be able to mutate a cache
+  through a shared reference.
+</p>
+
+<div class="gap">
+  <strong>What invalidates the cache — and what does not.</strong> The four
+  <a href="set.html"><code>Set</code></a> overloads call <a href="invalidate.html"><code>Invalidate</code>
+  </a>, which drops the cache down the whole subtree. Nothing else does: <code>Attach</code>,
+  <code>Detach</code>, <code>DetachAll</code>, and direct writes to the public
+  <code>trs</code>/<code>rotation</code>/<code>scale</code>/<code>translation</code> members leave every
+  cached world transform exactly as it was. A node moved that way keeps serving its stale world transform
+  until something calls <code>Invalidate()</code>.
+</div>
+
+<p>
+  Copy construction is deleted. The declared <code>operator==</code> is <em>also</em> deleted — an apparent
+  typo for <code>operator=</code>, which is not declared at all; a probe compiling copy assignment
+  (<code>b = a;</code>) accepts it, so the implicitly-defaulted copy assignment is available and copies the
+  parent pointer and child list by value.
+</p>
+
+<table>
+  <tr><th>Piece</th><th>What it is</th><th>Where the contract lives</th></tr>
+  <tr><td>Storage</td><td>The <code>trs</code> union, the <code>world</code> cache, <code>parent</code>,
+      <code>children</code></td><td><a href="#properties">Class properties</a></td></tr>
+  <tr><td>Hierarchy</td><td><code>Attach</code>, <code>Detach</code>, <code>DetachAll</code>,
+      <code>HasChild</code>, <code>GetParent</code>, <code>GetChildren</code></td>
+      <td><a href="#methods">Class methods</a></td></tr>
+  <tr><td>World transform</td><td><code>GetWorldTransform</code> overloads, <code>GetLocalTransform</code>,
+      <code>Invalidate</code></td><td><a href="#methods">Class methods</a></td></tr>
+  <tr><td>Mutation</td><td>The four <code>Set</code> overloads</td>
+      <td><a href="#methods">Class methods</a></td></tr>
+</table>
+
+<h2 id="template">Template parameters</h2>
+
+<table>
+  <tr><th>Parameter</th><th>Kind</th><th>What it must satisfy</th></tr>
+  <tr>
+    <td><code>TNumber</code></td>
+    <td><code>typename</code></td>
+    <td>
+      The scalar type. The member aliases name the companions — <code>TVec3</code>, <code>TQuat</code>,
+      <code>TMat3x3</code>, <code>TMat4x4</code>, <code>TUTransform</code>. The engine instantiates
+      <code>float</code> (<code>TFTransform</code>) and <code>double</code> (<code>TDTransform</code>)
+    </td>
+  </tr>
+</table>
+
+<h2 id="properties">Class properties</h2>
+
+<table>
+  <tr><th>Type + Name</th><th>Default Value</th><th>Description</th></tr>
+  <tr><td><code>using This = Transform;</code> <span class="badge">member type</span></td>
+      <td><span class="muted">not applicable</span></td>
+      <td>The class's own name, as its members write it.</td></tr>
+  <tr><td><code>using TVec3 = Vector3&lt;TNumber&gt;;</code> <span class="badge">member type</span></td>
+      <td><span class="muted">not applicable</span></td>
+      <td>The translation type.</td></tr>
+  <tr><td><code>using TQuat = Quaternion&lt;TNumber&gt;;</code> <span class="badge">member type</span></td>
+      <td><span class="muted">not applicable</span></td>
+      <td>The rotation type.</td></tr>
+  <tr><td><code>using TMat3x3 = Matrix3x3&lt;TNumber&gt;;</code> <span class="badge">member type</span></td>
+      <td><span class="muted">not applicable</span></td>
+      <td>Declared but unused by any member.</td></tr>
+  <tr><td><code>using TMat4x4 = Matrix4x4&lt;TNumber&gt;;</code> <span class="badge">member type</span></td>
+      <td><span class="muted">not applicable</span></td>
+      <td>Declared but unused by any member.</td></tr>
+  <tr><td><code>using TUTransform = UniformTransform&lt;TNumber&gt;;</code> <span class="badge">member type</span></td>
+      <td><span class="muted">not applicable</span></td>
+      <td>The local and world transform type — what <code>trs</code>, <code>world</code> and the
+        <code>Set</code> overloads work with.</td></tr>
+  <tr><td><code>template &lt;class T&gt; using Vector = hbe::HVector&lt;T&gt;;</code> <span class="badge">alias template</span></td>
+      <td><span class="muted">not applicable</span></td>
+      <td>The child-list container: the engine's <code>HVector</code>, under the standard-sounding
+        name.</td></tr>
+  <tr><td><code>TUTransform trs;</code> <span class="badge">public</span></td>
+      <td><code>TUTransform()</code> — identity rotation, scale 1, zero translation</td>
+      <td>The local transform; aliased with the three members below through the anonymous union.</td></tr>
+  <tr><td><code>TQuat rotation;</code> <span class="badge">public</span></td>
+      <td><span class="muted">none in the header</span></td>
+      <td>The same storage as <code>trs.rotation</code>.</td></tr>
+  <tr><td><code>TNumber scale;</code> <span class="badge">public</span></td>
+      <td><span class="muted">none in the header</span></td>
+      <td>The same storage as <code>trs.scale</code>.</td></tr>
+  <tr><td><code>TVec3 translation;</code> <span class="badge">public</span></td>
+      <td><span class="muted">none in the header</span></td>
+      <td>The same storage as <code>trs.translation</code>.</td></tr>
+  <tr><td><code>Optional&lt;TUTransform&gt; world;</code> <span class="badge">private</span></td>
+      <td><span class="muted">none in the header</span></td>
+      <td>The cached world transform; empty until the non-const
+        <code>GetWorldTransform</code> computes it, cleared by <code>Invalidate</code>.</td></tr>
+  <tr><td><code>Transform* parent;</code> <span class="badge">private</span></td>
+      <td><code>nullptr</code></td>
+      <td>Set by the parent's <code>Attach</code>, cleared by <code>Detach</code> and
+        <code>DetachAll</code>.</td></tr>
+  <tr><td><code>Vector&lt;Transform*&gt; children;</code> <span class="badge">private</span></td>
+      <td><span class="muted">none in the header</span></td>
+      <td>The child pointers, in attach order; read by <code>GetChildren</code> and walked by
+        <code>Invalidate</code> and <code>DetachAll</code>.</td></tr>
+</table>
+
+<h2 id="methods">Class methods</h2>
+
+<table class="methods">
+  <tr><th>Name</th><th>Signature</th><th>What a caller depends on</th></tr>
+  <tr><td><a href="constructors.html"><code>constructors</code></a><span class="badge">3 overloads</span></td>
+      <td class="sig">Transform() noexcept<br>explicit Transform(std::nullptr_t) noexcept<br>explicit Transform(const TUTransform&amp; trs) noexcept</td>
+      <td>All three start detached with no cache; the default and <code>nullptr</code> forms differ only in
+        whether the local transform is default-built or uninitialized.</td></tr>
+  <tr><td><code>Transform(const Transform&amp;)</code></td>
+      <td class="sig">Transform(const Transform&amp;) = delete</td>
+      <td>Deleted — a node is not copyable; the class owns and is owned by the hierarchy.</td></tr>
+  <tr><td><code>operator==</code></td>
+      <td class="sig">Transform&amp; operator==(const Transform&amp;) = delete</td>
+      <td>Deleted, as written — an equality operator, not an assignment. Assignment itself is not declared
+        and remains implicitly defaulted; a probe compiles <code>b = a;</code>.</td></tr>
+  <tr><td><a href="destructor.html"><code>~Transform</code></a></td>
+      <td class="sig">~Transform() noexcept</td>
+      <td>Detaches from the parent, then detaches all children — destroying a node unlinks it from the
+        hierarchy without destroying the children.</td></tr>
+  <tr><td><a href="attach.html"><code>Attach</code></a></td>
+      <td class="sig">void Attach(Transform&amp; transform) noexcept</td>
+      <td>Re-parenting: attaching a node that is already the child of this node's parent detaches it first;
+        attaching an existing child is a no-op behind an assert; attaching a new child appends and sets its
+        parent. Does not invalidate caches.</td></tr>
+  <tr><td><a href="detach.html"><code>Detach</code></a></td>
+      <td class="sig">void Detach(Transform&amp; transform) noexcept</td>
+      <td>Silently does nothing unless <code>transform.parent == this</code>; otherwise clears the child's
+        parent and removes it from the list. Does not invalidate caches.</td></tr>
+  <tr><td><a href="detach-all.html"><code>DetachAll</code></a></td>
+      <td class="sig">void DetachAll() noexcept</td>
+      <td>Clears every child's parent — asserting each one really points back — and empties the list. Does
+        not invalidate caches.</td></tr>
+  <tr><td><a href="has-child.html"><code>HasChild</code></a></td>
+      <td class="sig">[[nodiscard]] bool HasChild(const Transform&amp; child) const noexcept</td>
+      <td>Pointer search over the child list — identity, not value.</td></tr>
+  <tr><td><a href="get-parent.html"><code>GetParent</code></a></td>
+      <td class="sig">[[nodiscard]] Transform* GetParent() const noexcept</td>
+      <td>The parent pointer, or <code>nullptr</code> for a root.</td></tr>
+  <tr><td><a href="get-children.html"><code>GetChildren</code></a><span class="badge">2 overloads</span></td>
+      <td class="sig">[[nodiscard]] Vector&lt;Transform*&gt;&amp; GetChildren() noexcept<br>[[nodiscard]] const Vector&lt;Transform*&gt;&amp; GetChildren() const noexcept</td>
+      <td>The live child list by reference — the non-const form lets a caller mutate the hierarchy
+        directly.</td></tr>
+  <tr><td><a href="invalidate.html"><code>Invalidate</code></a></td>
+      <td class="sig">void Invalidate() noexcept</td>
+      <td>Drops the cache — if one exists — and recurses into every child. The only path that makes the
+        world transforms honest again after a raw write.</td></tr>
+  <tr><td><a href="get-world-transform.html"><code>GetWorldTransform</code></a><span class="badge">2 overloads</span></td>
+      <td class="sig">[[nodiscard]] const TUTransform&amp; GetWorldTransform() noexcept<br>[[nodiscard]] TUTransform GetWorldTransform() const noexcept</td>
+      <td>Non-const: cached, computed once and stored — for a root it returns a reference to
+        <code>trs</code> itself. Const: computed on every call, never stored.</td></tr>
+  <tr><td><a href="get-local-transform.html"><code>GetLocalTransform</code></a></td>
+      <td class="sig">[[nodiscard]] const TUTransform&amp; GetLocalTransform() const noexcept</td>
+      <td>A const reference to <code>trs</code> — no copy, no cache interaction.</td></tr>
+  <tr><td><a href="set.html"><code>Set</code></a><span class="badge">4 overloads</span></td>
+      <td class="sig">void Set(const TQuat&amp; r, TNumber s, const TVec3&amp; t) noexcept<br>void Set(const TQuat&amp; r) noexcept<br>void Set(TNumber s) noexcept<br>void Set(const TVec3&amp; t) noexcept</td>
+      <td>Each compares first and returns without writing when nothing changed; otherwise assigns and calls
+        <code>Invalidate()</code> — the supported way to move a node.</td></tr>
+</table>
+
+<h2 id="non-member">Non-member helper functions</h2>
+
+<table>
+  <tr><th>Name</th><th>Signature</th><th>What a caller depends on</th></tr>
+  <tr><td><code>operator&lt;&lt;</code></td>
+      <td class="sig">template &lt;typename T&gt; std::ostream&amp; operator&lt;&lt;(std::ostream&amp; os, const Transform&lt;T&gt;&amp; t) noexcept</td>
+      <td>Prints the local transform, the parent pointer, and — when a parent exists — the world
+        transform.</td></tr>
+  <tr><td><code>operator&lt;&lt;</code></td>
+      <td class="sig">template &lt;typename T&gt; LogStream&amp; operator&lt;&lt;(LogStream&amp; os, const Transform&lt;T&gt;&amp; t) noexcept</td>
+      <td>The same output into the engine's <code>LogStream</code>.</td></tr>
+</table>
+
+<h2 id="coverage">Coverage</h2>
+
+<table>
+  <tr><th>Gap</th><th>Detail</th></tr>
+  <tr>
+    <td>Copy semantics</td>
+    <td>The deleted copy constructor and the deleted <code>operator==</code> are in the method table; the
+      implicitly-defaulted copy assignment is stated from a compiler probe, not from a declaration — the
+      header declares none.</td>
+  </tr>
+  <tr>
+    <td>Cache staleness</td>
+    <td>Stated in the description and on the pages of the members that do or do not invalidate: <code>Set</code>
+      does, <code>Attach</code>/<code>Detach</code>/<code>DetachAll</code> and raw member writes do
+      not.</td>
+  </tr>
+  <tr>
+    <td>Callers outside the module</td>
+    <td>None found in <code>Engine/</code> outside <code>Engine/Math/</code> or in
+      <code>Applications/</code>. The class is exercised by the <code>TransformTest</code> fixture in
+      <code>Engine/Math/Transform.cpp</code>, which the pages quote.</td>
+  </tr>
+  <tr>
+    <td><code>TransformTest</code></td>
+    <td>Declared under <code>TEST_ENABLED</code>, defined in <code>Transform.cpp</code>; a test fixture, not
+      engine API.</td>
+  </tr>
+</table>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; Transform</a></span>
+  <span><a href="index.html#methods">All Transform methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

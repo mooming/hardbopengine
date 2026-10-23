@@ -40,8 +40,8 @@
 
   <h3>Methods</h3>
   <ul class="methods">
-    <li><a href="constructors.html">constructors</a></li>
-    <li><a href="destructor.html">destructor</a></li>
+        <li><a href="constructors.html">constructors</a></li>
+    <li><a href="destructor.html">~Array</a></li>
     <li><a href="begin.html">begin</a></li>
     <li><a href="end.html">end</a></li>
     <li><a href="operator-assign.html">operator=</a></li>
@@ -51,7 +51,6 @@
     <li><a href="size.html">Size</a></li>
     <li><a href="is-valid-index.html">IsValidIndex</a></li>
     <li><a href="clear.html">Clear</a></li>
-    <li><a href="resize.html">Resize</a></li>
     <li><a href="swap.html">Swap</a></li>
     <li><a href="get-index.html">GetIndex</a></li>
   </ul>
@@ -102,11 +101,10 @@
     <td><code>Element</code></td>
     <td><code>typename</code></td>
     <td>
-      The stored type. It must be <strong>move-constructible</strong>, because
-      <a href="resize.html"><code>Resize</code></a> moves every element into the new buffer, and it must be
-      <strong>default-constructible</strong>, because <a href="constructors.html">the sized constructor</a>
-      value-initialises and <code>Resize</code> fills its new tail that way. An element whose address other code
-      holds does not belong in an array that gets resized.
+      The stored type. It must be <strong>default-constructible</strong>, because
+      <a href="constructors.html">the sized constructor</a> value-initialises it. The array is fixed-capacity
+      and nothing moves its elements, so an element whose address other code holds stays valid for the
+      array's lifetime.
     </td>
   </tr>
   <tr>
@@ -173,8 +171,7 @@
   Each name is a page. An overloaded name is one page holding every overload, since the overloads of
   <code>begin</code> or <code>operator[]</code> are one contract seen from two const-nesses rather than two
   contracts. Filenames are the method name in lower case with words separated by <code>-</code>, and operators
-  spelled out: <code>Resize</code> is <code>resize.html</code>, <code>operator[]</code> is
-  <code>operator-index.html</code>.
+  spelled out: <code>operator[]</code> is <code>operator-index.html</code>.
 </p>
 
 <table>
@@ -217,7 +214,7 @@
   <tr>
     <td><a href="to-raw-array.html">ToRawArray</a><span class="badge">2 overloads</span></td>
     <td class="sig">Element* ToRawArray() noexcept<br>const Element* const ToRawArray() const noexcept</td>
-    <td>The buffer itself, for the APIs that take a pointer and a count. Valid until anything resizes or destroys the array</td>
+    <td>The buffer itself, for the APIs that take a pointer and a count. Valid until the array is destroyed</td>
   </tr>
   <tr>
     <td><a href="size.html">Size</a></td>
@@ -233,11 +230,6 @@
     <td><a href="clear.html">Clear</a></td>
     <td class="sig">void Clear() noexcept</td>
     <td><code>Swap(Array())</code>: the buffer is destroyed and returned, not kept for reuse</td>
-  </tr>
-  <tr>
-    <td><a href="resize.html">Resize</a></td>
-    <td class="sig">void Resize(TIndex newSize) noexcept</td>
-    <td>Exact-size change, no growth policy. Moves every element, and leaves the array untouched if the allocation fails</td>
   </tr>
   <tr>
     <td><a href="swap.html">Swap</a></td>
@@ -274,8 +266,7 @@
     <td>Which assert each guard uses</td>
     <td><a href="operator-index.html"><code>operator[]</code></a> and
         <a href="emplace.html"><code>Emplace</code></a> guard indexes with <code>FatalAssert</code>, which is
-        active in every configuration; <a href="resize.html"><code>Resize</code></a> reports a failed allocation
-        with <code>Assert</code>, which is Debug and Dev only. The family itself is documented in
+        active in every configuration; the <code>Assert</code> family is Debug and Dev only. The family itself is documented in
         <a href="../../Core/index.html#functions">Core: Debug</a></td>
   </tr>
 </table>

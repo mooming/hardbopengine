@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>StratifiedSampling — Math module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a class="current" href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This class</h3>
+  <ul>
+    <li><a href="#description">Class description</a></li>
+    <li><a href="#template">Template parameters</a></li>
+    <li><a href="#properties">Class properties</a></li>
+    <li><a href="#methods">Class methods</a></li>
+    <li><a href="#non-member">Non-member helper functions</a></li>
+    <li><a href="#coverage">Coverage</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Math</a> /
+  StratifiedSampling
+</p>
+
+<h1>StratifiedSampling</h1>
+<p class="subtitle">
+  <span class="tag">Engine/Math/StratifiedSampling.h</span>
+  an interval split into strata: one draw per stratum, advanced and wrapped by ChangeSubGroup
+</p>
+
+<h2 id="description">Class description</h2>
+
+<p>
+  <code>StratifiedSampling</code> splits an interval into <code>numSubGroups</code> equal strata and hands
+  out one stratum at a time: <a href="sample.html"><code>Sample</code></a> computes the sub-range for the
+  current subgroup index and passes its two ends to a caller-supplied range sampler, and
+  <a href="change-sub-group.html"><code>ChangeSubGroup</code></a> advances — wrapping to the first subgroup
+  when it runs off either end. The engine's rendering tests use it to spread sample positions evenly before
+  an integration pass, one subgroup per iteration.
+</p>
+
+<p>
+  The strata are fixed at construction: <code>interval = (end - start) / numSubGroups</code>, with the
+  subgroup count clamped to at least 1. Nothing recomputes them afterwards, and nothing validates that
+  <code>start</code> is below <code>end</code> — a reversed interval produces negative-width strata and the
+  class computes on regardless.
+</p>
+
+<table>
+  <tr><th>Piece</th><th>What it is</th><th>Where the contract lives</th></tr>
+  <tr><td>State</td><td><code>numSubGroups</code>, <code>subGroupIndex</code>, <code>interval</code>,
+      <code>start</code>, <code>end</code></td><td><a href="#properties">Class properties</a></td></tr>
+  <tr><td>Sampling</td><td><code>Sample</code> over the current stratum</td>
+      <td><a href="#methods">Class methods</a></td></tr>
+  <tr><td>Stratum advance</td><td><code>ChangeSubGroup</code>, with wrapping at both ends</td>
+      <td><a href="#methods">Class methods</a></td></tr>
+</table>
+
+<h2 id="template">Template parameters</h2>
+
+<table>
+  <tr><th>Parameter</th><th>Kind</th><th>What it must satisfy</th></tr>
+  <tr>
+    <td><code>TReal</code></td>
+    <td><code>typename</code>, defaults to <code>double</code></td>
+    <td>The coordinate type; <code>static_assert</code> requires a floating-point type</td>
+  </tr>
+  <tr>
+    <td><code>TInteger</code></td>
+    <td><code>typename</code>, defaults to <code>uint32_t</code></td>
+    <td>The subgroup index and count type; <code>static_assert</code> requires an integral type</td>
+  </tr>
+</table>
+
+<h2 id="properties">Class properties</h2>
+
+<table>
+  <tr><th>Type + Name</th><th>Default Value</th><th>Description</th></tr>
+  <tr><td><code>TInteger numSubGroups;</code> <span class="badge">private</span></td>
+      <td><code>0</code> from the default constructor; <code>max(inNumSubGroups, 1)</code> from the sized
+        one</td>
+      <td>The stratum count, clamped to at least 1 at construction.</td></tr>
+  <tr><td><code>TInteger subGroupIndex;</code> <span class="badge">private</span></td>
+      <td><code>0</code></td>
+      <td>The stratum <code>Sample</code> currently reads; advanced by
+        <code>ChangeSubGroup</code>.</td></tr>
+  <tr><td><code>TReal interval;</code> <span class="badge">private</span></td>
+      <td><code>0</code> from the default constructor; <code>(end - start) / numSubGroups</code> from the
+        sized one</td>
+      <td>The width of one stratum; fixed at construction.</td></tr>
+  <tr><td><code>TReal start;</code> <span class="badge">private</span></td>
+      <td><code>0</code></td>
+      <td>The interval's low end.</td></tr>
+  <tr><td><code>TReal end;</code> <span class="badge">private</span></td>
+      <td><code>0</code></td>
+      <td>The interval's high end; not validated against <code>start</code>.</td></tr>
+</table>
+
+<h2 id="methods">Class methods</h2>
+
+<table class="methods">
+  <tr><th>Name</th><th>Signature</th><th>What a caller depends on</th></tr>
+  <tr><td><a href="constructors.html"><code>constructors</code></a><span class="badge">2 overloads</span></td>
+      <td class="sig">StratifiedSampling() noexcept<br>StratifiedSampling(TInteger inNumSubGroups, TReal start, TReal end) noexcept</td>
+      <td>The default form is all zeros — sampling from it produces zero-width strata; the sized form clamps
+        the subgroup count to at least 1 and fixes the interval.</td></tr>
+  <tr><td><a href="get-sub-group-index.html"><code>GetSubGroupIndex</code></a></td>
+      <td class="sig">[[nodiscard]] TInteger GetSubGroupIndex() const noexcept</td>
+      <td>The stratum <code>Sample</code> will read next.</td></tr>
+  <tr><td><a href="sample.html"><code>Sample</code></a></td>
+      <td class="sig">template &lt;typename TRangeSampler&gt;<br>[[nodiscard]] TReal Sample(const TRangeSampler&amp; sampler) noexcept</td>
+      <td>Computes <code>[start + interval·subGroupIndex, + interval]</code> and returns
+        <code>sampler(rangeStart, rangeEnd)</code> — a uniform draw within the stratum, per the sampler's
+        contract.</td></tr>
+  <tr><td><a href="change-sub-group.html"><code>ChangeSubGroup</code></a></td>
+      <td class="sig">void ChangeSubGroup(TInteger delta = 1) noexcept</td>
+      <td>Advances the stratum index by <code>delta</code>; wrapping to 0 happens at both ends — past the
+        last subgroup <em>or</em> before the first.</td></tr>
+</table>
+
+<h2 id="non-member">Non-member helper functions</h2>
+
+<p>None. <code>StratifiedSampling.h</code> declares the class and, under <code>TEST_ENABLED</code>, the test
+collection — nothing at namespace scope in between.</p>
+
+<h2 id="coverage">Coverage</h2>
+
+<table>
+  <tr><th>Gap</th><th>Detail</th></tr>
+  <tr>
+    <td>The defaulted destructor</td>
+    <td><code>~StratifiedSampling() = default</code> — no page; a defaulted special member has no behavior of
+      its own.</td>
+  </tr>
+  <tr>
+    <td>Callers outside the module</td>
+    <td>None found in <code>Engine/</code> outside <code>Engine/Math/</code> or in
+      <code>Applications/</code>. The <code>StratifiedSamplingTest</code> fixture is registered in
+      <code>Engine/Test/UnitTestCollection.cpp</code>; the sampling work itself runs in the
+      <code>ImportanceResamplingTest</code> fixture (<code>Engine/Math/ImportanceSampling.cpp</code>), which
+      the pages quote.</td>
+  </tr>
+</table>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; StratifiedSampling</a></span>
+  <span><a href="index.html#methods">All StratifiedSampling methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

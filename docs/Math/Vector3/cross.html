@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Vector3::Cross — Math module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a class="current" href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Math</a> /
+  <a href="index.html">Vector3</a> / Cross
+</p>
+
+<h1><span class="fn">Cross</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::Vector3</span>
+  <span class="tag">Engine/Math/Vector3.h</span>
+  the right-hand-rule cross product
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>[[nodiscard]] Vector3 Cross(const Vector3&amp; rhs) const noexcept</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>Defined in <code>Engine/Math/Vector3.h</code> as <code>Vector3::Cross()</code>. Computes the standard cross product:</p>
+<pre><code>result.x = y * rhs.z - z * rhs.y;
+result.y = z * rhs.x - x * rhs.z;
+result.z = x * rhs.y - y * rhs.x;</code></pre>
+<p class="meta">From Engine/Math/Vector3.h, Vector3::Cross()</p>
+<p>The result is perpendicular to both operands and its magnitude is the product of the two lengths and the sine of the angle between them. The formula itself is handedness-free; what changes with the build is which <em>named</em> axis the result matches — the test fixture asserts <code>Right.Cross(up) == -Forward</code> under <code>RIGHT_HANDED_COORDINATE</code> and <code>== Forward</code> without it, because the two builds attach the names <code>Up</code> and <code>Forward</code> to different component axes.</p>
+
+<h2 id="parameters">Parameters</h2>
+
+<table>
+  <tr><th>Parameter</th><th>Type</th><th>Requirement</th></tr>
+  <tr><td><code>rhs</code></td><td><code>const Vector3&amp;</code></td><td>The right-hand operand.</td></tr>
+</table>
+
+<h2 id="return">Return value</h2>
+
+<table>
+  <tr><th>Type</th><th>What you get</th></tr>
+  <tr><td><code>Vector3</code></td><td>The cross product; the zero vector when the operands are parallel.</td></tr>
+</table>
+
+<h2 id="example">Examples</h2>
+
+<pre><code>		auto xCrossY = TFloat3::X.Cross(TFloat3::Y);
+		ls &lt;&lt; "X x Y = " &lt;&lt; xCrossY &lt;&lt; lf;
+
+		if (xCrossY != TFloat3::Z)
+		{
+			ls &lt;&lt; "Incorrect Cross Product Result: X x Y = " &lt;&lt; xCrossY &lt;&lt; ", but " &lt;&lt; TFloat3::Z &lt;&lt; " expected."
+			   &lt;&lt; lferr;
+		}</code></pre>
+<p class="meta">From Engine/Math/Vector3.cpp, Vector3Test::Prepare()</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; Vector3</a></span>
+  <span><a href="index.html#methods">All Vector3 methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

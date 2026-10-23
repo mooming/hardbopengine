@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AABB — Math module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a class="current" href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This class</h3>
+  <ul>
+    <li><a href="#description">Class description</a></li>
+    <li><a href="#template">Template parameters</a></li>
+    <li><a href="#properties">Class properties</a></li>
+    <li><a href="#methods">Class methods</a></li>
+    <li><a href="#non-member">Non-member helper functions</a></li>
+    <li><a href="#coverage">Coverage</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Math</a> /
+  AABB
+</p>
+
+<h1>AABB</h1>
+<p class="subtitle">
+  <span class="tag">Engine/Math/AABB.h</span>
+  an axis-aligned bounding box stored as two corners, empty until the first Add
+</p>
+
+<h2 id="description">Class description</h2>
+
+<p>
+  <code>AABB</code> is an axis-aligned bounding box stored as two corners, <code>min</code> and
+  <code>max</code>, of whatever vector type <code>TVec</code> names — the template parameter sets the
+  dimension, and every member loops over <code>TVec::order</code>. It is the cheap volume: growing is two
+  comparisons per axis in <a href="add.html"><code>Add</code></a>, containment is a per-axis range test, and
+  the empty state is a convention rather than a flag — a default-constructed box has
+  <code>min = Unity * MAX</code> and <code>max = Unity * -MAX</code>, where <code>MAX</code> is
+  <code>float</code>'s maximum, so it is inside-out on every axis and
+  <a href="is-empty.html"><code>IsEmpty</code></a> reports true.
+</p>
+
+<div class="note">
+  <strong>Containment and equality are exact comparisons.</strong>
+  <a href="is-containing.html"><code>IsContaining</code></a> tests <code>min.a[i] &gt; point.a[i]</code> and
+  <code>max.a[i] &lt; point.a[i]</code> with no epsilon, and
+  <a href="operator-equal.html"><code>operator==</code></a> is mutual containment — so two boxes whose
+  corners differ by one ulp compare unequal, unlike the vector classes' tolerance equality underneath.
+</div>
+
+<table>
+  <tr><th>Piece</th><th>What it is</th><th>Where the contract lives</th></tr>
+  <tr><td>Storage</td><td><code>min</code>, <code>max</code> — the two corners</td>
+      <td><a href="#properties">Class properties</a></td></tr>
+  <tr><td>Growing and moving</td><td><code>Add</code>, <code>Translate</code>, <code>Reset</code>, and the
+      <code>operator+</code>/<code>operator+=</code> family</td><td><a href="#methods">Class methods</a></td></tr>
+  <tr><td>Queries</td><td><code>IsEmpty</code>, <code>IsContaining</code>, <code>Center</code>,
+      <code>Diagonal</code>, <code>Half</code>, <code>Closest</code></td>
+      <td><a href="#methods">Class methods</a></td></tr>
+  <tr><td>Intersection</td><td><code>Intersection</code> and
+      <a href="has-intersection-with.html"><code>HasIntersectionWith</code></a></td>
+      <td><a href="#methods">Class methods</a></td></tr>
+</table>
+
+<h2 id="template">Template parameters</h2>
+
+<table>
+  <tr><th>Parameter</th><th>Kind</th><th>What it must satisfy</th></tr>
+  <tr>
+    <td><code>TVec</code></td>
+    <td><code>typename</code></td>
+    <td>
+      The corner vector type — it sets the dimension through <code>TVec::order</code>. Engine code uses
+      <code>AABB&lt;TFloat2&gt;</code> (<code>AABB2</code>) and <code>AABB&lt;TFloat3&gt;</code>
+      (<code>AABB3</code>). The vector class supplies <code>Unity</code>, <code>operator*</code>,
+      <code>operator+</code>, <code>operator-</code> and the <code>a[]</code> array view the members
+      index; the empty-box convention multiplies <code>Unity</code> by <code>float</code>'s
+      <code>MAX</code>, so a floating-point vector is what the default constructor is written for
+    </td>
+  </tr>
+</table>
+
+<h2 id="properties">Class properties</h2>
+
+<table>
+  <tr><th>Type + Name</th><th>Default Value</th><th>Description</th></tr>
+  <tr><td><code>TVec min;</code> <span class="badge">public</span></td>
+      <td><code>TVec::Unity * MAX</code></td>
+      <td>The low corner; the largest value on every axis while the box is empty.</td></tr>
+  <tr><td><code>TVec max;</code> <span class="badge">public</span></td>
+      <td><code>TVec::Unity * -MAX</code></td>
+      <td>The high corner; the smallest value on every axis while the box is empty.</td></tr>
+  <tr><td><code>static constexpr auto MAX = std::numeric_limits&lt;float&gt;::max();</code> <span class="badge">private</span></td>
+      <td><code>std::numeric_limits&lt;float&gt;::max()</code></td>
+      <td><code>float</code>'s maximum regardless of <code>TVec</code>'s scalar type — the bound the
+        empty-box convention is built on.</td></tr>
+</table>
+
+<h2 id="methods">Class methods</h2>
+
+<table class="methods">
+  <tr><th>Name</th><th>Signature</th><th>What a caller depends on</th></tr>
+  <tr><td><a href="constructors.html"><code>constructors</code></a><span class="badge">3 overloads</span></td>
+      <td class="sig">explicit AABB(std::nullptr_t) noexcept<br>AABB() noexcept<br>AABB(const TVec&amp; min, const TVec&amp; max) noexcept</td>
+      <td>The default form is the empty box (corners at ±<code>MAX</code>); the <code>nullptr</code> form
+        initializes nothing; the two-corner form takes the box as given.</td></tr>
+  <tr><td><a href="reset.html"><code>Reset</code></a></td>
+      <td class="sig">void Reset() noexcept</td>
+      <td>Returns the box to the empty state — corners at ±<code>MAX</code>.</td></tr>
+  <tr><td><a href="operator-add.html"><code>operator+</code></a><span class="badge">2 overloads</span></td>
+      <td class="sig">[[nodiscard]] This operator+(const TVec&amp; rhs) const noexcept<br>[[nodiscard]] This operator+(const This&amp; rhs) const noexcept</td>
+      <td>A grown copy — by a point or by another box; the original untouched.</td></tr>
+  <tr><td><a href="operator-add-assign.html"><code>operator+=</code></a><span class="badge">2 overloads</span></td>
+      <td class="sig">void operator+=(const TVec&amp; rhs) noexcept<br>void operator+=(const This&amp; rhs) noexcept</td>
+      <td>Grows in place through <code>Add</code>.</td></tr>
+  <tr><td><a href="operator-equal.html"><code>operator==</code></a></td>
+      <td class="sig">[[nodiscard]] bool operator==(const This&amp; rhs) const noexcept</td>
+      <td>Mutual containment — exact corner comparison, no epsilon.</td></tr>
+  <tr><td><a href="operator-not-equal.html"><code>operator!=</code></a></td>
+      <td class="sig">[[nodiscard]] bool operator!=(const This&amp; rhs) const noexcept</td>
+      <td>The negation.</td></tr>
+  <tr><td><a href="add.html"><code>Add</code></a><span class="badge">2 overloads</span></td>
+      <td class="sig">void Add(const TVec&amp; point) noexcept<br>void Add(const This&amp; aabb) noexcept</td>
+      <td>Grows the box to include a point or another box, per axis with <code>MinFast</code>/<code>
+        MaxFast</code>. Growing an empty box makes the point the whole box.</td></tr>
+  <tr><td><a href="translate.html"><code>Translate</code></a></td>
+      <td class="sig">void Translate(const TVec&amp; t) noexcept</td>
+      <td>Shifts both corners; asserts the box is not empty (<code>Assert</code>, Debug and Dev) —
+        translating an empty box is a caller error, not a no-op.</td></tr>
+  <tr><td><a href="is-empty.html"><code>IsEmpty</code></a></td>
+      <td class="sig">[[nodiscard]] bool IsEmpty() const noexcept</td>
+      <td>True when any axis has <code>max &lt;= min</code> — the state a default-constructed box starts
+        in.</td></tr>
+  <tr><td><a href="is-containing.html"><code>IsContaining</code></a><span class="badge">2 overloads</span></td>
+      <td class="sig">[[nodiscard]] bool IsContaining(const TVec&amp; point) const noexcept<br>[[nodiscard]] bool IsContaining(const This&amp; aabb) const noexcept</td>
+      <td>Exact per-axis range test; an empty box contains nothing, not even itself.</td></tr>
+  <tr><td><a href="intersection.html"><code>Intersection</code></a></td>
+      <td class="sig">[[nodiscard]] AABB Intersection(const AABB&amp; aabb) const noexcept</td>
+      <td>The per-axis overlap — which may be an empty (inside-out) box when the boxes do not
+        overlap.</td></tr>
+  <tr><td><a href="has-intersection-with.html"><code>HasIntersectionWith</code></a></td>
+      <td class="sig">[[nodiscard]] bool HasIntersectionWith(const AABB&amp; aabb) const noexcept</td>
+      <td><code>!Intersection(aabb).IsEmpty()</code> — the decision without keeping the box.</td></tr>
+  <tr><td><a href="center.html"><code>Center</code></a></td>
+      <td class="sig">[[nodiscard]] TVec Center() const noexcept</td>
+      <td><code>(min + max) * 0.5f</code> — meaningless on an empty box, computed anyway.</td></tr>
+  <tr><td><a href="diagonal.html"><code>Diagonal</code></a></td>
+      <td class="sig">[[nodiscard]] TVec Diagonal() const noexcept</td>
+      <td><code>max - min</code>; negative components on an empty box.</td></tr>
+  <tr><td><a href="half.html"><code>Half</code></a></td>
+      <td class="sig">[[nodiscard]] TVec Half() const noexcept</td>
+      <td><code>Diagonal() * 0.5f</code> — the half-extents.</td></tr>
+  <tr><td><a href="closest.html"><code>Closest</code></a></td>
+      <td class="sig">[[nodiscard]] TVec Closest(const TVec&amp; point) const noexcept</td>
+      <td>The point clamped into the box per axis — the nearest point on or in the box.</td></tr>
+</table>
+
+<h2 id="non-member">Non-member helper functions</h2>
+
+<table>
+  <tr><th>Name</th><th>Signature</th><th>What a caller depends on</th></tr>
+  <tr><td><code>operator&lt;&lt;</code></td>
+      <td class="sig">template &lt;typename T&gt; std::ostream&amp; operator&lt;&lt;(std::ostream&amp; os, const AABB&lt;T&gt;&amp; bbox) noexcept</td>
+      <td>Prints <code>"AABB min = …, max = …"</code> to <code>std::ostream</code>.</td></tr>
+  <tr><td><code>operator&lt;&lt;</code></td>
+      <td class="sig">template &lt;class TStringBuilder, typename T&gt; TStringBuilder&amp; operator&lt;&lt;(TStringBuilder&amp; os, const AABB&lt;T&gt;&amp; bbox) noexcept</td>
+      <td>The same line into the engine's <code>StringBuilder</code> — the overload the log stream picks
+        up.</td></tr>
+</table>
+
+<h2 id="coverage">Coverage</h2>
+
+<table>
+  <tr><th>Gap</th><th>Detail</th></tr>
+  <tr>
+    <td>Callers outside the module</td>
+    <td>None found in <code>Engine/</code> outside <code>Engine/Math/</code> or in
+      <code>Applications/</code>. Inside the module, <code>OBB</code>'s constructor consumes an
+      <code>AABB</code>. The class is exercised by the <code>AABBTest</code> fixture in
+      <code>Engine/Math/AABB.cpp</code>, which the pages quote where real.</td>
+  </tr>
+  <tr>
+    <td><code>AABBTest</code></td>
+    <td>Declared under <code>TEST_ENABLED</code>, defined in <code>AABB.cpp</code>; a test fixture, not
+      engine API.</td>
+  </tr>
+  <tr>
+    <td>The empty-box convention</td>
+    <td><code>min</code>/<code>max</code> at ±<code>MAX</code> is a state, not a flag: it flows through
+      <code>Add</code>, <code>Intersection</code> and the queries, and it is why
+      <a href="translate.html"><code>Translate</code></a> refuses to run on it.</td>
+  </tr>
+</table>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; AABB</a></span>
+  <span><a href="index.html#methods">All AABB methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>
