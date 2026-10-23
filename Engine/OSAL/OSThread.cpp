@@ -8,7 +8,6 @@
 #include "Engine/Engine.h"
 #include "OSMemory.h"
 
-
 void OS::Yield() noexcept
 {
 	std::this_thread::yield();

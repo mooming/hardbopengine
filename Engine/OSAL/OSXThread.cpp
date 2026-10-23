@@ -4,7 +4,6 @@
 
 #ifdef PLATFORM_OSX
 
-/* See feature_test_macros(7) */
 #define _GNU_SOURCE
 
 #include <ctime>
@@ -66,7 +65,6 @@ int OS::GetThreadPriority(std::thread& thread) noexcept
 
 void OS::SetThreadAffinity(std::thread& thread, uint64_t mask) noexcept
 {
-	// Not supported on Apple Silicon
 }
 
 void OS::SetThreadPriority(std::thread& thread, int priority) noexcept

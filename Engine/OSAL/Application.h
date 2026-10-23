@@ -7,16 +7,10 @@
 
 namespace OS
 {
-/// @brief Platform-independent application facade.
-/// @details Public interface is identical on every OS; the behaviour differs per
-///          platform and lives in the per-platform implementation units
-///          (LinuxApplication.cpp, OSXApplication.mm, Win32Application.cpp),
-///          selected at build time via `#if defined(PLATFORM_*)`.
 /// API reference: docs/OSAL/Application/index.html
 class Application
 {
 private:
-	// Opaque per-platform handle (e.g. NSApplication*, HINSTANCE, ...).
 	void* platformHandle;
 
 public:
@@ -27,6 +21,5 @@ public:
 	void PollEvents();
 };
 
-/// @brief Creates an Application owned by the caller.
 [[nodiscard]] std::unique_ptr<Application> CreateApplication() noexcept;
 } // namespace OS

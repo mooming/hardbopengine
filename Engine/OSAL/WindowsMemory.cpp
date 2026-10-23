@@ -41,9 +41,6 @@ void* OS::VirtualAlloc(size_t size)
 void OS::VirtualFree(void* address, std::size_t n) noexcept
 {
 	auto result = ::VirtualFree(address, n, MEM_RELEASE);
-	// BUG FIX: VirtualFree returns non-zero on SUCCESS, zero on FAILURE
-	// Original code checked if (result) which triggered Assert on success
-	// Fixed to check if (!result) to assert only on actual failure
 	if (unlikely(!result))
 	{
 		hbe::Assert(false);

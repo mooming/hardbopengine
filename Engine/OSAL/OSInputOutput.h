@@ -32,7 +32,6 @@ bool UnmapMemory(void* ptr, size_t size) noexcept;
 
 namespace hbe
 {
-/// @brief Test collection for OS input/output operations.
 class OSInputOutputTest final : public TestCollection
 {
 public:

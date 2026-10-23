@@ -8,7 +8,6 @@
 
 namespace OS
 {
-/// @brief Get a stack backtrace for debugging purposes.
 /// API reference: docs/OSAL/OSDebug/index.html
 hbe::StaticString GetBackTrace(uint16_t startIndex = 0, uint16_t maxDepth = 512);
 } // namespace OS
@@ -18,7 +17,6 @@ hbe::StaticString GetBackTrace(uint16_t startIndex = 0, uint16_t maxDepth = 512)
 
 namespace hbe
 {
-/// @brief Test collection for OS debug operations.
 class OSDebugTest final : public TestCollection
 {
 public:

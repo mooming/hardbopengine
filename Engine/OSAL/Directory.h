@@ -10,7 +10,6 @@
 
 namespace OS
 {
-/// @brief Represents a directory in the file system with access to files and subdirectories.
 /// API reference: docs/OSAL/Directory/index.html
 class Directory
 {

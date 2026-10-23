@@ -92,7 +92,6 @@ void Window::PollEvents()
 
 		if (event.type == ClientMessage)
 		{
-			// Simplified: check for close message if implemented via XCloseNotify or similar
 		}
 		else if (event.type == ConfigureEvent)
 		{

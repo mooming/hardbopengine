@@ -7,19 +7,13 @@
 #include "Engine/Engine.h"
 #include "Intrinsic.h"
 
-// OSMemory.cpp serves as a fallback implementation when platform-specific files
-// are not compiled. If PLATFORM_LINUX, PLATFORM_OSX, or PLATFORM_WINDOWS is defined,
-// the corresponding platform-specific file should be used instead.
 
-// Ensure a valid platform is defined
 #if !defined(PLATFORM_LINUX) && !defined(PLATFORM_OSX) && !defined(PLATFORM_WINDOWS)
 #error "No platform macro defined. Please define one of: PLATFORM_LINUX, PLATFORM_OSX, PLATFORM_WINDOWS"
 #endif
 
-// Skip fallback implementation if platform-specific files are being compiled
 #if defined(PLATFORM_LINUX) || defined(PLATFORM_OSX) || defined(PLATFORM_WINDOWS)
 
-// Platform-specific implementation will handle this
 #elif defined(__linux__)
 #include <cerrno>
 #include <cstdlib>
@@ -45,8 +39,6 @@ void* OS::VirtualAlloc(size_t size)
 	return ptr;
 }
 
-// BUG FIX: Parameter was unnamed but body referenced 'size' - caused compilation error
-// Added parameter name to fix undefined variable error
 void OS::VirtualFree(void* address, std::size_t size) noexcept
 {
 	munmap(address, size);
@@ -151,9 +143,6 @@ void* OS::VirtualAlloc(size_t size) noexcept
 void OS::VirtualFree(void* address, std::size_t n) noexcept
 {
 	auto result = ::VirtualFree(address, n, MEM_RELEASE);
-	// BUG FIX: VirtualFree returns non-zero on SUCCESS, zero on FAILURE
-	// Original code checked if (result) which triggered Assert on success
-	// Fixed to check if (!result) to assert only on actual failure
 	if (unlikely(!result))
 	{
 		hbe::Assert(false);
@@ -194,8 +183,6 @@ namespace hbe
 {
 void OSMemoryTest::Prepare()
 {
-	// BUG FIX TEST: VirtualFree on Linux/macOS was using free() instead of munmap()
-	// This test verifies VirtualAlloc/VirtualFree round-trip works correctly
 	AddTest("VirtualAlloc VirtualFree Round Trip", [this](auto& ls)
 	{
 		constexpr size_t allocSize = 4096;
@@ -208,10 +195,8 @@ void OSMemoryTest::Prepare()
 			return;
 		}
 
-		// Write to the memory to verify it's valid
 		memset(ptr, 0xAB, allocSize);
 
-		// Verify the written pattern
 		const uint8_t* bytes = static_cast<const uint8_t*>(ptr);
 		bool patternOk = true;
 		for (size_t i = 0; i < allocSize; ++i)
@@ -228,46 +213,36 @@ void OSMemoryTest::Prepare()
 			ls << "Memory pattern verification failed after VirtualAlloc" << lferr;
 		}
 
-		// VirtualFree should not crash or assert
 		OS::VirtualFree(ptr, allocSize);
 		ls << "VirtualAlloc/VirtualFree round trip succeeded" << lf;
 	});
 
-	// BUG FIX TEST: VirtualFree Windows error check was inverted
-	// This test verifies freeing valid memory doesn't trigger false asserts
 	AddTest("VirtualFree Valid Memory", [this](auto& ls)
 	{
 		constexpr size_t allocSize = 8192;
 		void* ptr = OS::VirtualAlloc(allocSize);
 		Assert(ptr != nullptr && "VirtualAlloc should succeed");
 
-		// Write and verify
 		int* intPtr = static_cast<int*>(ptr);
 		*intPtr = 0xDEADBEEF;
 		Assert(*intPtr == 0xDEADBEEF && "Memory write verification failed");
 
-		// This should NOT trigger an assert (was the bug on Windows)
 		OS::VirtualFree(ptr, allocSize);
 		ls << "VirtualFree on valid memory succeeded without false assert" << lf;
 	});
 
-	// BUG FIX TEST: VirtualFree on Linux had undefined 'size' variable
-	// This test verifies the parameter is properly passed through
 	AddTest("VirtualFree With Size Parameter", [this](auto& ls)
 	{
 		size_t pageSize = OS::GetPageSize();
 		void* ptr = OS::VirtualAlloc(pageSize);
 		Assert(ptr != nullptr && "VirtualAlloc should succeed");
 
-		// Fill memory
 		memset(ptr, 0xCD, pageSize);
 
-		// Free with explicit size - verifies parameter passing works
 		OS::VirtualFree(ptr, pageSize);
 		ls << "VirtualFree with size parameter succeeded" << lf;
 	});
 
-	// Test multiple alloc/free cycles to catch memory corruption
 	AddTest("VirtualAlloc VirtualFree Multiple Cycles", [this](auto& ls)
 	{
 		constexpr int cycles = 10;
@@ -296,7 +271,6 @@ void OSMemoryTest::Prepare()
 		}
 	});
 
-	// Test page size retrieval
 	AddTest("GetPageSize", [this](auto& ls)
 	{
 		size_t pageSize = OS::GetPageSize();
@@ -307,7 +281,6 @@ void OSMemoryTest::Prepare()
 			ls << "GetPageSize returned 0" << lferr;
 		}
 
-		// Page size should be a power of 2
 		if ((pageSize & (pageSize - 1)) != 0)
 		{
 			ls << "Page size " << pageSize << " is not a power of 2" << lfwarn;

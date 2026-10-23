@@ -10,10 +10,6 @@
 
 namespace OS
 {
-/// @brief Platform-independent window facade.
-/// @details Concrete behaviour differs per OS and is implemented in the per-platform
-///          units (LinuxWindow.cpp, OSXWindow.mm, Win32Window.cpp), selected at build
-///          time via `#if defined(PLATFORM_*)`. The public interface is identical.
 /// API reference: docs/OSAL/Window/index.html
 class Window
 {
@@ -31,8 +27,6 @@ private:
 	bool shouldCloseFlag;
 #elif defined(PLATFORM_OSX)
 	void* osHandle;
-	/// @brief NSWindowDelegate observing the close button (see OSXWindow.mm).
-	/// @details NSWindow holds its delegate unretained, so the Window owns the reference.
 	void* osDelegate;
 #endif
 
@@ -54,7 +48,6 @@ public:
 	[[nodiscard]] intptr_t GetNativeHandle() const;
 };
 
-/// @brief Creates a Window owned by the caller.
 [[nodiscard]] std::unique_ptr<Window> CreateWindow(const hbe::HString& title, int width, int height);
 } // namespace OS
 

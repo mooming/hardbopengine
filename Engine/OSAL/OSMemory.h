@@ -13,8 +13,6 @@
 
 namespace OS
 {
-/// @brief Provides low-level memory management operations for platform-independent memory allocation,
-/// alignment, and protection.
 /// API reference: docs/OSAL/OSMemory/index.html
 [[nodiscard]] bool IsValidAllocation(void* ptr) noexcept;
 
@@ -45,7 +43,6 @@ void ProtectMemory(void* address, std::size_t n) noexcept;
 
 namespace hbe
 {
-/// @brief Test collection for OS memory operations.
 class OSMemoryTest final : public TestCollection
 {
 public:

@@ -11,7 +11,7 @@
 
 #ifdef WIN32
 #define WINDOWS
-#else // _WINDOWS
+#else
 #define POSIX
 #endif // WIN32
 
