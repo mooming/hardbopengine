@@ -16,6 +16,7 @@ namespace hbe
 namespace Renderer
 {
 /// @brief Single vertex: position (vec3) + normal (vec3), 24 bytes, tightly packed.
+/// API reference: docs/Renderer/MeshVertex/index.html
 struct MeshVertex
 {
 	float position[3];
@@ -31,6 +32,7 @@ struct MeshVertex
 };
 
 /// @brief A triangle mesh to upload to the GPU.
+/// API reference: docs/Renderer/Mesh/index.html
 struct Mesh
 {
 	std::vector<MeshVertex> vertices;
@@ -43,6 +45,7 @@ struct Mesh
 ///          viewProj is combined on the CPU once per frame, which is what leaves room
 ///          for a model matrix; the light direction moves to a uniform buffer later.
 ///          Column-major (GL/Vulkan convention).
+/// API reference: docs/Renderer/PushConstants/index.html
 struct PushConstants
 {
 	float model[16];

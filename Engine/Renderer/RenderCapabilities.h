@@ -12,6 +12,7 @@
 namespace hbe::Renderer
 {
 /// @brief What kind of physical device the driver is driving, in API-neutral terms.
+/// API reference: docs/Renderer/DeviceType/index.html
 enum class DeviceType : uint8_t
 {
 	Unknown = 0,
@@ -115,6 +116,7 @@ enum class DeviceType : uint8_t
 ///
 ///          Every zero / false means "not queried" rather than "unsupported" - see
 ///          isDeviceQueried. Adapters must set isDeviceQueried only on success.
+/// API reference: docs/Renderer/RenderCapabilities/index.html
 class RenderCapabilities
 {
 public:
