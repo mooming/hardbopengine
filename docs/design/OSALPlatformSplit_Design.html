@@ -33,6 +33,8 @@
 <li><a href="#pattern">The platform-split pattern</a></li>
 <li><a href="#fallback">The fallback role of the OS*.cpp units</a></li>
 <li><a href="#virtualalloc">VirtualAlloc and VirtualFree semantics the tests pin</a></li>
+<li><a href="#app-termination">Why Application's destructor does not call terminate</a></li>
+<li><a href="#window-close">How a closed window is noticed</a></li>
 <li><a href="#seealso">Where else to look</a></li>
   </ul>
 </nav>
@@ -73,6 +75,37 @@
   corresponding platform unit instead; the fallback exists so a target with no platform macro still links,
   and its guards skip the body when a platform implementation is being compiled. It is not a third
   implementation to keep correct — it is the shape that keeps an unconfigured build honest.
+</p>
+
+<h2 id="app-termination">Why Application's destructor does not call terminate</h2>
+
+<p>
+  The macOS Application unit (<code>Engine/OSAL/OSXApplication.mm</code>) deliberately does not call
+  <code>[app terminate:]</code> from <a href="../OSAL/Application/destructor.html">the destructor</a>:
+  that call ends in <code>exit()</code>, which tears the process down from inside a destructor — main()'s
+  return value is discarded (no application could ever report a status, and EngineTest could not signal a
+  failing suite), and static destructors never run. <code>NSApplication</code> is a process-wide singleton
+  that outlives the wrapper, the engine owns its own shutdown sequence, so stopping the run loop is all the
+  destructor does. Quitting on the close button is unaffected: that path runs
+  <code>windowShouldClose:</code> → the <code>shouldClose</code> flag → the application loop exits on its own.
+</p>
+
+<h2 id="window-close">How a closed window is noticed</h2>
+
+<p>
+  Close detection is event-driven on macOS (<code>Engine/OSAL/OSXWindow.mm</code>): the red button lands in
+  the window delegate, so the owning Window is marked closed immediately. Relying on
+  <a href="../OSAL/Window/poll-events.html">PollEvents</a> to notice an invisible window does not work,
+  because applications pump <code>OS::Application::PollEvents</code> rather than the window's own. The
+  delegate reference is unretained by <code>NSWindow</code>, so the <code>+</code> taken when the delegate
+  is installed belongs to the Window and is released in
+  <a href="../OSAL/Window/close.html">Close</a>.
+</p>
+
+<p>
+  The Linux unit's close check is simplified — it tests for a close message where a full implementation
+  would check <code>XCloseNotify</code> or equivalent (<code>Engine/OSAL/LinuxWindow.cpp</code>); the
+  Windows and macOS units are the reference behaviour.
 </p>
 
 <h2 id="virtualalloc">VirtualAlloc and VirtualFree semantics the tests pin</h2>

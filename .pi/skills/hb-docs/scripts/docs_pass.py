@@ -122,7 +122,8 @@ def declarations(header, cls):
     grouped = {}
     for chunk in ''.join(out).split(';'):
         lines = [l.rstrip() for l in chunk.split('\n')]
-        while lines and (not lines[0].strip() or re.fullmatch(r'(public|private|protected):', lines[0].strip())):
+        while lines and (not lines[0].strip() or re.fullmatch(r'(public|private|protected):', lines[0].strip())
+                         or lines[0].strip().startswith('#')):
             lines.pop(0)
         while lines and not lines[-1].strip():
             lines.pop()
