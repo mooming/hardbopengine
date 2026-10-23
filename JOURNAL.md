@@ -1,5 +1,36 @@
 # Journal
 
+## 2026-10-23 23:50 — the Math cycle, and the stale page no gate had ever compared
+
+**Cause.** Fifth module, the worklist's largest docs job: all sixteen class pages owed from zero, 127
+comments, 42 layout findings concentrated in the two shared impl units.
+
+**Closed in this round.** The layout: the vectors' and matrices' statics hoisted inside their shared
+`.inl` units, and the include positions moved *within* each class body so the statics arrive before the
+first instance function — a within-class move, not the forbidden preamble hoist, and the shape the layout
+gate demands. 280 pages authored by one subagent and verified by me (signatures verbatim for all
+sixteen classes after the collector fixes below, htmlcheck 280 pages, quoted_blocks 0 stale 0
+unresolved); sixteen pointer lines; 127 comments stripped with token-identical proofs; one design
+document (`docs/design/PerlinNoiseInternals_Design.html`) owning the permutation doubling, the
+negative-wrap cast order, the specified-not-delegated shuffle, the reference gradients and the
+continuity test's shape.
+
+**The catches.** First, two more `docs_pass.py` collector defects, same family as the friend and
+constexpr skips: the parser never expanded the in-class `.inl` include (every shared-impl method
+reported NOT IN HEADER — fixed by splicing the fragment where the compiler sees it), and its operator
+regex could not parse `operator()` (the parenthesis pair is the operator's spelling — the alternation
+now admits it). Second, my verification runs are the first that ever compared `Array`'s pages to its
+header, and they surfaced a page for a method deleted in `ac496e6` on 2026-09-21: `resize.html`
+described, and eleven pages linked, a `Resize` that no longer exists. The page is deleted and the
+prose rewritten to the fixed-capacity contract — the module page's "correcting the old guide" note now
+corrects itself, and records the method's nine-day life. Third, clang-format on an `.inl` de-indents it
+(standalone-file reading), so the fragments keep their tab indentation by hand and the formatter is
+never run on them directly.
+
+**Verification.** Math scoped gates all 0: comments, layout (17 files), blank lines, includes, docs
+coverage 16/16, method pages, htmlcheck. Scoped `check.sh HEAD` exits 0; the detached gate's build and
+suite verdict is read after this entry.
+
 ## 2026-10-23 16:00 — the OSAL cycle, and the labels the strip was right to refuse
 
 **Cause.** Fourth module, the largest OS-layer debt: fourteen reference pages owed from zero, 96

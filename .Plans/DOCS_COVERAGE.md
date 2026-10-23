@@ -12,7 +12,7 @@ Source comments are banned, so a missing page means the contract is nowhere.
 | Engine | 2 | 2 | 0 | 0 | 0 | 0 |
 | HSTL | 3 | 3 | 0 | 1 | 0 | 0 |
 | Log | 4 | 4 | 0 | 0 | 0 | 0 |
-| Math | 16 | 0 | 16 | 15 | 0 | 127 |
+| Math | 16 | 16 | 0 | 15 | 16 | 0 |
 | Memory | 23 | 23 | 0 | 12 | 23 | 0 |
 | OSAL | 14 | 14 | 0 | 5 | 14 | 0 |
 | Renderer | 9 | 9 | 0 | 2 | 9 | 1 |
@@ -29,7 +29,7 @@ Source comments are banned, so a missing page means the contract is nowhere.
 | Config | ConfigParam | class | `Engine/Config/ConfigParam.h` | `docs/Config/ConfigParam/index.html` | 5 | yes | documented |
 | Config | ConfigSystem | class | `Engine/Config/ConfigSystem.h` | `docs/Config/ConfigSystem/index.html` | 16 | yes | documented |
 | Config | EngineConfig | utility header | `Engine/Config/EngineConfig.h` | `docs/Config/EngineConfig/index.html` | 1 | yes | documented |
-| Container | Array | class | `Engine/Container/Array.h` | `docs/Container/Array/index.html` | 14 | yes | documented |
+| Container | Array | class | `Engine/Container/Array.h` | `docs/Container/Array/index.html` | 13 | yes | documented |
 | Container | ArrayTest | test-only | `Engine/Container/Array.h` | `docs/Container/ArrayTest/index.html` | 0 | — | test-only — owns a Coverage row |
 | Container | AtomicFixedRingMPMC | class | `Engine/Container/AtomicFixedRingMPMC.h` | `docs/Container/AtomicFixedRingMPMC/index.html` | 14 | yes | documented |
 | Container | AtomicFixedRingMPMCTest | test-only | `Engine/Container/AtomicFixedRingMPMC.h` | `docs/Container/AtomicFixedRingMPMCTest/index.html` | 0 | — | test-only — owns a Coverage row |
@@ -113,36 +113,36 @@ Source comments are banned, so a missing page means the contract is nowhere.
 | Log | LogLine | class | `Engine/Log/LogLine.h` | `docs/Log/LogLine/index.html` | 3 | **no** | documented |
 | Log | LogUtil | utility header | `Engine/Log/LogUtil.h` | `docs/Log/LogUtil/index.html` | 4 | **no** | documented |
 | Log | Logger | class | `Engine/Log/Logger.h` | `docs/Log/Logger/index.html` | 19 | **no** | documented |
-| Math | AABB | class | `Engine/Math/AABB.h` | `docs/Math/AABB/index.html` | 0 | — | MISSING |
+| Math | AABB | class | `Engine/Math/AABB.h` | `docs/Math/AABB/index.html` | 16 | yes | documented |
 | Math | AABBTest | test-only | `Engine/Math/AABB.h` | `docs/Math/AABBTest/index.html` | 0 | — | test-only — owns a Coverage row |
-| Math | ImportanceResampling | class | `Engine/Math/ImportanceResampling.h` | `docs/Math/ImportanceResampling/index.html` | 0 | — | MISSING |
+| Math | ImportanceResampling | class | `Engine/Math/ImportanceResampling.h` | `docs/Math/ImportanceResampling/index.html` | 9 | yes | documented |
 | Math | ImportanceResamplingTest | test-only | `Engine/Math/ImportanceResampling.h` | `docs/Math/ImportanceResamplingTest/index.html` | 0 | — | test-only — owns a Coverage row |
 | Math | MathUtilTest | test-only | `Engine/Math/MathUtil.h` | `docs/Math/MathUtilTest/index.html` | 0 | — | test-only — owns a Coverage row |
-| Math | Matrix2x2 | class | `Engine/Math/Matrix2x2.h` | `docs/Math/Matrix2x2/index.html` | 0 | — | MISSING |
-| Math | Matrix3x3 | class | `Engine/Math/Matrix3x3.h` | `docs/Math/Matrix3x3/index.html` | 0 | — | MISSING |
+| Math | Matrix2x2 | class | `Engine/Math/Matrix2x2.h` | `docs/Math/Matrix2x2/index.html` | 14 | yes | documented |
+| Math | Matrix3x3 | class | `Engine/Math/Matrix3x3.h` | `docs/Math/Matrix3x3/index.html` | 22 | yes | documented |
 | Math | Matrix3x3Test | test-only | `Engine/Math/Matrix3x3.h` | `docs/Math/Matrix3x3Test/index.html` | 0 | — | test-only — owns a Coverage row |
-| Math | Matrix4x4 | class | `Engine/Math/Matrix4x4.h` | `docs/Math/Matrix4x4/index.html` | 0 | — | MISSING |
+| Math | Matrix4x4 | class | `Engine/Math/Matrix4x4.h` | `docs/Math/Matrix4x4/index.html` | 22 | yes | documented |
 | Math | MonteCarloIntegrationTest | test-only | `Engine/Math/MonteCarloIntegrator.h` | `docs/Math/MonteCarloIntegrationTest/index.html` | 0 | — | test-only — owns a Coverage row |
-| Math | MonteCarloIntegrator | class | `Engine/Math/MonteCarloIntegrator.h` | `docs/Math/MonteCarloIntegrator/index.html` | 0 | — | MISSING |
-| Math | OBB | class | `Engine/Math/OBB.h` | `docs/Math/OBB/index.html` | 0 | — | MISSING |
+| Math | MonteCarloIntegrator | class | `Engine/Math/MonteCarloIntegrator.h` | `docs/Math/MonteCarloIntegrator/index.html` | 3 | yes | documented |
+| Math | OBB | class | `Engine/Math/OBB.h` | `docs/Math/OBB/index.html` | 6 | yes | documented |
 | Math | OBBTest | test-only | `Engine/Math/OBB.h` | `docs/Math/OBBTest/index.html` | 0 | — | test-only — owns a Coverage row |
-| Math | PerlinNoise | class | `Engine/Math/PerlinNoise.h` | `docs/Math/PerlinNoise/index.html` | 0 | — | MISSING |
+| Math | PerlinNoise | class | `Engine/Math/PerlinNoise.h` | `docs/Math/PerlinNoise/index.html` | 9 | yes | documented |
 | Math | PerlinNoiseTest | test-only | `Engine/Math/PerlinNoise.h` | `docs/Math/PerlinNoiseTest/index.html` | 0 | — | test-only — owns a Coverage row |
-| Math | Quaternion | class | `Engine/Math/Quaternion.h` | `docs/Math/Quaternion/index.html` | 0 | — | MISSING |
+| Math | Quaternion | class | `Engine/Math/Quaternion.h` | `docs/Math/Quaternion/index.html` | 42 | yes | documented |
 | Math | QuaternionTest | test-only | `Engine/Math/Quaternion.h` | `docs/Math/QuaternionTest/index.html` | 0 | — | test-only — owns a Coverage row |
-| Math | RigidTransform | class | `Engine/Math/RigidTransform.h` | `docs/Math/RigidTransform/index.html` | 0 | — | MISSING |
+| Math | RigidTransform | class | `Engine/Math/RigidTransform.h` | `docs/Math/RigidTransform/index.html` | 8 | yes | documented |
 | Math | RigidTransformTest | test-only | `Engine/Math/RigidTransform.h` | `docs/Math/RigidTransformTest/index.html` | 0 | — | test-only — owns a Coverage row |
-| Math | StratifiedSampling | class | `Engine/Math/StratifiedSampling.h` | `docs/Math/StratifiedSampling/index.html` | 0 | — | MISSING |
+| Math | StratifiedSampling | class | `Engine/Math/StratifiedSampling.h` | `docs/Math/StratifiedSampling/index.html` | 5 | yes | documented |
 | Math | StratifiedSamplingTest | test-only | `Engine/Math/StratifiedSampling.h` | `docs/Math/StratifiedSamplingTest/index.html` | 0 | — | test-only — owns a Coverage row |
-| Math | Transform | class | `Engine/Math/Transform.h` | `docs/Math/Transform/index.html` | 0 | — | MISSING |
+| Math | Transform | class | `Engine/Math/Transform.h` | `docs/Math/Transform/index.html` | 12 | yes | documented |
 | Math | TransformTest | test-only | `Engine/Math/Transform.h` | `docs/Math/TransformTest/index.html` | 0 | — | test-only — owns a Coverage row |
-| Math | UniformTransform | class | `Engine/Math/UniformTransform.h` | `docs/Math/UniformTransform/index.html` | 0 | — | MISSING |
+| Math | UniformTransform | class | `Engine/Math/UniformTransform.h` | `docs/Math/UniformTransform/index.html` | 8 | yes | documented |
 | Math | UniformTransformTest | test-only | `Engine/Math/UniformTransform.h` | `docs/Math/UniformTransformTest/index.html` | 0 | — | test-only — owns a Coverage row |
-| Math | Vector2 | class | `Engine/Math/Vector2.h` | `docs/Math/Vector2/index.html` | 0 | — | MISSING |
+| Math | Vector2 | class | `Engine/Math/Vector2.h` | `docs/Math/Vector2/index.html` | 27 | yes | documented |
 | Math | Vector2Test | test-only | `Engine/Math/Vector2.h` | `docs/Math/Vector2Test/index.html` | 0 | — | test-only — owns a Coverage row |
-| Math | Vector3 | class | `Engine/Math/Vector3.h` | `docs/Math/Vector3/index.html` | 0 | — | MISSING |
+| Math | Vector3 | class | `Engine/Math/Vector3.h` | `docs/Math/Vector3/index.html` | 31 | yes | documented |
 | Math | Vector3Test | test-only | `Engine/Math/Vector3.h` | `docs/Math/Vector3Test/index.html` | 0 | — | test-only — owns a Coverage row |
-| Math | Vector4 | class | `Engine/Math/Vector4.h` | `docs/Math/Vector4/index.html` | 0 | — | MISSING |
+| Math | Vector4 | class | `Engine/Math/Vector4.h` | `docs/Math/Vector4/index.html` | 29 | yes | documented |
 | Math | Vector4Test | test-only | `Engine/Math/Vector4.h` | `docs/Math/Vector4Test/index.html` | 0 | — | test-only — owns a Coverage row |
 | Memory | AlignedStorage | struct | `Engine/Memory/AlignedStorage.h` | `docs/Memory/AlignedStorage/index.html` | 2 | yes | documented |
 | Memory | AllocStats | class | `Engine/Memory/AllocStats.h` | `docs/Memory/AllocStats/index.html` | 6 | yes | documented |
