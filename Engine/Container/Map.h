@@ -14,9 +14,9 @@
 
 namespace hbe
 {
-/// API reference: docs/Container/Map/index.html
 template <typename TKey, typename TValue, class TCompare = std::less<TKey>,
 		  class TAllocator = DefaultAllocator<uint8_t>>
+/// API reference: docs/Container/Map/index.html
 class Map final
 {
 public:
