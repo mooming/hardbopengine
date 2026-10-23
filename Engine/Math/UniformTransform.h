@@ -13,8 +13,8 @@
 
 namespace hbe
 {
-/// @brief A transform with uniform scale, rotation, and translation.
 template <typename TNumber>
+/// API reference: docs/Math/UniformTransform/index.html
 class UniformTransform final
 {
 	using This = UniformTransform;

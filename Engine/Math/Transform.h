@@ -13,8 +13,8 @@
 
 namespace hbe
 {
-/// @brief A hierarchical transform with parent-child relationships and world transform caching.
 template <typename TNumber>
+/// API reference: docs/Math/Transform/index.html
 class Transform final
 {
 public:

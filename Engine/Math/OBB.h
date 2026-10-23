@@ -9,19 +9,16 @@
 
 namespace hbe
 {
-/// @brief An Oriented Bounding Box class for collision detection.
 template <typename TNumber>
+/// API reference: docs/Math/OBB/index.html
 class OBB final
 {
 	using TVec3 = Vector3<TNumber>;
 	using TQuat = Quaternion<TNumber>;
 
 public:
-	// offset from an object space origin
 	TVec3 center;
-	// offset from the center
 	TVec3 half;
-	// rotation in an object space
 	TQuat rotation;
 
 public:

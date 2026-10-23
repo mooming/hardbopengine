@@ -1,7 +1,4 @@
 // Copyright (c) 2026 Hansol Park (mooming.go@gmail.com). All rights reserved.
-// Created by mooming on 22/06/2025.
-
-// Created by mooming on 22/06/2025.
 
 #include "ImportanceResampling.h"
 #include "StratifiedSampling.h"
@@ -28,11 +25,7 @@ void hbe::ImportanceResamplingTest::Prepare() noexcept
 		return std::sqrt(1 - (x * x)) * 4.0f;
 	};
 
-	auto pdf = [](const double&) -> double
-	{
-		// uniform pdf in [0, 1]
-		return 1.0;
-	};
+	auto pdf = [](const double&) -> double { return 1.0; };
 
 	static std::random_device rd;
 	static std::mt19937 gen(rd());
@@ -88,8 +81,6 @@ void hbe::ImportanceResamplingTest::Prepare() noexcept
 			}
 
 			average += result;
-
-			// per-iteration result log omitted
 		}
 
 		average /= numRepeat;
@@ -168,8 +159,6 @@ void hbe::ImportanceResamplingTest::Prepare() noexcept
 			}
 
 			average += result;
-
-			// per-iteration result log omitted
 		}
 
 		average /= numRepeat;
@@ -260,8 +249,6 @@ void hbe::ImportanceResamplingTest::Prepare() noexcept
 				}
 
 				average += result;
-
-				// per-iteration result log omitted
 			}
 
 			if (!integrator.Resample(func, pdf, randomGen, norm, numSrcSamples))
@@ -362,8 +349,6 @@ void hbe::ImportanceResamplingTest::Prepare() noexcept
 				}
 
 				average += result;
-
-				// per-iteration result log omitted
 			}
 
 			integrator.ClearResampledData();

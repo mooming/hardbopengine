@@ -12,8 +12,8 @@
 
 namespace hbe
 {
-/// @brief A 3x3 matrix template class for 3D transformations.
 template <typename TNumber>
+/// API reference: docs/Math/Matrix3x3/index.html
 class Matrix3x3 final
 {
 	using This = Matrix3x3;

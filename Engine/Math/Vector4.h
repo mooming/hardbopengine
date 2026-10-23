@@ -10,8 +10,8 @@
 
 namespace hbe
 {
-/// @brief A 4D vector template class.
 template <typename TNumber>
+/// API reference: docs/Math/Vector4/index.html
 class Vector4 final
 {
 	using This = Vector4;

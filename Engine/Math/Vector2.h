@@ -7,8 +7,8 @@
 
 namespace hbe
 {
-/// @brief A 2D vector template class.
 template <typename TNumber>
+/// API reference: docs/Math/Vector2/index.html
 class Vector2 final
 {
 	using This = Vector2;

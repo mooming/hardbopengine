@@ -1,7 +1,4 @@
 // Copyright (c) 2026 Hansol Park (mooming.go@gmail.com). All rights reserved.
-// Created by mooming on 21/06/2025.
-
-// Created by mooming on 21/06/2025.
 
 #include "StratifiedSampling.h"
 
@@ -30,7 +27,6 @@ void hbe::StratifiedSamplingTest::Prepare() noexcept
 			return r <= 1.0 ? 1.0 : 0.0f;
 		};
 
-		// uniform pdf in (-1, -1) to (1, 1)
 		auto pdf = [](const Vec2& x) -> double
 		{
 			constexpr double p = 1.0 / 4.0f;
@@ -47,8 +43,8 @@ void hbe::StratifiedSamplingTest::Prepare() noexcept
 		{
 			auto randomGenInRange = [](double rangeStart, double rangeEnd) -> double
 			{
-				static std::random_device rd; // random seed
-				static std::mt19937 gen(rd()); // pseudo random gen
+				static std::random_device rd;
+				static std::mt19937 gen(rd());
 				std::uniform_real_distribution dist(rangeStart, rangeEnd);
 
 				double value = dist(gen);
@@ -75,8 +71,8 @@ void hbe::StratifiedSamplingTest::Prepare() noexcept
 		{
 			auto randomGen = []()
 			{
-				static std::random_device rd; // random seed
-				static std::mt19937 gen(rd()); // pseudo random gen
+				static std::random_device rd;
+				static std::mt19937 gen(rd());
 				static std::uniform_real_distribution dist(-1.0, 1.0);
 
 				Vec2 value(dist(gen), dist(gen));

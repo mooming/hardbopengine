@@ -12,8 +12,8 @@
 
 namespace hbe
 {
-/// @brief A rigid body transform with rotation and translation but no scaling.
 template <typename TNumber = float, int PaddingSize = 8>
+/// API reference: docs/Math/RigidTransform/index.html
 class RigidTransform final
 {
 	using This = RigidTransform;

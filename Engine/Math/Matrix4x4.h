@@ -14,8 +14,8 @@
 
 namespace hbe
 {
-/// @brief A 4x4 matrix template class for 3D homogeneous transformations.
 template <typename TNumber>
+/// API reference: docs/Math/Matrix4x4/index.html
 class Matrix4x4 final
 {
 	using This = Matrix4x4;

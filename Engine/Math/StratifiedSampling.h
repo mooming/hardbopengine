@@ -1,7 +1,4 @@
 // Copyright (c) 2026 Hansol Park (mooming.go@gmail.com). All rights reserved.
-// Created by mooming on 22/06/2025.
-
-// Created by mooming on 22/06/2025.
 
 #pragma once
 
@@ -12,8 +9,8 @@
 
 namespace hbe
 {
-/// @brief A stratified sampling class for generating samples within intervals.
 template <typename TReal = double, typename TInteger = uint32_t>
+/// API reference: docs/Math/StratifiedSampling/index.html
 class StratifiedSampling final
 {
 public:
@@ -53,8 +50,6 @@ public:
 		return subGroupIndex;
 	}
 
-	// TRangeSampler - TReal sampler(TReal rangeStart, TReal rangeEnd), return a random number within the given
-	// range
 	template <typename TRangeSampler>
 	[[nodiscard]] TReal Sample(const TRangeSampler& sampler) noexcept
 	{

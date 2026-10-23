@@ -9,16 +9,7 @@
 
 namespace hbe
 {
-/// @brief Deterministic 3D gradient (Perlin) noise with fractal Brownian motion.
-/// @details The permutation table is shuffled by an explicitly specified PRNG
-/// (golden-ratio counter + Murmur3 finalizer) and a hand-written Fisher-Yates pass,
-/// never std::shuffle: the standard leaves std::shuffle's algorithm unspecified, and a
-/// voxel terrain generated from a seed has to come out identical on every platform and
-/// compiler. The gradient function follows Ken Perlin's reference "improved noise".
-///
-/// Two properties are load bearing and pinned by unit tests:
-/// - Noise is exactly zero at every integer lattice coordinate.
-/// - Noise never leaves [-1, 1] (the true bound is about +/-0.87).
+/// API reference: docs/Math/PerlinNoise/index.html
 class PerlinNoise final
 {
 public:
@@ -27,27 +18,17 @@ public:
 private:
 	TUInt seed = 0;
 
-	/// @brief Separate from seed so GetSeed() stays reportable while shuffling consumes state.
 	TUInt randomState = 0;
 	std::array<TByte, (permutationMask + 1) * 2> p = {};
 
 public:
 	explicit PerlinNoise(TUInt seed = 0) noexcept;
 
-	/// @brief Noise value at a point; exactly zero when all coordinates are integers.
 	[[nodiscard]] TReal Noise(TReal x, TReal y, TReal z) const noexcept;
 
-	/// @brief Fractal Brownian motion: the sum of successive octaves of Noise.
-	/// @details Normalised by the summed amplitude, so the return value stays inside the
-	/// range of a single Noise call regardless of how many octaves are requested.
-	/// @param octaves Number of octaves; zero returns zero.
-	/// @param frequency Frequency of the first octave.
-	/// @param lacunarity Frequency multiplier applied per octave.
-	/// @param gain Amplitude multiplier applied per octave.
 	[[nodiscard]] TReal Fbm(TReal x, TReal y, TReal z, TUInt octaves, TReal frequency = 1.0f, TReal lacunarity = 2.0f,
 							TReal gain = 0.5f) const noexcept;
 
-	/// @brief The seed this instance was constructed with.
 	[[nodiscard]] TUInt GetSeed() const noexcept
 	{
 		return seed;
@@ -66,13 +47,11 @@ private:
 		return a + t * (b - a);
 	}
 
-	/// @brief Double-permutation lookup, already masked and offset.
 	[[nodiscard]] TUInt At(TUInt x, TUInt y, TUInt z) const noexcept
 	{
 		return p[p[p[x] + y] + z];
 	}
 
-	/// @brief Deterministic replacement for std::shuffle's internals.
 	TUInt NextRandom() noexcept;
 };
 } // namespace hbe

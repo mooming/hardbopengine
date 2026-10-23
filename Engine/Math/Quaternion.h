@@ -13,10 +13,8 @@
 
 namespace hbe
 {
-/// @brief A quaternion template class for representing 3D rotations.
-// Assume every quaternion is a unit quaternion.
-
 template <typename TNumber>
+/// API reference: docs/Math/Quaternion/index.html
 class Quaternion final
 {
 	using This = Quaternion;
@@ -362,8 +360,6 @@ public:
 		return result;
 	}
 
-	// Invert itself
-
 	void Invert() noexcept
 	{
 		Assert(!vector.IsZero(), "Quaternion::Invert - vector is zero");
@@ -371,8 +367,6 @@ public:
 
 		Conjugate();
 	}
-
-	// Return the inverse of it
 
 	[[nodiscard]] Quaternion Inverse() const noexcept
 	{

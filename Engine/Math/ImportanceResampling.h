@@ -1,7 +1,4 @@
 // Copyright (c) 2026 Hansol Park (mooming.go@gmail.com). All rights reserved.
-// Created by mooming on 22/06/2025.
-
-// Created by mooming on 22/06/2025.
 
 #pragma once
 
@@ -14,8 +11,8 @@
 
 namespace hbe
 {
-/// @brief Importance resampling class for Monte Carlo integration.
 template <typename TInput = double, typename TOutput = double, typename TReal = double, typename TInteger = uint32_t>
+/// API reference: docs/Math/ImportanceResampling/index.html
 class ImportanceResampling final
 {
 public:
@@ -63,18 +60,6 @@ public:
 		normalizedWeights.clear();
 	}
 
-	///
-	/// Resample Inportance Sampling
-	///
-	///  To utilise good samples more, it'll resample by weights
-	///
-	/// @param f A function that you want to integrate, TOutput f(const TInput& input)
-	/// @param p A source probability density function, TReal p(const TInput& input)
-	/// @param sampler Random input generator, TInput sampler()
-	/// @param numSourceSamples Number of source samples
-	/// @param norm Calculate a norm of the given function output, TReal norm(const TOutput& output)
-	/// @return false if it fails to resample
-	///
 	template <typename TFunction, typename TPDF, typename TRandomSampler, typename TOutputNorm>
 	[[nodiscard]] bool Resample(const TFunction& f, const TPDF& p, const TRandomSampler& sampler,
 								const TOutputNorm& norm, const TInteger numSourceSamples) noexcept
@@ -106,11 +91,6 @@ public:
 			return false;
 
 		totalWeight += sumWeights;
-
-		// Normalize Discrete PDF
-		// stepWidth = 1 / numSourceSamples
-		// Total Area = Sum (W[i] * stepWidth) = stepWidth * Sum(W[i]) = StepWith * totalWeight = totalWeight /
-		// numSourceSamples normalizeFactor = numSourceSamples / totalWeight
 		{
 			const auto numSamples = weights.size();
 			normalizedWeights.clear();
@@ -126,20 +106,6 @@ public:
 		return true;
 	}
 
-	///
-	/// Monte Carlo Method with Importance resampled importance sampling
-	///
-	///  Importance resampling is a sample generation technique that can be used to generate more equally weighted
-	///  samples for importance sampling.
-	///
-	///
-	/// @param result result of the integration
-	/// @param f A function that you want to integrate, TOutput f(const TInput& input)
-	/// @param discreteSampler A random sampler for index based on resampled probability, TInteger sampler()
-	/// @param uniformSampler A random sampler for input value random deviation, TInput sampler()
-	/// @param numIterations Number of iterations with resampled importance sampling
-	/// @return false if it fails to calculate the integration.
-	///
 	template <typename TFunction, typename TDiscreteSampler, typename TUniformSampler>
 	[[nodiscard]] bool Integrate(TOutput& result, const TFunction& f, const TDiscreteSampler& discreteSampler,
 								 const TUniformSampler& uniformSampler, const TInteger numIterations) noexcept
@@ -149,14 +115,12 @@ public:
 		returnValueIf(false, numIterations <= 0 || f == nullptr);
 		returnValueIf(false, samples.empty() || weights.empty());
 
-		// Now we have importance resamples
 		for (TInteger i = 0; i < numIterations; ++i)
 		{
 			const auto chosenIndex = discreteSampler();
 			const TReal q_x = normalizedWeights[chosenIndex];
 			if (q_x <= 0)
 			{
-				// it shouldn't reach here.
 				return false;
 			}
 

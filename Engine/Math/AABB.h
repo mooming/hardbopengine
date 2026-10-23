@@ -13,8 +13,8 @@
 
 namespace hbe
 {
-/// @brief An Axis-Aligned Bounding Box template class.
 template <typename TVec>
+/// API reference: docs/Math/AABB/index.html
 class AABB final
 {
 	using This = AABB;

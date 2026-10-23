@@ -11,8 +11,8 @@
 
 namespace hbe
 {
-/// @brief A 2x2 matrix template class for 2D transformations.
 template <typename TNumber>
+/// API reference: docs/Math/Matrix2x2/index.html
 class Matrix2x2 final
 {
 	using This = Matrix2x2;

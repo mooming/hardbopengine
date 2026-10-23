@@ -17,8 +17,6 @@ PerlinNoise::PerlinNoise(TUInt inSeed) noexcept
 		p[i] = static_cast<TByte>(i);
 	}
 
-	// Fisher-Yates over the low half; At() indexes the doubled table, so only the first
-	// 256 entries need to be a permutation.
 	for (TUInt i = permutationMask; i > 0; --i)
 	{
 		const TUInt j = NextRandom() % (i + 1);
@@ -39,8 +37,6 @@ TReal PerlinNoise::Noise(TReal x, TReal y, TReal z) const noexcept
 	const TReal cellY = std::floor(y);
 	const TReal cellZ = std::floor(z);
 
-	// Cast before masking so negative coordinates wrap into the table instead of
-	// truncating toward zero and colliding with their positive mirror.
 	const TUInt X = static_cast<TUInt>(static_cast<TInt>(cellX)) & permutationMask;
 	const TUInt Y = static_cast<TUInt>(static_cast<TInt>(cellY)) & permutationMask;
 	const TUInt Z = static_cast<TUInt>(static_cast<TInt>(cellZ)) & permutationMask;
@@ -91,9 +87,6 @@ TReal PerlinNoise::Fbm(TReal x, TReal y, TReal z, TUInt octaves, TReal frequency
 
 TUInt PerlinNoise::NextRandom() noexcept
 {
-	// Golden-ratio counter plus the Murmur3 finalizer. Everything here is specified by
-	// arithmetic rather than by a library implementation detail, which is the whole point:
-	// the shuffle must be identical on every platform.
 	randomState += 0x9E3779B9u;
 
 	TUInt mixed = randomState;
@@ -105,7 +98,6 @@ TUInt PerlinNoise::NextRandom() noexcept
 
 TReal PerlinNoise::Grad(TUInt hash, TReal x, TReal y, TReal z) noexcept
 {
-	// Ken Perlin's reference gradient selection for "improved noise".
 	switch (hash & 15)
 	{
 		case 0x0:
@@ -148,10 +140,6 @@ TReal PerlinNoise::Grad(TUInt hash, TReal x, TReal y, TReal z) noexcept
 
 #ifdef TEST_ENABLED
 
-// Note on the flush convention: TestCollection's operator<< sends whatever the test stream
-// holds so far to the logger, at the level of the LogFlush handed to it (lf = Info,
-// lferr = Error). It does not clear the stream, so each test flushes exactly once - at Error
-// level when a check failed, since that carries the measured numbers along with the reason.
 void hbe::PerlinNoiseTest::Prepare() noexcept
 {
 	AddTest("Noise Determinism", [this](auto& ls)
@@ -249,8 +237,6 @@ void hbe::PerlinNoiseTest::Prepare() noexcept
 		{
 			for (int j = 0; j < 40; ++j)
 			{
-				// Negative coordinates and a coordinate past the table period are table
-				// indexing traps rather than math problems, so they are sampled on purpose.
 				const float x = static_cast<float>(i) * 0.61f - 12.0f;
 				const float y = static_cast<float>(j) * 0.17f - 3.0f;
 				const float z = 257.5f + static_cast<float>(i - j) * 0.05f;
@@ -308,9 +294,6 @@ void hbe::PerlinNoiseTest::Prepare() noexcept
 
 		ls << "1999 steps of " << step << ", largest single-step jump: " << largestStep;
 
-		// Perlin is C1 continuous, so a small step must give a proportionally small change.
-		// A discontinuity - a wrong fade, or a seam at the table period - shows up as a jump
-		// comparable to the size of the signal itself.
 		if (largestStep > 0.1f)
 		{
 			ls << " | FAIL: a jump this large at this step size indicates a discontinuity" << lferr;

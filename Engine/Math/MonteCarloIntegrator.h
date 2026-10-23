@@ -1,7 +1,4 @@
 // Copyright (c) 2026 Hansol Park (mooming.go@gmail.com). All rights reserved.
-// Created by mooming on 21/06/2025.
-
-// Created by mooming on 21/06/2025.
 
 #pragma once
 
@@ -13,8 +10,8 @@
 
 namespace hbe
 {
-/// @brief A Monte Carlo integrator for numerical integration using importance sampling.
 template <typename TInput = double, typename TOutput = double, typename TReal = double, typename TInteger = uint32_t>
+/// API reference: docs/Math/MonteCarloIntegrator/index.html
 class MonteCarloIntegrator final
 {
 public:
@@ -25,9 +22,6 @@ public:
 	MonteCarloIntegrator() = default;
 	~MonteCarloIntegrator() = default;
 
-	// TFunction - TOutput f(const TInput& input), A general function
-	// TPDF - TReal p(const TInput& input), Probability Density Function
-	// TRandomGen - TInput sample(), return a random number
 	template <typename TFunction, typename TPDF, typename TRandomGen>
 	[[nodiscard]] bool operator()(TOutput& result, const TFunction& f, const TPDF& p, const TRandomGen& sample,
 								  const TInteger numIterations) noexcept

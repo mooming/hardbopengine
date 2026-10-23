@@ -11,8 +11,8 @@
 
 namespace hbe
 {
-/// @brief A 3D vector template class.
 template <typename TNumber>
+/// API reference: docs/Math/Vector3/index.html
 class Vector3 final
 {
 	using This = Vector3;
