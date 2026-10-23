@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FixedRingBuffer::Pop — Container module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a class="current" href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Container</a> /
+  <a href="index.html">FixedRingBuffer</a> / Pop
+</p>
+
+<h1><span class="fn">Pop</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::FixedRingBuffer</span>
+  <span class="tag">Engine/Container/FixedRingBuffer.h</span>
+  remove the oldest element and return it by value — fatal assert on empty
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>TElement Pop() noexcept</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  Removes the oldest element and returns it — by value, in one call, which makes this the only queue in the module that
+  hands back the element itself. <a href="../Queue/pop.html"><code>Queue::Pop</code></a> returns nothing and expects the
+  read through <a href="../Queue/front.html"><code>Front</code></a> first; here the move-out, the slot destruction, the
+  cursor advance and the count drop are one operation:
+</p>
+
+<pre><code>	FatalAssert(!IsEmpty(), "FixedRingBuffer is empty");
+	auto item = std::move(data[head]);
+	data[head].~TElement();
+	head = WrapIndex(head + 1);
+	--count;</code></pre>
+<p class="meta">From Engine/Container/FixedRingBuffer.h, FixedRingBuffer::Pop()</p>
+
+<p>
+  An empty ring is a fatal assert, not a <code>std::nullopt</code> — contrast
+  <a href="../BoundedPriorityQueue/pop.html"><code>BoundedPriorityQueue::Pop</code></a>, which answers
+  <code>nullopt</code>. Call <a href="isempty.html"><code>IsEmpty</code></a> first when emptiness is possible; the returned
+  element is yours, and discarding it is a plain value drop with no <code>[[nodiscard]]</code> to stop you.
+</p>
+
+<h2 id="parameters">Parameters</h2>
+
+<p>None.</p>
+
+<h2 id="return">Return value</h2>
+
+<table>
+  <tr><th>Type</th><th>What you get</th></tr>
+  <tr>
+    <td><code>TElement</code></td>
+    <td>The former head element, moved out; its slot is destroyed and reusable by the next
+      <a href="push.html"><code>Push</code></a></td>
+  </tr>
+</table>
+
+<h2 id="example">Examples</h2>
+
+<pre><code>		q.Pop();
+		q.Pop();
+		q.Push(4);
+		q.Push(5);</code></pre>
+<p class="meta">From Engine/Container/FixedRingBuffer.cpp, FixedRingBufferTest::Prepare()</p>
+
+<p>
+  The same test then reads the survivors through <a href="operator-index.html"><code>operator[]</code></a> — the wrap-around
+  case that exercise exists to pin down.
+</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; FixedRingBuffer</a></span>
+  <span><a href="index.html#methods">All FixedRingBuffer methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

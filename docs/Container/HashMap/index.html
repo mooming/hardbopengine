@@ -268,40 +268,40 @@ as a byte
 <table>
   <tr><th>Method</th><th>Signature</th><th>What a caller depends on</th></tr>
   <tr>
-    <td><code>constructors</code><span class="badge">4 overloads + 1 deleted</span></td>
+    <td><a href="constructors.html"><code>constructors</code></a><span class="badge">4 overloads + 1 deleted</span></td>
     <td class="sig">HashMap() noexcept<br>HashMap(const HashMap&amp;) = delete<br>explicit HashMap(TIndex initialCapacity)<br>HashMap(HashMap&amp;&amp; rhs) noexcept</td>
     <td>The default form allocates nothing — <code>cap</code> is 0 until the first insert or an explicit reserve; the
       sized form reserves, and so takes a capacity rounded up to a power of two rather than the number given</td>
   </tr>
   <tr>
-    <td><code>destructor</code></td>
+    <td><a href="destructor.html"><code>~HashMap</code></a></td>
     <td class="sig">~HashMap() noexcept</td>
     <td>Destroys every occupied pair and returns the byte buffer through the map's own allocator, which therefore has
       to be alive; returns early when <code>entries</code> is null</td>
   </tr>
   <tr>
-    <td><code>operator=</code><span class="badge">2 overloads, one deleted</span></td>
+    <td><a href="operator-assign.html"><code>operator=</code></a><span class="badge">2 overloads, one deleted</span></td>
     <td class="sig">HashMap&amp; operator=(const HashMap&amp;) = delete<br>HashMap&amp; operator=(HashMap&amp;&amp; rhs) noexcept</td>
     <td>Move assignment releases the destination first, then takes every field but <code>allocator</code> — so the
       adopted buffer is later freed by the destination's allocator, not the one that allocated it. Self-assignment is
       guarded</td>
   </tr>
   <tr>
-    <td><code>begin</code>, <code>end</code><span class="badge">2 overloads each</span></td>
+    <td><a href="begin.html"><code>begin</code></a>, <a href="end.html"><code>end</code></a><span class="badge">2 overloads each</span></td>
     <td class="sig">Iterator begin() noexcept<br>ConstIterator begin() const noexcept<br>Iterator end() noexcept<br>ConstIterator end() const noexcept</td>
     <td><code>begin()</code> scans forward to the first occupied slot, so an empty map starts already at
       <code>end()</code>, which is the index <code>cap</code>. Iteration order is slot order — a function of hash,
       capacity and insertion history, and it changes on every rehash</td>
   </tr>
   <tr>
-    <td><code>operator[]</code><span class="badge">2 overloads</span></td>
+    <td><a href="operator-index.html"><code>operator[]</code></a><span class="badge">2 overloads</span></td>
     <td class="sig">TValue&amp; operator[](const TKey&amp; key)<br>TValue&amp; operator[](TKey&amp;&amp; key)</td>
     <td>Insert-or-read: a missing key is inserted with a <strong>default-constructed value</strong> and the reference
       you get back is where you write the real one. This is the only way to overwrite an existing value, and it may
       rehash, invalidating every other reference</td>
   </tr>
   <tr>
-    <td><code>Find</code><span class="badge">2 overloads</span></td>
+    <td><a href="find.html"><code>Find</code></a><span class="badge">2 overloads</span></td>
     <td class="sig">[[nodiscard]] Iterator Find(const TKey&amp; key) noexcept<br>[[nodiscard]] ConstIterator Find(const TKey&amp; key) const noexcept</td>
     <td>Returns an iterator to the entry, or <code>end()</code> when absent — so compare against <code>end()</code>
       before dereferencing. Faster than <code>Contains</code> then subscript: one probe instead of two</td>
@@ -319,19 +319,19 @@ as a byte
       no iterator overload exists</td>
   </tr>
   <tr>
-    <td><code>Contains</code></td>
+    <td><a href="contains.html"><code>Contains</code></a></td>
     <td class="sig">[[nodiscard]] bool Contains(const TKey&amp; key) const noexcept</td>
     <td>One probe, answered <code>true</code> only for an <code>Occupied</code> slot — a tombstoned key reads absent,
       which is what you want and what makes the cost of a churned map invisible from the API</td>
   </tr>
   <tr>
-    <td><code>Size</code>, <code>Capacity</code>, <code>IsEmpty</code></td>
+    <td><a href="size.html"><code>Size</code></a>, <a href="capacity.html"><code>Capacity</code></a>, <a href="isempty.html"><code>IsEmpty</code></a></td>
     <td class="sig">[[nodiscard]] TIndex Size() const noexcept<br>[[nodiscard]] TIndex Capacity() const noexcept<br>[[nodiscard]] bool IsEmpty() const noexcept</td>
     <td>Live entries, slots allocated (a power of two, and zero before the first allocation), and
       <code>count == 0</code>. <code>Capacity() - Size()</code> is not the free room: tombstones are neither</td>
   </tr>
   <tr>
-    <td><code>Clear</code></td>
+    <td><a href="clear.html"><code>Clear</code></a></td>
     <td class="sig">void Clear() noexcept</td>
     <td>Destroys occupied pairs, writes <code>Empty</code> to every state — tombstones included, which is the point —
       and zeroes both counters while keeping the buffer and its capacity. Contrast
@@ -343,6 +343,49 @@ as a byte
     <td>Rehashes up to the next power of two at or above the request and at or above
       <a href="#properties"><code>MinCapacity</code></a>; refuses anything at or below the current capacity, so it cannot
       shrink. The only non-<code>noexcept</code> growth path here</td>
+  </tr>
+  <tr>
+    <td><a href="isvalidslot.html"><code>IsValidSlot</code></a></td>
+    <td class="sig">[[nodiscard]] bool IsValidSlot(TIndex index) const noexcept</td>
+    <td>In range <em>and</em> <code>Occupied</code> — the predicate the iterators dereference through, which is how dead
+      slots are skipped</td>
+  </tr>
+  <tr>
+    <td><a href="findslot.html"><code>FindSlot</code></a><span class="badge">private</span></td>
+    <td class="sig">TIndex FindSlot(const TKey&amp; key) const noexcept</td>
+    <td>The linear probe everything is built on: stops at <code>Empty</code>, steps over <code>Tombstone</code>, matches
+      <code>Occupied</code> by <code>TKeyEqual</code>; <code>-1</code> when absent</td>
+  </tr>
+  <tr>
+    <td><a href="insertinternal.html"><code>InsertInternal</code></a><span class="badge">private, 2 overloads</span></td>
+    <td class="sig">std::pair&lt;bool, TIndex&gt; InsertInternal(const TKey&amp; key) noexcept<br>std::pair&lt;bool, TIndex&gt; InsertInternal(TKey&amp;&amp; key) noexcept</td>
+    <td>Grows when <a href="shouldgrow.html"><code>ShouldGrow</code></a> says so, then occupies the first free slot —
+      reclaiming a tombstone — with a default-constructed value; answers the duplicate case as
+      <code>{false, slot}</code></td>
+  </tr>
+  <tr>
+    <td><a href="shouldgrow.html"><code>ShouldGrow</code></a><span class="badge">private</span></td>
+    <td class="sig">[[nodiscard]] bool ShouldGrow() const noexcept</td>
+    <td><code>cap == 0</code>, or <code>count + tombstoneCount</code> at the <code>MaxLoadFactor</code> = 0.7 line —
+      tombstones count, so a churned map grows even when small</td>
+  </tr>
+  <tr>
+    <td><a href="grow.html"><code>Grow</code></a><span class="badge">private</span></td>
+    <td class="sig">void Grow() noexcept</td>
+    <td><code>std::max(MinCapacity, cap * 2)</code> handed to <code>Rehash</code> — the only growth trigger, shared by
+      every inserting path</td>
+  </tr>
+  <tr>
+    <td><a href="rehash.html"><code>Rehash</code></a><span class="badge">private</span></td>
+    <td class="sig">void Rehash(TIndex newCapacity) noexcept</td>
+    <td>One new block for entries and states together, every live entry re-hashed into it, tombstones dropped — the only
+      member that ever allocates, and the reason iteration order changes</td>
+  </tr>
+  <tr>
+    <td><a href="release.html"><code>Release</code></a><span class="badge">private</span></td>
+    <td class="sig">void Release() noexcept</td>
+    <td>Destroys every occupied pair and returns the single block — the only member that frees; the destructor's and move
+      assignment's engine</td>
   </tr>
 </table>
 
@@ -364,8 +407,8 @@ as a byte
     <td>Method names without their own page</td>
     <td><code>constructors</code>, <code>destructor</code>, <code>operator=</code>, <code>begin</code>,
       <code>end</code>, <code>operator[]</code>, <code>Find</code>, <code>Contains</code>, <code>Size</code>,
-      <code>Capacity</code>, <code>IsEmpty</code>, <code>Clear</code>. The rows above state their contracts; the
-      overload-family detail a page would carry is not written</td>
+      <code>Capacity</code>, <code>IsEmpty</code>, <code>Clear</code> and the seven helpers below — each now links to
+      its own page, which carries the overload-family detail these rows condense</td>
   </tr>
   <tr>
     <td>No call site in the engine</td>

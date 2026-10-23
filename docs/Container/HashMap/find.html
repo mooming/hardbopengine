@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>HashMap::Find — Container module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a class="current" href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Container</a> /
+  <a href="index.html">HashMap</a> / Find
+</p>
+
+<h1><span class="fn">Find</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::HashMap</span>
+  <span class="tag">Engine/Container/HashMap.h</span>
+  one probe sequence — end() when the key is absent or its slot is a tombstone
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>[[nodiscard]] Iterator Find(const TKey&amp; key) noexcept
+
+[[nodiscard]] ConstIterator Find(const TKey&amp; key) const noexcept</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  One probe sequence for the key — <a href="findslot.html"><code>FindSlot</code></a> — answered with an iterator to the
+  entry, or <a href="end.html"><code>end()</code></a> when the slot found is not <code>Occupied</code>. A tombstoned key
+  reads absent, which is the correct answer after a <code>Remove</code>. The <code>[[nodiscard]]</code> attribute gives the
+  contract teeth: a <code>Find</code> whose answer is discarded found nothing for nobody.
+</p>
+
+<p>
+  When you want the value, this beats <a href="contains.html"><code>Contains</code></a> plus
+  <a href="operator-index.html"><code>operator[]</code></a> — one probe instead of two, and no insertion on the miss path.
+  The returned iterator dies on the next insertion that <a href="grow.html">grows</a> the table.
+</p>
+
+<h2 id="parameters">Parameters</h2>
+
+<table>
+  <tr><th>Parameter</th><th>Type</th><th>Requirement</th></tr>
+  <tr><td><code>key</code></td><td><code>const TKey&amp;</code></td>
+  <td>The key to search for, hashed by <code>THash</code> and compared by <code>TKeyEqual</code>. No other
+  requirement.</td></tr>
+</table>
+
+<h2 id="return">Return value</h2>
+
+<table>
+  <tr><th>Type</th><th>What you get</th></tr>
+  <tr>
+    <td><code>Iterator</code> (or <code>ConstIterator</code>)</td>
+    <td>An iterator to the entry with that key, or <code>end()</code> when there is none</td>
+  </tr>
+</table>
+
+<h2 id="example">Examples</h2>
+
+<pre><code>		auto it = m.Find(10);
+		if (it == m.end() || it-&gt;value != 100)</code></pre>
+<p class="meta">From Engine/Container/HashMap.cpp, HashMapTest::Prepare()</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; HashMap</a></span>
+  <span><a href="index.html#methods">All HashMap methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FixedRingBuffer::WrapIndex — Container module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a class="current" href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Container</a> /
+  <a href="index.html">FixedRingBuffer</a> / WrapIndex
+</p>
+
+<h1><span class="fn">WrapIndex</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::FixedRingBuffer</span>
+  <span class="tag">Engine/Container/FixedRingBuffer.h</span>
+  index & (cap - 1) — the bitmask that needs the power-of-two capacity
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>TIndex WrapIndex(TIndex index) const noexcept</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  The ring's arithmetic, in one line: <code>index &amp; (cap - 1)</code>. A bitwise mask replaces a modulo — cheaper, and
+  only correct because <a href="constructors.html">the constructor</a> rounds
+  <a href="capacity.html"><code>Capacity</code></a> up to a power of two, making <code>cap - 1</code> exactly the low bits.
+  Every cursor advance and every <a href="operator-index.html"><code>operator[]</code></a> address in the class goes through
+  this method, which is why the rounding is not an optimisation detail but a correctness precondition.
+</p>
+
+<p>
+  It is public, and its contract is the mask's: for the non-negative indices the class feeds it
+  (<code>head + index</code>, <code>tail + 1</code>, <code>tail - 1</code>), the result is the index taken modulo
+  <code>cap</code>, landing in <code>0 .. cap - 1</code>.
+</p>
+
+<h2 id="parameters">Parameters</h2>
+
+<table>
+  <tr><th>Parameter</th><th>Type</th><th>Requirement</th></tr>
+  <tr><td><code>index</code></td><td><code>TIndex</code> (<code>int</code>)</td>
+  <td>A cursor-plus-offset value. The mask is defined for what the class passes; a negative index has no stated
+  behaviour.</td></tr>
+</table>
+
+<h2 id="return">Return value</h2>
+
+<table>
+  <tr><th>Type</th><th>What you get</th></tr>
+  <tr>
+    <td><code>TIndex</code> (<code>int</code>)</td>
+    <td>The index wrapped into the buffer's slot range — the raw-buffer slot for that logical position</td>
+  </tr>
+</table>
+
+<h2 id="example">Examples</h2>
+
+<p class="note">Illustrative — no direct call site for this exists in the repository.</p>
+
+<pre><code>// cap == 4: slots 0..3, mask 3
+WrapIndex(0);	// 0
+WrapIndex(5);	// 1 — 5 &amp; 3
+WrapIndex(head + index);	// operator[]'s address computation</code></pre>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; FixedRingBuffer</a></span>
+  <span><a href="index.html#methods">All FixedRingBuffer methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

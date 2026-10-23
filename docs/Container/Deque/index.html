@@ -207,20 +207,20 @@
 <table>
   <tr><th>Method</th><th>Signature</th><th>What a caller depends on</th></tr>
   <tr>
-    <td><code>constructors</code><span class="badge">4 overloads + 1 deleted</span></td>
+    <td><a href="constructors.html"><code>constructors</code></a><span class="badge">4 overloads + 1 deleted</span></td>
     <td class="sig">Deque() noexcept<br>Deque(const Deque&amp;) = delete<br>explicit Deque(TIndex initialCapacity)<br>Deque(Deque&amp;&amp; rhs) noexcept</td>
     <td>Both non-move forms allocate at least four slots up front; the sized form reserves the larger of its argument and
       <code>DefaultCapacity</code>, rounded up to a power of two; the move form allocates before it swaps</td>
   </tr>
   <tr>
-    <td><code>destructor</code></td>
+    <td><a href="destructor.html"><code>~Deque</code></a></td>
     <td class="sig">~Deque()</td>
     <td>Returns early on a null buffer; otherwise destroys every live element through
       <code>WrapIndex(head + i)</code> — wrap-aware, unlike <code>end()</code> — and frees with
       <code>Capacity()</code></td>
   </tr>
   <tr>
-    <td><code>operator=</code><span class="badge">2 overloads, one deleted</span></td>
+    <td><a href="operator-assign.html"><code>operator=</code></a><span class="badge">2 overloads, one deleted</span></td>
     <td class="sig">Deque&amp; operator=(const Deque&amp;) = delete<br>Deque&amp; operator=(Deque&amp;&amp; rhs) noexcept</td>
     <td>Move assignment is <code>Swap(rhs); return *this;</code>, so the source keeps the destination's former contents
       instead of emptying — the same swap semantics as <a href="../Array/operator-assign.html"><code>Array</code></a></td>
@@ -232,13 +232,13 @@
       while the ring is unwrapped</td>
   </tr>
   <tr>
-    <td><code>operator[]</code><span class="badge">2 overloads</span></td>
+    <td><a href="operator-index.html"><code>operator[]</code></a><span class="badge">2 overloads</span></td>
     <td class="sig">TElement&amp; operator[](TIndex index)<br>const TElement&amp; operator[](TIndex index) const</td>
     <td>Position from the front, resolved through <code>WrapIndex</code> — always correct, guarded by
       <code>FatalAssert(IsValidIndex(index))</code>, not marked <code>noexcept</code></td>
   </tr>
   <tr>
-    <td><code>PushFront</code>, <a href="push-back.html">PushBack</a><span class="badge">2 overloads each</span></td>
+    <td><a href="pushfront.html"><code>PushFront</code></a>, <a href="push-back.html"><code>PushBack</code></a><span class="badge">2 overloads each</span></td>
     <td class="sig">void PushFront(const TElement&amp; value) noexcept<br>void PushFront(TElement&amp;&amp; value) noexcept<br>void PushBack(const TElement&amp; value) noexcept<br>void PushBack(TElement&amp;&amp; value) noexcept</td>
     <td>Grow first if <code>count == Capacity()</code>, then construct at the cursor and advance it. Neither returns the
       element</td>
@@ -250,26 +250,26 @@
       returned — the way to build an element that cannot be copied or moved cheaply</td>
   </tr>
   <tr>
-    <td><code>PopFront</code>, <code>PopBack</code></td>
+    <td><a href="popfront.html"><code>PopFront</code></a>, <a href="popback.html"><code>PopBack</code></a></td>
     <td class="sig">void PopFront() noexcept<br>void PopBack() noexcept</td>
     <td>Both <code>FatalAssert(!IsEmpty())</code> first, then destroy the element and move the cursor; capacity is
       unchanged. <code>Engine/Core/TaskStream.cpp</code> pairs <code>Front()</code> with <code>PopFront()</code> rather
       than reading and removing in one step, because there is no combined accessor</td>
   </tr>
   <tr>
-    <td><code>Front</code>, <code>Back</code><span class="badge">2 overloads each</span></td>
+    <td><a href="front.html"><code>Front</code></a>, <a href="back.html"><code>Back</code></a><span class="badge">2 overloads each</span></td>
     <td class="sig">TElement&amp; Front() noexcept<br>TElement&amp; Back() noexcept<br>… const counterparts</td>
     <td>Both ends assert non-empty; <code>Back()</code> is <code>data[WrapIndex(tail - 1)]</code>, so it is wrap-correct
       where <code>end()</code> is not</td>
   </tr>
   <tr>
-    <td><code>Size</code>, <code>Capacity</code>, <code>IsEmpty</code>, <code>IsValidIndex</code></td>
+    <td><a href="size.html"><code>Size</code></a>, <a href="capacity.html"><code>Capacity</code></a>, <a href="isempty.html"><code>IsEmpty</code></a>, <a href="isvalidindex.html"><code>IsValidIndex</code></a></td>
     <td class="sig">[[nodiscard]] TIndex Size() const noexcept<br>[[nodiscard]] TIndex Capacity() const noexcept<br>[[nodiscard]] bool IsEmpty() const noexcept<br>[[nodiscard]] bool IsValidIndex(TIndex index) const noexcept</td>
     <td>Field reads, all four <code>[[nodiscard]]</code>. <code>Capacity()</code> is <code>mask + 1</code>: a power of two,
       and never smaller than 4</td>
   </tr>
   <tr>
-    <td><code>Clear</code></td>
+    <td><a href="clear.html"><code>Clear</code></a></td>
     <td class="sig">void Clear() noexcept</td>
     <td>Destroys every live element and resets both cursors and the count, keeping the buffer and its capacity — like
       <a href="../Vector/index.html"><code>Vector::Clear</code></a>, unlike
@@ -282,11 +282,29 @@
       current capacity, and does not test the allocation</td>
   </tr>
   <tr>
-    <td><code>Swap</code></td>
+    <td><a href="swap.html"><code>Swap</code></a></td>
     <td class="sig">void Swap(Deque&amp; rhs) noexcept</td>
     <td>Five <code>std::swap</code> calls over the cursors, count, mask and buffer; takes an lvalue reference as
       <code>Vector</code> does, not an rvalue reference as <code>Array</code> does, and leaves each side's allocator where
       it was</td>
+  </tr>
+  <tr>
+    <td><a href="wrapindex.html"><code>WrapIndex</code></a></td>
+    <td class="sig">TIndex WrapIndex(TIndex index) const noexcept</td>
+    <td><code>index &amp; mask</code> — the mask every cursor advance and element address goes through, correct only
+      because the capacity is a power of two</td>
+  </tr>
+  <tr>
+    <td><a href="grow.html"><code>Grow</code></a><span class="badge">private</span></td>
+    <td class="sig">void Grow() noexcept</td>
+    <td><code>std::max(DefaultCapacity, Capacity() * 2)</code> handed to <code>Reserve</code> — the only reallocation
+      trigger, shared by every append path</td>
+  </tr>
+  <tr>
+    <td><a href="destroyall.html"><code>DestroyAll</code></a><span class="badge">private</span></td>
+    <td class="sig">void DestroyAll() noexcept</td>
+    <td>Destroys every live element in queue order, wrapping with <code>WrapIndex</code> — the element walk that survives a
+      wrapped buffer</td>
   </tr>
 </table>
 
@@ -304,8 +322,9 @@ declares nothing at namespace scope besides the class and its test collection.</
     <td><code>constructors</code>, <code>destructor</code>, <code>operator=</code>, <code>operator[]</code>,
       <code>PushFront</code>, <code>EmplaceFront</code>, <code>EmplaceBack</code>, <code>PopFront</code>,
       <code>PopBack</code>, <code>Front</code>, <code>Back</code>, <code>Size</code>, <code>Capacity</code>,
-      <code>IsEmpty</code>, <code>IsValidIndex</code>, <code>Clear</code>, <code>Swap</code>. Their contracts are the rows
-      above; the per-page detail is not written</td>
+      <code>IsEmpty</code>, <code>IsValidIndex</code>, <code>Clear</code>, <code>Swap</code> and the three helpers below
+      — each now links to its own page, which carries the per-page detail these rows condense. <code>EmplaceFront</code> and
+      <code>EmplaceBack</code> remain table-only, one forwarding line each</td>
   </tr>
   <tr>
     <td>The unmasked range pair</td>

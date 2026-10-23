@@ -63,9 +63,11 @@
 
 <h2 id="signature">Signature</h2>
 
-<pre><code>bool <span class="fn">Insert</span>(<span class="kw">const</span> <span class="ty">TKey</span>&amp; key, <span class="kw">const</span> <span class="ty">TValue</span>&amp; value);
-bool <span class="fn">Insert</span>(<span class="kw">const</span> <span class="ty">TKey</span>&amp; key, <span class="ty">TValue</span>&amp;&amp; value);
-bool <span class="fn">Insert</span>(<span class="ty">TKey</span>&amp;&amp; key, <span class="ty">TValue</span>&amp;&amp; value);</code></pre>
+<pre><code>bool Insert(const TKey&amp; key, const TValue&amp; value)
+
+bool Insert(const TKey&amp; key, TValue&amp;&amp; value)
+
+bool Insert(TKey&amp;&amp; key, TValue&amp;&amp; value)</code></pre>
 
 <h2 id="description">Function description</h2>
 

@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Map::begin — Container module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a class="current" href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Container</a> /
+  <a href="index.html">Map</a> / begin
+</p>
+
+<h1><span class="fn">begin</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::Map</span>
+  <span class="tag">Engine/Container/Map.h</span>
+  the first entry in sorted order — and ConstIterator is Iterator
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>Iterator begin() noexcept
+
+ConstIterator begin() const noexcept</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  An iterator to the first entry in <code>TCompare</code> order. The entries live in one contiguous array kept sorted, so
+  the pair of these methods is a plain pointer range: range-for walks the map in sorted key order with no tree, and
+  <code>&lt;algorithm&gt;</code> binaries such as <code>std::lower_bound</code> are valid on it directly. On an empty map
+  <code>begin() == <a href="end.html">end()</a></code>.
+</p>
+
+<p>
+  The iterator is a wrapped <code>Pair*</code>, so what it "points at" is a slot address, not a node: any
+  <a href="operator-index.html">insertion</a> at or before the slot shifts the array and the iterator with it. See
+  <a href="find.html"><code>Find</code></a> for the invalidation story.
+</p>
+
+<div class="gap">
+  <strong><code>ConstIterator</code> is <code>Iterator</code>, and the const overload still hands out mutable pairs.</strong>
+  The alias is literally <code>using ConstIterator = Iterator;</code>, and the const <code>begin()</code> converts the
+  member pointer — a <code>Pair* const</code> in a const method — to an <code>Iterator</code> over plain
+  <code>Pair</code>. So ranging over a <code>const Map&amp;</code> yields <code>Pair&amp;</code>, and writing
+  <code>it-&gt;value</code> through it compiles. Const-ness of the map is not enforced through iteration; only the key
+  order is preserved by the class, and nothing stops a caller from writing a key that breaks it.
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<p>None.</p>
+
+<h2 id="return">Return value</h2>
+
+<table>
+  <tr><th>Type</th><th>What you get</th></tr>
+  <tr>
+    <td><code>Iterator</code> (or <code>ConstIterator</code>, the same type)</td>
+    <td>A wrapped pointer to the first <code>Pair</code> in sorted order; dereferenceable exactly while no insertion or
+      removal moves the array</td>
+  </tr>
+</table>
+
+<h2 id="example">Examples</h2>
+
+<p class="note">Illustrative — no range-for over a <code>Map</code> exists in the repository.</p>
+
+<pre><code>for (auto&amp; pair : map)
+{
+	// pair.key, pair.value — in sorted key order
+}</code></pre>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; Map</a></span>
+  <span><a href="index.html#methods">All Map methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

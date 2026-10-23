@@ -66,12 +66,27 @@
 
 <h2 id="signature">Signature</h2>
 
-<pre><code><span class="fn">Vector</span>(<span class="kw">const</span> <span class="ty">Vector</span>&amp;) = <span class="kw">delete</span>;
+<pre><code>Vector() noexcept
+		: count(0)
+		, capacity(0)
+		, data(nullptr)
 
-<span class="fn">Vector</span>() <span class="kw">noexcept</span>;                                     <span class="cm">// allocates nothing</span>
-<span class="kw">explicit</span> <span class="fn">Vector</span>(<span class="ty">TIndex</span> initialCapacity);              <span class="cm">// capacity exactly this, never rounded up</span>
-<span class="fn">Vector</span>(std::initializer_list&lt;<span class="ty">TElement</span>&gt; list);         <span class="cm">// reserves list.size(), then PushBack</span>
-<span class="fn">Vector</span>(<span class="ty">Vector</span>&amp;&amp; rhs) <span class="kw">noexcept</span>;                         <span class="cm">// steals three fields, zeroes rhs</span></code></pre>
+explicit Vector(TIndex initialCapacity)
+		: count(0)
+		, capacity(0)
+		, data(nullptr)
+
+Vector(std::initializer_list&lt;TElement&gt; list)
+		: count(0)
+		, capacity(0)
+		, data(nullptr)
+
+Vector(const Vector&amp;) = delete
+
+Vector(Vector&amp;&amp; rhs) noexcept
+		: count(rhs.count)
+		, capacity(rhs.capacity)
+		, data(rhs.data)</code></pre>
 
 <h2 id="description">Function description</h2>
 

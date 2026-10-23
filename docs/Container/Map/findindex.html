@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Map::FindIndex — Container module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a class="current" href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Container</a> /
+  <a href="index.html">Map</a> / FindIndex
+</p>
+
+<h1><span class="fn">FindIndex</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::Map</span>
+  <span class="tag">Engine/Container/Map.h</span>
+  the binary search the whole class is built on — -1 when absent
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>[[nodiscard]] TIndex FindIndex(const TKey&amp; key) const noexcept</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  Private. The binary search everything else is built on: <a href="find.html"><code>Find</code></a> converts the result to
+  an iterator, <a href="contains.html"><code>Contains</code></a> keeps only the sign, and
+  <a href="operator-index.html"><code>operator[]</code></a>, <code>Insert</code> and <code>Remove</code> branch on it before
+  touching anything. It halves the range every iteration — <code>lo</code> climbs past smaller keys,
+  <code>hi</code> drops below larger ones — so the cost is logarithmic in the entry count, and it never touches the
+  allocator.
+</p>
+
+<p>
+  <code>-1</code> means absent, and it is also the answer for an empty map without a single comparison. Otherwise the return
+  is the index of the entry whose key equals <code>key</code> under <code>TCompare</code>.
+</p>
+
+<h2 id="parameters">Parameters</h2>
+
+<table>
+  <tr><th>Parameter</th><th>Type</th><th>Requirement</th></tr>
+  <tr><td><code>key</code></td><td><code>const TKey&amp;</code></td>
+  <td>The key to locate. <code>TCompare</code> must order it consistently with how the entries were inserted.</td></tr>
+</table>
+
+<h2 id="return">Return value</h2>
+
+<table>
+  <tr><th>Type</th><th>What you get</th></tr>
+  <tr>
+    <td><code>TIndex</code> (<code>int</code>)</td>
+    <td>The index of the matching entry, or <code>-1</code> when the map holds no such key</td>
+  </tr>
+</table>
+
+<h2 id="example">Examples</h2>
+
+<p class="note">Illustrative — private, and reachable only through the public lookups it serves.</p>
+
+<pre><code>auto idx = FindIndex(key);
+if (idx &gt;= 0)
+{
+	return entries[idx].value;
+}</code></pre>
+
+<p>
+  That shape is <a href="operator-index.html"><code>operator[]</code></a>'s opening move: locate, then either read the slot
+  or <a href="insertsorted.html">insert into sorted position</a>.
+</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; Map</a></span>
+  <span><a href="index.html#methods">All Map methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

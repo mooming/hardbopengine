@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BoundedPriorityQueue::Top — Container module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a class="current" href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Container</a> /
+  <a href="index.html">BoundedPriorityQueue</a> / Top
+</p>
+
+<h1><span class="fn">Top</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::BoundedPriorityQueue</span>
+  <span class="tag">Engine/Container/BoundedPriorityQueue.h</span>
+  a copy of the most urgent item, without removing it
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>[[nodiscard]] std::optional&lt;T&gt; Top() const noexcept</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  The most urgent item without removing it: the front of the highest populated bucket, same item
+  <a href="pop.html"><code>Pop</code></a> would hand out next. An empty queue answers <code>std::nullopt</code> — no
+  assert.
+</p>
+
+<p>
+  Because the method is <code>const</code> and returns <code>std::optional&lt;T&gt;</code> by value, you get a
+  <em>copy</em>, not a reference: nothing in the queue is touched, no bucket is released, no counter moves. The copy is the
+  whole cost, and it is also the safety — there is no reference that a later
+  <a href="pop.html"><code>Pop</code></a> or <a href="clear.html"><code>Clear</code></a> could invalidate. Note that the
+  copy's <code>priority</code> byte is the value as stored; only <code>Pop</code> rewrites it to the served level.
+</p>
+
+<h2 id="parameters">Parameters</h2>
+
+<p>None.</p>
+
+<h2 id="return">Return value</h2>
+
+<table>
+  <tr><th>Type</th><th>What you get</th></tr>
+  <tr>
+    <td><code>std::optional&lt;T&gt;</code></td>
+    <td>A copy of the front of the highest populated bucket, or <code>std::nullopt</code> when the queue is empty</td>
+  </tr>
+</table>
+
+<h2 id="example">Examples</h2>
+
+<pre><code>	auto workItemOpt = taskQueue.Top();
+	if (!workItemOpt.has_value())
+	{
+		outTask.reset();
+
+		return;
+	}
+
+	const WorkItem&amp; workItem = workItemOpt.value();</code></pre>
+<p class="meta">From Engine/Core/TaskSystem.cpp, TaskSystem::Dequeue</p>
+
+<p>
+  The engine's pattern is inspect-then-decide: <code>Top</code> to read the item's affinity, then a separate
+  <a href="pop.html"><code>Pop</code></a> to remove it. Between the two calls the queue belongs to the same lock, which is
+  the only reason the pair is safe — see <a href="isempty.html"><code>IsEmpty</code></a> for the synchronisation story.
+</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; BoundedPriorityQueue</a></span>
+  <span><a href="index.html#methods">All BoundedPriorityQueue methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BoundedPriorityQueue::AcquireBucket — Container module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a class="current" href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Container</a> /
+  <a href="index.html">BoundedPriorityQueue</a> / AcquireBucket
+</p>
+
+<h1><span class="fn">AcquireBucket</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::BoundedPriorityQueue</span>
+  <span class="tag">Engine/Container/BoundedPriorityQueue.h</span>
+  the deque for a priority, created on first use; an out-of-range priority aborts
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>[[nodiscard]] TBucket&amp; AcquireBucket(std::size_t priority) noexcept</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  Private. Returns the deque for one priority level, creating it on first use — the mechanism that lets the queue declare
+  256 levels and allocate none of them until a level actually receives an item. The out-of-range case is an abort with a
+  message, not undefined behaviour:
+</p>
+
+<pre><code>	FatalAssert(priority &lt; MaxPriority, "BoundedPriorityQueue priority is not a bucket index");</code></pre>
+<p class="meta">From Engine/Container/BoundedPriorityQueue.h, BoundedPriorityQueue::AcquireBucket(std::size_t)</p>
+
+<p>
+  A created bucket is sized by the <code>BucketSizeHint</code> template parameter when it is non-zero — emplaced with that
+  capacity, cast to the bucket's index type — and default-constructed otherwise, leaving the deque to its own default. Only
+  priorities actually used pay the hint, which is what makes a roomy hint affordable alongside
+  <code>MaxPriority</code>&nbsp;=&nbsp;256.
+</p>
+
+<p>
+  Callers never see this method: <a href="push.html"><code>Push</code></a> is the only code that calls it, and the returned
+  reference is used immediately to append. It is documented because it owns the bucket-lifetime rule the rest of the class
+  leans on — see <a href="releaseemptybucket.html"><code>ReleaseEmptyBucket</code></a> for the other half.
+</p>
+
+<h2 id="parameters">Parameters</h2>
+
+<table>
+  <tr><th>Parameter</th><th>Type</th><th>Requirement</th></tr>
+  <tr><td><code>priority</code></td><td><code>std::size_t</code></td>
+  <td>A bucket index, strictly less than <code>MaxPriority</code>; the assert enforces it at run time.</td></tr>
+</table>
+
+<h2 id="return">Return value</h2>
+
+<p>
+  A reference to the level's deque, created if this was the level's first item. The reference is valid until the bucket is
+  released by <a href="releaseemptybucket.html"><code>ReleaseEmptyBucket</code></a> or
+  <a href="clear.html"><code>Clear</code></a>.
+</p>
+
+<h2 id="example">Examples</h2>
+
+<p class="note">Illustrative — private, and reachable only through <code>Push</code>.</p>
+
+<pre><code>auto&amp; bucket = AcquireBucket(priority);
+bucket.PushBack(item);</code></pre>
+
+<p>
+  That pair is <a href="push.html"><code>Push</code></a>'s body in miniature: acquire, append, then raise
+  <code>highestBucket</code> if the level outranks it.
+</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; BoundedPriorityQueue</a></span>
+  <span><a href="index.html#methods">All BoundedPriorityQueue methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

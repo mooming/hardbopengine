@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Deque::PopFront — Container module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a class="current" href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Container</a> /
+  <a href="index.html">Deque</a> / PopFront
+</p>
+
+<h1><span class="fn">PopFront</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::Deque</span>
+  <span class="tag">Engine/Container/Deque.h</span>
+  destroy the front element, advance the head — fatal assert on empty
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>void PopFront() noexcept</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  Destroys the front element and advances the head cursor — <code>FatalAssert(!IsEmpty())</code> first, so popping an empty
+  deque stops the process. It returns nothing: read the element through <a href="front.html"><code>Front</code></a> first,
+  which is exactly the pairing the engine's drain loop uses.
+</p>
+
+<pre><code>			workItem = fifoQueue.Front();
+			fifoQueue.PopFront();</code></pre>
+<p class="meta">From Engine/Core/TaskStream.cpp, TaskStream::Update()</p>
+
+<p>
+  Capacity is untouched — popping never shrinks the allocation, and the slot the head cursor vacated is immediately
+  reusable by the next <a href="pushfront.html"><code>PushFront</code></a>. Every reference and iterator to the removed
+  element dies here; references to the surviving elements do not move.
+</p>
+
+<h2 id="parameters">Parameters</h2>
+
+<p>None.</p>
+
+<h2 id="return">Return value</h2>
+
+<p>None. Afterwards <a href="size.html"><code>Size</code></a> is one smaller and
+<a href="capacity.html"><code>Capacity</code></a> is unchanged.</p>
+
+<h2 id="example">Examples</h2>
+
+<pre><code>		d.PopFront();
+		if (d.Size() != 2 || d.Front() != 20)</code></pre>
+<p class="meta">From Engine/Container/Deque.cpp, DequeTest::Prepare()</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; Deque</a></span>
+  <span><a href="index.html#methods">All Deque methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

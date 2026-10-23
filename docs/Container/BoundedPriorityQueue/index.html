@@ -205,13 +205,13 @@ and its access section opens only at the constructor.</p>
 <table>
   <tr><th>Method</th><th>Signature</th><th>What a caller depends on</th></tr>
   <tr>
-    <td><code>constructors</code><span class="badge">1 + 2 deleted</span></td>
+    <td><a href="constructors.html"><code>constructors</code></a><span class="badge">1 + 2 deleted</span></td>
     <td class="sig">BoundedPriorityQueue() noexcept<br>BoundedPriorityQueue(const BoundedPriorityQueue&amp;) = delete<br>BoundedPriorityQueue(BoundedPriorityQueue&amp;&amp;) = delete</td>
     <td>The default constructor zeroes two counters and allocates nothing — no matter how many levels are declared. The deletions
       mean the object is lifetime-bound to where it is declared</td>
   </tr>
   <tr>
-    <td><code>destructor</code></td>
+    <td><a href="destructor.html"><code>~BoundedPriorityQueue</code></a></td>
     <td class="sig">~BoundedPriorityQueue() = default</td>
     <td>Compiler-generated: destroys the array, which destroys each engaged deque, which frees each bucket's buffer through that
       deque's own allocator. Items still in the queue are destroyed, not handed anywhere</td>
@@ -222,7 +222,7 @@ and its access section opens only at the constructor.</p>
     <td>No assignment in any form. To hand a queue's contents over, drain it with <code>Pop()</code> into wherever they belong</td>
   </tr>
   <tr>
-    <td><code>IsEmpty</code>, <code>Size</code></td>
+    <td><a href="isempty.html"><code>IsEmpty</code></a>, <a href="size.html"><code>Size</code></a></td>
     <td class="sig">[[nodiscard]] bool IsEmpty() const noexcept<br>[[nodiscard]] std::size_t Size() const noexcept</td>
     <td>Both read <code>totalSize</code>; note the type — <code>std::size_t</code>, not the <code>TIndex = int</code> of the
       contiguous containers, so a loop written with <code>int</code> against this <code>Size()</code> is a signedness mismatch</td>
@@ -240,7 +240,7 @@ and its access section opens only at the constructor.</p>
       a const range</td>
   </tr>
   <tr>
-    <td><code>Pop</code></td>
+    <td><a href="pop.html"><code>Pop</code></a></td>
     <td class="sig">[[nodiscard]] std::optional&lt;T&gt; Pop() noexcept</td>
     <td>
       Empty answers <code>std::nullopt</code> — no assert, no crash, unlike
@@ -251,7 +251,7 @@ and its access section opens only at the constructor.</p>
     </td>
   </tr>
   <tr>
-    <td><code>Top</code></td>
+    <td><a href="top.html"><code>Top</code></a></td>
     <td class="sig">[[nodiscard]] std::optional&lt;T&gt; Top() const noexcept</td>
     <td>The same element without removing it — and because the method is const and returns <code>std::optional&lt;T&gt;</code> by
       value, it <em>copies</em> the element rather than referring to it. <code>Engine/Core/TaskSystem.cpp:161</code> uses exactly
@@ -265,10 +265,29 @@ and its access section opens only at the constructor.</p>
       whether or not anything matched</td>
   </tr>
   <tr>
-    <td><code>Clear</code></td>
+    <td><a href="clear.html"><code>Clear</code></a></td>
     <td class="sig">void Clear() noexcept</td>
     <td>Resets every optional, so every bucket's buffer is freed — the opposite of <a href="../Deque/index.html"><code>Deque::Clear</code></a>,
-      which keeps its capacity. Counters are zeroed and the tracked maximum returns to 0. O(number of levels)</td>
+      which keeps its capacity. Counters are zeroed and the tracked maximum returns to 0. O(number of levels) — <a href="clear.html">the
+      <code>Clear</code> page</a></td>
+  </tr>
+  <tr>
+    <td><a href="acquirebucket.html"><code>AcquireBucket</code></a><span class="badge">private</span></td>
+    <td class="sig">[[nodiscard]] TBucket&amp; AcquireBucket(std::size_t priority) noexcept</td>
+    <td>The deque for one priority, created on first use; an out-of-range priority is a fatal assert, not undefined
+      behaviour</td>
+  </tr>
+  <tr>
+    <td><a href="releaseemptybucket.html"><code>ReleaseEmptyBucket</code></a><span class="badge">private</span></td>
+    <td class="sig">void ReleaseEmptyBucket(std::size_t priority) noexcept</td>
+    <td>Releases a drained level's buffer; the only place outside <code>Clear</code> that disengages a bucket, so
+      <em>engaged means non-empty</em> everywhere else</td>
+  </tr>
+  <tr>
+    <td><a href="retrackhighestbucket.html"><code>RetrackHighestBucket</code></a><span class="badge">private</span></td>
+    <td class="sig">void RetrackHighestBucket() noexcept</td>
+    <td>Walks the tracked maximum down to the highest populated level; stops at 0 harmlessly, because every reader checks
+      <code>totalSize</code> first</td>
   </tr>
 </table>
 
@@ -290,8 +309,8 @@ and its access section opens only at the constructor.</p>
   <tr><th>Gap</th><th>Detail</th></tr>
   <tr>
     <td>Method names without their own page</td>
-    <td><code>constructors</code>, <code>destructor</code>, <code>operator=</code>, <code>IsEmpty</code>,
-      <code>Size</code>, <code>Pop</code>, <code>Top</code>, <code>Clear</code>. Their contracts are the rows above</td>
+    <td><code>operator=</code> — both forms deleted, described in its table row. Every other declared name now links to a
+      page</td>
   </tr>
   <tr>
     <td>No way to inspect the queue's contents</td>

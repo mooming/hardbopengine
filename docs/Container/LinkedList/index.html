@@ -208,57 +208,57 @@
       and, on self-move, empties the list</td>
   </tr>
   <tr>
-    <td><code>begin</code>, <code>end</code><span class="badge">2 overloads each</span></td>
+    <td><a href="begin.html"><code>begin</code></a>, <a href="end.html"><code>end</code></a><span class="badge">2 overloads each</span></td>
     <td class="sig">Iterator begin() noexcept<br>ConstIterator begin() const noexcept<br>Iterator end() noexcept<br>ConstIterator end() const noexcept</td>
     <td><code>Iterator(head)</code> and <code>Iterator(nullptr)</code> — a forward-only, one-way range. Unlike
       <a href="../Deque/begin.html"><code>Deque</code></a>, this pair is correct in every state, because the chain is the
       truth and the buffer has none</td>
   </tr>
   <tr>
-    <td><code>IsEmpty</code></td>
+    <td><a href="isempty.html"><code>IsEmpty</code></a></td>
     <td class="sig">[[nodiscard]] bool IsEmpty() const noexcept</td>
     <td><code>head == nullptr</code>, after asserting that a null head implies a null tail. There is no
       <code>Size()</code> to go with it</td>
   </tr>
   <tr>
-    <td><code>Clear</code></td>
+    <td><a href="clear.html"><code>Clear</code></a></td>
     <td class="sig">void Clear() noexcept</td>
     <td>Unlinks and frees nodes one at a time until empty; O(n) and the only bulk release the class offers. Call it before
       move-assigning over a populated list</td>
   </tr>
   <tr>
-    <td><code>Add</code><span class="badge">2 overloads</span></td>
+    <td><a href="add.html"><code>Add</code></a><span class="badge">2 overloads</span></td>
     <td class="sig">TType&amp; Add(const TType&amp; value) noexcept<br>TType&amp; Add(TType&amp;&amp; value) noexcept</td>
     <td>Spelling convenience for <code>AddLast</code>, returning the element reference. If the list is empty either form
       sets both head and tail</td>
   </tr>
   <tr>
-    <td><code>AddFirst</code>, <code>AddLast</code><span class="badge">2 overloads each</span></td>
+    <td><a href="addfirst.html"><code>AddFirst</code></a>, <a href="addlast.html"><code>AddLast</code></a><span class="badge">2 overloads each</span></td>
     <td class="sig">TType&amp; AddFirst(const TType&amp; value) noexcept<br>TType&amp; AddLast(const TType&amp; value) noexcept<br>… rvalue counterparts</td>
     <td>Each allocates one node through the list's allocator and returns its element. Both are O(1) — the tail pointer exists
       precisely so that appending is not a walk</td>
   </tr>
   <tr>
-    <td><code>AddPrevious</code>, <code>AddNext</code><span class="badge">2 overloads each</span></td>
+    <td><a href="addprevious.html"><code>AddPrevious</code></a>, <a href="addnext.html"><code>AddNext</code></a><span class="badge">2 overloads each</span></td>
     <td class="sig">TType&amp; AddPrevious(TType&amp; current, const TType&amp; value) noexcept<br>TType&amp; AddNext(TType&amp; current, const TType&amp; value) noexcept<br>… rvalue counterparts</td>
     <td>Insert beside an element the list already owns — again located by <em>address</em> through
       <code>GetNodeOf</code>, with the same ownership <code>Assert</code> as <a href="remove.html">Remove</a>. Returns the
       new element, not the node</td>
   </tr>
   <tr>
-    <td><code>Contains</code><span class="badge">2 overloads</span></td>
+    <td><a href="contains.html"><code>Contains</code></a><span class="badge">2 overloads</span></td>
     <td class="sig">[[nodiscard]] bool Contains(const TType&amp; value) const noexcept<br>[[nodiscard]] bool Contains(const TType* ptr) const noexcept</td>
     <td>The value overload compares with <code>operator==</code>; the pointer overload is identity — it is what
       <code>ContainsElement</code> calls to validate a removal. O(n) either way</td>
   </tr>
   <tr>
-    <td><code>Find</code><span class="badge">2 overloads</span></td>
+    <td><a href="find.html"><code>Find</code></a><span class="badge">2 overloads</span></td>
     <td class="sig">[[nodiscard]] TType* Find(const TType&amp; value) noexcept<br>[[nodiscard]] const TType* Find(const TType&amp; value) const noexcept</td>
     <td>Returns a pointer to the first equal element or <code>nullptr</code> — an address into the list, stable until that
       node is removed, and directly usable as the argument to <code>Remove</code></td>
   </tr>
   <tr>
-    <td><code>Count</code></td>
+    <td><a href="count.html"><code>Count</code></a></td>
     <td class="sig">[[nodiscard]] Index Count(const TType&amp; value) const noexcept</td>
     <td>
       Number of elements equal to <code>value</code> — not the length of the list. Its return type is
@@ -274,10 +274,44 @@
       <code>Assert</code> that Release builds do not run</td>
   </tr>
   <tr>
-    <td><code>FindAndRemove</code></td>
+    <td><a href="findandremove.html"><code>FindAndRemove</code></a></td>
     <td class="sig">bool FindAndRemove(const TType&amp; value) noexcept</td>
     <td>The value-equality path: searches with <code>operator==</code>, removes the first hit, answers whether anything went.
       Two walks when it succeeds</td>
+  </tr>
+  <tr>
+    <td><a href="removenode.html"><code>RemoveNode</code></a><span class="badge">private</span></td>
+    <td class="sig">Node* RemoveNode(Node* node) noexcept</td>
+    <td>Detaches a node, fixes head and tail, frees it through <code>Unlink</code>, and returns the node that followed —
+      the engine of <code>Remove</code> and <code>Clear</code></td>
+  </tr>
+  <tr>
+    <td><a href="containselement.html"><code>ContainsElement</code></a><span class="badge">private</span></td>
+    <td class="sig">[[nodiscard]] bool ContainsElement(const TType&amp; element) const noexcept</td>
+    <td>The identity test — is this exact object one of this list's own nodes? The precondition
+      <code>GetNodeOf</code> asserts</td>
+  </tr>
+  <tr>
+    <td><a href="getnodeof.html"><code>GetNodeOf</code></a><span class="badge">private</span></td>
+    <td class="sig">Node* GetNodeOf(TType&amp; element) noexcept</td>
+    <td>Recovers the node from the element's address — the same address, because <code>value</code> is the node's first
+      member — after the identity assert</td>
+  </tr>
+  <tr>
+    <td><a href="linkprevious.html"><code>LinkPrevious</code></a><span class="badge">private</span></td>
+    <td class="sig">void LinkPrevious(Node* node, Node* newNode) noexcept</td>
+    <td>The four-line splice that inserts before a node; the head update belongs to <code>AddPrevious</code></td>
+  </tr>
+  <tr>
+    <td><a href="linknext.html"><code>LinkNext</code></a><span class="badge">private</span></td>
+    <td class="sig">void LinkNext(Node* node, Node* newNode) noexcept</td>
+    <td>The four-line splice that inserts after a node; the tail update belongs to <code>AddNext</code></td>
+  </tr>
+  <tr>
+    <td><a href="unlink.html"><code>Unlink</code></a><span class="badge">private</span></td>
+    <td class="sig">void Unlink(Node* node) noexcept</td>
+    <td>Save the neighbours, free the node, sew the gap — in that order, which is the order a caller's references die
+      in</td>
   </tr>
 </table>
 
@@ -321,7 +355,8 @@
     <td><code>constructors</code>, <code>destructor</code>, <code>begin</code>, <code>end</code>,
       <code>IsEmpty</code>, <code>Clear</code>, <code>Add</code>, <code>AddFirst</code>, <code>AddLast</code>,
       <code>AddPrevious</code>, <code>AddNext</code>, <code>Contains</code>, <code>Find</code>, <code>Count</code>,
-      <code>FindAndRemove</code></td>
+      <code>FindAndRemove</code> and the six private helpers below — each now links to its own page, which carries the
+      detail these rows condense</td>
   </tr>
   <tr>
     <td>No call site in the engine</td>

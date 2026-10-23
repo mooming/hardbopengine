@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>HashMap::ShouldGrow — Container module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a class="current" href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Container</a> /
+  <a href="index.html">HashMap</a> / ShouldGrow
+</p>
+
+<h1><span class="fn">ShouldGrow</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::HashMap</span>
+  <span class="tag">Engine/Container/HashMap.h</span>
+  cap == 0, or count + tombstones at the 0.7 load factor
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>[[nodiscard]] bool ShouldGrow() const noexcept</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  Private. The load-factor decision every insertion runs first: <code>cap == 0</code> — nothing allocated yet, grow now —
+  or <code>count + tombstoneCount &gt;= cap * MaxLoadFactor</code>, with <code>MaxLoadFactor</code> = 0.7 from the class's
+  own constant. The arithmetic is done in <code>double</code>, explicitly cast on both sides, so the comparison is not
+  silently integer-truncated.
+</p>
+
+<p>
+  Tombstones count toward the load: a map that has had many removals grows even when
+  <a href="size.html"><code>Size</code></a> is small, because the dead slots still lengthen every probe sequence. Only
+  <a href="clear.html"><code>Clear</code></a> or <a href="rehash.html"><code>Rehash</code></a> clears that debt.
+</p>
+
+<h2 id="parameters">Parameters</h2>
+
+<p>None.</p>
+
+<h2 id="return">Return value</h2>
+
+<p>
+  <code>true</code> when the next <a href="insertinternal.html"><code>InsertInternal</code></a> must
+  <a href="grow.html"><code>Grow</code></a> first — the empty table, or the load factor reached.
+  <code>[[nodiscard]]</code>, so discarding the answer is a compile error.
+</p>
+
+<h2 id="example">Examples</h2>
+
+<p class="note">Illustrative — private, and reachable only through <code>InsertInternal</code>.</p>
+
+<pre><code>if (ShouldGrow())
+{
+	Grow();
+}</code></pre>
+
+<p>
+  That is <code>InsertInternal</code>'s opening move — the guard that keeps the fatal "should have grown" branch
+  unreachable.
+</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; HashMap</a></span>
+  <span><a href="index.html#methods">All HashMap methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Map::Size — Container module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a class="current" href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Container</a> /
+  <a href="index.html">Map</a> / Size
+</p>
+
+<h1><span class="fn">Size</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::Map</span>
+  <span class="tag">Engine/Container/Map.h</span>
+  the entry count as TIndex (int)
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>[[nodiscard]] TIndex Size() const noexcept</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  The entry count, read from <code>count</code>. The type is the class's own <code>TIndex</code> — <code>int</code> —
+  which this class spells as a member alias, unlike the <code>std::size_t</code> the
+  <a href="../BoundedPriorityQueue/size.html"><code>BoundedPriorityQueue</code></a> returns. There is no
+  <code>Capacity()</code> beside it: the map has no way to answer "how much buffer is held", and
+  <a href="grow.html"><code>Grow</code></a>'s doubling is the only thing that changes it.
+</p>
+
+<h2 id="parameters">Parameters</h2>
+
+<p>None.</p>
+
+<h2 id="return">Return value</h2>
+
+<table>
+  <tr><th>Type</th><th>What you get</th></tr>
+  <tr>
+    <td><code>TIndex</code> (<code>int</code>)</td>
+    <td>How many entries the map holds; <code>0</code> exactly when <a href="isempty.html"><code>IsEmpty</code></a> is
+      true</td>
+  </tr>
+</table>
+
+<h2 id="example">Examples</h2>
+
+<pre><code>		if (m.Size() != 3)
+		{
+			ls &lt;&lt; "Expected size 3, got " &lt;&lt; m.Size() &lt;&lt; lferr;
+
+			return;
+		}</code></pre>
+<p class="meta">From Engine/Container/Map.cpp, MapTest::Prepare()</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; Map</a></span>
+  <span><a href="index.html#methods">All Map methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

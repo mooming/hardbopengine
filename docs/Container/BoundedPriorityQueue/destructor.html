@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BoundedPriorityQueue::~BoundedPriorityQueue — Container module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a class="current" href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Container</a> /
+  <a href="index.html">BoundedPriorityQueue</a> / ~BoundedPriorityQueue
+</p>
+
+<h1><span class="fn">~BoundedPriorityQueue</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::BoundedPriorityQueue</span>
+  <span class="tag">Engine/Container/BoundedPriorityQueue.h</span>
+  compiler-generated — destroys every live element and frees every bucket's buffer
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>~BoundedPriorityQueue() = default</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  Compiler-generated, and its work is entirely the members': the bucket array destroys each engaged
+  <code>optional&lt;TBucket&gt;</code>, each engaged optional destroys its <code>Deque</code>, and each deque destroys its
+  live elements and returns its buffer through the deque's own allocator. Every item still in the queue is destroyed here —
+  nothing is handed anywhere, and there is no drain, no callback and no diagnostic about leftovers.
+</p>
+
+<p>
+  Because a bucket exists only while it holds something, the destructor frees buffers only for levels that currently have
+  work; an idle level holds nothing to free. What a caller must arrange is exactly what the class's single ownership rule
+  says: if the items matter, drain them before the queue dies.
+</p>
+
+<h2 id="parameters">Parameters</h2>
+
+<p>None.</p>
+
+<h2 id="return">Return value</h2>
+
+<p>
+  A destructor has no return value. It is implicitly <code>noexcept</code>, so an element destructor that throws
+  terminates the process rather than propagating.
+</p>
+
+<h2 id="example">Examples</h2>
+
+<p class="note">Illustrative — no call site for this exists in the repository; every queue in the engine is a member whose
+lifetime is its owner's.</p>
+
+<pre><code>{
+	BoundedPriorityQueue&lt;TestItem&gt; queue;
+	queue.Push(TestItem(10));
+}	// elements destroyed here, buffers released here</code></pre>
+
+<p>
+  The engine never destroys a populated queue on purpose; the test fixtures construct, drain and let the scope close on an
+  empty queue.
+</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; BoundedPriorityQueue</a></span>
+  <span><a href="index.html#methods">All BoundedPriorityQueue methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

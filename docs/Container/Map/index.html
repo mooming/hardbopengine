@@ -230,37 +230,37 @@
 <table>
   <tr><th>Method</th><th>Signature</th><th>What a caller depends on</th></tr>
   <tr>
-    <td><code>constructors</code><span class="badge">2 overloads + 1 deleted</span></td>
+    <td><a href="constructors.html"><code>constructors</code></a><span class="badge">2 overloads + 1 deleted</span></td>
     <td class="sig">Map() noexcept<br>Map(const Map&amp;) = delete<br>Map(Map&amp;&amp; rhs) noexcept</td>
     <td>The default form allocates nothing; there is no sized and no initialiser-list form, so the first insertion is
       always the first allocation and it is four pairs wide</td>
   </tr>
   <tr>
-    <td><code>destructor</code></td>
+    <td><a href="destructor.html"><code>~Map</code></a></td>
     <td class="sig">~Map()</td>
     <td>Destroys every pair, then hands the byte buffer back: <code>allocator.deallocate(entries, sizeof(Pair) * cap)</code>;
       returns early when the buffer is null. The allocator must still be alive</td>
   </tr>
   <tr>
-    <td><code>operator=</code><span class="badge">2 overloads, one deleted</span></td>
+    <td><a href="operator-assign.html"><code>operator=</code></a><span class="badge">2 overloads, one deleted</span></td>
     <td class="sig">Map&amp; operator=(const Map&amp;) = delete<br>Map&amp; operator=(Map&amp;&amp; rhs) noexcept</td>
     <td>Move assignment releases the destination and takes three fields, guarded against self-assignment — leaving
       <code>compare</code> and <code>allocator</code> as the destination's own</td>
   </tr>
   <tr>
-    <td><code>begin</code>, <code>end</code><span class="badge">2 overloads each</span></td>
+    <td><a href="begin.html"><code>begin</code></a>, <a href="end.html"><code>end</code></a><span class="badge">2 overloads each</span></td>
     <td class="sig">Iterator begin() noexcept<br>ConstIterator begin() const noexcept<br>Iterator end() noexcept<br>ConstIterator end() const noexcept</td>
     <td>A contiguous range in <code>TCompare</code> order — so range-for gives ordered traversal for free, and
       <code>&lt;algorithm&gt;</code> binaries such as <code>std::lower_bound</code> are already valid on it</td>
   </tr>
   <tr>
-    <td><code>operator[]</code><span class="badge">2 overloads</span></td>
+    <td><a href="operator-index.html"><code>operator[]</code></a><span class="badge">2 overloads</span></td>
     <td class="sig">TValue&amp; operator[](const TKey&amp; key)<br>TValue&amp; operator[](TKey&amp;&amp; key)</td>
     <td>Insert-or-read, with a <strong>default-constructed value</strong> for a key it has to create — the only way to
       overwrite a value, and a shift of everything above the insertion point</td>
   </tr>
   <tr>
-    <td><code>Find</code><span class="badge">2 overloads</span></td>
+    <td><a href="find.html"><code>Find</code></a><span class="badge">2 overloads</span></td>
     <td class="sig">[[nodiscard]] Iterator Find(const TKey&amp; key) noexcept<br>[[nodiscard]] ConstIterator Find(const TKey&amp; key) const noexcept</td>
     <td>Binary search; <code>end()</code> when absent. The iterator is a slot address, so it is invalidated by the next
       insert or remove at or above it</td>
@@ -278,22 +278,49 @@
       memory early</td>
   </tr>
   <tr>
-    <td><code>Contains</code></td>
+    <td><a href="contains.html"><code>Contains</code></a></td>
     <td class="sig">[[nodiscard]] bool Contains(const TKey&amp; key) const noexcept</td>
     <td><code>FindIndex(key) &gt;= 0</code> — a second search, so prefer <code>Find</code> when the value is wanted as
       well</td>
   </tr>
   <tr>
-    <td><code>Size</code>, <code>IsEmpty</code></td>
+    <td><a href="size.html"><code>Size</code></a>, <a href="isempty.html"><code>IsEmpty</code></a></td>
     <td class="sig">[[nodiscard]] TIndex Size() const noexcept<br>[[nodiscard]] bool IsEmpty() const noexcept</td>
     <td>Entry count and <code>count == 0</code>. There is no <code>Capacity()</code>, no <code>IsEmpty</code> equivalent
       for "no room", and no way to ask how much buffer is held</td>
   </tr>
   <tr>
-    <td><code>Clear</code></td>
+    <td><a href="clear.html"><code>Clear</code></a></td>
     <td class="sig">void Clear() noexcept</td>
     <td>Destroys every pair and sets <code>count = 0</code>, keeping the buffer. One pass, which makes it the right way
       to empty a map that is going anyway — see <a href="remove.html"><code>Remove</code></a></td>
+  </tr>
+  <tr>
+    <td><a href="findindex.html"><code>FindIndex</code></a><span class="badge">private</span></td>
+    <td class="sig">[[nodiscard]] TIndex FindIndex(const TKey&amp; key) const noexcept</td>
+    <td>The binary search the whole class is built on; <code>-1</code> when absent, logarithmic in the entry count</td>
+  </tr>
+  <tr>
+    <td><a href="lowerbound.html"><code>LowerBound</code></a><span class="badge">private</span></td>
+    <td class="sig">[[nodiscard]] TIndex LowerBound(const TKey&amp; key) const noexcept</td>
+    <td>The insertion index that keeps the array sorted; <code>count</code> when the key appends</td>
+  </tr>
+  <tr>
+    <td><a href="insertsorted.html"><code>InsertSorted</code></a><span class="badge">private, 2 overloads</span></td>
+    <td class="sig">TIndex InsertSorted(const TKey&amp; key) noexcept<br>TIndex InsertSorted(TKey&amp;&amp; key) noexcept</td>
+    <td>Grows if full, opens the gap, constructs the pair with a default-constructed value, returns the slot</td>
+  </tr>
+  <tr>
+    <td><a href="grow.html"><code>Grow</code></a><span class="badge">private</span></td>
+    <td class="sig">void Grow() noexcept</td>
+    <td>Doubles the buffer from <code>DefaultCapacity</code> = 4 and moves the entries across — every reference and
+      iterator dies here</td>
+  </tr>
+  <tr>
+    <td><a href="release.html"><code>Release</code></a><span class="badge">private</span></td>
+    <td class="sig">void Release() noexcept</td>
+    <td>Destroys every pair and frees the buffer — the only member that gives memory back; the destructor's and move
+      assignment's engine</td>
   </tr>
 </table>
 
@@ -318,8 +345,8 @@
     <td>Method names without their own page</td>
     <td><code>constructors</code>, <code>destructor</code>, <code>operator=</code>, <code>begin</code>,
       <code>end</code>, <code>operator[]</code>, <code>Find</code>, <code>Contains</code>, <code>Size</code>,
-      <code>IsEmpty</code>, <code>Clear</code>. Their contracts are the rows above; the worked examples and
-      parameter-by-parameter detail a page would carry are not written</td>
+      <code>IsEmpty</code>, <code>Clear</code> and the five private helpers below — each now links to its own page,
+      which carries the parameter-by-parameter detail the rows here condense</td>
   </tr>
   <tr>
     <td>No call site in the engine</td>

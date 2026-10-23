@@ -152,21 +152,16 @@
 
 <h2 id="methods">Class methods</h2>
 
-<p>
-  A name set as a link has its own page; the rest are documented here and named in
-  <a href="#coverage">Coverage</a>.
-</p>
-
 <table>
   <tr><th>Method</th><th>Signature</th><th>What a caller depends on</th></tr>
   <tr>
-    <td><code>constructor</code></td>
+    <td><a href="constructors.html"><code>AtomicStackView</code></a></td>
     <td class="sig">AtomicStackView() noexcept</td>
     <td>Sets <code>top</code> to <code>nullptr</code>. Allocates nothing, and is the only constructor — there is no
       range-constructing or pre-sizing form</td>
   </tr>
   <tr>
-    <td><code>destructor</code></td>
+    <td><a href="destructor.html"><code>~AtomicStackView</code></a></td>
     <td class="sig">~AtomicStackView() = default</td>
     <td>Destroys the pointer only. Nodes still linked on the stack are neither unlinked nor freed nor noticed — see the gap
       above</td>
@@ -190,7 +185,7 @@
       race. No assert, and no <code>[[nodiscard]]</code> either — discarding the pointer is a silent leak</td>
   </tr>
   <tr>
-    <td><code>IsEmpty</code></td>
+    <td><a href="isempty.html"><code>IsEmpty</code></a></td>
     <td class="sig">[[nodiscard]] bool IsEmpty() const noexcept</td>
     <td>
       One relaxed load compared against null. It is a snapshot, not a guarantee: by the time you act on
@@ -222,11 +217,6 @@
 
 <table>
   <tr><th>Gap</th><th>Detail</th></tr>
-  <tr>
-    <td>Method names without their own page</td>
-    <td><code>constructor</code>, <code>destructor</code> and <code>IsEmpty</code> — one field each, documented in the table
-      above</td>
-  </tr>
   <tr>
     <td>No size, no depth, no head peek</td>
     <td>Counting a lock-free chain costs a walk that can change under you, so the class offers nothing; the only observable is

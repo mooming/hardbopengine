@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AtomicStackView::~AtomicStackView — Container module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a class="current" href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Container</a> /
+  <a href="index.html">AtomicStackView</a> / ~AtomicStackView
+</p>
+
+<h1><span class="fn">~AtomicStackView</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::AtomicStackView</span>
+  <span class="tag">Engine/Container/AtomicStackView.h</span>
+  destroys the head pointer only — nodes still linked are neither unlinked nor freed
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>~AtomicStackView() = default</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  Destroys the <code>std::atomic&lt;T*&gt;</code> head and nothing else. Being defaulted, it walks no chain, frees no node and
+  reports no leftovers: a stack destroyed while nodes are still linked simply loses the links, and the nodes — which the
+  caller owns, because <a href="index.html">AtomicStackView</a> is a view — survive wherever their real owner keeps them.
+</p>
+
+<div class="gap">
+  <strong>The destructor is not a drain.</strong> There is no count, no head accessor and no way to ask whether anything is
+  still linked, so an owner that tears the stack down with elements still checked out leaks them without a diagnostic. The
+  owner has to drain it — see <a href="pop.html"><code>Pop</code></a> — before destruction if that matters.
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<p>None.</p>
+
+<h2 id="return">Return value</h2>
+
+<p>
+  A destructor has no return value. It is implicitly <code>noexcept</code>, and destroying a
+  <code>std::atomic&lt;T*&gt;</code> cannot throw.
+</p>
+
+<h2 id="example">Examples</h2>
+
+<pre><code>{
+	AtomicStackView&lt;TNode&lt;bool&gt;&gt; stack;
+	ls &lt;&lt; "Bool Stack: [Done]" &lt;&lt; lf;
+}</code></pre>
+<p class="meta">From Engine/Container/AtomicStackView.cpp, AtomicStackViewTest::Prepare()</p>
+
+<p>
+  The test's scoped block is the whole story: the stack dies at the closing brace, and because it was already drained by the
+  loop above it, default destruction of an empty head is the only thing that happens.
+</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; AtomicStackView</a></span>
+  <span><a href="index.html#methods">All AtomicStackView methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

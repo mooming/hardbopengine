@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Deque::IsValidIndex — Container module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a class="current" href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Container</a> /
+  <a href="index.html">Deque</a> / IsValidIndex
+</p>
+
+<h1><span class="fn">IsValidIndex</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::Deque</span>
+  <span class="tag">Engine/Container/Deque.h</span>
+  0 <= index < count — the check operator[] asserts with
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>[[nodiscard]] bool IsValidIndex(TIndex index) const noexcept</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  <code>index &gt;= 0 &amp;&amp; index &lt; count</code> — the exact check
+  <a href="operator-index.html"><code>operator[]</code></a> fatal-asserts with. It tests a position from the front, not a
+  slot in the raw buffer: in a wrapped deque the live elements occupy scattered slots, and this predicate knows nothing
+  about them — only whether the position is inside the live range.
+</p>
+
+<h2 id="parameters">Parameters</h2>
+
+<table>
+  <tr><th>Parameter</th><th>Type</th><th>Requirement</th></tr>
+  <tr><td><code>index</code></td><td><code>TIndex</code> (<code>int</code>)</td>
+  <td>A candidate position from the front, as it would be passed to <code>operator[]</code>.</td></tr>
+</table>
+
+<h2 id="return">Return value</h2>
+
+<p>
+  <code>true</code> when the index names a live element, <code>false</code> when it is negative or at or past
+  <a href="size.html"><code>Size</code></a>. <code>[[nodiscard]]</code>, so discarding the answer is a compile error.
+</p>
+
+<h2 id="example">Examples</h2>
+
+<p class="note">Illustrative — no call site for this exists in the repository; the class itself is the caller.</p>
+
+<pre><code>if (d.IsValidIndex(i))
+{
+	use(d[i]);
+}</code></pre>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; Deque</a></span>
+  <span><a href="index.html#methods">All Deque methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

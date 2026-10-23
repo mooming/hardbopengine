@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BoundedPriorityQueue::constructors — Container module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a class="current" href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Container</a> /
+  <a href="index.html">BoundedPriorityQueue</a> / constructors
+</p>
+
+<h1><span class="fn">constructors</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::BoundedPriorityQueue</span>
+  <span class="tag">Engine/Container/BoundedPriorityQueue.h</span>
+  zeroes two counters and allocates nothing — copy and move are both deleted
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>BoundedPriorityQueue() noexcept
+		: totalSize(0)
+		, highestBucket(0)
+
+BoundedPriorityQueue(const BoundedPriorityQueue&amp;) = delete
+
+BoundedPriorityQueue(BoundedPriorityQueue&amp;&amp;) = delete</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  One constructor that does real work, and two refusals. The default constructor zeroes
+  <code>totalSize</code> and <code>highestBucket</code> and allocates nothing — no matter how many priority levels the
+  instantiation declares. The bucket array is
+  <code>std::array&lt;std::optional&lt;TBucket&gt;, MaxPriority&gt;</code>, and a disengaged <code>optional</code> holds no
+  deque, so declaring a 256-level queue constructs 256 empty optionals and no bucket. Buckets are created on the first
+  <a href="push.html"><code>Push</code></a> to their level, by <a href="acquirebucket.html"><code>AcquireBucket</code></a>.
+</p>
+
+<p>
+  Copy and move construction are both <code>= delete</code>: the queue cannot be copied, moved, or handed over by value.
+  Its lifetime is the scope or object that declares it, and handing the contents over means draining them with
+  <a href="pop.html"><code>Pop</code></a>. Assignment is deleted in both forms too — see the class page.
+</p>
+
+<h2 id="parameters">Parameters</h2>
+
+<p>None. There is no sizing form, no allocator form and no range form.</p>
+
+<h2 id="return">Return value</h2>
+
+<p>
+  A constructor has no return value. What you can observe afterwards is <a href="isempty.html"><code>IsEmpty</code></a>
+  (<code>true</code>) and <a href="size.html"><code>Size</code></a> (<code>0</code>).
+</p>
+
+<h2 id="example">Examples</h2>
+
+<pre><code>	Deque&lt;WorkItem&gt; fifoQueue;
+	BoundedPriorityQueue&lt;WorkItem&gt; priorityQueue;</code></pre>
+<p class="meta">From Engine/Core/TaskStream.h, TaskStream</p>
+
+<p>
+  The engine's drain lanes are declared exactly like this: default-constructed members beside the containers they serve.
+  <code>Engine/Core/MainThreadTaskQueue.h</code> declares the same shape with explicit template arguments
+  (<code>BoundedPriorityQueue&lt;TaskItem, 256, MaxQueueSize&gt;</code>), which is the pattern for a bounded level count
+  with a bucket hint.
+</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; BoundedPriorityQueue</a></span>
+  <span><a href="index.html#methods">All BoundedPriorityQueue methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

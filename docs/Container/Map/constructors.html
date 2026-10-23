@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Map::constructors — Container module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a class="current" href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Container</a> /
+  <a href="index.html">Map</a> / constructors
+</p>
+
+<h1><span class="fn">constructors</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::Map</span>
+  <span class="tag">Engine/Container/Map.h</span>
+  an empty map with no buffer — copy deleted, move steals the three fields
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>Map() noexcept
+		: entries(nullptr)
+		, count(0)
+		, cap(0)
+
+Map(const Map&amp;) = delete
+
+Map(Map&amp;&amp; rhs) noexcept
+		: entries(rhs.entries)
+		, count(rhs.count)
+		, cap(rhs.cap)</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  Three forms, one of them a refusal. The default constructor sets <code>entries</code> to <code>nullptr</code> and both
+  counters to <code>0</code> — a <a href="index.html">Map</a> is born with no buffer at all, whatever
+  <code>DefaultCapacity</code> says; the first insertion is the first allocation, and
+  <a href="grow.html"><code>Grow</code></a> makes it four pairs wide. It is <code>noexcept</code> and cannot fail.
+</p>
+
+<p>
+  Copy construction is <code>= delete</code> — a map cannot be copied. The move constructor steals the three fields
+  (<code>entries</code>, <code>count</code>, <code>cap</code>) and zeroes the source, so the buffer changes owner without a
+  single element being touched. The comparison object and the allocator are not moved: each map keeps its own, which for the
+  default template arguments is invisible and for a stateful allocator or comparator is the whole story.
+</p>
+
+<h2 id="parameters">Parameters</h2>
+
+<p>None. There is no sized form, no initialiser-list form and no allocator-taking form.</p>
+
+<h2 id="return">Return value</h2>
+
+<p>
+  A constructor has no return value. What you can observe afterwards is <a href="isempty.html"><code>IsEmpty</code></a>
+  (<code>true</code>), <a href="size.html"><code>Size</code></a> (<code>0</code>) and
+  <a href="begin.html"><code>begin</code></a>&nbsp;==&nbsp;<a href="end.html"><code>end</code></a>.
+</p>
+
+<h2 id="example">Examples</h2>
+
+<pre><code>		Map&lt;int, int&gt; m2(std::move(m1));</code></pre>
+<p class="meta">From Engine/Container/Map.cpp, MapTest::Prepare()</p>
+
+<p>
+  The test then reads <code>m2.Size()</code> and <code>m2[1]</code> to confirm the entries travelled without being rebuilt —
+  and, one line later, exercises <a href="operator-assign.html">move assignment</a> the same way.
+</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; Map</a></span>
+  <span><a href="index.html#methods">All Map methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

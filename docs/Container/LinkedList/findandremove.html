@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LinkedList::FindAndRemove — Container module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a class="current" href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Container</a> /
+  <a href="index.html">LinkedList</a> / FindAndRemove
+</p>
+
+<h1><span class="fn">FindAndRemove</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::LinkedList</span>
+  <span class="tag">Engine/Container/LinkedList.h</span>
+  the value-equality removal path — first match only, bool as the whole report
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>bool FindAndRemove(const TType&amp; value) noexcept</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  The value-equality removal path: <a href="find.html"><code>Find</code></a> locates the first element comparing equal,
+  and <code>Remove</code> frees its node. Two walks when it succeeds — one to find, one that
+  <code>Remove</code>'s own <a href="containselement.html"><code>ContainsElement</code></a> assert performs — and one walk
+  when it fails, answered as <code>false</code>. No exception, no assert on a miss: the <code>bool</code> is the whole
+  report.
+</p>
+
+<p>
+  Only the <em>first</em> match goes; a list with duplicates keeps the rest. Callers that want every match removed loop on
+  the return value.
+</p>
+
+<h2 id="parameters">Parameters</h2>
+
+<table>
+  <tr><th>Parameter</th><th>Type</th><th>Requirement</th></tr>
+  <tr><td><code>value</code></td><td><code>const TType&amp;</code></td>
+  <td>The value to search for and remove. Compared with <code>==</code>; any equal element may be the one that
+  goes.</td></tr>
+</table>
+
+<h2 id="return">Return value</h2>
+
+<p>
+  <code>true</code> when an element was found and removed, <code>false</code> when nothing matched.
+</p>
+
+<h2 id="example">Examples</h2>
+
+<p class="note">Illustrative — no direct call site for this exists in the repository.</p>
+
+<pre><code>while (list.FindAndRemove(staleValue))
+{
+	// every match goes, one per iteration
+}</code></pre>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; LinkedList</a></span>
+  <span><a href="index.html#methods">All LinkedList methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

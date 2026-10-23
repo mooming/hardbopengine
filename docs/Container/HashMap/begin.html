@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>HashMap::begin — Container module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a class="current" href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Container</a> /
+  <a href="index.html">HashMap</a> / begin
+</p>
+
+<h1><span class="fn">begin</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::HashMap</span>
+  <span class="tag">Engine/Container/HashMap.h</span>
+  the first occupied slot — found by a scan, in slot order that rehash rearranges
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>Iterator begin() noexcept
+
+ConstIterator begin() const noexcept</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  An iterator to the first occupied slot — found by scanning the state array from slot 0, so on a sparse table
+  <code>begin()</code> itself costs a walk over the empties. On an empty map the scan runs to <code>cap</code> and
+  <code>begin() == <a href="end.html">end()</a></code>.
+</p>
+
+<p>
+  Iteration order is slot order: a function of the hash, the capacity and the insertion history, and it changes on every
+  <a href="rehash.html"><code>Rehash</code></a>. Nothing about it is sorted — a caller wanting ordered keys has the wrong
+  container, and the sorted alternative in this module is <a href="../Map/index.html"><code>Map</code></a>.
+</p>
+
+<p>
+  The iterator skips tombstones as it advances (<code>operator++</code> walks until it lands on an
+  <code>Occupied</code> slot), so a range-for sees only live entries. Dereferencing asserts the slot is valid — see
+  <a href="isvalidslot.html"><code>IsValidSlot</code></a> — and every reference dies on the next
+  <a href="insertinternal.html">insertion</a> that <a href="grow.html">grows</a> the table.
+</p>
+
+<h2 id="parameters">Parameters</h2>
+
+<p>None.</p>
+
+<h2 id="return">Return value</h2>
+
+<table>
+  <tr><th>Type</th><th>What you get</th></tr>
+  <tr>
+    <td><code>Iterator</code> (or <code>ConstIterator</code>)</td>
+    <td>An iterator over <code>Pair</code> — <code>key</code> and <code>value</code> — positioned at the first occupied
+      slot</td>
+  </tr>
+</table>
+
+<h2 id="example">Examples</h2>
+
+<pre><code>		for (auto&amp; pair : m)
+		{
+			sum += pair.key + pair.value;
+			++count;
+		}</code></pre>
+<p class="meta">From Engine/Container/HashMap.cpp, HashMapTest::Prepare()</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; HashMap</a></span>
+  <span><a href="index.html#methods">All HashMap methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

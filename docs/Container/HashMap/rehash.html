@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>HashMap::Rehash — Container module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a class="current" href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Container</a> /
+  <a href="index.html">HashMap</a> / Rehash
+</p>
+
+<h1><span class="fn">Rehash</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::HashMap</span>
+  <span class="tag">Engine/Container/HashMap.h</span>
+  one new block for entries and states, every live entry re-hashed into it, tombstones dropped
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>void Rehash(TIndex newCapacity) noexcept</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  Private. Rebuilds the table at a new capacity, and it is the only member that ever allocates. One block is taken for both
+  arrays — <code>sizeof(Pair) * newCapacity</code> bytes of entries immediately followed by
+  <code>sizeof(EHashEntryState) * newCapacity</code> bytes of states — every state is initialised to <code>Empty</code>, and
+  then the live entries move: each occupied slot of the old table is re-hashed, probed into the new table, move-constructed
+  into its new slot, and destroyed where it was. Tombstones are not migrated — they vanish, which is how a rehash pays off
+  the debt <a href="shouldgrow.html"><code>ShouldGrow</code></a> was counting.
+</p>
+
+<p>
+  Every reference and iterator into the map dies here, and the iteration order changes with the capacity. The old block is
+  returned through the map's allocator once the move is done.
+</p>
+
+<p>
+  <code>Rehash</code> is what <code>Reserve</code> and <a href="grow.html"><code>Grow</code></a> both call, so every
+  capacity change in the class funnels through this one method.
+</p>
+
+<h2 id="parameters">Parameters</h2>
+
+<table>
+  <tr><th>Parameter</th><th>Type</th><th>Requirement</th></tr>
+  <tr><td><code>newCapacity</code></td><td><code>TIndex</code> (<code>int</code>)</td>
+  <td>The new slot count. The masking in the re-insertion probes assumes a power of two — which is what
+  <code>Reserve</code>'s doubling and <code>Grow</code>'s doubling both produce.</td></tr>
+</table>
+
+<h2 id="return">Return value</h2>
+
+<p>
+  None. Afterwards <a href="capacity.html"><code>Capacity</code></a> is <code>newCapacity</code>,
+  <a href="size.html"><code>Size</code></a> is unchanged, and the tombstone count is 0.
+</p>
+
+<h2 id="example">Examples</h2>
+
+<p class="note">Illustrative — private, and reachable only through <code>Reserve</code> and <code>Grow</code>.</p>
+
+<pre><code>auto h = hash(oldEntries[i].key) &amp; static_cast&lt;std::size_t&gt;(newCapacity - 1);
+auto idx = static_cast&lt;TIndex&gt;(h);</code></pre>
+
+<p>
+  The re-insertion's first two lines: the entry's slot in the new table is computed fresh — nothing about its old position
+  survives, which is why iteration order changes on every rehash.
+</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; HashMap</a></span>
+  <span><a href="index.html#methods">All HashMap methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LinkedList::ContainsElement — Container module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a class="current" href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Container</a> /
+  <a href="index.html">LinkedList</a> / ContainsElement
+</p>
+
+<h1><span class="fn">ContainsElement</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::LinkedList</span>
+  <span class="tag">Engine/Container/LinkedList.h</span>
+  the identity test — is this exact object one of this list's own nodes?
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>[[nodiscard]] bool ContainsElement(const TType&amp; element) const noexcept</code></pre>
+
+<p class="note">Private — reachable only through the class's own removal and insertion paths, documented here because it
+owns the ownership rule they enforce.</p>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  The identity test: <a href="contains.html"><code>Contains(&amp;element)</code></a> — is this exact object the payload of
+  one of this list's own nodes? It is the precondition <a href="getnodeof.html"><code>GetNodeOf</code></a> asserts before
+  recovering a node from an element's address, which is only meaningful for an element this list actually allocated. Value
+  equality — <code>Contains(const TType&amp;)</code>'s question — is deliberately not sufficient here: two equal elements in
+  different nodes are different nodes, and recovering "the node of" the wrong one would splice the wrong link.
+</p>
+
+<p>
+  The non-const reference parameters of <code>Remove</code>, <a href="addprevious.html"><code>AddPrevious</code></a> and
+  <a href="addnext.html"><code>AddNext</code></a> are what make this check hard to bypass: a temporary cannot bind, so the
+  assert is a backstop rather than the only line of defence.
+</p>
+
+<h2 id="parameters">Parameters</h2>
+
+<table>
+  <tr><th>Parameter</th><th>Type</th><th>Requirement</th></tr>
+  <tr><td><code>element</code></td><td><code>const TType&amp;</code></td>
+  <td>A candidate element; only its address is read.</td></tr>
+</table>
+
+<h2 id="return">Return value</h2>
+
+<p>
+  <code>true</code> when the element's address matches one of this list's nodes, <code>false</code> otherwise.
+  <code>[[nodiscard]]</code>, so discarding the answer is a compile error.
+</p>
+
+<h2 id="example">Examples</h2>
+
+<p class="note">Illustrative — private; <code>GetNodeOf</code> is its caller.</p>
+
+<pre><code>Assert(ContainsElement(element));
+
+return reinterpret_cast&lt;Node*&gt;(&amp;element);</code></pre>
+<p class="meta">From Engine/Container/LinkedList.h, LinkedList::GetNodeOf(TType&amp; element)</p>
+
+<p>
+  That is <a href="getnodeof.html"><code>GetNodeOf</code></a>'s opening pair: the identity test is what turns
+  <code>&amp;element</code> from a bare address into a node this list is entitled to touch.
+</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; LinkedList</a></span>
+  <span><a href="index.html#methods">All LinkedList methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

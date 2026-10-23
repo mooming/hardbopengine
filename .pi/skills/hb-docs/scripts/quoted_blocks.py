@@ -70,7 +70,7 @@ SOURCE_FILE = re.compile(r'\b((?:Engine|Applications|docs|Platform|Build)/[\w./+
 # `PoolAllocator::operator<(const PoolAllocator& rhs) const`. The parameter list is optional because half
 # the corpus names a function without spelling its parameters; the qualifier is what makes a caption
 # nameable at all, so `ComponentSystemTest` alone is not a symbol this script will guess.
-CAPTION_SYMBOL = re.compile(r'\b((?:[A-Za-z_]\w*::)+(?:~?[A-Za-z_]\w*|operator[^\s(]*))(?:\s*\(([^()]*)\))?')
+CAPTION_SYMBOL = re.compile(r'\b((?:[A-Za-z_]\w*::)+(?:operator[^\s(]*|~?[A-Za-z_]\w*))(?:\s*\(([^()]*)\))?')
 
 # A caption that says the block was rewritten says so in these words. The block is still compared;
 # these words only decide what a difference means.

@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FixedRingBuffer::constructors — Container module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a class="current" href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Container</a> /
+  <a href="index.html">FixedRingBuffer</a> / constructors
+</p>
+
+<h1><span class="fn">constructors</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::FixedRingBuffer</span>
+  <span class="tag">Engine/Container/FixedRingBuffer.h</span>
+  assert positivity, round up to a power of two, allocate once — no default, no copy
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>FixedRingBuffer(const FixedRingBuffer&amp;) = delete
+
+explicit FixedRingBuffer(TIndex fixedCapacity)
+		: cap(0)
+		, head(0)
+		, tail(0)
+		, count(0)
+		, data(nullptr)
+
+FixedRingBuffer(FixedRingBuffer&amp;&amp; rhs) noexcept
+		: cap(0)
+		, head(0)
+		, tail(0)
+		, count(0)
+		, data(nullptr)</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  Three forms, two of them refusals — there is no default constructor and no copy. The sizing form is the only way to build
+  a <a href="index.html">FixedRingBuffer</a> from nothing: it fatal-asserts <code>fixedCapacity &gt; 0</code>, rounds the
+  request up to the next power of two, allocates that many elements through <code>TAllocator</code> once, and never
+  reallocates. The rounding is load-bearing:
+</p>
+
+<pre><code>	TIndex pow2Capacity = static_cast&lt;TIndex&gt;(std::bit_ceil(static_cast&lt;unsigned int&gt;(fixedCapacity)));
+
+	TAllocator alloc;
+	data = alloc.allocate(pow2Capacity);
+	cap = pow2Capacity;</code></pre>
+<p class="meta">From Engine/Container/FixedRingBuffer.h, FixedRingBuffer::FixedRingBuffer(TIndex fixedCapacity)</p>
+
+<p>
+  because <a href="wrapindex.html"><code>WrapIndex</code></a> computes with a bitmask that is only valid for a power-of-two
+  <code>cap</code>. The observable consequence: a buffer asked for 5 elements reports <a href="capacity.html">
+  <code>Capacity()</code></a> as 8, and the extra slots are spent headroom, not error.
+</p>
+
+<p>
+  The move constructor starts from the null state and <a href="swap.html"><code>Swap</code></a>s — the buffer changes owner
+  with no element touched, and the source is left holding the destination's fresh null state.
+</p>
+
+<h2 id="parameters">Parameters</h2>
+
+<table>
+  <tr><th>Parameter</th><th>Type</th><th>Requirement</th></tr>
+  <tr><td><code>fixedCapacity</code></td><td><code>TIndex</code> (<code>int</code>)</td>
+  <td>Strictly positive — a non-positive capacity is a fatal assert, not a clamp. The allocated capacity is this value
+  rounded up to a power of two.</td></tr>
+</table>
+
+<h2 id="return">Return value</h2>
+
+<p>
+  A constructor has no return value. What you can observe afterwards is <a href="isempty.html"><code>IsEmpty</code></a>
+  (<code>true</code>) and <a href="capacity.html"><code>Capacity</code></a> (the rounded power of two).
+</p>
+
+<h2 id="example">Examples</h2>
+
+<pre><code>		FixedRingBuffer&lt;int&gt; q(8);
+
+		if (q.Capacity() != 8 || !q.IsEmpty())</code></pre>
+<p class="meta">From Engine/Container/FixedRingBuffer.cpp, FixedRingBufferTest::Prepare()</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; FixedRingBuffer</a></span>
+  <span><a href="index.html#methods">All FixedRingBuffer methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

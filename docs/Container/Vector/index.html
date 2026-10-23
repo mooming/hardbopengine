@@ -208,32 +208,32 @@
     <td>Only the sized form allocates, and it allocates exactly what you asked for; the default form allocates nothing and leaves growth to the first push</td>
   </tr>
   <tr>
-    <td><code>destructor</code></td>
+    <td><a href="destructor.html"><code>~Vector</code></a></td>
     <td class="sig">~Vector()</td>
     <td>Returns early when <code>data</code> is null; otherwise destroys every element, then
       <code>allocator.deallocate(data, capacity)</code> — so the allocator must still be alive</td>
   </tr>
   <tr>
-    <td><code>operator=</code><span class="badge">2 overloads, one deleted</span></td>
+    <td><a href="operator-assign.html"><code>operator=</code></a><span class="badge">2 overloads, one deleted</span></td>
     <td class="sig">Vector&amp; operator=(Vector&amp;&amp; rhs) noexcept<br>Vector&amp; operator=(const Vector&amp;) = delete</td>
     <td>Move assignment destroys and frees the destination first (guarded by <code>this != &amp;rhs</code>) and then
       steals the source; unlike <a href="../Array/operator-assign.html"><code>Array</code></a>'s swap-based move, the
       source really is emptied</td>
   </tr>
   <tr>
-    <td><code>begin</code>, <code>end</code><span class="badge">2 overloads each</span></td>
+    <td><a href="begin.html"><code>begin</code></a>, <a href="end.html"><code>end</code></a><span class="badge">2 overloads each</span></td>
     <td class="sig">Iterator begin() noexcept<br>Iterator end() noexcept<br>ConstIterator begin() const noexcept<br>ConstIterator end() const noexcept</td>
     <td><code>data</code> and <code>data + count</code> — a contiguous range, unlike <a href="../Deque/begin.html"><code>Deque</code></a>, whose same-looking pair is wrong once the buffer wraps</td>
   </tr>
   <tr>
-    <td><code>operator[]</code><span class="badge">2 overloads</span></td>
+    <td><a href="operator-index.html"><code>operator[]</code></a><span class="badge">2 overloads</span></td>
     <td class="sig">TElement&amp; operator[](TIndex index)<br>const TElement&amp; operator[](TIndex index) const</td>
     <td>Asserts <code>IsValidIndex(index)</code> with <code>FatalAssert</code>. Not marked <code>noexcept</code>, so a
       call through a <code>noexcept</code> boundary is treated as potentially throwing — a real difference from
       <a href="../Array/operator-index.html"><code>Array::operator[]</code></a>, which is</td>
   </tr>
   <tr>
-    <td><code>Front</code>, <code>Back</code><span class="badge">2 overloads each</span></td>
+    <td><a href="front.html"><code>Front</code></a>, <a href="back.html"><code>Back</code></a><span class="badge">2 overloads each</span></td>
     <td class="sig">TElement&amp; Front()<br>TElement&amp; Back()<br>… const counterparts</td>
     <td>Each asserts <code>!IsEmpty()</code> with <code>FatalAssert</code>; <code>Back()</code> is
       <code>data[count - 1]</code>, so on an empty vector the assert fires before the arithmetic matters</td>
@@ -251,7 +251,7 @@
       into this vector are read after a growth has invalidated them</td>
   </tr>
   <tr>
-    <td><code>PopBack</code></td>
+    <td><a href="popback.html"><code>PopBack</code></a></td>
     <td class="sig">void PopBack() noexcept</td>
     <td>Asserts non-empty, decrements <code>count</code>, destroys that element. Capacity is untouched — popping does
       not shrink the allocation</td>
@@ -269,19 +269,19 @@
       below the current capacity. Allocation failure is not checked</td>
   </tr>
   <tr>
-    <td><code>Clear</code></td>
+    <td><a href="clear.html"><code>Clear</code></a></td>
     <td class="sig">void Clear() noexcept</td>
     <td>Destroys all elements and sets <code>count = 0</code>, keeping the buffer and capacity — the opposite of
       <a href="../Array/clear.html"><code>Array::Clear</code></a>, which releases the allocation</td>
   </tr>
   <tr>
-    <td><code>Size</code>, <code>Capacity</code>, <code>IsEmpty</code>, <code>IsValidIndex</code></td>
+    <td><a href="size.html"><code>Size</code></a>, <a href="capacity.html"><code>Capacity</code></a>, <a href="isempty.html"><code>IsEmpty</code></a>, <a href="isvalidindex.html"><code>IsValidIndex</code></a></td>
     <td class="sig">[[nodiscard]] TIndex Size() const noexcept<br>[[nodiscard]] TIndex Capacity() const noexcept<br>[[nodiscard]] bool IsEmpty() const noexcept<br>[[nodiscard]] bool IsValidIndex(TIndex index) const noexcept</td>
     <td>Field reads, all four <code>[[nodiscard]]</code>. <code>IsEmpty()</code> is <code>count == 0</code>, so a
       vector resized to a negative count reports <em>not empty</em></td>
   </tr>
   <tr>
-    <td><code>Data</code><span class="badge">2 overloads</span></td>
+    <td><a href="data.html"><code>Data</code></a><span class="badge">2 overloads</span></td>
     <td class="sig">[[nodiscard]] TElement* Data() noexcept<br>[[nodiscard]] const TElement* Data() const noexcept</td>
     <td>The buffer for a pointer-plus-count API — the <a href="../Array/to-raw-array.html"><code>Array</code> counterpart</a>
       is <code>ToRawArray</code>. Valid until anything reallocates</td>
@@ -293,11 +293,23 @@
       and leaves <code>allocator</code> where it was</td>
   </tr>
   <tr>
-    <td><code>FindIndex</code></td>
+    <td><a href="findindex.html"><code>FindIndex</code></a></td>
     <td class="sig">[[nodiscard]] TIndex FindIndex(const TElement&amp; element) const noexcept</td>
     <td>Linear search comparing with <code>operator==</code>, returning the first match or <code>-1</code>. This is
       the value lookup that <a href="../Array/get-index.html"><code>Array::GetIndex</code></a> is not: it finds an
       equal value anywhere, and it is <code>O(n)</code></td>
+  </tr>
+  <tr>
+    <td><a href="grow.html"><code>Grow</code></a><span class="badge">private</span></td>
+    <td class="sig">void Grow() noexcept</td>
+    <td><code>std::max(DefaultCapacity, capacity * 2)</code> handed to <code>Reserve</code> — doubling from 4, and the only
+      growth path the append routes take</td>
+  </tr>
+  <tr>
+    <td><a href="destroyall.html"><code>DestroyAll</code></a><span class="badge">private</span></td>
+    <td class="sig">void DestroyAll() noexcept</td>
+    <td>Destroys every live element front to back; <code>Clear</code>, the destructor and move assignment follow it with
+      their own tails</td>
   </tr>
 </table>
 
@@ -315,8 +327,8 @@ at namespace scope in between.</p>
     <td><code>destructor</code>, <code>operator=</code>, <code>begin</code>, <code>end</code>,
       <code>operator[]</code>, <code>Front</code>, <code>Back</code>, <code>PopBack</code>, <code>Clear</code>,
       <code>Size</code>, <code>Capacity</code>, <code>IsEmpty</code>, <code>IsValidIndex</code>,
-      <code>Data</code>, <code>FindIndex</code>. Their contracts are in the rows above; the detail an overload family
-      page would carry — parameter-by-parameter requirements, the invalidation table, worked examples — is not</td>
+      <code>Data</code>, <code>FindIndex</code> and the two private helpers below — each now links to its own page,
+      which carries the parameter-by-parameter detail the rows here condense</td>
   </tr>
   <tr>
     <td>No call site in the engine</td>

@@ -62,8 +62,9 @@
 
 <h2 id="signature">Signature</h2>
 
-<pre><code><span class="ty">LinkedList</span>&amp; <span class="fn">operator=</span>(<span class="ty">LinkedList</span>&amp;&amp; rhs) <span class="kw">noexcept</span>;
-<span class="ty">LinkedList</span>&amp; <span class="fn">operator=</span>(<span class="kw">const</span> <span class="ty">LinkedList</span>&amp;) = <span class="kw">delete</span>;</code></pre>
+<pre><code>LinkedList&amp; operator=(const LinkedList&amp;) = delete
+
+LinkedList&amp; operator=(LinkedList&amp;&amp; rhs) noexcept</code></pre>
 
 <h2 id="description">Function description</h2>
 

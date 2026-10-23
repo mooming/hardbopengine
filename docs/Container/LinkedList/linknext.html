@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LinkedList::LinkNext — Container module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a class="current" href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Container</a> /
+  <a href="index.html">LinkedList</a> / LinkNext
+</p>
+
+<h1><span class="fn">LinkNext</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::LinkedList</span>
+  <span class="tag">Engine/Container/LinkedList.h</span>
+  the four-line splice that inserts after a node
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>void LinkNext(Node* node, Node* newNode) noexcept</code></pre>
+
+<p class="note">Private — the pointer rewiring behind <a href="addnext.html"><code>AddNext</code></a> and
+<a href="addlast.html"><code>AddLast</code></a>, documented here because the four-line splice is the whole insertion
+mechanism.</p>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  Splices <code>newNode</code> into the chain immediately after <code>node</code>: <code>node</code>'s
+  <code>next</code> is re-pointed at the new node, the new node's <code>previous</code> at <code>node</code>, the new node's
+  <code>next</code> at the old successor, and — the line that makes it a doubly-linked list and not two half-chains — the
+  old successor's <code>previous</code> at the new node, when one exists. The tail update is <em>not</em> done here; it is
+  <code>AddNext</code>'s job, because only that method knows whether the list was empty.
+</p>
+
+<p>
+  Both pointers are asserted non-null — an empty list never reaches the splice, because
+  <code>AddNext</code> handles that case by assigning head and tail directly.
+</p>
+
+<h2 id="parameters">Parameters</h2>
+
+<table>
+  <tr><th>Parameter</th><th>Type</th><th>Requirement</th></tr>
+  <tr><td><code>node</code></td><td><code>Node*</code></td>
+  <td>The node to insert after; non-null, asserted.</td></tr>
+  <tr><td><code>newNode</code></td><td><code>Node*</code></td>
+  <td>The detached node to splice in; non-null, asserted.</td></tr>
+</table>
+
+<h2 id="return">Return value</h2>
+
+<p>None. The chain now runs through <code>newNode</code> where it used to run straight past <code>node</code>.</p>
+
+<h2 id="example">Examples</h2>
+
+<p class="note">Illustrative — private, and reachable only through <code>AddNext</code>.</p>
+
+<pre><code>node-&gt;next = newNode;
+newNode-&gt;previous = node;
+newNode-&gt;next = next;
+
+if (next)
+{
+	next-&gt;previous = newNode;
+}</code></pre>
+<p class="meta">From Engine/Container/LinkedList.h, LinkedList::LinkNext(Node* node, Node* newNode)</p>
+
+<p>
+  The whole splice, in order: the four writes that make the new node a full citizen of the chain.
+</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; LinkedList</a></span>
+  <span><a href="index.html#methods">All LinkedList methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

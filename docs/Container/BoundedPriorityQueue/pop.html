@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BoundedPriorityQueue::Pop — Container module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a class="current" href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Container</a> /
+  <a href="index.html">BoundedPriorityQueue</a> / Pop
+</p>
+
+<h1><span class="fn">Pop</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::BoundedPriorityQueue</span>
+  <span class="tag">Engine/Container/BoundedPriorityQueue.h</span>
+  the most urgent item, with its priority byte rewritten to the level it was served from
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>[[nodiscard]] std::optional&lt;T&gt; Pop() noexcept</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  Takes the oldest item at the highest populated priority and returns it — highest number is most urgent, and within one
+  level arrival order rules, because each level is a <code>Deque</code> drained from its front. An empty queue answers
+  <code>std::nullopt</code>: no assert, no abort, unlike <a href="../Queue/pop.html"><code>Queue::Pop</code></a>. The
+  <code>[[nodiscard]]</code> attribute makes throwing the result away a compile error, and discarding it would lose the item.
+</p>
+
+<p>
+  The returned item's <code>priority</code> byte is rewritten to the level it was actually served from:
+</p>
+
+<pre><code>	item.priority = static_cast&lt;decltype(item.priority)&gt;(servedFromLevel);</code></pre>
+<p class="meta">From Engine/Container/BoundedPriorityQueue.h, BoundedPriorityQueue::Pop()</p>
+
+<p>
+  That line is the contract for a quiet hazard: <a href="push.html"><code>Push</code></a> files an item by the byte and
+  nothing afterwards re-sorts it, so code that writes the byte while the item sits in the queue leaves it filed under the old
+  level while every read reports the new one. Rather than hand back an item whose two accounts disagree, <code>Pop</code>
+  overwrites the byte with the served level. To change a queued item's priority, remove it and push it again — assignment
+  cannot repair an order, only relocate the item.
+</p>
+
+<p>
+  Bookkeeping on the way out: the level's bucket is released if it drained
+  (<a href="releaseemptybucket.html"><code>ReleaseEmptyBucket</code></a>), the tracked maximum is walked down
+  (<a href="retrackhighestbucket.html"><code>RetrackHighestBucket</code></a>), and <code>totalSize</code> drops by one.
+</p>
+
+<h2 id="parameters">Parameters</h2>
+
+<p>None.</p>
+
+<h2 id="return">Return value</h2>
+
+<table>
+  <tr><th>Type</th><th>What you get</th></tr>
+  <tr>
+    <td><code>std::optional&lt;T&gt;</code></td>
+    <td>The item, moved out of its bucket with <code>priority</code> rewritten to the served level, or
+      <code>std::nullopt</code> when the queue was empty</td>
+  </tr>
+</table>
+
+<h2 id="example">Examples</h2>
+
+<pre><code>	outTask = workItem;
+	(void) taskQueue.Pop();</code></pre>
+<p class="meta">From Engine/Core/TaskSystem.cpp, TaskSystem::Dequeue</p>
+
+<p>
+  The engine's dequeue path inspects with <a href="top.html"><code>Top</code></a> first and only then pops — and the
+  <code>(void)</code> cast is what silencing <code>[[nodiscard]]</code> looks like: legal, deliberate, and justified here
+  because <code>Top</code> already produced the value the caller wanted.
+</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; BoundedPriorityQueue</a></span>
+  <span><a href="index.html#methods">All BoundedPriorityQueue methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

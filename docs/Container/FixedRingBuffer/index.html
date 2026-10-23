@@ -187,26 +187,26 @@
 <table>
   <tr><th>Method</th><th>Signature</th><th>What a caller depends on</th></tr>
   <tr>
-    <td><code>constructors</code><span class="badge">2 + 1 deleted</span></td>
+    <td><a href="constructors.html"><code>constructors</code></a><span class="badge">2 + 1 deleted</span></td>
     <td class="sig">explicit FixedRingBuffer(TIndex fixedCapacity)<br>FixedRingBuffer(FixedRingBuffer&amp;&amp; rhs) noexcept<br>FixedRingBuffer(const FixedRingBuffer&amp;) = delete</td>
     <td>The sizing form asserts positivity, rounds the capacity up with <code>std::bit_ceil</code> and allocates once; the
       move form steals the buffer by swapping and allocates nothing; no copy and no default constructor exist</td>
   </tr>
   <tr>
-    <td><code>destructor</code></td>
+    <td><a href="destructor.html"><code>~FixedRingBuffer</code></a></td>
     <td class="sig">~FixedRingBuffer()</td>
     <td>Returns early when <code>data</code> is null; otherwise destroys every live element through
       <code>WrapIndex(head + i)</code> and frees <code>cap</code> elements through a fresh
       <code>TAllocator</code></td>
   </tr>
   <tr>
-    <td><code>operator=</code><span class="badge">2 overloads, one deleted</span></td>
+    <td><a href="operator-assign.html"><code>operator=</code></a><span class="badge">2 overloads, one deleted</span></td>
     <td class="sig">FixedRingBuffer&amp; operator=(FixedRingBuffer&amp;&amp; rhs) noexcept<br>FixedRingBuffer&amp; operator=(const FixedRingBuffer&amp;) = delete</td>
     <td>Move assignment is <code>Swap(rhs); return *this;</code>, so the source ends up holding the destination's former
       buffer rather than being emptied; safe on self-assignment because a swap with itself is a no-op</td>
   </tr>
   <tr>
-    <td><code>operator[]</code><span class="badge">2 overloads</span></td>
+    <td><a href="operator-index.html"><code>operator[]</code></a><span class="badge">2 overloads</span></td>
     <td class="sig">TElement&amp; operator[](TIndex index) noexcept<br>const TElement&amp; operator[](TIndex index) const noexcept</td>
     <td>Position from the front, resolved through <code>WrapIndex(head + index)</code> so it is correct in a wrapped ring,
       guarded by <code>FatalAssert(IsValidIndex(index))</code>. This is the only element access: <strong>the class declares
@@ -226,7 +226,7 @@
       returned</td>
   </tr>
   <tr>
-    <td><code>Pop</code></td>
+    <td><a href="pop.html"><code>Pop</code></a></td>
     <td class="sig">TElement Pop() noexcept</td>
     <td>
       Fatal-asserts <code>!IsEmpty()</code>, moves the head element out, destroys the slot and advances the cursor, then
@@ -236,30 +236,42 @@
     </td>
   </tr>
   <tr>
-    <td><code>Front</code>, <code>Back</code><span class="badge">2 overloads each</span></td>
+    <td><a href="front.html"><code>Front</code></a>, <a href="back.html"><code>Back</code></a><span class="badge">2 overloads each</span></td>
     <td class="sig">TElement&amp; Front() noexcept<br>const TElement&amp; Front() const noexcept<br>TElement&amp; Back() noexcept<br>const TElement&amp; Back() const noexcept</td>
     <td>Both ends fatal-assert non-empty. <code>Back()</code> is <code>data[WrapIndex(tail - 1)]</code>, so the oldest and
       newest elements are reachable without the wrap arithmetic the caller would otherwise have to redo</td>
   </tr>
   <tr>
-    <td><code>Size</code>, <code>Capacity</code>, <code>IsEmpty</code>, <code>IsFull</code>, <code>IsValidIndex</code></td>
+    <td><a href="size.html"><code>Size</code></a>, <a href="capacity.html"><code>Capacity</code></a>, <a href="isempty.html"><code>IsEmpty</code></a>, <a href="isfull.html"><code>IsFull</code></a>, <a href="isvalidindex.html"><code>IsValidIndex</code></a></td>
     <td class="sig">[[nodiscard]] TIndex Size() const noexcept<br>[[nodiscard]] TIndex Capacity() const noexcept<br>[[nodiscard]] bool IsEmpty() const noexcept<br>[[nodiscard]] bool IsFull() const noexcept<br>[[nodiscard]] bool IsValidIndex(TIndex index) const noexcept</td>
     <td>Field reads, all <code>[[nodiscard]]</code>. <code>IsFull()</code> — <code>count == cap</code> — is the only test
       that stands between a push and a fatal assert, and it is the one thing a caller must check before
       <a href="push.html"><code>Push</code></a> if it wants to survive a burst</td>
   </tr>
   <tr>
-    <td><code>Clear</code></td>
+    <td><a href="clear.html"><code>Clear</code></a></td>
     <td class="sig">void Clear() noexcept</td>
     <td>Destroys every live element and resets both cursors and the count. Buffer and capacity are untouched — the ring
       keeps the whole budget it was built with</td>
   </tr>
   <tr>
-    <td><code>Swap</code></td>
+    <td><a href="swap.html"><code>Swap</code></a></td>
     <td class="sig">void Swap(FixedRingBuffer&amp; rhs) noexcept</td>
     <td>Five <code>std::swap</code> calls over <code>cap</code>, both cursors, the count and the buffer. Takes an lvalue
       reference. Since capacity travels with the buffer, a swap exchanges capacities too — the two objects' capacity
       ceilings can end up swapped</td>
+  </tr>
+  <tr>
+    <td><a href="wrapindex.html"><code>WrapIndex</code></a></td>
+    <td class="sig">TIndex WrapIndex(TIndex index) const noexcept</td>
+    <td><code>index &amp; (cap - 1)</code> — the mask every cursor advance and element address goes through, correct only
+      because the capacity is a power of two</td>
+  </tr>
+  <tr>
+    <td><a href="destroyall.html"><code>DestroyAll</code></a></td>
+    <td class="sig">void DestroyAll() noexcept</td>
+    <td>Destroys every live element in queue order, touching nothing else — <code>Clear</code> and the destructor follow it
+      with their own tails</td>
   </tr>
 </table>
 
@@ -281,7 +293,8 @@
     <td><code>constructors</code>, <code>destructor</code>, <code>operator=</code>, <code>operator[]</code>,
       <code>Emplace</code>, <code>Pop</code>, <code>Front</code>, <code>Back</code>, <code>Size</code>,
       <code>Capacity</code>, <code>IsEmpty</code>, <code>IsFull</code>, <code>IsValidIndex</code>,
-      <code>Clear</code>, <code>Swap</code>. Their contracts are the rows above</td>
+      <code>Clear</code>, <code>Swap</code> and the two helpers below — each now links to its own page, which carries
+      the parameter-by-parameter detail the rows here condense</td>
   </tr>
   <tr>
     <td>No call site in the engine</td>

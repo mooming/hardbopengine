@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Queue::Front — Container module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a class="current" href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Container</a> /
+  <a href="index.html">Queue</a> / Front
+</p>
+
+<h1><span class="fn">Front</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::Queue</span>
+  <span class="tag">Engine/Container/Queue.h</span>
+  the oldest element — aborts on empty through the container's assert
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>TElement&amp; Front() noexcept
+
+const TElement&amp; Front() const noexcept</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  A reference to the oldest element — the one the next <a href="pop.html"><code>Pop</code></a> removes. Both overloads
+  forward to the container's <code>Front</code>, and the const form is what a read-only caller gets. For the default
+  container the empty case is an abort, not an exception or a null:
+</p>
+
+<pre><code>TElement&amp; Front() noexcept
+{
+	FatalAssert(!IsEmpty());
+
+	return data[head];
+}</code></pre>
+<p class="meta">From Engine/Container/Deque.h, Deque::Front()</p>
+
+<p>
+  So calling <code>Front()</code> on an empty queue stops the process. The reference stays valid until the queue changes
+  under it — a <a href="pop.html"><code>Pop</code></a>, a <a href="clear.html"><code>Clear</code></a>, or whatever growth
+  does per the container's own contract.
+</p>
+
+<h2 id="parameters">Parameters</h2>
+
+<p>None.</p>
+
+<h2 id="return">Return value</h2>
+
+<table>
+  <tr><th>Type</th><th>What you get</th></tr>
+  <tr>
+    <td><code>TElement&amp;</code> (or <code>const TElement&amp;</code>)</td>
+    <td>A reference to the head element, mutable through the non-const overload. The const form is what a const queue
+      hands out, and the only one a read-only caller can use</td>
+  </tr>
+</table>
+
+<h2 id="example">Examples</h2>
+
+<pre><code>for (int i = 0; i &lt; 100; ++i)
+{
+	if (q.Front() != i)
+	{
+		ls &lt;&lt; "Expected " &lt;&lt; i &lt;&lt; ", got " &lt;&lt; q.Front() &lt;&lt; lferr;
+
+		return;
+	}
+
+	q.Pop();
+}</code></pre>
+<p class="meta">From Engine/Container/Queue.cpp, QueueTest::Prepare()</p>
+
+<p>
+  Read <code>Front()</code>, then <code>Pop()</code> — the standard FIFO drain, and the reason the class page warns that
+  <code>Pop</code> returns nothing: the value has to be taken through this accessor first.
+</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; Queue</a></span>
+  <span><a href="index.html#methods">All Queue methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

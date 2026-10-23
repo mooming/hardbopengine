@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Vector::DestroyAll — Container module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a class="current" href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Container</a> /
+  <a href="index.html">Vector</a> / DestroyAll
+</p>
+
+<h1><span class="fn">DestroyAll</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::Vector</span>
+  <span class="tag">Engine/Container/Vector.h</span>
+  destroy every live element front to back, touching nothing else
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>void DestroyAll() noexcept</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  Private. Destroys every live element, front to back — <code>count</code> destructor runs over
+  <code>data[0 .. count - 1]</code> — and touches nothing else: no count reset, no deallocation, no cursor work (a vector
+  has no cursors to reset).
+</p>
+
+<p>
+  That narrowness is why it has three callers with different tails: <a href="clear.html"><code>Clear</code></a> follows it
+  with <code>count = 0</code>, <a href="destructor.html">the destructor</a> with the buffer deallocation, and
+  <a href="operator-assign.html">move assignment</a> with the steal. The element
+  <a href="popback.html"><code>PopBack</code></a> would remove next is the last destructor to run.
+</p>
+
+<h2 id="parameters">Parameters</h2>
+
+<p>None.</p>
+
+<h2 id="return">Return value</h2>
+
+<p>None. Every element that was live is destroyed; the buffer's bytes are untouched.</p>
+
+<h2 id="example">Examples</h2>
+
+<p class="note">Illustrative — private; <code>Clear</code>, the destructor and move assignment are its only callers.</p>
+
+<pre><code>for (TIndex i = 0; i &lt; count; ++i)
+{
+	data[i].~TElement();
+}</code></pre>
+
+<p>
+  The whole method. Unlike <a href="../FixedRingBuffer/destroyall.html"><code>FixedRingBuffer</code></a>'s version there is
+  no wrap arithmetic — a vector's live elements are always the front of the buffer.
+</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; Vector</a></span>
+  <span><a href="index.html#methods">All Vector methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

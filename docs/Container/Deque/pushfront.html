@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Deque::PushFront — Container module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a class="current" href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Container</a> /
+  <a href="index.html">Deque</a> / PushFront
+</p>
+
+<h1><span class="fn">PushFront</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::Deque</span>
+  <span class="tag">Engine/Container/Deque.h</span>
+  the head cursor steps backwards — grow first when full
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>void PushFront(const TElement&amp; value) noexcept
+
+void PushFront(TElement&amp;&amp; value) noexcept</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  Inserts at the front: the head cursor steps <em>backwards</em> — <code>head = WrapIndex(head - 1)</code> — and the
+  element is constructed in the slot it lands on. The two overloads differ only in how the element arrives: copied from an
+  lvalue, moved from an rvalue.
+</p>
+
+<p>
+  Growth first, when <code>count == Capacity()</code>: <a href="grow.html"><code>Grow</code></a> doubles the buffer and
+  repacks it, so every reference and iterator into the deque dies on the pushes that cross the boundary — and survives on
+  the ones that do not. The method is <code>noexcept</code>, so an element copy or move that throws terminates the process
+  rather than unwinding.
+</p>
+
+<p>
+  Nothing is returned; reach the element afterwards through <a href="front.html"><code>Front</code></a> or
+  <a href="operator-index.html"><code>operator[](0)</code></a>.
+</p>
+
+<h2 id="parameters">Parameters</h2>
+
+<table>
+  <tr><th>Parameter</th><th>Type</th><th>Requirement</th></tr>
+  <tr><td><code>value</code></td><td><code>const TElement&amp;</code> or <code>TElement&amp;&amp;</code></td>
+  <td>The element to prepend. No other requirement beyond what the element's copy or move constructor imposes.</td></tr>
+</table>
+
+<h2 id="return">Return value</h2>
+
+<p>None.</p>
+
+<h2 id="example">Examples</h2>
+
+<pre><code>		d.PushFront(10);
+		d.PushFront(20);
+		d.PushFront(30);
+
+		if (d.Size() != 3 || d[0] != 30 || d[1] != 20 || d[2] != 10)</code></pre>
+<p class="meta">From Engine/Container/Deque.cpp, DequeTest::Prepare()</p>
+
+<p>
+  Front-pushes land in reverse arrival order at the front — the last one pushed is <code>d[0]</code> — which is the
+  prepend contract in one assertion.
+</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; Deque</a></span>
+  <span><a href="index.html#methods">All Deque methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

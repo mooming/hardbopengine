@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Vector::operator= — Container module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a class="current" href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Container</a> /
+  <a href="index.html">Vector</a> / operator=
+</p>
+
+<h1><span class="fn">operator=</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::Vector</span>
+  <span class="tag">Engine/Container/Vector.h</span>
+  copy deleted; move tears the destination down, then steals — the source ends truly empty
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>Vector&amp; operator=(const Vector&amp;) = delete
+
+Vector&amp; operator=(Vector&amp;&amp; rhs) noexcept</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  Two forms, one of them a refusal. Copy assignment is <code>= delete</code>; a vector is move-only. The move form is
+  <code>noexcept</code> and guarded against self-assignment — assigning a vector to itself changes nothing.
+</p>
+
+<p>
+  For a genuine move, the destination first tears itself down — destroys its live elements and frees its buffer, when it has
+  one — then takes the three fields (<code>count</code>, <code>capacity</code>, <code>data</code>) and zeroes the source.
+  The source ends truly empty, with a null buffer: unlike
+  <a href="../FixedRingBuffer/operator-assign.html"><code>FixedRingBuffer</code></a>'s swap-shaped move, nothing of the
+  destination's former state survives anywhere. The <code>allocator</code> member is not moved — the destination keeps its
+  own, which matters only for a stateful <code>TAllocator</code>.
+</p>
+
+<h2 id="parameters">Parameters</h2>
+
+<table>
+  <tr><th>Parameter</th><th>Type</th><th>Requirement</th></tr>
+  <tr><td><code>rhs</code></td><td><code>Vector&amp;&amp;</code></td>
+  <td>The source vector. Its elements, capacity and buffer are taken; it is left null and empty.</td></tr>
+</table>
+
+<h2 id="return">Return value</h2>
+
+<p><code>*this</code>, holding the source's former elements and buffer.</p>
+
+<h2 id="example">Examples</h2>
+
+<pre><code>		Vector&lt;int&gt; v3;
+		v3 = std::move(v2);
+		if (v3.Size() != 2 || v3[0] != 1)</code></pre>
+<p class="meta">From Engine/Container/Vector.cpp, VectorTest::Prepare()</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; Vector</a></span>
+  <span><a href="index.html#methods">All Vector methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>HashMap::Contains — Container module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a class="current" href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Container</a> /
+  <a href="index.html">HashMap</a> / Contains
+</p>
+
+<h1><span class="fn">Contains</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::HashMap</span>
+  <span class="tag">Engine/Container/HashMap.h</span>
+  the const, noexcept membership test — Occupied or nothing
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>[[nodiscard]] bool Contains(const TKey&amp; key) const noexcept</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  One probe sequence, answered <code>true</code> only when the slot found is <code>Occupied</code> — a tombstoned key reads
+  absent, which is exactly what a caller wants after a <code>Remove</code>, and what makes a churned map's tombstone
+  overhead invisible from the API. It is const and <code>noexcept</code>, so it is the membership test for read-only
+  callers; <a href="operator-index.html"><code>operator[]</code></a> cannot play this role because it would insert.
+</p>
+
+<p>
+  When the value is wanted too, prefer <a href="find.html"><code>Find</code></a> — this is a probe whose position is thrown
+  away.
+</p>
+
+<h2 id="parameters">Parameters</h2>
+
+<table>
+  <tr><th>Parameter</th><th>Type</th><th>Requirement</th></tr>
+  <tr><td><code>key</code></td><td><code>const TKey&amp;</code></td>
+  <td>The key to test for, hashed by <code>THash</code> and compared by <code>TKeyEqual</code>.</td></tr>
+</table>
+
+<h2 id="return">Return value</h2>
+
+<p>
+  <code>true</code> when the map holds a live entry with that key, <code>false</code> otherwise.
+  <code>[[nodiscard]]</code>, so discarding the answer is a compile error.
+</p>
+
+<h2 id="example">Examples</h2>
+
+<p class="note">Illustrative — no direct call site for this exists in the repository.</p>
+
+<pre><code>if (!m.Contains(5) || m.Contains(99))
+{
+	// present-and-absent, checked in one condition
+}</code></pre>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; HashMap</a></span>
+  <span><a href="index.html#methods">All HashMap methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

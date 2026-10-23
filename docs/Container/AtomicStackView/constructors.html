@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AtomicStackView::constructors — Container module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a class="current" href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Container</a> /
+  <a href="index.html">AtomicStackView</a> / constructors
+</p>
+
+<h1><span class="fn">constructors</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::AtomicStackView</span>
+  <span class="tag">Engine/Container/AtomicStackView.h</span>
+  the only constructor — one null head, nothing allocated
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>AtomicStackView() noexcept
+		: top(nullptr)</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  The only constructor. It initialises the single member — the <code>std::atomic&lt;T*&gt; top;</code> head — to
+  <code>nullptr</code>, so a fresh <a href="index.html">AtomicStackView</a> is an empty stack and the first
+  <a href="push.html"><code>Push</code></a> becomes the head. It allocates nothing and touches nothing but that one
+  pointer: the container owns no storage of its own, because the nodes live in objects the caller created.
+</p>
+
+<p>
+  It is <code>noexcept</code>, and it is the whole constructor list: there is no copy or move form, no sizing form and
+  no range form. The copy and move operations are unavailable because <code>std::atomic</code> is neither copyable nor
+  movable — two owners of one head pointer is the bug their deletion prevents.
+</p>
+
+<h2 id="parameters">Parameters</h2>
+
+<p>None.</p>
+
+<h2 id="return">Return value</h2>
+
+<p>
+  A constructor has no return value. What you can observe afterwards is <a href="isempty.html"><code>IsEmpty</code></a>,
+  which returns <code>true</code> on a freshly constructed stack.
+</p>
+
+<h2 id="example">Examples</h2>
+
+<pre><code>AtomicStackView&lt;TNode&lt;bool&gt;&gt; stack;</code></pre>
+<p class="meta">From Engine/Container/AtomicStackView.cpp, AtomicStackViewTest::Prepare()</p>
+
+<p>
+  Every instantiation in the repository is a default construction followed by pushes; the test above constructs stacks of
+  several element types purely to prove the empty state comes up for each of them.
+</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; AtomicStackView</a></span>
+  <span><a href="index.html#methods">All AtomicStackView methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

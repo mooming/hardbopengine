@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LinkedList::~LinkedList — Container module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a class="current" href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Container</a> /
+  <a href="index.html">LinkedList</a> / ~LinkedList
+</p>
+
+<h1><span class="fn">~LinkedList</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::LinkedList</span>
+  <span class="tag">Engine/Container/LinkedList.h</span>
+  Clear: every node unlinked, destroyed and returned through the list's allocator
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>~LinkedList() noexcept</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  Explicitly <code>noexcept</code>, and its whole body is <a href="clear.html"><code>Clear</code></a>: every node is
+  unlinked and destroyed, one at a time, each returned through the list's own allocator — which therefore has to outlive the
+  list. There is no drain and no report: elements still chained are destroyed here.
+</p>
+
+<p>
+  The test exercises exactly this contract with a scoped pool allocator — construct, fill, let the scope close, and the
+  pool's bookkeeping confirms every node came back.
+</p>
+
+<h2 id="parameters">Parameters</h2>
+
+<p>None.</p>
+
+<h2 id="return">Return value</h2>
+
+<p>
+  A destructor has no return value. The <code>noexcept</code> is declared, not implicit: an element destructor that throws
+  terminates the process.
+</p>
+
+<h2 id="example">Examples</h2>
+
+<pre><code>		{
+			LinkedList&lt;int&gt; intList;
+
+			for (int i = 0; i &lt; COUNT; ++i)
+			{
+				intList.Add(i);
+			}
+
+			ls &lt;&lt; "A list is constructed." &lt;&lt; lf;
+			...
+		}
+
+		ls &lt;&lt; "The list is destructed." &lt;&lt; lf;</code></pre>
+<p class="meta">From Engine/Container/LinkedList.cpp, LinkedListTest::Prepare()</p>
+
+<p>
+  The elided middle is the iteration check; the braces are the lifetime.
+</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; LinkedList</a></span>
+  <span><a href="index.html#methods">All LinkedList methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>
