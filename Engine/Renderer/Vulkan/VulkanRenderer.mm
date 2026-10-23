@@ -1,6 +1,5 @@
 // Copyright (c) 2026 Hansol Park (mooming.go@gmail.com). All rights reserved.
 
-
 #include "Vulkan/VulkanRenderer.h"
 
 #if defined(PLATFORM_OSX)
@@ -18,7 +17,6 @@ namespace hbe
 {
 namespace Renderer
 {
-
 namespace
 {
 void LogSurfaceFailure(const char* reason) noexcept
@@ -36,6 +34,7 @@ bool VulkanRenderer::CreateMetalSurface() noexcept
 	if (nsWindow == nil)
 	{
 		LogSurfaceFailure("window native handle is not an NSWindow");
+
 		return false;
 	}
 
@@ -43,6 +42,7 @@ bool VulkanRenderer::CreateMetalSurface() noexcept
 	if (metalDevice == nil)
 	{
 		LogSurfaceFailure("MTLCreateSystemDefaultDevice returned no Metal device");
+
 		return false;
 	}
 
@@ -51,6 +51,7 @@ bool VulkanRenderer::CreateMetalSurface() noexcept
 	{
 		LogSurfaceFailure("failed to allocate the presentation content view");
 		[metalDevice release];
+
 		return false;
 	}
 
@@ -60,6 +61,7 @@ bool VulkanRenderer::CreateMetalSurface() noexcept
 		LogSurfaceFailure("failed to create the CAMetalLayer");
 		[metalDevice release];
 		[contentView release];
+
 		return false;
 	}
 
@@ -89,12 +91,12 @@ bool VulkanRenderer::CreateMetalSurface() noexcept
 		{
 			ls << "vkCreateMetalSurfaceEXT failed (VkResult=" << static_cast<int>(result) << ")";
 		});
+
 		return false;
 	}
 
 	return true;
 }
-
 } // namespace Renderer
 } // namespace hbe
 
