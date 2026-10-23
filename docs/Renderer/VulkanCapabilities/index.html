@@ -75,6 +75,13 @@
   never reshapes the struct.
 </p>
 
+<p>
+  The instance-level extension probe that <code>QueryDefaultDeviceCapabilities</code> runs through
+  <code>HasInstanceExtension</code> passes a mutable count to <code>vkEnumerateInstanceExtensionProperties</code>
+  and reads it back after the call: Vulkan writes back the number of entries it actually filled, so the count
+  cannot be <code>const</code> even though the probe only reads the extension list.
+</p>
+
 <div class="note">
   <strong>Two behaviours of the translator are decisions, not readings.</strong>
   <code>supportsComputeShader</code> is set <code>true</code> without a query, because compute is mandatory in core
