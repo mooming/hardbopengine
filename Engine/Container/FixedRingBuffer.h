@@ -11,7 +11,6 @@
 #include "Memory/DefaultAllocator.h"
 #include "Memory/Memory.h"
 
-
 namespace hbe
 {
 /// API reference: docs/Container/FixedRingBuffer/index.html
@@ -40,7 +39,6 @@ public:
 	{
 		FatalAssert(fixedCapacity > 0, "FixedRingBuffer capacity must be positive");
 
-		// Round up to power of 2 for efficient bitmasking
 		TIndex pow2Capacity = static_cast<TIndex>(std::bit_ceil(static_cast<unsigned int>(fixedCapacity)));
 
 		TAllocator alloc;

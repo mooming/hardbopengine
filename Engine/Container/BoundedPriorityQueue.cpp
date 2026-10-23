@@ -223,7 +223,6 @@ void BoundedPriorityQueueTest::Prepare()
 			return;
 		}
 
-		// Pushing again must re-create the bucket rather than read a released one.
 		queue.Push(TestItem(9, false, 42));
 		auto item = queue.Pop();
 		if (!item.has_value() || item->tag != 42)
@@ -318,9 +317,9 @@ void BoundedPriorityQueueTest::Prepare()
 	{
 		BoundedPriorityQueue<TestItem> queue;
 
-		queue.Push(TestItem(10, true)); // finished
+		queue.Push(TestItem(10, true));
 		queue.Push(TestItem(20, false));
-		queue.Push(TestItem(15, true)); // finished
+		queue.Push(TestItem(15, true));
 		queue.Push(TestItem(25, false));
 
 		if (queue.Size() != 4)
@@ -417,7 +416,6 @@ void BoundedPriorityQueueTest::Prepare()
 		time::TDuration engineTime;
 		time::TDuration stlTime;
 
-		// Test BoundedPriorityQueue
 		{
 			time::ScopedTime measure(engineTime);
 			BoundedPriorityQueue<TestItem> queue;
@@ -435,7 +433,6 @@ void BoundedPriorityQueueTest::Prepare()
 			}
 		}
 
-		// Test std::priority_queue
 		{
 			time::ScopedTime measure(stlTime);
 			std::priority_queue<TestItem> queue;

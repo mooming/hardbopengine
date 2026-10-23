@@ -6,7 +6,6 @@
 
 #include "OSAL/Intrinsic.h"
 
-
 namespace hbe
 {
 template <typename T>
@@ -17,7 +16,6 @@ template <CNext T>
 class AtomicStackView final
 {
 public:
-	/// @brief A lock-free atomic stack implementation using CAS operations
 	using Iterator = T*;
 	using ConstIterator = const T*;
 

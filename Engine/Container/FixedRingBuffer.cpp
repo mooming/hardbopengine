@@ -80,7 +80,7 @@ void FixedRingBufferTest::Prepare()
 
 	AddTest("Full Detection", [this](auto& ls)
 	{
-		FixedRingBuffer<int> q(4); // Power of 2 capacity
+		FixedRingBuffer<int> q(4);
 		q.Push(1);
 		q.Push(2);
 		q.Push(3);

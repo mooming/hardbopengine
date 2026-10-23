@@ -10,22 +10,8 @@
 #include "Container/Deque.h"
 #include "Core/Debug.h"
 
-
 namespace hbe
 {
-/// @brief A bounded priority queue using bucket-based approach.
-/// @details One deque per priority value, indexed by priority (0-255). The most urgent priority is the
-///          HIGHEST number, and within one priority items drain oldest-first, so two items sharing a
-///          priority run in arrival order rather than newest-first.
-/// @details Buckets exist only while they hold something: a priority's deque is created on the first
-///          push to it and released when it empties. Constructing a queue therefore allocates nothing
-///          no matter how many priority levels it declares, which is what makes MaxPriority=256 and a
-///          roomy BucketSizeHint affordable at the same time.
-/// @tparam T Task type must have uint8_t priority and HasFinished() method.
-/// @tparam MaxPriority Number of priority levels; also the highest meaningful priority value.
-/// @tparam BucketSizeHint Capacity a bucket is created with, for a priority known to be busy. Zero
-///          leaves the deque to its own default. Only priorities actually used pay this, so setting it
-///          costs nothing on the levels a stream never uses.
 /// API reference: docs/Container/BoundedPriorityQueue/index.html
 template <typename T, std::size_t MaxPriority = 256, std::size_t BucketSizeHint = 0>
 class BoundedPriorityQueue final
@@ -82,14 +68,6 @@ public:
 			highestBucket = priority;
 	}
 
-	/// @brief Take the most urgent item, which is the oldest one at the highest populated priority.
-	/// @brief Serve the most urgent item, reporting its `priority` as the level it was actually served from.
-	/// @details **The bucket index is the priority**, not the byte. `Push` files an item by the byte and nothing
-	/// afterwards
-	///          re-sorts it, so a byte written while the item is queued leaves it filed under the old level while every
-	///          read reports the new one. Rather than hand a caller an item whose two accounts disagree, `Pop`
-	///          overwrites the byte with the level it served from. To change a queued item's priority, remove it and
-	///          push it again: assignment cannot repair an order, only relocate the item.
 	[[nodiscard]] std::optional<T> Pop() noexcept
 	{
 		if (totalSize == 0)
@@ -109,7 +87,6 @@ public:
 		return item;
 	}
 
-	/// @brief Look at the most urgent item without removing it.
 	[[nodiscard]] std::optional<T> Top() const noexcept
 	{
 		if (totalSize == 0)
@@ -118,10 +95,6 @@ public:
 		return buckets[highestBucket]->Front();
 	}
 
-	/// @brief Drop every item the predicate claims, returning how many went.
-	/// @details Each bucket is rotate-filtered: every item is taken from the front exactly once and
-	///          either dropped or pushed to the back, so survivors keep their arrival order without
-	///          needing a second container to compact into.
 	std::size_t Remove(TPredicate predicate) noexcept
 	{
 		if (predicate == nullptr)
@@ -186,7 +159,6 @@ public:
 	}
 
 private:
-	/// @brief Get the deque for a priority, creating it on first use.
 	[[nodiscard]] TBucket& AcquireBucket(std::size_t priority) noexcept
 	{
 		FatalAssert(priority < MaxPriority, "BoundedPriorityQueue priority is not a bucket index");
@@ -207,9 +179,6 @@ private:
 		return *bucket;
 	}
 
-	/// @brief Release a bucket that has run dry, so its storage is not held across an idle period.
-	/// @note The engaged-means-non-empty invariant is maintained here and only here; Pop and Remove
-	///       rely on it to treat has_value() as "there is work at this priority".
 	void ReleaseEmptyBucket(std::size_t priority) noexcept
 	{
 		auto& bucket = buckets[priority];
@@ -219,9 +188,6 @@ private:
 		}
 	}
 
-	/// @brief Walk the tracked priority down to the next one that still holds items.
-	/// @note Ends at 0 with nothing there once the queue is empty, which is harmless because every
-	///       reader checks totalSize first. Cost is paid when a queue empties, not per pop.
 	void RetrackHighestBucket() noexcept
 	{
 		while (highestBucket > 0 && !buckets[highestBucket].has_value())

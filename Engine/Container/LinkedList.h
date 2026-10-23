@@ -8,10 +8,8 @@
 #include "Memory/DefaultAllocator.h"
 #include "Memory/Memory.h"
 
-
 namespace hbe
 {
-/// @brief Node structure for doubly-linked list containing value and pointers to adjacent nodes
 /// API reference: docs/Container/LinkedListNode/index.html
 template <typename TType>
 struct LinkedListNode final
@@ -61,7 +59,6 @@ struct LinkedListNode final
 	}
 };
 
-/// @brief Doubly-linked list implementation with custom allocator support
 /// API reference: docs/Container/LinkedList/index.html
 template <typename TType, class TAllocator = DefaultAllocator<LinkedListNode<TType>>>
 class LinkedList final
@@ -183,13 +180,6 @@ public:
 		}
 	}
 
-	/// @brief Removes the node that holds `element`. The element is located by **address**, not
-	///        by value: it must be an lvalue owned by this list (from an iterator, `Find`, `Add`
-	///        or `AddNext`), so a temporary or a foreign object that merely compares equal is
-	///        rejected by the parameter type before the precondition is ever reached. Taking a
-	///        non-const reference is what makes that contract mechanical - `GetNodeOf` recovers a
-	///        node from the element's address, which is only meaningful for an element this list
-	///        allocated.
 	Iterator Remove(TType& element) noexcept
 	{
 		Assert(ContainsElement(element));
@@ -338,11 +328,6 @@ private:
 		return next;
 	}
 
-	/// @brief True when `element` is the payload of one of this list's own nodes. This is the
-	///        identity test that `Contains(const TType*)` performs, and it is the precondition
-	///        `GetNodeOf` needs: that function recovers a node from the element's address, which
-	///        is only meaningful for an element this list actually allocated. Value equality
-	///        (`Contains(const TType&)`) is deliberately *not* sufficient here.
 	[[nodiscard]] bool ContainsElement(const TType& element) const noexcept
 	{
 		return Contains(&element);
