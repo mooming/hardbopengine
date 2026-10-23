@@ -1,7 +1,7 @@
 // Copyright (c) 2026 Hansol Park (mooming.go@gmail.com). All rights reserved.
 
-#include "OSProtectionMode.h"
 #include "Config/BuildConfig.h"
+#include "OSProtectionMode.h"
 
 #ifdef PLATFORM_OSX
 #include <sys/mman.h>

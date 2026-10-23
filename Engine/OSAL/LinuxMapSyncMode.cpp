@@ -1,7 +1,7 @@
 // Copyright (c) 2026 Hansol Park (mooming.go@gmail.com). All rights reserved.
 
-#include "OSMapSyncMode.h"
 #include "Config/BuildConfig.h"
+#include "OSMapSyncMode.h"
 
 #ifdef PLATFORM_LINUX
 #include <sys/mman.h>
