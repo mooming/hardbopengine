@@ -7,7 +7,7 @@ Source comments are banned, so a missing page means the contract is nowhere.
 | module | API entries | with a page | missing | test-only | pages addressed from the header | comment lines still in sources |
 |---|---|---|---|---|---|---|
 | Config | 5 | 5 | 0 | 0 | 5 | 0 |
-| Container | 19 | 17 | 2 | 15 | 8 | 55 |
+| Container | 19 | 19 | 0 | 15 | 19 | 0 |
 | Core | 31 | 31 | 0 | 9 | 31 | 0 |
 | Engine | 2 | 2 | 0 | 0 | 0 | 0 |
 | HSTL | 3 | 3 | 0 | 1 | 0 | 0 |
@@ -35,33 +35,33 @@ Source comments are banned, so a missing page means the contract is nowhere.
 | Container | AtomicFixedRingMPMCTest | test-only | `Engine/Container/AtomicFixedRingMPMC.h` | `docs/Container/AtomicFixedRingMPMCTest/index.html` | 0 | — | test-only — owns a Coverage row |
 | Container | AtomicFixedRingMPSC | class | `Engine/Container/AtomicFixedRingMPSC.h` | `docs/Container/AtomicFixedRingMPSC/index.html` | 13 | yes | documented |
 | Container | AtomicFixedRingMPSCTest | test-only | `Engine/Container/AtomicFixedRingMPSC.h` | `docs/Container/AtomicFixedRingMPSCTest/index.html` | 0 | — | test-only — owns a Coverage row |
-| Container | AtomicStackView | class | `Engine/Container/AtomicStackView.h` | `docs/Container/AtomicStackView/index.html` | 2 | **no** | documented |
+| Container | AtomicStackView | class | `Engine/Container/AtomicStackView.h` | `docs/Container/AtomicStackView/index.html` | 5 | yes | documented |
 | Container | AtomicStackViewTest | test-only | `Engine/Container/AtomicStackView.h` | `docs/Container/AtomicStackViewTest/index.html` | 0 | — | test-only — owns a Coverage row |
-| Container | BoundedPriorityQueue | class | `Engine/Container/BoundedPriorityQueue.h` | `docs/Container/BoundedPriorityQueue/index.html` | 3 | **no** | documented |
+| Container | BoundedPriorityQueue | class | `Engine/Container/BoundedPriorityQueue.h` | `docs/Container/BoundedPriorityQueue/index.html` | 13 | yes | documented |
 | Container | BoundedPriorityQueueTest | test-only | `Engine/Container/BoundedPriorityQueue.h` | `docs/Container/BoundedPriorityQueueTest/index.html` | 0 | — | test-only — owns a Coverage row |
-| Container | Deque | class | `Engine/Container/Deque.h` | `docs/Container/Deque/index.html` | 4 | **no** | documented |
+| Container | Deque | class | `Engine/Container/Deque.h` | `docs/Container/Deque/index.html` | 22 | yes | documented |
 | Container | DequeTest | test-only | `Engine/Container/Deque.h` | `docs/Container/DequeTest/index.html` | 0 | — | test-only — owns a Coverage row |
-| Container | EHashEntryState | enum | `Engine/Container/HashMap.h` | `docs/Container/EHashEntryState/index.html` | 0 | — | MISSING |
+| Container | EHashEntryState | enum | `Engine/Container/HashMap.h` | `docs/Container/EHashEntryState/index.html` | 0 | yes | documented |
 | Container | EPopResult | enum | `Engine/Container/EPopResult.h` | `docs/Container/EPopResult/index.html` | 0 | yes | documented |
 | Container | EPushResult | enum | `Engine/Container/EPushResult.h` | `docs/Container/EPushResult/index.html` | 0 | yes | documented |
-| Container | FixedRingBuffer | class | `Engine/Container/FixedRingBuffer.h` | `docs/Container/FixedRingBuffer/index.html` | 1 | **no** | documented |
+| Container | FixedRingBuffer | class | `Engine/Container/FixedRingBuffer.h` | `docs/Container/FixedRingBuffer/index.html` | 17 | yes | documented |
 | Container | FixedRingBufferTest | test-only | `Engine/Container/FixedRingBuffer.h` | `docs/Container/FixedRingBufferTest/index.html` | 0 | — | test-only — owns a Coverage row |
 | Container | FixedRingMPMC | class | `Engine/Container/FixedRingMPMC.h` | `docs/Container/FixedRingMPMC/index.html` | 8 | yes | documented |
 | Container | FixedRingMPMCTest | test-only | `Engine/Container/FixedRingMPMC.h` | `docs/Container/FixedRingMPMCTest/index.html` | 0 | — | test-only — owns a Coverage row |
 | Container | FixedRingMPSC | class | `Engine/Container/FixedRingMPSC.h` | `docs/Container/FixedRingMPSC/index.html` | 8 | yes | documented |
 | Container | FixedRingMPSCTest | test-only | `Engine/Container/FixedRingMPSC.h` | `docs/Container/FixedRingMPSCTest/index.html` | 0 | — | test-only — owns a Coverage row |
-| Container | HashMap | class | `Engine/Container/HashMap.h` | `docs/Container/HashMap/index.html` | 3 | **no** | documented |
+| Container | HashMap | class | `Engine/Container/HashMap.h` | `docs/Container/HashMap/index.html` | 22 | yes | documented |
 | Container | HashMapTest | test-only | `Engine/Container/HashMap.h` | `docs/Container/HashMapTest/index.html` | 0 | — | test-only — owns a Coverage row |
-| Container | LinkedList | class | `Engine/Container/LinkedList.h` | `docs/Container/LinkedList/index.html` | 2 | **no** | documented |
-| Container | LinkedListNode | struct | `Engine/Container/LinkedList.h` | `docs/Container/LinkedListNode/index.html` | 0 | — | MISSING |
+| Container | LinkedList | class | `Engine/Container/LinkedList.h` | `docs/Container/LinkedList/index.html` | 23 | yes | documented |
+| Container | LinkedListNode | struct | `Engine/Container/LinkedList.h` | `docs/Container/LinkedListNode/index.html` | 5 | yes | documented |
 | Container | LinkedListTest | test-only | `Engine/Container/LinkedList.h` | `docs/Container/LinkedListTest/index.html` | 0 | — | test-only — owns a Coverage row |
-| Container | Map | class | `Engine/Container/Map.h` | `docs/Container/Map/index.html` | 2 | **no** | documented |
+| Container | Map | class | `Engine/Container/Map.h` | `docs/Container/Map/index.html` | 18 | yes | documented |
 | Container | MapTest | test-only | `Engine/Container/Map.h` | `docs/Container/MapTest/index.html` | 0 | — | test-only — owns a Coverage row |
-| Container | Queue | class | `Engine/Container/Queue.h` | `docs/Container/Queue/index.html` | 1 | **no** | documented |
+| Container | Queue | class | `Engine/Container/Queue.h` | `docs/Container/Queue/index.html` | 9 | yes | documented |
 | Container | QueueTest | test-only | `Engine/Container/Queue.h` | `docs/Container/QueueTest/index.html` | 0 | — | test-only — owns a Coverage row |
 | Container | RingBuffer | class | `Engine/Container/RingBuffer.h` | `docs/Container/RingBuffer/index.html` | 18 | yes | documented |
 | Container | RingBufferTest | test-only | `Engine/Container/RingBuffer.h` | `docs/Container/RingBufferTest/index.html` | 0 | — | test-only — owns a Coverage row |
-| Container | Vector | class | `Engine/Container/Vector.h` | `docs/Container/Vector/index.html` | 6 | **no** | documented |
+| Container | Vector | class | `Engine/Container/Vector.h` | `docs/Container/Vector/index.html` | 23 | yes | documented |
 | Container | VectorTest | test-only | `Engine/Container/Vector.h` | `docs/Container/VectorTest/index.html` | 0 | — | test-only — owns a Coverage row |
 | Core | CPUBudget | class | `Engine/Core/CPUBudget.h` | `docs/Core/CPUBudget/index.html` | 9 | yes | documented |
 | Core | CPUBudgetTest | test-only | `Engine/Core/CPUBudget.h` | `docs/Core/CPUBudgetTest/index.html` | 0 | — | test-only — owns a Coverage row |

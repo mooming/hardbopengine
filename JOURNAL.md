@@ -1,5 +1,36 @@
 # Journal
 
+## 2026-10-23 11:20 — the Container cycle, and the 128 pages the ledger hid
+
+**Cause.** Second module on the worklist. The ledger said Container owed 2 pages; `docs_methods.py`
+said its classes owed 128 method pages — the ledger's missing column counts class-level entries only,
+which is why the worklist's weight estimate was wrong. The owner chose one sequential authoring
+subagent over parallel ones to spare context.
+
+**Closed in this round.** The twelve-block layout over eight headers (the `Map.h` duplicate
+`DefaultCapacity` my first edit introduced was caught by clang refusing the file — the constant had to
+move below the types, not be copied); the format pass proved a no-op beyond the seam dance; 128 method
+pages authored by the worker and verified by me (signatures verbatim for all nine classes, htmlcheck
+252 pages, `docs_methods` at 0); two enum/struct pages I wrote first; eleven `/// API reference`
+pointers; and the 55-comment strip with token-identical proofs, split into a strip commit and a
+seams commit because the strip deletes non-blank lines and only the seams commit can be proven
+whitespace-only.
+
+**The three catches.** First, a `--tag` carrying raw `<…>` breaks htmlcheck's tag balancer — tags are
+passed pre-escaped. Second, `docs_pass signatures` reads the method name off the page's `<h1>`, so a
+page generated without `--label` (stem-derived "Is head") can never match the header's `IsHead` — four
+pages regenerated with exact labels. Third, `comments.py`'s pointer reader cannot skip a wrapped
+template header's continuation line: `class TAllocator = …>` on line two reads as the declaration, so
+HashMap's and Map's pointers sit directly above the class head, and the tool's caption regex was fixed
+so `operator=` captions capture the symbol instead of fanning out to every operator in the file
+(selftest green; three `()`-overload captions remain structurally unresolved and stay in O14's
+backlog).
+
+**Verification.** Container scoped gates all 0: comments, layout (17 files, 2 waived), docs coverage
+19/19, method pages, htmlcheck. The detached gate passed the build 12/12 and the suite 66/66 in all
+three configurations; its exit 1 is again the tree-wide backlog — the 11 OSAL platform files
+(clang-format plus include order), now the front of the worklist.
+
 ## 2026-10-23 00:20 — the Memory module cycle, and the gate that caught its own reviewer
 
 **Cause.** The owner asked for a codebase review and a worklist to apply hb-docs and hb-standards;
