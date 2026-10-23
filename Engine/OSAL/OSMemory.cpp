@@ -7,13 +7,11 @@
 #include "Engine/Engine.h"
 #include "Intrinsic.h"
 
-
 #if !defined(PLATFORM_LINUX) && !defined(PLATFORM_OSX) && !defined(PLATFORM_WINDOWS)
 #error "No platform macro defined. Please define one of: PLATFORM_LINUX, PLATFORM_OSX, PLATFORM_WINDOWS"
 #endif
 
 #if defined(PLATFORM_LINUX) || defined(PLATFORM_OSX) || defined(PLATFORM_WINDOWS)
-
 #elif defined(__linux__)
 #include <cerrno>
 #include <cstdlib>

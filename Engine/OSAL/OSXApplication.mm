@@ -16,11 +16,11 @@
 {
 	return NO;
 }
+
 @end
 
 namespace OS
 {
-
 Application::Application() noexcept
 	: platformHandle(nullptr)
 {
@@ -75,7 +75,6 @@ void Application::PollEvents()
 		[app updateWindows];
 	}
 }
-
 } // namespace OS
 
 #endif // PLATFORM_OSX

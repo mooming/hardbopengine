@@ -2,6 +2,7 @@
 
 #include "Application.h"
 
+
 namespace OS
 {
 std::unique_ptr<Application> CreateApplication() noexcept

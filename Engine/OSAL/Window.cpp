@@ -5,6 +5,7 @@
 #include "Application.h"
 #include "Config/BuildConfig.h"
 
+
 namespace OS
 {
 std::unique_ptr<Window> CreateWindow(const hbe::HString& title, int width, int height)

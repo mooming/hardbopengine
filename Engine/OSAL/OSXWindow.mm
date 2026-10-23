@@ -6,6 +6,7 @@
 
 #ifdef PLATFORM_OSX
 #import <Cocoa/Cocoa.h>
+
 #include <cstdio>
 
 @interface HBWindowDelegate : NSObject <NSWindowDelegate>
@@ -13,6 +14,7 @@
 @public
 	bool* closedFlag;
 }
+
 @end
 
 @implementation HBWindowDelegate
@@ -25,11 +27,11 @@
 
 	return YES;
 }
+
 @end
 
 namespace OS
 {
-
 Window::Window() noexcept
 	: width(0)
 	, height(0)
@@ -169,7 +171,6 @@ intptr_t Window::GetNativeHandle() const
 {
 	return reinterpret_cast<intptr_t>(osHandle);
 }
-
 } // namespace OS
 
 #endif // PLATFORM_OSX
