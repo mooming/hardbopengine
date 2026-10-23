@@ -1,5 +1,33 @@
 # Journal
 
+## 2026-10-23 16:00 — the OSAL cycle, and the labels the strip was right to refuse
+
+**Cause.** Fourth module, the largest OS-layer debt: fourteen reference pages owed from zero, 96
+comments, the eleven-file platform cluster failing both the format and include gates.
+
+**Closed in this round.** The twelve-block layout over five headers (data above functions, platform
+`#if` branches moved as units); the eleven Linux/OSX platform units formatted and their include blocks
+sorted (the tree-wide gate's oldest failing section, now gone); 98 pages authored by one subagent and
+verified by me — signatures verbatim for the nine class pages, htmlcheck 98 pages, quoted_blocks 0 stale
+0 unresolved; fourteen pointer lines; and all 96 comments stripped with token-identical proofs, the
+strip and the seams again as separate commits. One design document
+(`docs/design/OSALPlatformSplit_Design.html`) owns the platform-selection pattern, the fallback role of
+the `OS*.cpp` units, the VirtualAlloc/VirtualFree semantics the tests pin, and the macOS application
+and window lifecycle notes.
+
+**The catches.** First, `docs_pass.py`'s declaration collector skipped every chunk beginning with
+`friend ` or `static constexpr`, so an in-class friend operator and a `static constexpr` factory could
+never verify their pages — fixed (a `static constexpr` chunk is data when the `=` precedes the first
+`(`, a function when it follows; friend declarations without a parenthesis still drop). Second, the
+strip deleted `#else // _WINDOWS` from OSAbstractLayer.h — correctly, because the label named a macro
+that no longer exists; the construct is `#ifdef WIN32`, and the respelled `#else // WIN32` passes the
+exemption, which is the shape the standard's list meant. Third, the `.mm` files are outside clang-format
+entirely, so their rule-set A findings are hand edits proven whitespace-only; the checker's A12 between
+a method's `}` and `@end` is the one place its C++ lexer's definition model shows through.
+
+**Verification.** OSAL scoped gates all 0 and all six commits exit 0; the detached gate's build is
+12/12 and the suite 66/66 in all three configurations (verdict read after this entry was written).
+
 ## 2026-10-23 14:00 — the Renderer cycle, and the gate race that manufactured a failure
 
 **Cause.** Third module on the worklist: 44 layout findings in VulkanRenderer.h, 239 comments in nine

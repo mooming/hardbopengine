@@ -14,8 +14,8 @@ Source comments are banned, so a missing page means the contract is nowhere.
 | Log | 4 | 4 | 0 | 0 | 0 | 0 |
 | Math | 16 | 0 | 16 | 15 | 0 | 127 |
 | Memory | 23 | 23 | 0 | 12 | 23 | 0 |
-| OSAL | 14 | 0 | 14 | 5 | 0 | 96 |
-| Renderer | 9 | 9 | 0 | 2 | 9 | 11 |
+| OSAL | 14 | 14 | 0 | 5 | 14 | 0 |
+| Renderer | 9 | 9 | 0 | 2 | 9 | 1 |
 | Resource | 7 | 7 | 0 | 3 | 0 | 0 |
 | String | 9 | 1 | 8 | 5 | 0 | 14 |
 | Test | 5 | 4 | 1 | 5 | 0 | 125 |
@@ -179,24 +179,24 @@ Source comments are banned, so a missing page means the contract is nowhere.
 | Memory | SystemAllocatorTest | test-only | `Engine/Memory/SystemAllocator.h` | `docs/Memory/SystemAllocatorTest/index.html` | 0 | — | test-only — owns a Coverage row |
 | Memory | ThreadSafeMultiPoolAllocator | class | `Engine/Memory/ThreadSafeMultiPoolAllocator.h` | `docs/Memory/ThreadSafeMultiPoolAllocator/index.html` | 14 | yes | documented |
 | Memory | ThreadSafeMultiPoolAllocatorTest | test-only | `Engine/Memory/ThreadSafeMultiPoolAllocator.h` | `docs/Memory/ThreadSafeMultiPoolAllocatorTest/index.html` | 0 | — | test-only — owns a Coverage row |
-| OSAL | Application | class | `Engine/OSAL/Application.h` | `docs/OSAL/Application/index.html` | 0 | — | MISSING |
-| OSAL | Directory | class | `Engine/OSAL/Directory.h` | `docs/OSAL/Directory/index.html` | 0 | — | MISSING |
-| OSAL | File | class | `Engine/OSAL/File.h` | `docs/OSAL/File/index.html` | 0 | — | MISSING |
-| OSAL | FileHandle | class | `Engine/OSAL/OSFileHandle.h` | `docs/OSAL/FileHandle/index.html` | 0 | — | MISSING |
-| OSAL | FileOpenMode | class | `Engine/OSAL/OSFileOpenMode.h` | `docs/OSAL/FileOpenMode/index.html` | 0 | — | MISSING |
-| OSAL | MapSyncMode | class | `Engine/OSAL/OSMapSyncMode.h` | `docs/OSAL/MapSyncMode/index.html` | 0 | — | MISSING |
-| OSAL | OSAbstractLayer | macro set | `Engine/OSAL/OSAbstractLayer.h` | `docs/OSAL/OSAbstractLayer/index.html` | 0 | — | MISSING |
-| OSAL | OSDebug | utility header | `Engine/OSAL/OSDebug.h` | `docs/OSAL/OSDebug/index.html` | 0 | — | MISSING |
+| OSAL | Application | class | `Engine/OSAL/Application.h` | `docs/OSAL/Application/index.html` | 5 | yes | documented |
+| OSAL | Directory | class | `Engine/OSAL/Directory.h` | `docs/OSAL/Directory/index.html` | 4 | yes | documented |
+| OSAL | File | class | `Engine/OSAL/File.h` | `docs/OSAL/File/index.html` | 5 | yes | documented |
+| OSAL | FileHandle | class | `Engine/OSAL/OSFileHandle.h` | `docs/OSAL/FileHandle/index.html` | 5 | yes | documented |
+| OSAL | FileOpenMode | class | `Engine/OSAL/OSFileOpenMode.h` | `docs/OSAL/FileOpenMode/index.html` | 7 | yes | documented |
+| OSAL | MapSyncMode | class | `Engine/OSAL/OSMapSyncMode.h` | `docs/OSAL/MapSyncMode/index.html` | 4 | yes | documented |
+| OSAL | OSAbstractLayer | macro set | `Engine/OSAL/OSAbstractLayer.h` | `docs/OSAL/OSAbstractLayer/index.html` | 3 | yes | documented |
+| OSAL | OSDebug | utility header | `Engine/OSAL/OSDebug.h` | `docs/OSAL/OSDebug/index.html` | 1 | yes | documented |
 | OSAL | OSDebugTest | test-only | `Engine/OSAL/OSDebug.h` | `docs/OSAL/OSDebugTest/index.html` | 0 | — | test-only — owns a Coverage row |
-| OSAL | OSInputOutput | utility header | `Engine/OSAL/OSInputOutput.h` | `docs/OSAL/OSInputOutput/index.html` | 0 | — | MISSING |
+| OSAL | OSInputOutput | utility header | `Engine/OSAL/OSInputOutput.h` | `docs/OSAL/OSInputOutput/index.html` | 10 | yes | documented |
 | OSAL | OSInputOutputTest | test-only | `Engine/OSAL/OSInputOutput.h` | `docs/OSAL/OSInputOutputTest/index.html` | 0 | — | test-only — owns a Coverage row |
-| OSAL | OSMemory | utility header | `Engine/OSAL/OSMemory.h` | `docs/OSAL/OSMemory/index.html` | 0 | — | MISSING |
+| OSAL | OSMemory | utility header | `Engine/OSAL/OSMemory.h` | `docs/OSAL/OSMemory/index.html` | 8 | yes | documented |
 | OSAL | OSMemoryTest | test-only | `Engine/OSAL/OSMemory.h` | `docs/OSAL/OSMemoryTest/index.html` | 0 | — | test-only — owns a Coverage row |
-| OSAL | OSThread | utility header | `Engine/OSAL/OSThread.h` | `docs/OSAL/OSThread/index.html` | 0 | — | MISSING |
+| OSAL | OSThread | utility header | `Engine/OSAL/OSThread.h` | `docs/OSAL/OSThread/index.html` | 7 | yes | documented |
 | OSAL | OSThreadTest | test-only | `Engine/OSAL/OSThread.h` | `docs/OSAL/OSThreadTest/index.html` | 0 | — | test-only — owns a Coverage row |
-| OSAL | ProtectionMode | class | `Engine/OSAL/OSProtectionMode.h` | `docs/OSAL/ProtectionMode/index.html` | 0 | — | MISSING |
-| OSAL | SourceLocation | class | `Engine/OSAL/SourceLocation.h` | `docs/OSAL/SourceLocation/index.html` | 0 | — | MISSING |
-| OSAL | Window | class | `Engine/OSAL/Window.h` | `docs/OSAL/Window/index.html` | 0 | — | MISSING |
+| OSAL | ProtectionMode | class | `Engine/OSAL/OSProtectionMode.h` | `docs/OSAL/ProtectionMode/index.html` | 5 | yes | documented |
+| OSAL | SourceLocation | class | `Engine/OSAL/SourceLocation.h` | `docs/OSAL/SourceLocation/index.html` | 6 | yes | documented |
+| OSAL | Window | class | `Engine/OSAL/Window.h` | `docs/OSAL/Window/index.html` | 13 | yes | documented |
 | OSAL | WindowTest | test-only | `Engine/OSAL/Window.h` | `docs/OSAL/WindowTest/index.html` | 0 | — | test-only — owns a Coverage row |
 | Renderer | DeviceType | enum | `Engine/Renderer/RenderCapabilities.h` | `docs/Renderer/DeviceType/index.html` | 0 | yes | documented |
 | Renderer | Mesh | struct | `Engine/Renderer/Vulkan/VulkanRenderer.h` | `docs/Renderer/Mesh/index.html` | 0 | yes | documented |
