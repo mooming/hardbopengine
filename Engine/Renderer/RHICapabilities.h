@@ -5,24 +5,16 @@
 #include "Config/BuildConfig.h"
 #include "RenderCapabilities.h"
 
-
 namespace hbe
 {
 namespace Renderer
 {
-/// @brief Answers RHI questions before a renderer exists, without committing callers to a backend.
-/// @details The renderer is the authority once it owns a device - VulkanRenderer queries the
-///          device it actually picked and caches the result, which is both cheaper and more
-///          accurate than anything this stateless probe can do. Use this only for the
-///          before-Initialize questions: is a backend available at all, and roughly what can
-///          this machine do.
+/// API reference: docs/Renderer/RHICapabilities/index.html
 class RHICapabilities final
 {
 public:
 	[[nodiscard]] static bool IsVulkanSupported() noexcept;
 
-	/// @brief Probe the first available device, creating and discarding a Vulkan instance.
-	/// @return A descriptor whose isDeviceQueried is false when nothing could be probed.
 	[[nodiscard]] static RenderCapabilities GetCapabilities() noexcept;
 };
 } // namespace Renderer

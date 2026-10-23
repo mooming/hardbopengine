@@ -8,7 +8,6 @@
 #include "Core/Debug.h"
 #include "Vulkan/VulkanCapabilities.h"
 
-
 namespace hbe
 {
 namespace Renderer
@@ -24,9 +23,6 @@ bool RHICapabilities::IsVulkanSupported() noexcept
 
 RenderCapabilities RHICapabilities::GetCapabilities() noexcept
 {
-	// Real values, read from the driver - see VulkanCapabilities for the translation. The
-	// descriptor self-reports as unqueried when no device answers, so callers can tell the
-	// difference between "this machine has nothing" and "nobody asked".
 	RenderCapabilities capabilities;
 	QueryDefaultDeviceCapabilities(capabilities);
 
@@ -53,9 +49,6 @@ void RHICapabilitiesTest::Prepare()
 
 		ls << "isDeviceQueried=" << caps.isDeviceQueried << " maxTextureDimension2D=" << caps.maxTextureDimension2D;
 
-		// The bug this guards: the descriptor used to ship 4096/16/16 and
-		// supportsTessellation=false as defaults, which real hardware contradicted and which
-		// no caller could distinguish from a genuine query result.
 		Assert(!caps.isDeviceQueried, "A fresh descriptor must not claim to describe a device");
 		Assert(caps.maxTextureDimension2D == 0, "Unqueried limit must be zero, not a guessed default");
 		Assert(caps.maxVertexAttributes == 0, "Unqueried vertex attribute limit must be zero");
@@ -71,8 +64,6 @@ void RHICapabilitiesTest::Prepare()
 
 		if (!caps.isDeviceQueried)
 		{
-			// No loader, no ICD, or an incompatible driver - a legitimate environment (headless
-			// CI, a machine without MoltenVK), so there is nothing to compare against.
 			ls << "no Vulkan device available; query skipped";
 
 			return;
@@ -85,12 +76,10 @@ void RHICapabilitiesTest::Prepare()
 		   << " tessellation=" << caps.supportsTessellation << " geometryShader=" << caps.supportsGeometryShader
 		   << " compute=" << caps.supportsComputeShader;
 
-		// Identity has to survive the fixed-size copy, and the API version has to be real.
 		Assert(caps.deviceName[0] != '\0', "A queried device must report a name");
 		Assert(caps.apiVersionMajor >= 1, "A Vulkan device must report API version 1 or newer");
 		Assert(caps.deviceType != Renderer::DeviceType::Unknown, "A queried device must classify itself");
 
-		// Limits must be non-zero, and must not be the numbers the old hardcode claimed.
 		Assert(caps.maxTextureDimension2D >= 2048, "A Vulkan device supports at least 2048 texels");
 		Assert(caps.maxTextureDimension2D != 4096 || caps.maxVertexAttributes != 16,
 			   "Values identical to the retired hardcode suggest nothing was actually queried");
@@ -99,7 +88,6 @@ void RHICapabilitiesTest::Prepare()
 		Assert(caps.maxColorAttachments > 0, "Color attachment limit must be queried");
 		Assert(caps.uniformBufferOffsetAlignment > 0, "Uniform buffer alignment must be queried");
 
-		// Vulkan mandates compute in core, so a queried device always reports it.
 		Assert(caps.supportsComputeShader, "Vulkan always supports compute shaders");
 	});
 

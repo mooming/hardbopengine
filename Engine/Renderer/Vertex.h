@@ -6,10 +6,9 @@
 #include "Math/Vector3.h"
 #include "Math/Vector4.h"
 
-
 namespace hbe::Renderer
 {
-/// @brief Position + color vertex used by the renderer's simple mesh path.
+/// API reference: docs/Renderer/Vertex/index.html
 struct Vertex
 {
 	Vector3<float> position;
