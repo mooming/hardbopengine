@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Perlin noise internals design — Math module — HardBop Engine design document</title>
+<link rel="stylesheet" href="../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../Config/index.html">Config</a></li>
+    <li><a href="../Container/index.html">Container</a></li>
+    <li><a href="../Core/index.html">Core</a></li>
+    <li><a href="../Engine/index.html">Engine</a></li>
+    <li><a href="../HSTL/index.html">HSTL</a></li>
+    <li><a href="../Log/index.html">Log</a></li>
+    <li><a class="current" href="../Math/index.html">Math</a></li>
+    <li><a href="../Memory/index.html">Memory</a></li>
+    <li><a href="../OSAL/index.html">OSAL</a></li>
+    <li><a href="../Renderer/index.html">Renderer</a></li>
+    <li><a href="../Resource/index.html">Resource</a></li>
+    <li><a href="../String/index.html">String</a></li>
+    <li><a href="../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This document</h3>
+  <ul>
+<li><a href="#permutation">The permutation table and its doubling</a></li>
+<li><a href="#negative-wrap">Negative coordinates wrap, not truncate</a></li>
+<li><a href="#shuffle">The shuffle is specified, not delegated</a></li>
+<li><a href="#gradients">Ken Perlin's reference gradient selection</a></li>
+<li><a href="#continuity">Why the continuity test is shaped the way it is</a></li>
+<li><a href="#seealso">Where else to look</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<h1>Perlin noise internals design</h1>
+
+<p>
+  The <a href="../Math/PerlinNoise/index.html">PerlinNoise</a> reference page owns what a caller depends
+  on; this document owns the implementation decisions in
+  <code>Engine/Math/PerlinNoise.cpp</code> — how the permutation table is built and indexed, and why the
+  shuffle is specified by arithmetic instead of delegated to the standard library. Every claim here was
+  read from that file.
+</p>
+
+<h2 id="permutation">The permutation table and its doubling</h2>
+
+<p>
+  The shuffle is a Fisher-Yates walk over the <em>low half</em> of the table only: the class's
+  <code>At()</code> lookup indexes a doubled table (<code>p[p[p[x] + y] + z]</code>), so only the first 256
+  entries need to be a permutation — the upper half is the mirror that saves the double-mask the classic
+  formulation performs. The instance's seed fixes the permutation, which is what
+  <a href="../Math/PerlinNoise/get-seed.html">GetSeed</a> reports.
+</p>
+
+<h2 id="negative-wrap">Negative coordinates wrap, not truncate</h2>
+
+<p>
+  The lattice coordinate is cast to the table's unsigned index <em>before</em> the mask is applied. Casting
+  after masking would truncate negative coordinates toward zero, making <code>-0.5</code> and
+  <code>+0.5</code> collide with their positive mirror and produce a seam at the origin; casting first
+  wraps them into the table, which is the behaviour the continuity test relies on.
+</p>
+
+<h2 id="shuffle">The shuffle is specified, not delegated</h2>
+
+<p>
+  The random source behind the Fisher-Yates walk is a golden-ratio counter finalized with the Murmur3
+  finalizer — every step specified by arithmetic rather than by a library implementation detail. That is
+  the whole point: the shuffle, and therefore the noise a given seed produces, must be identical on every
+  platform. A <code>std::mt19937</code>-based shuffle would tie the noise field to the standard library's
+  implementation, which is allowed to differ.
+</p>
+
+<h2 id="gradients">Ken Perlin's reference gradient selection</h2>
+
+<p>
+  The gradient function is Ken Perlin's reference selection for "improved noise" — the twelve edge
+  directions of a cube picked by bit manipulation of the hashed value. It is the published reference
+  behaviour, not a re-derivation, so the noise matches the reference implementation's character.
+</p>
+
+<h2 id="continuity">Why the continuity test is shaped the way it is</h2>
+
+<p>
+  Perlin noise is C1 continuous, so a small step in the input must give a proportionally small change in
+  the output. A discontinuity — a wrong fade curve, or a seam at the table period — shows up as a jump
+  comparable to the size of the signal itself, which is why the test samples small steps and near the
+  table period specifically. Negative coordinates and a coordinate past the table period are table
+  indexing traps rather than math problems, so they are sampled on purpose.
+</p>
+
+<h2 id="seealso">Where else to look</h2>
+
+<ul>
+  <li><a href="../Math/PerlinNoise/index.html">PerlinNoise</a> — the class reference, including the two
+  test-pinned properties (zero at integer lattice coordinates, bounded to roughly ±0.87).</li>
+  <li><a href="../Math/index.html">Math module reference</a> — the other sixteen entries.</li>
+</ul>
+
+</main>
+</body>
+</html>
