@@ -7,7 +7,6 @@
 
 #include "Log/Logger.h"
 
-
 namespace hbe::Renderer
 {
 namespace
@@ -32,9 +31,6 @@ DeviceType ToDeviceType(VkPhysicalDeviceType type) noexcept
 	}
 }
 
-/// @brief Copy a Vulkan fixed-size, null-terminated string into our shorter fixed buffer.
-/// @details Truncated with the terminator always written, because a device name we later
-///          print must never run past MaxDeviceNameLength.
 void CopyDeviceName(const char* source, char (&destination)[RenderCapabilities::MaxDeviceNameLength]) noexcept
 {
 	constexpr size_t MaxCopyLength = RenderCapabilities::MaxDeviceNameLength - 1;
@@ -44,7 +40,6 @@ void CopyDeviceName(const char* source, char (&destination)[RenderCapabilities::
 	destination[copyLength] = '\0';
 }
 
-/// @brief Whether the Vulkan loader advertises an instance-level extension.
 bool HasInstanceExtension(const char* extensionName) noexcept
 {
 	uint32_t availableCount = 0;
@@ -54,7 +49,6 @@ bool HasInstanceExtension(const char* extensionName) noexcept
 	}
 
 	VkExtensionProperties extensions[MaxInstanceExtensionProbe];
-	// Vulkan writes back the number it actually filled, so this count must not be const.
 	uint32_t probeCount = std::min<uint32_t>(availableCount, MaxInstanceExtensionProbe);
 	if (vkEnumerateInstanceExtensionProperties(nullptr, &probeCount, extensions) != VK_SUCCESS)
 	{
@@ -77,7 +71,6 @@ void FillRenderCapabilities(VkPhysicalDevice physicalDevice, RenderCapabilities&
 {
 	static const auto log = Logger::Get("VulkanCapabilities", ELogLevel::Error);
 
-	// Start from "unknown" so a failed query can never leave stale or invented values behind.
 	outCapabilities = RenderCapabilities();
 
 	if (physicalDevice == VK_NULL_HANDLE)
@@ -87,15 +80,12 @@ void FillRenderCapabilities(VkPhysicalDevice physicalDevice, RenderCapabilities&
 		return;
 	}
 
-	// These two are the plain (non-chained) structs, so they carry no sType - zeroing them and
-	// letting the driver write the whole record is the whole contract here.
 	VkPhysicalDeviceProperties properties{};
 	vkGetPhysicalDeviceProperties(physicalDevice, &properties);
 
 	VkPhysicalDeviceFeatures features{};
 	vkGetPhysicalDeviceFeatures(physicalDevice, &features);
 
-	// Identity.
 	CopyDeviceName(properties.deviceName, outCapabilities.deviceName);
 	outCapabilities.deviceType = ToDeviceType(properties.deviceType);
 	outCapabilities.vendorId = properties.vendorID;
@@ -104,7 +94,6 @@ void FillRenderCapabilities(VkPhysicalDevice physicalDevice, RenderCapabilities&
 	outCapabilities.apiVersionMajor = static_cast<uint8_t>(VK_VERSION_MAJOR(properties.apiVersion));
 	outCapabilities.apiVersionMinor = static_cast<uint8_t>(VK_VERSION_MINOR(properties.apiVersion));
 
-	// Feature support - read straight from the device, so a driver that drops a feature shows it.
 	outCapabilities.supportsTessellation = features.tessellationShader != VK_FALSE;
 	outCapabilities.supportsGeometryShader = features.geometryShader != VK_FALSE;
 	outCapabilities.supportsMultiDrawIndirect = features.multiDrawIndirect != VK_FALSE;
@@ -125,11 +114,8 @@ void FillRenderCapabilities(VkPhysicalDevice physicalDevice, RenderCapabilities&
 	outCapabilities.supportsTextureCompressionASTC = features.textureCompressionASTC_LDR != VK_FALSE;
 	outCapabilities.supportsRobustBufferAccess = features.robustBufferAccess != VK_FALSE;
 
-	// Compute is not a queryable feature bit in Vulkan: it is mandatory in core since 1.0, so
-	// there is no VkPhysicalDeviceFeatures member for it. It stays true by definition.
 	outCapabilities.supportsComputeShader = true;
 
-	// Limits.
 	const auto& limits = properties.limits;
 	outCapabilities.maxTextureDimension1D = limits.maxImageDimension1D;
 	outCapabilities.maxTextureDimension2D = limits.maxImageDimension2D;
@@ -164,11 +150,6 @@ bool QueryDefaultDeviceCapabilities(RenderCapabilities& outCapabilities) noexcep
 	appInfo.pApplicationName = "HardBop Engine";
 	appInfo.apiVersion = VK_MAKE_API_VERSION(0, 1, 1, 0);
 
-	// MoltenVK publishes itself as a portability driver, which the loader hides unless
-	// VK_KHR_portability_enumeration is both supported and enabled. Conforming drivers are not
-	// required to offer it, and enabling an extension the loader does not have fails instance
-	// creation outright, so it is enabled conditionally - unlike VulkanRenderer::CreateInstance,
-	// which can assume a portability driver on macOS and asks for it unconditionally.
 	const bool enablePortabilityEnumeration = HasInstanceExtension(VK_KHR_PORTABILITY_ENUMERATION_EXTENSION_NAME);
 	const char* enabledExtensions[] = {VK_KHR_PORTABILITY_ENUMERATION_EXTENSION_NAME};
 
@@ -186,8 +167,6 @@ bool QueryDefaultDeviceCapabilities(RenderCapabilities& outCapabilities) noexcep
 	const VkResult createResult = vkCreateInstance(&instanceInfo, nullptr, &instance);
 	if (createResult != VK_SUCCESS)
 	{
-		// No loader, no ICD, or an incompatible driver. That is a legitimate answer rather than
-		// a fault, so it is a warning and the caller keeps an explicitly unqueried descriptor.
 		log.OutWarning([&createResult](auto& ls)
 		{
 			ls << "Warning: no Vulkan instance for the capability probe (VkResult=" << static_cast<int>(createResult)
@@ -212,9 +191,6 @@ bool QueryDefaultDeviceCapabilities(RenderCapabilities& outCapabilities) noexcep
 		return false;
 	}
 
-	// The first enumerated device is good enough for a pre-device question about the machine.
-	// Actual device selection stays with VulkanRenderer::PickDevice, which additionally requires
-	// a graphics queue that can present to the real surface - something this probe has none of.
 	VkPhysicalDevice physicalDevice = VK_NULL_HANDLE;
 	deviceCount = 1;
 	const VkResult fetchResult = vkEnumeratePhysicalDevices(instance, &deviceCount, &physicalDevice);

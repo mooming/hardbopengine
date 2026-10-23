@@ -22,7 +22,6 @@ namespace Renderer
 {
 namespace
 {
-// Portability enumeration is required for MoltenVK to appear in the device list.
 constexpr const char* kInstanceExtensions[] = {
 		VK_KHR_SURFACE_EXTENSION_NAME,
 		VK_KHR_PORTABILITY_ENUMERATION_EXTENSION_NAME,
@@ -33,14 +32,12 @@ constexpr const char* kInstanceExtensions[] = {
 #endif
 };
 
-/// @brief Report a Vulkan call failure - engine logging rule: errors are always on.
 void LogFailure(const char* step, VkResult result) noexcept
 {
 	static const auto log = Logger::Get("VulkanRenderer", ELogLevel::Error);
 	log.OutError([step, result](auto& ls) { ls << step << " failed (VkResult=" << static_cast<int>(result) << ")"; });
 }
 
-/// @brief Report a VulkanRenderer step that failed without a VkResult to report.
 void LogFailure(const char* step) noexcept
 {
 	static const auto log = Logger::Get("VulkanRenderer", ELogLevel::Error);
@@ -67,9 +64,6 @@ bool FindMemoryType(VkPhysicalDevice physicalDevice, uint32_t typeFilter, VkMemo
 	return false;
 }
 
-/// @brief out = lhs * rhs for column-major 4x4 matrices (element col*4+row).
-/// @details The shader takes a pre-combined viewProj so that the 128-byte push range can
-///          also carry the model matrix; this is the one multiply that buys us that room.
 void MultiplyColumnMajor(float out[16], const float lhs[16], const float rhs[16]) noexcept
 {
 	float tmp[16];
@@ -154,8 +148,6 @@ bool VulkanRenderer::Initialize(OS::Window* inWindow) noexcept
 
 	window = inWindow;
 
-	// The surface must exist before device picking: queue family support is
-	// queried against the surface itself.
 	if (!CreateInstance())
 		return false;
 	if (!CreateSurface())
@@ -223,24 +215,17 @@ bool VulkanRenderer::CreateSurface() noexcept
 #if defined(PLATFORM_OSX)
 	return CreateMetalSurface();
 #elif defined(PLATFORM_WINDOWS) && defined(VK_USE_PLATFORM_WIN32_KHR)
-	// NOTE: compile-unverified on this machine (macOS only environment).
 	VkWin32SurfaceCreateInfoKHR info{};
 	info.sType = VK_STRUCTURE_TYPE_WIN32_SURFACE_CREATE_INFO_KHR;
 	info.hwnd = reinterpret_cast<HWND>(window->GetNativeHandle());
 
 	return vkCreateWin32SurfaceKHR(instance, &info, nullptr, &surface) == VK_SUCCESS;
 #else
-	// No surface backend for this platform yet. Linux needs OS::Window to expose its
-	// X11 Display* (GetNativeHandle only returns the Window id).
 	return false;
 #endif
 }
 
 #if !defined(PLATFORM_OSX)
-// The macOS implementation lives in VulkanRenderer.mm. This stub must stay excluded on
-// macOS: a second definition here would satisfy the symbol from VulkanRenderer.cpp.o, so
-// VulkanRenderer.mm.o would never be pulled out of the static archive and the real Metal
-// surface would silently never run.
 bool VulkanRenderer::CreateMetalSurface() noexcept
 {
 	return false;
@@ -260,7 +245,6 @@ bool VulkanRenderer::PickDevice() noexcept
 
 	if (count == 0)
 	{
-		// Usually means the portability enumeration flag is missing or no ICD is installed.
 		LogFailure("no Vulkan physical device found (check VK_ICD_FILENAMES / MoltenVK install)");
 
 		return false;
@@ -312,10 +296,6 @@ bool VulkanRenderer::CreateDevice() noexcept
 	queueCI.queueCount = 1;
 	queueCI.pQueuePriorities = &priority;
 
-	// No optional features are required by this pipeline, so none are requested:
-	// asking for an unsupported feature makes vkCreateDevice fail outright.
-	// VK_KHR_swapchain must be enabled per device: without it the loader leaves the
-	// swapchain entry points NULL and vkCreateSwapchainKHR fails.
 	const char* deviceExtensions[] = {VK_KHR_SWAPCHAIN_EXTENSION_NAME};
 
 	VkDeviceCreateInfo ci{};
@@ -335,8 +315,6 @@ bool VulkanRenderer::CreateDevice() noexcept
 
 	vkGetDeviceQueue(device, queueFamilyIndex, 0, &graphicsQueue);
 
-	// The physical device is valid from here on, so this is the first point where real
-	// capability data exists. Querying once here keeps GetCapabilities() a cheap copy.
 	QueryCapabilities();
 
 	return true;
@@ -358,7 +336,6 @@ bool VulkanRenderer::CreateSwapchain() noexcept
 		return false;
 	}
 
-	// currentExtent is 0xFFFFFFFF when the surface sizes itself from the window.
 	if (caps.currentExtent.width == 0xFFFFFFFFu)
 	{
 		extent.width = static_cast<uint32_t>(window->GetWidth());
@@ -385,7 +362,6 @@ bool VulkanRenderer::CreateSwapchain() noexcept
 		return false;
 	}
 
-	// The CAMetalLayer is configured as BGRA8Unorm - match it when offered.
 	surfaceFormat = formats[0];
 	for (const auto& f : formats)
 	{
@@ -402,7 +378,6 @@ bool VulkanRenderer::CreateSwapchain() noexcept
 	if (modeCount > 0)
 		vkGetPhysicalDeviceSurfacePresentModesKHR(physicalDevice, surface, &modeCount, modes.data());
 
-	// FIFO is the only mode guaranteed to exist; mailbox is preferred when available.
 	presentMode = VK_PRESENT_MODE_FIFO_KHR;
 	for (const auto& m : modes)
 	{
@@ -473,7 +448,6 @@ bool VulkanRenderer::CreateSwapchain() noexcept
 
 bool VulkanRenderer::CreateRenderPass() noexcept
 {
-	// Both descriptions must be contiguous: pAttachments is indexed, not per-element bound.
 	VkAttachmentDescription attachments[2] = {};
 
 	attachments[0].format = surfaceFormat.format;
@@ -514,8 +488,6 @@ bool VulkanRenderer::CreateRenderPass() noexcept
 	subpass.pColorAttachments = &colorRef;
 	subpass.pDepthStencilAttachment = &depthRef;
 
-	// External -> subpass 0: the acquire semaphore is waited outside the pass, so the
-	// pass itself must not start writing colour/depth before the previous present ended.
 	VkSubpassDependency dependency{};
 	dependency.srcSubpass = VK_SUBPASS_EXTERNAL;
 	dependency.dstSubpass = 0;
@@ -660,7 +632,6 @@ bool VulkanRenderer::CreateCommandBuffers() noexcept
 		return false;
 	}
 
-	// One command buffer per frame in flight: a submitted buffer must not be re-recorded.
 	commandBuffers.assign(MAX_FRAMES_IN_FLIGHT, VK_NULL_HANDLE);
 	VkCommandBufferAllocateInfo ai{};
 	ai.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
@@ -703,9 +674,6 @@ bool VulkanRenderer::CreateBuffer(VkBuffer& buffer, VkDeviceMemory& memory, size
 	VkMemoryAllocateInfo ami{};
 	ami.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
 	ami.allocationSize = req.size;
-	// The mesh is written once from the CPU and never modified per frame, so host
-	// visible memory is mapped directly. A device local copy + staging transfer is the
-	// right long-term shape (tracked as a follow-up).
 	const auto properties = static_cast<VkMemoryPropertyFlags>(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
 															   VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
 	if (!FindMemoryType(physicalDevice, req.memoryTypeBits, properties, ami.memoryTypeIndex))
@@ -735,7 +703,7 @@ bool VulkanRenderer::CreateVertexBuffers(const Mesh& mesh) noexcept
 	vertexCount = mesh.vertices.size();
 	indexCount = mesh.indices.size();
 	if (vertexCount == 0 || indexCount == 0)
-		return true; // empty mesh: clear-only frame
+		return true;
 
 	const auto vertexBytes = vertexCount * sizeof(MeshVertex);
 	const auto indexBytes = indexCount * sizeof(uint32_t);
@@ -866,7 +834,6 @@ bool VulkanRenderer::CreatePipeline() noexcept
 	VkPipelineRasterizationStateCreateInfo rast{};
 	rast.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
 	rast.polygonMode = VK_POLYGON_MODE_FILL;
-	// Marching-cubes winding is not guaranteed, so nothing is culled.
 	rast.cullMode = VK_CULL_MODE_NONE;
 	rast.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE;
 	rast.lineWidth = 1.0f;
@@ -951,7 +918,6 @@ bool VulkanRenderer::CreateSyncObjects() noexcept
 	VkSemaphoreCreateInfo si{};
 	si.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
 
-	// Fences start signaled: frame 0 must not block on work that was never submitted.
 	VkFenceCreateInfo fi{};
 	fi.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
 	fi.flags = VK_FENCE_CREATE_SIGNALED_BIT;
@@ -1012,7 +978,6 @@ void VulkanRenderer::RecordFrame() noexcept
 
 	vkCmdBindPipeline(commandBuffers[currentFrame], VK_PIPELINE_BIND_POINT_GRAPHICS, graphicsPipeline);
 
-	// Viewport and scissor are dynamic state - they must be set before drawing.
 	VkViewport vp{};
 	vp.x = 0.0f;
 	vp.y = 0.0f;
@@ -1058,16 +1023,13 @@ void VulkanRenderer::BeginFrame() noexcept
 												   semaphoresImageAvailable[currentFrame], VK_NULL_HANDLE, &imageIndex);
 	if (acquire != VK_SUCCESS && acquire != VK_SUBOPTIMAL_KHR)
 	{
-		// Swapchain lost. EndFrame still has to release the fence it just reset,
-		// otherwise the next BeginFrame would wait on a fence nobody signals.
-		// Recreating the swapchain here is the real fix (tracked as a follow-up).
 		return;
 	}
 
 	frameActive = imageIndex < static_cast<uint32_t>(framebuffers.size());
 }
 
-void VulkanRenderer::Render(float /*deltaTime*/) noexcept
+void VulkanRenderer::Render(float) noexcept
 {
 	returnIf(!(initialized && frameActive));
 
@@ -1097,7 +1059,6 @@ void VulkanRenderer::EndFrame() noexcept
 		if (vkQueueSubmit(graphicsQueue, 1, &submit, fences[currentFrame]) != VK_SUCCESS)
 		{
 			LogFailure("vkQueueSubmit");
-			// The fence was reset in BeginFrame: release it even though the submit failed.
 			const VkSubmitInfo release{};
 			vkQueueSubmit(graphicsQueue, 0, &release, fences[currentFrame]);
 
@@ -1119,7 +1080,6 @@ void VulkanRenderer::EndFrame() noexcept
 		}
 		else if (!firstFramePresented)
 		{
-			// One milestone line: proof that the whole pipeline reached presentation.
 			firstFramePresented = true;
 			static const auto log = Logger::Get("VulkanRenderer");
 			log.Out([&](auto& ls)
@@ -1131,8 +1091,6 @@ void VulkanRenderer::EndFrame() noexcept
 	}
 	else
 	{
-		// Nothing was drawn this frame: release the fence with an empty submit so the
-		// frame cycle stays intact.
 		VkSubmitInfo submit{};
 		submit.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
 		if (vkQueueSubmit(graphicsQueue, 0, &submit, fences[currentFrame]) != VK_SUCCESS)
@@ -1203,7 +1161,6 @@ void VulkanRenderer::Destroy() noexcept
 
 	ReleaseVertexBuffers();
 
-	// The command pool frees its command buffers when destroyed.
 	if (commandPool != VK_NULL_HANDLE)
 		vkDestroyCommandPool(device, commandPool, nullptr);
 	commandPool = VK_NULL_HANDLE;
@@ -1227,7 +1184,6 @@ void VulkanRenderer::Destroy() noexcept
 			vkDestroyFramebuffer(device, fb, nullptr);
 	framebuffers.clear();
 
-	// Views must die before the image / memory they alias.
 	if (depthImageView != VK_NULL_HANDLE)
 		vkDestroyImageView(device, depthImageView, nullptr);
 	if (depthImage != VK_NULL_HANDLE)

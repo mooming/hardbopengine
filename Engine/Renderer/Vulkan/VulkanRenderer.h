@@ -10,12 +10,10 @@
 #include "OSAL/Window.h"
 #include "RenderCapabilities.h"
 
-
 namespace hbe
 {
 namespace Renderer
 {
-/// @brief Single vertex: position (vec3) + normal (vec3), 24 bytes, tightly packed.
 /// API reference: docs/Renderer/MeshVertex/index.html
 struct MeshVertex
 {
@@ -31,7 +29,6 @@ struct MeshVertex
 	}
 };
 
-/// @brief A triangle mesh to upload to the GPU.
 /// API reference: docs/Renderer/Mesh/index.html
 struct Mesh
 {
@@ -39,12 +36,6 @@ struct Mesh
 	std::vector<uint32_t> indices;
 };
 
-/// @brief Push constants consumed per frame by Shaders/MC.vert.
-/// @details Must mirror the GLSL push block exactly: `mat4 model; mat4 viewProj;`
-///          = 128 bytes, which is the portability-guaranteed maxPushConstantsSize.
-///          viewProj is combined on the CPU once per frame, which is what leaves room
-///          for a model matrix; the light direction moves to a uniform buffer later.
-///          Column-major (GL/Vulkan convention).
 /// API reference: docs/Renderer/PushConstants/index.html
 struct PushConstants
 {
@@ -59,9 +50,6 @@ inline void IdentityMatrix(float m[16]) noexcept
 	m[0] = m[5] = m[10] = m[15] = 1.0f;
 }
 
-/// @brief Concrete Vulkan renderer (no inheritance).
-/// @details The cross-platform Vulkan pipeline lives in VulkanRenderer.cpp; the
-///          macOS surface is created in VulkanRenderer.mm (OSAL-style split).
 /// API reference: docs/Renderer/VulkanRenderer/index.html
 class VulkanRenderer
 {
@@ -110,7 +98,6 @@ private:
 	bool frameActive;
 	bool firstFramePresented;
 
-	// Scene state (set by the example, pushed to the vertex shader each frame).
 	float modelMat[16];
 	float viewMat[16];
 	float projMat[16];
@@ -131,19 +118,12 @@ public:
 
 	[[nodiscard]] RenderCapabilities GetCapabilities() const noexcept;
 
-	/// @brief Upload (or replace) the mesh to render.
 	void SetMesh(const Mesh& mesh) noexcept;
 
-	/// @brief Set the model / view / projection matrices (column-major, 16 floats each).
-	/// @details view and proj are multiplied on the CPU before being pushed, so the
-	///          push block can also carry the model matrix.
 	void SetModel(const float* m) noexcept;
 	void SetView(const float* m) noexcept;
 	void SetProj(const float* m) noexcept;
 
-	/// @brief Current swapchain extent in pixels - the aspect ratio examples must use
-	/// @details The drawable follows the window's content rect, so it is not generally
-	///          the size the window was requested with.
 	[[nodiscard]] VkExtent2D GetExtent() const noexcept;
 
 private:
@@ -152,8 +132,6 @@ private:
 	bool PickDevice() noexcept;
 	bool CreateDevice() noexcept;
 
-	/// @brief Read the selected physical device into capabilities, so GetCapabilities reports
-	///        what the hardware actually supports rather than a guess.
 	void QueryCapabilities() noexcept;
 
 	bool CreateSwapchain() noexcept;
@@ -166,7 +144,6 @@ private:
 	bool CreatePipeline() noexcept;
 	bool CreateSyncObjects() noexcept;
 
-	/// @brief Platform window surface - implemented per platform (see .cpp / .mm).
 	bool CreateMetalSurface() noexcept;
 
 	bool CreateBuffer(VkBuffer& buffer, VkDeviceMemory& memory, size_t size, VkBufferUsageFlags usage) noexcept;
