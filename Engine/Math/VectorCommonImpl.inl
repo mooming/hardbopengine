@@ -1,5 +1,4 @@
 public:
-
 	[[nodiscard]] static This Lerp(const This& from, const This& to, float t) noexcept
 	{
 		return from * (1.0f - t) + to * t;

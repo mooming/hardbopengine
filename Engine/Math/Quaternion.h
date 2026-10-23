@@ -131,7 +131,6 @@ public:
 		return result;
 	}
 
-
 	[[nodiscard]] static This Slerp(const This& from, const This& to, float t) noexcept
 	{
 		AssertMessage(from.IsUnity(), "Quaternion slerp should have unit length", ", but ", from.vector.Length());
@@ -150,7 +149,6 @@ public:
 
 		return (from.vector * sinA + to.vector * sinB) / std::sin(angle);
 	}
-
 
 	Quaternion() noexcept
 		: v()
