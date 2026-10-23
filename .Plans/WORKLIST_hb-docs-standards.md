@@ -20,7 +20,7 @@ Measured 2026-10-23 against `master` (`dffb5c0`) with `check.sh --all --no-build
 | - | ------ | ------------- | -------- | ------ | ------ | ------ | ------ |
 | 1 | Memory | 0 | 0 (was 5) | 0 (was 26) | 0 (was 7) | S | **done** |
 | 2 | Container | 0 (was 2 + 128 method pages) | 0 (was 55) | 0 (was 72) | 0 | M | **done** |
-| 3 | Renderer | 1 (VulkanCapabilities) | 239 in 9 files | 44 in 1 file | — | M | pending |
+| 3 | Renderer | 0 (was 1 + 18 method pages) | 0 (was 239) | 0 (was 44) | 0 | M | **done** |
 | 4 | OSAL | 14 | 96 in 16 files | 14 in 5 files | 11 files + 11 B2 | L | pending |
 | 5 | Math | 16 (all classes) | 127 in 20 files | 42 in 13 files | — | XL | pending |
 | 6 | String | 8 | 14 in 9 files | 14 in 1 file | — | L | pending (per-header) |

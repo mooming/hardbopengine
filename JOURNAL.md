@@ -1,5 +1,34 @@
 # Journal
 
+## 2026-10-23 14:00 — the Renderer cycle, and the gate race that manufactured a failure
+
+**Cause.** Third module on the worklist: 44 layout findings in VulkanRenderer.h, 239 comments in nine
+files, one utility-header page and eighteen method pages owed.
+
+**Closed in this round.** VulkanRenderer reordered (constant and data above the public API, helpers in
+a trailing private section — the same shape BoundedPriorityQueue took); the `VulkanCapabilities`
+utility-header page and eighteen creation/teardown method pages authored by one subagent and verified
+by me (signatures verbatim for all 31 VulkanRenderer pages, htmlcheck 46 pages, quoted_blocks 0 stale
+0 unresolved); one design document (`docs/design/VulkanRendererInternals_Design.html`) to own the
+implementation notes the reference pages do not — ordering constraints, the fence release protocol,
+teardown order, the stub-exclusion linker trap; and 229 comments stripped across seven files with
+token-identical proofs, the strip and the seams again as separate commits because only the seams commit
+can be proven whitespace-only. The `.mm` file is outside clang-format's reach (`Configuration file(s)
+do(es) not support Objective-C`), so its eight rule-set A findings were fixed by hand and proven.
+
+**The catches.** First, `docs_pass signatures` refuses a utility header — it matches classes — so the
+page's two free-function declarations were verified against the header by reading, and quoted_blocks
+confirmed the implementation quotes resolve. Second, the first `--all --test` gate reported
+BUILD-FAILED with no compiler error anywhere in its log; the `-test` build passes when re-run by hand,
+and the cause was a race I created — a second gate was spawned while the first was being killed, two
+ninja builds shared `cmake-build-debug`, and the killed one left the tree mid-compile. The re-run of a
+single gate passed 12/12 and 66/66 in all three configurations. The skill's four-slot concurrency cap
+exists for exactly this; two gates is a race even when one of them is dying.
+
+**Verification.** Renderer scoped gates all 0: comments (the only flag is generated `ShadersSpv.h`,
+exempt), layout, docs coverage 9/9, method pages, htmlcheck. The gate's exit 1 is again the tree-wide
+backlog — now only the 11-file OSAL cluster plus the un-gated A/B DEBT, which is the next module.
+
 ## 2026-10-23 11:20 — the Container cycle, and the 128 pages the ledger hid
 
 **Cause.** Second module on the worklist. The ledger said Container owed 2 pages; `docs_methods.py`

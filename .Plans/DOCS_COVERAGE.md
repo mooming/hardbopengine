@@ -15,7 +15,7 @@ Source comments are banned, so a missing page means the contract is nowhere.
 | Math | 16 | 0 | 16 | 15 | 0 | 127 |
 | Memory | 23 | 23 | 0 | 12 | 23 | 0 |
 | OSAL | 14 | 0 | 14 | 5 | 0 | 96 |
-| Renderer | 9 | 8 | 1 | 2 | 0 | 250 |
+| Renderer | 9 | 9 | 0 | 2 | 9 | 11 |
 | Resource | 7 | 7 | 0 | 3 | 0 | 0 |
 | String | 9 | 1 | 8 | 5 | 0 | 14 |
 | Test | 5 | 4 | 1 | 5 | 0 | 125 |
@@ -198,17 +198,17 @@ Source comments are banned, so a missing page means the contract is nowhere.
 | OSAL | SourceLocation | class | `Engine/OSAL/SourceLocation.h` | `docs/OSAL/SourceLocation/index.html` | 0 | — | MISSING |
 | OSAL | Window | class | `Engine/OSAL/Window.h` | `docs/OSAL/Window/index.html` | 0 | — | MISSING |
 | OSAL | WindowTest | test-only | `Engine/OSAL/Window.h` | `docs/OSAL/WindowTest/index.html` | 0 | — | test-only — owns a Coverage row |
-| Renderer | DeviceType | enum | `Engine/Renderer/RenderCapabilities.h` | `docs/Renderer/DeviceType/index.html` | 0 | **no** | documented |
-| Renderer | Mesh | struct | `Engine/Renderer/Vulkan/VulkanRenderer.h` | `docs/Renderer/Mesh/index.html` | 0 | **no** | documented |
-| Renderer | MeshVertex | struct | `Engine/Renderer/Vulkan/VulkanRenderer.h` | `docs/Renderer/MeshVertex/index.html` | 1 | **no** | documented |
-| Renderer | PushConstants | struct | `Engine/Renderer/Vulkan/VulkanRenderer.h` | `docs/Renderer/PushConstants/index.html` | 0 | **no** | documented |
-| Renderer | RHICapabilities | class | `Engine/Renderer/RHICapabilities.h` | `docs/Renderer/RHICapabilities/index.html` | 2 | **no** | documented |
+| Renderer | DeviceType | enum | `Engine/Renderer/RenderCapabilities.h` | `docs/Renderer/DeviceType/index.html` | 0 | yes | documented |
+| Renderer | Mesh | struct | `Engine/Renderer/Vulkan/VulkanRenderer.h` | `docs/Renderer/Mesh/index.html` | 0 | yes | documented |
+| Renderer | MeshVertex | struct | `Engine/Renderer/Vulkan/VulkanRenderer.h` | `docs/Renderer/MeshVertex/index.html` | 1 | yes | documented |
+| Renderer | PushConstants | struct | `Engine/Renderer/Vulkan/VulkanRenderer.h` | `docs/Renderer/PushConstants/index.html` | 0 | yes | documented |
+| Renderer | RHICapabilities | class | `Engine/Renderer/RHICapabilities.h` | `docs/Renderer/RHICapabilities/index.html` | 2 | yes | documented |
 | Renderer | RHICapabilitiesTest | test-only | `Engine/Renderer/RHICapabilities.h` | `docs/Renderer/RHICapabilitiesTest/index.html` | 0 | — | test-only — owns a Coverage row |
-| Renderer | RenderCapabilities | class | `Engine/Renderer/RenderCapabilities.h` | `docs/Renderer/RenderCapabilities/index.html` | 1 | **no** | documented |
+| Renderer | RenderCapabilities | class | `Engine/Renderer/RenderCapabilities.h` | `docs/Renderer/RenderCapabilities/index.html` | 1 | yes | documented |
 | Renderer | RendererTest | test-only | `Engine/Renderer/RendererTest.h` | `docs/Renderer/RendererTest/index.html` | 0 | — | test-only — owns a Coverage row |
-| Renderer | Vertex | struct | `Engine/Renderer/Vertex.h` | `docs/Renderer/Vertex/index.html` | 1 | **no** | documented |
-| Renderer | VulkanCapabilities | utility header | `Engine/Renderer/Vulkan/VulkanCapabilities.h` | `docs/Renderer/VulkanCapabilities/index.html` | 0 | — | MISSING |
-| Renderer | VulkanRenderer | class | `Engine/Renderer/Vulkan/VulkanRenderer.h` | `docs/Renderer/VulkanRenderer/index.html` | 13 | **no** | documented |
+| Renderer | Vertex | struct | `Engine/Renderer/Vertex.h` | `docs/Renderer/Vertex/index.html` | 1 | yes | documented |
+| Renderer | VulkanCapabilities | utility header | `Engine/Renderer/Vulkan/VulkanCapabilities.h` | `docs/Renderer/VulkanCapabilities/index.html` | 0 | yes | documented |
+| Renderer | VulkanRenderer | class | `Engine/Renderer/Vulkan/VulkanRenderer.h` | `docs/Renderer/VulkanRenderer/index.html` | 31 | yes | documented |
 | Resource | Buffer | class | `Engine/Resource/Buffer.h` | `docs/Resource/Buffer/index.html` | 8 | **no** | documented |
 | Resource | BufferInputStream | class | `Engine/Resource/BufferInputStream.h` | `docs/Resource/BufferInputStream/index.html` | 9 | **no** | documented |
 | Resource | BufferInputStreamTest | test-only | `Engine/Resource/BufferInputStream.h` | `docs/Resource/BufferInputStreamTest/index.html` | 0 | — | test-only — owns a Coverage row |
