@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Vulkan renderer internals design — Renderer module — HardBop Engine design document</title>
+<link rel="stylesheet" href="../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../Config/index.html">Config</a></li>
+    <li><a href="../Container/index.html">Container</a></li>
+    <li><a href="../Core/index.html">Core</a></li>
+    <li><a href="../Engine/index.html">Engine</a></li>
+    <li><a href="../HSTL/index.html">HSTL</a></li>
+    <li><a href="../Log/index.html">Log</a></li>
+    <li><a href="../Math/index.html">Math</a></li>
+    <li><a href="../Memory/index.html">Memory</a></li>
+    <li><a href="../OSAL/index.html">OSAL</a></li>
+    <li><a class="current" href="../Renderer/index.html">Renderer</a></li>
+    <li><a href="../Resource/index.html">Resource</a></li>
+    <li><a href="../String/index.html">String</a></li>
+    <li><a href="../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This document</h3>
+  <ul>
+<li><a href="#surface-before-device">The surface exists before the device is picked</a></li>
+<li><a href="#no-optional-features">No optional features are requested</a></li>
+<li><a href="#capability-point">Where real capability data first exists</a></li>
+<li><a href="#swapchain-choices">Format, present mode and extent</a></li>
+<li><a href="#attachments">Both render-pass descriptions must be contiguous</a></li>
+<li><a href="#fence-protocol">The fence release protocol on the failure paths</a></li>
+<li><a href="#vertex-memory">Vertex memory is host visible, on purpose, for now</a></li>
+<li><a href="#teardown-order">The teardown order</a></li>
+<li><a href="#probe-scope">The pre-device probe does not pick the device</a></li>
+<li><a href="#stub-exclusion">Why the non-Apple surface stub must stay excluded on macOS</a></li>
+<li><a href="#seealso">Where else to look</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<h1>Vulkan renderer internals design</h1>
+
+<p>
+  The <a href="../Renderer/VulkanRenderer/index.html">VulkanRenderer</a> reference pages own what a caller
+  depends on; this document owns the implementation decisions behind them — the ordering constraints the
+  initialisation sequence encodes, the Vulkan quirks the code works around, and the failure-path protocol
+  that keeps the frame cycle intact. Every claim here was read from
+  <code>Engine/Renderer/Vulkan/VulkanRenderer.cpp</code> or
+  <code>Engine/Renderer/Vulkan/VulkanCapabilities.cpp</code>; where a reference page already owns a
+  claim, this document links there instead of restating it.
+</p>
+
+<h2 id="surface-before-device">The surface exists before the device is picked</h2>
+
+<p>
+  <a href="../Renderer/VulkanRenderer/createsurface.html">CreateSurface</a> runs before
+  <a href="../Renderer/VulkanRenderer/pickdevice.html">PickDevice</a> because queue-family support is
+  queried against the surface itself: <code>vkGetPhysicalDeviceSurfaceSupportKHR</code> needs the
+  <code>VkSurfaceKHR</code>, so a device that cannot present to <em>this</em> window cannot be picked
+  before the window's surface exists. The pick additionally requires a graphics queue that can present —
+  which is also why the pre-device probe in
+  <a href="../Renderer/VulkanCapabilities/index.html">VulkanCapabilities</a> cannot do the pick: it has
+  no surface at all.
+</p>
+
+<h2 id="no-optional-features">No optional features are requested</h2>
+
+<p>
+  <a href="../Renderer/VulkanRenderer/createdevice.html">CreateDevice</a> requests no
+  <code>VkPhysicalDeviceFeatures</code> at all: asking for one the driver does not support fails
+  <code>vkCreateDevice</code> outright, and the simple mesh pipeline needs none. <code>VK_KHR_swapchain</code>
+  is the one device extension enabled per device — without it the loader leaves the swapchain entry points
+  null and <code>vkCreateSwapchainKHR</code> fails at use.
+</p>
+
+<h2 id="capability-point">Where real capability data first exists</h2>
+
+<p>
+  The physical device is valid from
+  <a href="../Renderer/VulkanRenderer/createdevice.html">CreateDevice</a> onwards, which makes that the
+  first point where real capability data exists;
+  <a href="../Renderer/VulkanRenderer/querycapabilities.html">QueryCapabilities</a> fills the cached
+  descriptor once there, so <a href="../Renderer/VulkanRenderer/get-capabilities.html">GetCapabilities</a>
+  is a copy, not a query.
+</p>
+
+<h2 id="swapchain-choices">Format, present mode and extent</h2>
+
+<p>
+  Three choices in <a href="../Renderer/VulkanRenderer/createswapchain.html">CreateSwapchain</a>: the
+  surface format matches the <code>CAMetalLayer</code>'s <code>BGRA8Unorm</code> when it is offered, because
+  that is what the macOS surface is configured as; <code>FIFO</code> is the only present mode Vulkan
+  guarantees to exist, with <code>MAILBOX</code> preferred when the driver offers it; and
+  <code>currentExtent</code> arrives as <code>0xFFFFFFFF</code> when the surface sizes itself from the
+  window, in which case the window's content rect decides — the fact
+  <a href="../Renderer/VulkanRenderer/get-extent.html">GetExtent</a> exists to report.
+</p>
+
+<h2 id="attachments">Both render-pass descriptions must be contiguous</h2>
+
+<p>
+  <a href="../Renderer/VulkanRenderer/createrenderpass.html">CreateRenderPass</a> builds its attachment
+  descriptions in one array because <code>pAttachments</code> is indexed by reference from the subpass
+  description, not bound per element — the colour and depth attachments must stay contiguous in the order
+  the subpass indexes them.
+</p>
+
+<h2 id="fence-protocol">The fence release protocol on the failure paths</h2>
+
+<p>
+  Three rules keep the frame cycle intact when a frame does not complete:
+</p>
+
+<ul>
+  <li><a href="../Renderer/VulkanRenderer/createsyncobjects.html">Fences start signaled</a> — frame 0 must
+  not block on work that was never submitted.</li>
+  <li>When the swapchain is lost, <a href="../Renderer/VulkanRenderer/end-frame.html">EndFrame</a> still
+  releases the fence it just reset; otherwise the next
+  <a href="../Renderer/VulkanRenderer/begin-frame.html">BeginFrame</a> waits on a fence nobody will signal.
+  Recreating the swapchain in place is the real fix and is tracked as a follow-up.</li>
+  <li>When the submit itself fails, or nothing was drawn this frame, the fence is released through an empty
+  submit so the per-frame cycle still turns.</li>
+</ul>
+
+<h2 id="vertex-memory">Vertex memory is host visible, on purpose, for now</h2>
+
+<p>
+  <a href="../Renderer/VulkanRenderer/createvertexbuffers.html">CreateVertexBuffers</a> maps host-visible
+  memory directly because the mesh is written once from the CPU and never modified per frame. A device-local
+  copy with a staging transfer is the right long-term shape and is tracked as a follow-up.
+</p>
+
+<h2 id="teardown-order">The teardown order</h2>
+
+<p>
+  <a href="../Renderer/VulkanRenderer/destroy.html">Destroy</a> releases image views before the images and
+  device memory they alias — a <code>VkImageView</code> is a handle into the image, so reversing the order
+  destroys a live view of a dead image. The command pool frees its command buffers when destroyed, so they
+  have no separate release.
+</p>
+
+<h2 id="probe-scope">The pre-device probe does not pick the device</h2>
+
+<p>
+  <a href="../Renderer/VulkanCapabilities/index.html">QueryDefaultDeviceCapabilities</a> takes the first
+  enumerated device because its question is about the <em>machine</em>, before any renderer exists. Actual
+  device selection stays with <a href="../Renderer/VulkanRenderer/pickdevice.html">PickDevice</a>, which
+  additionally requires a graphics queue that can present to the real surface — something the probe has
+  none of.
+</p>
+
+<h2 id="stub-exclusion">Why the non-Apple surface stub must stay excluded on macOS</h2>
+
+<p>
+  The <code>CreateMetalSurface</code> stub in <code>VulkanRenderer.cpp</code> is guarded out on macOS
+  because the real implementation lives in <code>VulkanRenderer.mm</code>. If both translation units
+  defined the symbol, the linker would satisfy it from <code>VulkanRenderer.cpp.o</code> and never pull
+  <code>VulkanRenderer.mm.o</code> out of the static archive — the Metal surface would silently never run.
+</p>
+
+<h2 id="seealso">Where else to look</h2>
+
+<ul>
+  <li><a href="../Renderer/VulkanRenderer/index.html">VulkanRenderer</a> — the class reference and its
+  method table.</li>
+  <li><a href="../Renderer/VulkanCapabilities/index.html">VulkanCapabilities</a> — the two free functions
+  that translate a physical device into the API-neutral descriptor.</li>
+  <li><a href="../RendererDesign.html">Renderer design (RHI architecture)</a> — the layer above this one.</li>
+</ul>
+
+</main>
+</body>
+</html>
