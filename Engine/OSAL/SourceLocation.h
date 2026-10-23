@@ -14,6 +14,12 @@ namespace hbe
 /// the location where a function is called.
 class SourceLocation final
 {
+private:
+	const char* fileName;
+	const char* functionName;
+	const std::uint_least32_t lineNumber;
+	const std::uint_least32_t columnOffset;
+
 public:
 	static constexpr SourceLocation current(const char* fileName = CallerFile(),
 											const char* functionName = CallerFunc(),
@@ -52,12 +58,6 @@ public:
 	{
 		return columnOffset;
 	}
-
-private:
-	const char* fileName;
-	const char* functionName;
-	const std::uint_least32_t lineNumber;
-	const std::uint_least32_t columnOffset;
 
 	constexpr SourceLocation(const char* fileName, const char* functionName, const uint_least32_t lineNumber,
 							 const uint_least32_t columnOffset) noexcept

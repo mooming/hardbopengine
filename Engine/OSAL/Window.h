@@ -16,23 +16,6 @@ namespace OS
 ///          time via `#if defined(PLATFORM_*)`. The public interface is identical.
 class Window
 {
-public:
-	Window() noexcept;
-	~Window();
-
-	[[nodiscard]] bool CreateWindow(const hbe::HString& title, int width, int height);
-	void SetTitle(const hbe::HString& title);
-	void SetSize(int width, int height);
-	void SetVisible(bool visible);
-	void PollEvents();
-	void Close();
-
-	[[nodiscard]] int GetWidth() const;
-	[[nodiscard]] int GetHeight() const;
-	[[nodiscard]] bool IsVisible() const;
-	[[nodiscard]] bool IsClosed() const;
-	[[nodiscard]] intptr_t GetNativeHandle() const;
-
 private:
 	int width;
 	int height;
@@ -51,6 +34,23 @@ private:
 	/// @details NSWindow holds its delegate unretained, so the Window owns the reference.
 	void* osDelegate;
 #endif
+
+public:
+	Window() noexcept;
+	~Window();
+
+	[[nodiscard]] bool CreateWindow(const hbe::HString& title, int width, int height);
+	void SetTitle(const hbe::HString& title);
+	void SetSize(int width, int height);
+	void SetVisible(bool visible);
+	void PollEvents();
+	void Close();
+
+	[[nodiscard]] int GetWidth() const;
+	[[nodiscard]] int GetHeight() const;
+	[[nodiscard]] bool IsVisible() const;
+	[[nodiscard]] bool IsClosed() const;
+	[[nodiscard]] intptr_t GetNativeHandle() const;
 };
 
 /// @brief Creates a Window owned by the caller.

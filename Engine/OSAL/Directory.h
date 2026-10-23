@@ -18,6 +18,11 @@ class Directory
 public:
 	const std::string path;
 
+private:
+	Files fileList;
+	Dirs dirList;
+
+public:
 	Directory(const char* path);
 	virtual ~Directory() = default;
 
@@ -30,10 +35,6 @@ public:
 	{
 		return dirList;
 	}
-
-private:
-	Files fileList;
-	Dirs dirList;
 };
 
 using Dirs = std::vector<Directory>;

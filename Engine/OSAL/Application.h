@@ -14,16 +14,16 @@ namespace OS
 ///          selected at build time via `#if defined(PLATFORM_*)`.
 class Application
 {
+private:
+	// Opaque per-platform handle (e.g. NSApplication*, HINSTANCE, ...).
+	void* platformHandle;
+
 public:
 	Application() noexcept;
 	~Application();
 
 	void Initialize();
 	void PollEvents();
-
-private:
-	// Opaque per-platform handle (e.g. NSApplication*, HINSTANCE, ...).
-	void* platformHandle;
 };
 
 /// @brief Creates an Application owned by the caller.

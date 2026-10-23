@@ -13,6 +13,9 @@ namespace OS
 /// @brief Represents a file in the file system with path access and comparison operators.
 class File
 {
+private:
+	std::string path;
+
 public:
 	explicit File(const char* path)
 		: path(path)
@@ -59,9 +62,6 @@ public:
 	{
 		return path;
 	}
-
-private:
-	std::string path;
 };
 
 using Files = std::vector<File>;
