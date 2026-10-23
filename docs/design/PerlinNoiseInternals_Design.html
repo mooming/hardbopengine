@@ -44,7 +44,7 @@
 <h1>Perlin noise internals design</h1>
 
 <p>
-  The <a href="../Math/PerlinNoise/index.html">PerlinNoise</a> reference page owns what a caller depends
+  The <a href="../Math/index.html">PerlinNoise</a> reference page owns what a caller depends
   on; this document owns the implementation decisions in
   <code>Engine/Math/PerlinNoise.cpp</code> — how the permutation table is built and indexed, and why the
   shuffle is specified by arithmetic instead of delegated to the standard library. Every claim here was
@@ -58,7 +58,7 @@
   <code>At()</code> lookup indexes a doubled table (<code>p[p[p[x] + y] + z]</code>), so only the first 256
   entries need to be a permutation — the upper half is the mirror that saves the double-mask the classic
   formulation performs. The instance's seed fixes the permutation, which is what
-  <a href="../Math/PerlinNoise/get-seed.html">GetSeed</a> reports.
+  <code>GetSeed</code> reports.
 </p>
 
 <h2 id="negative-wrap">Negative coordinates wrap, not truncate</h2>
@@ -101,7 +101,7 @@
 <h2 id="seealso">Where else to look</h2>
 
 <ul>
-  <li><a href="../Math/PerlinNoise/index.html">PerlinNoise</a> — the class reference, including the two
+  <li><a href="../Math/index.html">PerlinNoise</a> — the class reference, including the two
   test-pinned properties (zero at integer lattice coordinates, bounded to roughly ±0.87).</li>
   <li><a href="../Math/index.html">Math module reference</a> — the other sixteen entries.</li>
 </ul>
