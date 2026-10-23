@@ -2,6 +2,7 @@
 
 #include "RenderCapabilities.h"
 
+
 namespace hbe::Renderer
 {
 RenderCapabilities::RenderCapabilities()

@@ -8,6 +8,7 @@
 
 #include "Config/BuildConfig.h"
 
+
 namespace hbe::Renderer
 {
 /// API reference: docs/Renderer/DeviceType/index.html

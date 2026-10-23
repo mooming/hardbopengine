@@ -7,6 +7,7 @@
 #include "Config/BuildConfig.h"
 #include "RenderCapabilities.h"
 
+
 namespace hbe::Renderer
 {
 /// API reference: docs/Renderer/VulkanCapabilities/index.html
