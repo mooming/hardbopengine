@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>OSAL platform split design — OSAL module — HardBop Engine design document</title>
+<link rel="stylesheet" href="../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../Config/index.html">Config</a></li>
+    <li><a href="../Container/index.html">Container</a></li>
+    <li><a href="../Core/index.html">Core</a></li>
+    <li><a href="../Engine/index.html">Engine</a></li>
+    <li><a href="../HSTL/index.html">HSTL</a></li>
+    <li><a href="../Log/index.html">Log</a></li>
+    <li><a href="../Math/index.html">Math</a></li>
+    <li><a href="../Memory/index.html">Memory</a></li>
+    <li><a class="current" href="../OSAL/index.html">OSAL</a></li>
+    <li><a href="../Renderer/index.html">Renderer</a></li>
+    <li><a href="../Resource/index.html">Resource</a></li>
+    <li><a href="../String/index.html">String</a></li>
+    <li><a href="../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This document</h3>
+  <ul>
+<li><a href="#pattern">The platform-split pattern</a></li>
+<li><a href="#fallback">The fallback role of the OS*.cpp units</a></li>
+<li><a href="#virtualalloc">VirtualAlloc and VirtualFree semantics the tests pin</a></li>
+<li><a href="#seealso">Where else to look</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<h1>OSAL platform split design</h1>
+
+<p>
+  The OSAL reference pages own what a caller depends on; this document owns the platform-selection
+  architecture behind them — how one declaration set reaches three operating systems, what the fallback
+  units are for, and the memory semantics the test suite pins. Every claim was read from
+  <code>Engine/OSAL/</code>.
+</p>
+
+<h2 id="pattern">The platform-split pattern</h2>
+
+<p>
+  Every OSAL header declares one interface; per-platform units define it. The selection happens at build
+  time: <code>#if defined(PLATFORM_LINUX)</code>, <code>PLATFORM_OSX</code> and <code>PLATFORM_WINDOWS</code>
+  choose which <code>Linux*.cpp</code>, <code>OSX*.mm</code> or <code>Win32*.cpp</code> translation unit
+  compiles, exactly the seam the <a href="../Renderer/VulkanCapabilities/index.html">VulkanCapabilities</a>
+  page describes for renderer backends. The public interface is identical across platforms — the class
+  reference of <a href="../OSAL/index.html">Window</a> or
+  <a href="../OSAL/index.html">Application</a> states the contract once, and the platform
+  implementations are where the divergence lives. Platform-specific detail that a caller depends on is
+  documented on the owning method page with the file it was read from; this document carries only the
+  pattern itself.
+</p>
+
+<h2 id="fallback">The fallback role of the OS*.cpp units</h2>
+
+<p>
+  The <code>OS*.cpp</code> units (<code>OSMemory.cpp</code>, <code>OSAbstractLayer.cpp</code>,
+  <code>OSInputOutput.cpp</code>, <code>OSDebug.cpp</code>, <code>OSThread.cpp</code>) are fallback
+  implementations, compiled only when no platform-specific file is. A build with
+  <code>PLATFORM_LINUX</code>, <code>PLATFORM_OSX</code> or <code>PLATFORM_WINDOWS</code> defined uses the
+  corresponding platform unit instead; the fallback exists so a target with no platform macro still links,
+  and its guards skip the body when a platform implementation is being compiled. It is not a third
+  implementation to keep correct — it is the shape that keeps an unconfigured build honest.
+</p>
+
+<h2 id="virtualalloc">VirtualAlloc and VirtualFree semantics the tests pin</h2>
+
+<p>
+  Three behavioural facts the memory tests of <code>OSMemory.cpp</code> pin down, each the record of a
+  defect that once shipped:
+</p>
+
+<ul>
+  <li><code>VirtualFree</code> returns non-zero on <em>success</em> and zero on failure — the Windows
+  error check was once inverted, so a successful free tripped the assert. The check is now
+  <code>if (!result)</code>, asserting only on actual failure.</li>
+  <li>On Linux and macOS <code>VirtualFree</code> maps to <code>munmap</code>, not <code>free</code> —
+  the round-trip test verifies that a <code>VirtualAlloc</code>/<code>VirtualFree</code> pair works on
+  every platform rather than only where the call is native.</li>
+  <li>The size parameter reaches the implementation on every platform — a revision once compiled with the
+  parameter unnamed while the body referenced it. The test frees with an explicit size to pin the
+  pass-through.</li>
+</ul>
+
+<p>
+  The page size, where the platform exposes one, must be a power of two — the test asserts it, and the
+  callers that align with it rely on that.
+</p>
+
+<h2 id="seealso">Where else to look</h2>
+
+<ul>
+  <li><a href="../OSAL/index.html">OSAL module reference</a> — the fourteen entry pages.</li>
+  <li><a href="../MemoryManagement_Guide.md">Memory management guide</a> — the layer that sits on top of
+  OSMemory.</li>
+  <li><code>JOURNAL.md</code> — the defect history behind the pinned semantics.</li>
+</ul>
+
+</main>
+</body>
+</html>
