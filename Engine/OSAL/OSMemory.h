@@ -15,6 +15,7 @@ namespace OS
 {
 /// @brief Provides low-level memory management operations for platform-independent memory allocation,
 /// alignment, and protection.
+/// API reference: docs/OSAL/OSMemory/index.html
 [[nodiscard]] bool IsValidAllocation(void* ptr) noexcept;
 
 template <typename T>

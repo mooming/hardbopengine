@@ -5,6 +5,7 @@
 
 namespace OS
 {
+/// API reference: docs/OSAL/FileOpenMode/index.html
 class FileOpenMode final
 {
 public:

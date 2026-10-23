@@ -7,6 +7,7 @@
 
 namespace OS
 {
+/// API reference: docs/OSAL/FileHandle/index.html
 class FileHandle final
 {
 public:

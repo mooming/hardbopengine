@@ -11,6 +11,7 @@
 namespace OS
 {
 /// @brief Yield the current thread's time slice to the scheduler.
+/// API reference: docs/OSAL/OSThread/index.html
 void Yield() noexcept;
 /// @brief Sleep for the specified number of milliseconds.
 void Sleep(uint32_t milliseconds) noexcept;

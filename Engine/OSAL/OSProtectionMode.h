@@ -5,6 +5,7 @@
 
 namespace OS
 {
+/// API reference: docs/OSAL/ProtectionMode/index.html
 class ProtectionMode final
 {
 public:

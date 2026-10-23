@@ -30,6 +30,7 @@ namespace OS
 {
 hbe::HString GetFullPath(const hbe::HString& path);
 
+/// API reference: docs/OSAL/OSAbstractLayer/index.html
 bool IsDirectory(const char* path);
 
 hbe::HVector<hbe::HString> ListFilesInDirectory(const char* path);

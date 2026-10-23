@@ -11,6 +11,7 @@
 namespace OS
 {
 /// @brief Represents a file in the file system with path access and comparison operators.
+/// API reference: docs/OSAL/File/index.html
 class File
 {
 private:

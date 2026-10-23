@@ -12,6 +12,7 @@ namespace hbe
 /// @brief Stores source code location information for debugging and logging.
 /// @details Used with macros like CallerFile(), CallerFunc(), CallerLine() to capture
 /// the location where a function is called.
+/// API reference: docs/OSAL/SourceLocation/index.html
 class SourceLocation final
 {
 private:

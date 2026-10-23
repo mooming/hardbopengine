@@ -12,6 +12,7 @@ class FileOpenMode;
 class ProtectionMode;
 class MapSyncMode;
 
+/// API reference: docs/OSAL/OSInputOutput/index.html
 bool Open(FileHandle& outHandle, hbe::StaticString filePath, FileOpenMode openMode) noexcept;
 bool Close(FileHandle&& handle) noexcept;
 bool Exist(hbe::StaticString filePath) noexcept;

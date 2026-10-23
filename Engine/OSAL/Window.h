@@ -14,6 +14,7 @@ namespace OS
 /// @details Concrete behaviour differs per OS and is implemented in the per-platform
 ///          units (LinuxWindow.cpp, OSXWindow.mm, Win32Window.cpp), selected at build
 ///          time via `#if defined(PLATFORM_*)`. The public interface is identical.
+/// API reference: docs/OSAL/Window/index.html
 class Window
 {
 private:

@@ -5,6 +5,7 @@
 
 namespace OS
 {
+/// API reference: docs/OSAL/MapSyncMode/index.html
 class MapSyncMode final
 {
 public:

@@ -12,6 +12,7 @@ namespace OS
 ///          platform and lives in the per-platform implementation units
 ///          (LinuxApplication.cpp, OSXApplication.mm, Win32Application.cpp),
 ///          selected at build time via `#if defined(PLATFORM_*)`.
+/// API reference: docs/OSAL/Application/index.html
 class Application
 {
 private:
