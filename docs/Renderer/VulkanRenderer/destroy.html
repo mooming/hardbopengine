@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>VulkanRenderer::Destroy — Renderer module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a class="current" href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Renderer</a> /
+  <a href="index.html">VulkanRenderer</a> / Destroy
+</p>
+
+<h1><span class="fn">Destroy</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::VulkanRenderer</span>
+  <span class="tag">Engine/Renderer/Vulkan/VulkanRenderer.h</span>
+  <span class="tag">private</span>
+  tear everything down in dependency order — idle wait first, views before images, surface before instance
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>void Destroy() noexcept</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  Private. The teardown that <a href="shutdown.html"><code>Shutdown</code></a> is a thin wrapper over, and the only
+  place Vulkan handles are destroyed. Two rules organise it: wait first, and destroy in reverse dependency order.
+</p>
+
+<p>
+  The wait comes before anything else — if a device exists, <code>vkDeviceWaitIdle</code> runs once — so nothing still
+  executing on the GPU can be pulling on an object destroyed below. Then, in order: the sync objects (both semaphore
+  arrays, then the fences); the mesh buffers via
+  <a href="releasevertexbuffers.html"><code>ReleaseVertexBuffers</code></a>; the command pool, whose destruction frees
+  the command buffers with it; the pipeline, layout and both shader modules; the framebuffers; the depth view, then
+  the depth image, then its memory; the swapchain views, then the swapchain; the device; and finally the surface and
+  the instance.
+</p>
+
+<pre><code>	if (depthImageView != VK_NULL_HANDLE)
+		vkDestroyImageView(device, depthImageView, nullptr);
+	if (depthImage != VK_NULL_HANDLE)
+		vkDestroyImage(device, depthImage, nullptr);
+	if (depthMemory != VK_NULL_HANDLE)
+		vkFreeMemory(device, depthMemory, nullptr);</code></pre>
+<p class="meta">From Engine/Renderer/Vulkan/VulkanRenderer.cpp, VulkanRenderer::Destroy()</p>
+
+<p>
+  Every handle is null-checked, so the function is safe on a renderer whose
+  <a href="initialize.html"><code>Initialize</code></a> only got partway — except that in practice it is never called
+  on one: <code>Shutdown</code> early-returns when <code>initialized</code> is false, which is the leaked-partial-state
+  gap the <a href="initialize.html">Initialize page</a> documents.
+</p>
+
+<pre><code>	if (device != VK_NULL_HANDLE)
+		vkDestroyDevice(device, nullptr);
+	device = VK_NULL_HANDLE;
+
+	if (surface != VK_NULL_HANDLE)
+		vkDestroySurfaceKHR(instance, surface, nullptr);
+	if (instance != VK_NULL_HANDLE)
+		vkDestroyInstance(instance, nullptr);</code></pre>
+<p class="meta">From Engine/Renderer/Vulkan/VulkanRenderer.cpp, VulkanRenderer::Destroy()</p>
+
+<div class="note">
+  <strong>The surface dies before the instance, because it needs it.</strong>
+  <code>vkDestroySurfaceKHR</code> takes the instance as its first argument; reversing that order would use a destroyed
+  handle. The device goes before the surface for the same direction of reasoning — everything device-scoped is gone
+  before the instance-scoped objects that created the context for it.
+</div>
+
+<p>
+  On the way out the scalar state is reset too: <code>physicalDevice</code> and <code>graphicsQueue</code> nulled,
+  <code>frameActive</code> cleared, <code>currentFrame</code> and <code>imageIndex</code> zeroed. A destroyed renderer
+  is back to its constructor state.
+</p>
+
+<h2 id="parameters">Parameters</h2>
+
+<p>None.</p>
+
+<h2 id="return">Return value</h2>
+
+<p>None — <code>void</code>. On return every Vulkan handle in the object is null or cleared, and the object is safe to
+have <a href="shutdown.html"><code>Shutdown</code></a> mark uninitialized and the destructor finish off.</p>
+
+<h2 id="example">Examples</h2>
+
+<p>Both call sites are one chain:</p>
+
+<p class="meta">From Engine/Renderer/Vulkan/VulkanRenderer.cpp, VulkanRenderer::Shutdown()</p>
+
+<pre><code>	returnIf(!initialized);
+
+	Destroy();
+	initialized = false;</code></pre>
+
+<p>
+  and the destructor calls <a href="shutdown.html"><code>Shutdown</code></a>, so object destruction tears everything
+  down in this order automatically.
+</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; VulkanRenderer</a></span>
+  <span><a href="index.html#methods">All VulkanRenderer methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

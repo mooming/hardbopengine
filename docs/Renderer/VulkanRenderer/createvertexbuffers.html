@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>VulkanRenderer::CreateVertexBuffers — Renderer module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a class="current" href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Renderer</a> /
+  <a href="index.html">VulkanRenderer</a> / CreateVertexBuffers
+</p>
+
+<h1><span class="fn">CreateVertexBuffers</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::VulkanRenderer</span>
+  <span class="tag">Engine/Renderer/Vulkan/VulkanRenderer.h</span>
+  <span class="tag">private</span>
+  replace the mesh: release the old buffers, create and bind the new pair, map-copy the data up
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>bool CreateVertexBuffers(const Mesh&amp; mesh) noexcept</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  Private. The mesh upload path <a href="set-mesh.html"><code>SetMesh</code></a> delegates to, and the only function
+  in the class that both creates and destroys GPU resources in one call: it starts by releasing whatever buffers the
+  previous mesh left, then builds the new pair. An empty mesh — zero vertices or zero indices — is not a failure: it
+  returns <code>true</code> with null buffers, and the frame loop draws clear-only frames.
+</p>
+
+<pre><code>	vertexCount = mesh.vertices.size();
+	indexCount = mesh.indices.size();</code></pre>
+<p class="meta">From Engine/Renderer/Vulkan/VulkanRenderer.cpp, VulkanRenderer::CreateVertexBuffers(const Mesh&amp;)</p>
+
+<p>
+  An empty mesh — zero vertices or zero indices — is not a failure: the function returns <code>true</code> right here
+  with null buffers, and the frame loop draws clear-only frames. Non-empty meshes build two buffers via
+  <a href="createbuffer.html"><code>CreateBuffer</code></a> — creation plus allocation, but not binding — so this
+  function binds both itself with <code>vkBindBufferMemory</code>, then uploads by mapping each memory, copying, and
+  unmapping:
+</p>
+
+<pre><code>	const auto vertexBytes = vertexCount * sizeof(MeshVertex);
+	const auto indexBytes = indexCount * sizeof(uint32_t);
+
+	if (!CreateBuffer(vertexBuffer, vertexMemory, vertexBytes, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT))
+		return false;
+	if (!CreateBuffer(indexBuffer, indexMemory, indexBytes, VK_BUFFER_USAGE_INDEX_BUFFER_BIT))
+		return false;</code></pre>
+<p class="meta">From Engine/Renderer/Vulkan/VulkanRenderer.cpp, VulkanRenderer::CreateVertexBuffers()</p>
+
+<p>
+  Each buffer comes from <a href="createbuffer.html"><code>CreateBuffer</code></a> — creation plus allocation, but not
+  binding — so this function binds both itself with <code>vkBindBufferMemory</code>, then uploads by mapping each
+  memory, copying, and unmapping:
+</p>
+
+<pre><code>	auto upload = [&amp;](VkDeviceMemory mem, const void* data, size_t size) noexcept -&gt; bool
+	{
+		void* dst = nullptr;
+		const VkResult mapResult = vkMapMemory(device, mem, 0, static_cast&lt;VkDeviceSize&gt;(size), 0, &amp;dst);
+		if (mapResult != VK_SUCCESS)
+		{
+			LogFailure("vkMapMemory", mapResult);
+
+			return false;
+		}
+
+		std::memcpy(dst, data, size);
+		vkUnmapMemory(device, mem);
+
+		return true;
+	};</code></pre>
+<p class="meta">From Engine/Renderer/Vulkan/VulkanRenderer.cpp, VulkanRenderer::CreateVertexBuffers()</p>
+
+<p>
+  Direct mapping into host-visible, host-coherent memory is deliberate: the mesh is written once from the CPU and
+  never modified per frame, so no staging transfer is paid for. A device-local copy with a staging upload is the
+  long-term shape and is named as a follow-up in the source, not implemented here.
+</p>
+
+<div class="gap">
+  <strong>A failure after the vertex buffer exists leaves it allocated.</strong> If the index
+  <a href="createbuffer.html"><code>CreateBuffer</code></a>, a bind, or an upload fails, the function returns
+  <code>false</code> without releasing what it already created — the caller
+  (<a href="set-mesh.html"><code>SetMesh</code></a>) zeroes the counts and logs, and the buffers survive until the
+  next <code>CreateVertexBuffers</code> or <a href="destroy.html"><code>Destroy</code></a> releases them. Rendering
+  with zero counts draws nothing, so the stale buffers are unreachable but not leaked.
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<table>
+  <tr><th>Parameter</th><th>Type</th><th>Requirement</th></tr>
+  <tr>
+    <td><code>mesh</code></td>
+    <td><code>const Mesh&amp;</code></td>
+    <td>The mesh to upload. Read during the call only — vertices and indices are copied into GPU-accessible memory,
+        so the caller's mesh may die afterwards. May be empty; that is the clear-only case, not an error</td>
+  </tr>
+</table>
+
+<h2 id="return">Return value</h2>
+
+<p><code>true</code> when the mesh is uploaded and bound, <em>or</em> when the mesh was empty and the renderer was
+reset to draw clear-only frames. <code>false</code> when any creation, bind, map or copy step failed, each logged.</p>
+
+<h2 id="example">Examples</h2>
+
+<p>The only caller is <a href="set-mesh.html"><code>SetMesh</code></a>, and its failure handling is the contract's
+other half:</p>
+
+<p class="meta">From Engine/Renderer/Vulkan/VulkanRenderer.cpp, VulkanRenderer::SetMesh(const Mesh&amp;)</p>
+
+<pre><code>	if (!CreateVertexBuffers(mesh))
+	{
+		LogFailure("mesh upload failed - drawing clear colour only");
+		vertexCount = 0;
+		indexCount = 0;
+	}</code></pre>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; VulkanRenderer</a></span>
+  <span><a href="index.html#methods">All VulkanRenderer methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

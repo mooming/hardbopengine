@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>VulkanRenderer::CreateMetalSurface — Renderer module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a class="current" href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Renderer</a> /
+  <a href="index.html">VulkanRenderer</a> / CreateMetalSurface
+</p>
+
+<h1><span class="fn">CreateMetalSurface</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::VulkanRenderer</span>
+  <span class="tag">Engine/Renderer/Vulkan/VulkanRenderer.h</span>
+  <span class="tag">private</span>
+  the macOS surface: a CAMetalLayer adopted by a layer-backed view, wrapped by vkCreateMetalSurfaceEXT
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>bool CreateMetalSurface() noexcept</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  Private, and macOS-only — the implementation lives in <code>Engine/Renderer/Vulkan/VulkanRenderer.mm</code>, the
+  OSAL-style split the <a href="../index.html">module page</a> describes. It is the whole AppKit side of
+  <a href="initialize.html"><code>Initialize</code></a>: build a <code>CAMetalLayer</code>, get it adopted by the
+  window, and wrap it in a Vulkan surface.
+</p>
+
+<p>
+  The sequence, in order: check <code>window</code> and <code>instance</code> are live; take the
+  <code>NSWindow</code> from the window's native handle; create the default Metal device; build a content view sized
+  to the window's content rect; create the layer; configure it — <code>MTLPixelFormatBGRA8Unorm</code>,
+  <code>framebufferOnly</code>, and <code>contentsScale</code> 1.0 so drawable pixels equal points; adopt it through a
+  layer-backed view; install the view with <code>[nsWindow setContentView:]</code>; and finally call
+  <code>vkCreateMetalSurfaceEXT</code> with the layer.
+</p>
+
+<pre><code>	layer.device = metalDevice;
+	[metalDevice release];
+	layer.pixelFormat = MTLPixelFormatBGRA8Unorm;
+	layer.framebufferOnly = YES;
+
+	layer.contentsScale = 1.0;</code></pre>
+<p class="meta">From Engine/Renderer/Vulkan/VulkanRenderer.mm, VulkanRenderer::CreateMetalSurface()</p>
+
+<pre><code>	VkMetalSurfaceCreateInfoEXT info{};
+	info.sType = VK_STRUCTURE_TYPE_METAL_SURFACE_CREATE_INFO_EXT;
+	info.pLayer = layer;
+
+	const VkResult result = vkCreateMetalSurfaceEXT(instance, &amp;info, nullptr, &amp;surface);</code></pre>
+<p class="meta">From Engine/Renderer/Vulkan/VulkanRenderer.mm, VulkanRenderer::CreateMetalSurface()</p>
+
+<div class="note">
+  <strong>The layer is configured to match the swapchain, not the other way round.</strong>
+  <code>BGRA8Unorm</code> is what <a href="createswapchain.html"><code>CreateSwapchain</code></a> prefers
+  (<code>VK_FORMAT_B8G8R8A8_UNORM</code>), and AppKit sizes the layer to the view bounds — so the drawable size, and
+  therefore the swapchain extent, follows the window's content rect. That is why CreateSwapchain reads the
+  authoritative size from <code>VkSurfaceCapabilitiesKHR::currentExtent</code> instead of assuming the requested
+  window size.
+</div>
+
+<div class="note">
+  <strong>Manual retain/release, cleaned up per failure.</strong> The file is compiled without ARC:
+  <code>MTLCreateSystemDefaultDevice</code> follows the create rule and is released once the layer retains it, the
+  content view is released after the window retains it, and every early failure path releases what it acquired so far
+  before logging and returning <code>false</code>.
+</div>
+
+<div class="gap">
+  <strong>On every other platform this function is a stub that returns false.</strong> The implementation in
+  <code>VulkanRenderer.cpp</code> is compiled only when <code>PLATFORM_OSX</code> is not defined, and it exists for a
+  link reason, not a behaviour one: without it the symbol would be satisfied from the
+  <code>VulkanRenderer.cpp</code> object and the real Metal surface in <code>VulkanRenderer.mm</code> would silently
+  never run. The stub must stay excluded on macOS.
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<p>None.</p>
+
+<h2 id="return">Return value</h2>
+
+<p><code>true</code> when <code>surface</code> holds a live Vulkan surface over the window's Metal layer;
+<code>false</code> when the window or instance is missing, any AppKit object failed to build, or
+<code>vkCreateMetalSurfaceEXT</code> failed — each failure logged with its reason or <code>VkResult</code>.</p>
+
+<h2 id="example">Examples</h2>
+
+<p class="note">Illustrative — private, and reachable only through <a href="createsurface.html">CreateSurface</a>'s
+macOS branch.</p>
+
+<pre><code>#if defined(PLATFORM_OSX)
+	return CreateMetalSurface();
+#endif</code></pre>
+
+<p>
+  It is the only caller, and on macOS it <em>is</em> the surface step of
+  <a href="initialize.html"><code>Initialize</code></a>.
+</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; VulkanRenderer</a></span>
+  <span><a href="index.html#methods">All VulkanRenderer methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

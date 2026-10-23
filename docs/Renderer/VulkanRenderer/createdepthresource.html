@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>VulkanRenderer::CreateDepthResource — Renderer module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a class="current" href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Renderer</a> /
+  <a href="index.html">VulkanRenderer</a> / CreateDepthResource
+</p>
+
+<h1><span class="fn">CreateDepthResource</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::VulkanRenderer</span>
+  <span class="tag">Engine/Renderer/Vulkan/VulkanRenderer.h</span>
+  <span class="tag">private</span>
+  the depth image at extent: create, allocate device local, bind, view — in that order
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>bool CreateDepthResource() noexcept</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  Private. Builds the depth attachment in four steps, in this order and no other: create the image at
+  <code>extent</code> in <code>depthFormat</code> with optimal tiling and depth-stencil usage, query its memory
+  requirements, allocate device-local memory for it, bind, then create the
+  <code>VK_IMAGE_ASPECT_DEPTH_BIT</code> view. <code>depthFormat</code> was decided one step earlier by
+  <a href="createrenderpass.html"><code>CreateRenderPass</code></a>; the image is sized to the same
+  <code>extent</code> <a href="createswapchain.html"><code>CreateSwapchain</code></a> captured.
+</p>
+
+<pre><code>	if (!FindMemoryType(physicalDevice, req.memoryTypeBits, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, ami.memoryTypeIndex))
+	{
+		LogFailure("no device local memory type for the depth image");
+		vkDestroyImage(device, depthImage, nullptr);
+		depthImage = VK_NULL_HANDLE;
+
+		return false;
+	}</code></pre>
+<p class="meta">From Engine/Renderer/Vulkan/VulkanRenderer.cpp, VulkanRenderer::CreateDepthResource()</p>
+
+<div class="gap">
+  <strong>Only the first failure path cleans up after itself.</strong> If no device-local memory type fits, the image
+  is destroyed and nulled before returning <code>false</code> — the block above. But a failed
+  <code>vkAllocateMemory</code>, a failed <code>vkBindImageMemory</code>, or a failed view creation return
+  <code>false</code> leaving the earlier handles allocated, and nothing in this function destroys them. Since
+  <a href="initialize.html"><code>Initialize</code></a> aborts the sequence and
+  <a href="shutdown.html"><code>Shutdown</code></a> early-returns when <code>initialized</code> is false, those handles
+  are never freed. This is the same shape the <a href="initialize.html">Initialize page</a> documents for the sequence
+  as a whole: partial failure leaks what was built.
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<p>None.</p>
+
+<h2 id="return">Return value</h2>
+
+<p><code>true</code> when <code>depthImage</code>, <code>depthMemory</code> and <code>depthImageView</code> all exist
+and are bound; <code>false</code> at the first failure, each logged — with the image additionally destroyed on the
+no-memory-type path only.</p>
+
+<h2 id="example">Examples</h2>
+
+<p class="note">Illustrative — private, and reachable only as the seventh step of <a href="initialize.html">Initialize</a>.</p>
+
+<pre><code>if (!CreateDepthResource())
+	return false;</code></pre>
+
+<p>
+  The view it produces is attached to <em>every</em> framebuffer
+  <a href="createframebuffers.html"><code>CreateFramebuffers</code></a> creates — one depth view shared by all swapchain
+  images, since only one image is rendered at a time.
+</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; VulkanRenderer</a></span>
+  <span><a href="index.html#methods">All VulkanRenderer methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

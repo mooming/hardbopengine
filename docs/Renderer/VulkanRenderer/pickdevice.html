@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>VulkanRenderer::PickDevice — Renderer module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a class="current" href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Renderer</a> /
+  <a href="index.html">VulkanRenderer</a> / PickDevice
+</p>
+
+<h1><span class="fn">PickDevice</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::VulkanRenderer</span>
+  <span class="tag">Engine/Renderer/Vulkan/VulkanRenderer.h</span>
+  <span class="tag">private</span>
+  the first adapter with a graphics queue that can present to this surface, and the family index that comes with it
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>bool PickDevice() noexcept</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  Private. Chooses the adapter and the queue family in one pass, with one rule: the <em>first</em> device offering a
+  queue family that supports both graphics and presentation to <em>this</em> surface. No preference for discrete over
+  integrated, no scoring, no second candidate. Both results are stored together —
+  <code>physicalDevice</code> and <code>queueFamilyIndex</code> — and the family index is reused later by
+  <a href="createdevice.html"><code>CreateDevice</code></a> for its single queue and by
+  <a href="createcommandbuffers.html"><code>CreateCommandBuffers</code></a> for the command pool.
+</p>
+
+<pre><code>	for (uint32_t i = 0; i &lt; count; ++i)
+	{
+		uint32_t qfCount = 0;
+		vkGetPhysicalDeviceQueueFamilyProperties(devices[i], &amp;qfCount, nullptr);
+		std::vector&lt;VkQueueFamilyProperties&gt; queues(qfCount);
+		vkGetPhysicalDeviceQueueFamilyProperties(devices[i], &amp;qfCount, queues.data());
+
+		for (uint32_t q = 0; q &lt; qfCount; ++q)
+		{
+			if ((queues[q].queueFlags &amp; VK_QUEUE_GRAPHICS_BIT) == 0)
+				continue;
+
+			VkBool32 presents = VK_FALSE;
+			continueIf(vkGetPhysicalDeviceSurfaceSupportKHR(devices[i], q, surface, &amp;presents) != VK_SUCCESS);
+			continueIf(presents != VK_TRUE);
+
+			physicalDevice = devices[i];
+			queueFamilyIndex = q;
+
+			return true;
+		}
+	}</code></pre>
+<p class="meta">From Engine/Renderer/Vulkan/VulkanRenderer.cpp, VulkanRenderer::PickDevice()</p>
+
+<p>
+  Devices are enumerated twice — once for the count, once to fetch — and a count of zero is its own diagnosed case:
+  the log names the usual causes, a missing <code>VK_ICD_FILENAMES</code> or no MoltenVK install, because an empty
+  device list on a machine with a GPU usually means the loader never saw the driver. A device whose queue query fails
+  for one family is skipped, not fatal — the loop simply tries the next family.
+</p>
+
+<div class="note">
+  <strong>This is the step the capability probe cannot replace.</strong>
+  <a href="../VulkanCapabilities/index.html"><code>QueryDefaultDeviceCapabilities</code></a> takes the first enumerated
+  device with no surface in play; picking for real additionally requires a graphics queue that can present, which only
+  a surface makes askable. That is also why <a href="createsurface.html"><code>CreateSurface</code></a> must run
+  before this function — the order <a href="initialize.html"><code>Initialize</code></a> fixes is not stylistic.
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<p>None.</p>
+
+<h2 id="return">Return value</h2>
+
+<p><code>true</code> when a device and family were chosen and both members are set; <code>false</code> when
+enumeration failed, no device exists, or no family satisfied both requirements — each case logged through the
+always-on error logger.</p>
+
+<h2 id="example">Examples</h2>
+
+<p class="note">Illustrative — private, and reachable only as the third step of <a href="initialize.html">Initialize</a>.</p>
+
+<pre><code>if (!PickDevice())
+	return false;</code></pre>
+
+<p>On success, <a href="createdevice.html"><code>CreateDevice</code></a> consumes both members immediately.</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; VulkanRenderer</a></span>
+  <span><a href="index.html#methods">All VulkanRenderer methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

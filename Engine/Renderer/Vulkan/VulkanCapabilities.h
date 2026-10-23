@@ -19,6 +19,7 @@ namespace hbe::Renderer
 ///          runtime API-kind enum.
 /// @param physicalDevice Device to query. VK_NULL_HANDLE leaves outCapabilities untouched.
 /// @param outCapabilities Filled in; on success isDeviceQueried is set true.
+/// API reference: docs/Renderer/VulkanCapabilities/index.html
 void FillRenderCapabilities(VkPhysicalDevice physicalDevice, RenderCapabilities& outCapabilities) noexcept;
 
 /// @brief Query the first usable Vulkan device without owning an instance, surface or device.

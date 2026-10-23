@@ -71,15 +71,11 @@
   a renderer that holds no Vulkan object until <code>Initialize</code> runs, and can never be copied or moved
 </p>
 
-<h2 id="signature">Signatures</h2>
+<h2 id="signature">Signature</h2>
 
-<p>Both declarations sit together in the header; the second exists to remove copying:</p>
+<pre><code>VulkanRenderer() noexcept
 
-<pre><code><span class="fn">VulkanRenderer</span>() <span class="kw">noexcept</span>;
-<span class="fn">VulkanRenderer</span>(<span class="kw">const</span> <span class="ty">VulkanRenderer</span>&amp;) = <span class="kw">delete</span>;
-
-<span class="cm">// Also declared deleted in the same block, and equally unusable:</span>
-<span class="ty">VulkanRenderer</span>&amp; <span class="kw">operator</span>=(<span class="kw">const</span> <span class="ty">VulkanRenderer</span>&amp;) = <span class="kw">delete</span>;</code></pre>
+VulkanRenderer(const VulkanRenderer&amp;) = delete</code></pre>
 
 <h2 id="description">Function description</h2>
 

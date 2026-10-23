@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>VulkanRenderer::CreatePipeline — Renderer module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a class="current" href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Renderer</a> /
+  <a href="index.html">VulkanRenderer</a> / CreatePipeline
+</p>
+
+<h1><span class="fn">CreatePipeline</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::VulkanRenderer</span>
+  <span class="tag">Engine/Renderer/Vulkan/VulkanRenderer.h</span>
+  <span class="tag">private</span>
+  shader modules from ShadersSpv.h, fixed-function state, and the 128-byte push range — layout first, pipeline against it
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>bool CreatePipeline() noexcept</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  Private. Builds the one graphics pipeline, and it is the step where the render's shape is baked in: two shader
+  modules loaded from the generated SPIR-V header (<code>gMCVertexSpv</code> and <code>gMCFragmentSpv</code> in
+  <code>Engine/Renderer/Vulkan/ShadersSpv.h</code>), vertex input of one binding at
+  <code>sizeof(MeshVertex)</code> with position and normal as <code>R32G32B32_SFLOAT</code> at their
+  <code>offsetof</code>, triangle list, no blend, depth test <code>VK_COMPARE_OP_LESS</code> with writes on, and
+  dynamic viewport and scissor — which is why <a href="recordframe.html"><code>RecordFrame</code></a> must set both
+  before every draw.
+</p>
+
+<pre><code>	VkPushConstantRange pcr{};
+	pcr.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
+	pcr.offset = 0;
+	pcr.size = sizeof(PushConstants);</code></pre>
+<p class="meta">From Engine/Renderer/Vulkan/VulkanRenderer.cpp, VulkanRenderer::CreatePipeline()</p>
+
+<p>
+  The pipeline layout carries no descriptor sets at all — just that one push-constant range, 128 bytes for the vertex
+  stage, the portability-guaranteed maximum that <a href="../PushConstants/index.html"><code>PushConstants</code></a>
+  is sized to fill exactly. The layout is created first, then the pipeline is created against both it and
+  <code>renderPass</code> at subpass 0 — which is why <a href="createrenderpass.html"><code>CreateRenderPass</code></a>
+  runs earlier in the sequence.
+</p>
+
+<pre><code>	rast.cullMode = VK_CULL_MODE_NONE;</code></pre>
+<p class="meta">From Engine/Renderer/Vulkan/VulkanRenderer.cpp, VulkanRenderer::CreatePipeline()</p>
+
+<p>
+  Nothing is culled on purpose: the marching-cubes winding the shaders produce is not guaranteed consistent, so a
+  cull mode would drop faces arbitrarily.
+</p>
+
+<div class="note">
+  <strong>Failure leaves the earlier objects of this step alive.</strong> A failed shader module, a failed layout, or a
+  failed <code>vkCreateGraphicsPipelines</code> is logged with its <code>VkResult</code> and answered with
+  <code>false</code> — but modules created before the failure are not destroyed by this function, and on a failed
+  <a href="initialize.html"><code>Initialize</code></a> nothing downstream ever will be.
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<p>None.</p>
+
+<h2 id="return">Return value</h2>
+
+<p><code>true</code> when <code>vertModule</code>, <code>fragModule</code>, <code>pipelineLayout</code> and
+<code>graphicsPipeline</code> all exist; <code>false</code> at the first failure, each logged with its
+<code>VkResult</code>.</p>
+
+<h2 id="example">Examples</h2>
+
+<p class="note">Illustrative — private, and reachable only as the tenth step of <a href="initialize.html">Initialize</a>.</p>
+
+<pre><code>if (!CreatePipeline())
+	return false;</code></pre>
+
+<p>
+  After this step the renderer could render — everything left is pacing:
+  <a href="createsyncobjects.html"><code>CreateSyncObjects</code></a> creates the semaphores and fences that make the
+  frame loop safe.
+</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; VulkanRenderer</a></span>
+  <span><a href="index.html#methods">All VulkanRenderer methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

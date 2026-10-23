@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>VulkanRenderer::CreateBuffer — Renderer module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a class="current" href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Renderer</a> /
+  <a href="index.html">VulkanRenderer</a> / CreateBuffer
+</p>
+
+<h1><span class="fn">CreateBuffer</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::VulkanRenderer</span>
+  <span class="tag">Engine/Renderer/Vulkan/VulkanRenderer.h</span>
+  <span class="tag">private</span>
+  one buffer and its host-visible, host-coherent memory — created and allocated, but not bound
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>bool CreateBuffer(VkBuffer&amp; buffer, VkDeviceMemory&amp; memory, size_t size, VkBufferUsageFlags usage) noexcept</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  Private, and shared by both mesh buffers: <a href="createvertexbuffers.html">
+  <code>CreateVertexBuffers</code></a> calls it twice, once for the vertex pair and once for the index pair. It does
+  two of the three things a usable buffer needs — creates the buffer, allocates memory that fits it — and deliberately
+  not the third: <strong>it does not bind</strong>. The caller binds with <code>vkBindBufferMemory</code> itself,
+  which is why both handles travel out by reference.
+</p>
+
+<p>
+  A zero size is refused up front with a bare <code>false</code> — no log, nothing created. Otherwise the buffer is
+  created with the caller's usage and exclusive sharing, its memory requirements queried, and memory allocated in the
+  one class both mesh buffers want: host-visible <em>and</em> host-coherent, so the upload can map, <code>memcpy</code>,
+  and unmap without flushes — no staging transfer, which the source names as a follow-up rather than implementing.
+</p>
+
+<pre><code>	if (!FindMemoryType(physicalDevice, req.memoryTypeBits, properties, ami.memoryTypeIndex))
+	{
+		LogFailure("no host visible memory type for the mesh buffer");
+		vkDestroyBuffer(device, buffer, nullptr);
+		buffer = VK_NULL_HANDLE;
+
+		return false;
+	}</code></pre>
+<p class="meta">From Engine/Renderer/Vulkan/VulkanRenderer.cpp, VulkanRenderer::CreateBuffer(VkBuffer&amp;, VkDeviceMemory&amp;, size_t, VkBufferUsageFlags)</p>
+
+<div class="gap">
+  <strong>Only the no-memory-type path cleans up; the allocation failure does not.</strong> When no memory type fits,
+  the buffer just created is destroyed and nulled — the block above. When <code>vkAllocateMemory</code> itself fails,
+  the function logs and returns <code>false</code> leaving the buffer alive and unbound; the caller's failure path
+  (<a href="set-mesh.html"><code>SetMesh</code></a> zeroing the counts) leaves it unreachable but resident until the
+  next upload or <a href="destroy.html"><code>Destroy</code></a>.
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<table>
+  <tr><th>Parameter</th><th>Type</th><th>Requirement</th></tr>
+  <tr>
+    <td><code>buffer</code></td>
+    <td><code>VkBuffer&amp;</code></td>
+    <td>Out. Receives the new buffer on success; set to <code>VK_NULL_HANDLE</code> only by the no-memory-type failure
+        path, left untouched otherwise</td>
+  </tr>
+  <tr>
+    <td><code>memory</code></td>
+    <td><code>VkDeviceMemory&amp;</code></td>
+    <td>Out. Receives the allocation on success; stays whatever the caller passed on failure</td>
+  </tr>
+  <tr>
+    <td><code>size</code></td>
+    <td><code>size_t</code></td>
+    <td>Bytes to allocate. Must be non-zero; zero returns <code>false</code> without logging</td>
+  </tr>
+  <tr>
+    <td><code>usage</code></td>
+    <td><code>VkBufferUsageFlags</code></td>
+    <td>The buffer's usage bits — <code>VK_BUFFER_USAGE_VERTEX_BUFFER_BIT</code> or
+        <code>VK_BUFFER_USAGE_INDEX_BUFFER_BIT</code> from the only caller</td>
+  </tr>
+</table>
+
+<h2 id="return">Return value</h2>
+
+<p><code>true</code> when the buffer exists and memory fitting its requirements is allocated (not yet bound);
+<code>false</code> on zero size, buffer creation failure, no suitable memory type, or allocation failure — all but the
+first logged.</p>
+
+<h2 id="example">Examples</h2>
+
+<p>Both call sites, from the only caller:</p>
+
+<p class="meta">From Engine/Renderer/Vulkan/VulkanRenderer.cpp, VulkanRenderer::CreateVertexBuffers(const Mesh&amp;)</p>
+
+<pre><code>	if (!CreateBuffer(vertexBuffer, vertexMemory, vertexBytes, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT))
+		return false;
+	if (!CreateBuffer(indexBuffer, indexMemory, indexBytes, VK_BUFFER_USAGE_INDEX_BUFFER_BIT))
+		return false;</code></pre>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; VulkanRenderer</a></span>
+  <span><a href="index.html#methods">All VulkanRenderer methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

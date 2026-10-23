@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>VulkanRenderer::CreateSwapchain — Renderer module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a class="current" href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Renderer</a> /
+  <a href="index.html">VulkanRenderer</a> / CreateSwapchain
+</p>
+
+<h1><span class="fn">CreateSwapchain</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::VulkanRenderer</span>
+  <span class="tag">Engine/Renderer/Vulkan/VulkanRenderer.h</span>
+  <span class="tag">private</span>
+  extent, format, present mode and image count, chosen once from the surface, with a colour view per image
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>bool CreateSwapchain() noexcept</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  Private. Queries the surface and makes four choices from what it answers, then creates the swapchain and a colour
+  view per image. The choices, in order:
+</p>
+
+<table>
+  <tr><th>Choice</th><th>Rule the code implements</th></tr>
+  <tr>
+    <td><code>extent</code></td>
+    <td>The surface's <code>currentExtent</code>, unless it reports <code>0xFFFFFFFF</code> — the "size comes from the
+        window" case — in which case the window's size is taken and clamped to <code>minImageExtent</code> /
+        <code>maxImageExtent</code></td>
+  </tr>
+  <tr>
+    <td><code>surfaceFormat</code></td>
+    <td><code>VK_FORMAT_B8G8R8A8_UNORM</code> when the surface offers it — matching the <code>CAMetalLayer</code>,
+        which is configured as <code>BGRA8Unorm</code> — otherwise the first format listed. A surface reporting no
+        formats fails the function</td>
+  </tr>
+  <tr>
+    <td><code>presentMode</code></td>
+    <td><code>VK_PRESENT_MODE_MAILBOX_KHR</code> when available, otherwise <code>VK_PRESENT_MODE_FIFO_KHR</code>, the
+        only mode Vulkan guarantees to exist</td>
+  </tr>
+  <tr>
+    <td>Image count</td>
+    <td><code>minImageCount + 1</code>, clamped down to <code>maxImageCount</code> when that is non-zero</td>
+  </tr>
+</table>
+
+<pre><code>	if (caps.currentExtent.width == 0xFFFFFFFFu)
+	{
+		extent.width = static_cast&lt;uint32_t&gt;(window-&gt;GetWidth());
+		extent.height = static_cast&lt;uint32_t&gt;(window-&gt;GetHeight());
+		extent.width = (extent.width &lt; caps.minImageExtent.width ? caps.minImageExtent.width : extent.width);
+		extent.width = (extent.width &gt; caps.maxImageExtent.width ? caps.maxImageExtent.width : extent.width);
+		extent.height = (extent.height &lt; caps.minImageExtent.height ? caps.minImageExtent.height : extent.height);
+		extent.height = (extent.height &gt; caps.maxImageExtent.height ? caps.maxImageExtent.height : extent.height);
+	}
+	else
+	{
+		extent = caps.currentExtent;
+	}</code></pre>
+<p class="meta">From Engine/Renderer/Vulkan/VulkanRenderer.cpp, VulkanRenderer::CreateSwapchain()</p>
+
+<p>
+  After <code>vkCreateSwapchainKHR</code> succeeds, the image handles are fetched and one
+  <code>VK_IMAGE_VIEW_TYPE_2D</code> colour view is created per image; a view that fails is logged and fails the whole
+  function. The images themselves are owned by the swapchain — fetched, never created, never destroyed here.
+</p>
+
+<div class="gap">
+  <strong>This runs once, ever.</strong> <code>oldSwapchain</code> is created null and no code path creates a second
+  swapchain: there is no recreation, no resize handling, no out-of-date recovery. A lost or degraded swapchain is
+  reported by the frame calls and drawn around, not repaired. The extent written here is consequently the extent
+  <a href="get-extent.html"><code>GetExtent</code></a> reports for the life of the object.
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<p>None.</p>
+
+<h2 id="return">Return value</h2>
+
+<p><code>true</code> when the swapchain exists, <code>swapchainImages</code> and <code>swapchainImageViews</code> are
+filled, and <code>extent</code>, <code>surfaceFormat</code> and <code>presentMode</code> are all chosen;
+<code>false</code> on the first failed Vulkan call, each logged with its <code>VkResult</code>.</p>
+
+<h2 id="example">Examples</h2>
+
+<p class="note">Illustrative — private, and reachable only as the fifth step of <a href="initialize.html">Initialize</a>.</p>
+
+<pre><code>if (!CreateSwapchain())
+	return false;</code></pre>
+
+<p>
+  Its outputs feed everything downstream: <a href="createrenderpass.html"><code>CreateRenderPass</code></a> needs
+  <code>surfaceFormat</code>, <a href="createdepthresource.html"><code>CreateDepthResource</code></a> and
+  <a href="createframebuffers.html"><code>CreateFramebuffers</code></a> need <code>extent</code>, and the framebuffers
+  need the views this function created.
+</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; VulkanRenderer</a></span>
+  <span><a href="index.html#methods">All VulkanRenderer methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

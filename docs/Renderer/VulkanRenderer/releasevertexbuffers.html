@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>VulkanRenderer::ReleaseVertexBuffers — Renderer module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a class="current" href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Renderer</a> /
+  <a href="index.html">VulkanRenderer</a> / ReleaseVertexBuffers
+</p>
+
+<h1><span class="fn">ReleaseVertexBuffers</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::VulkanRenderer</span>
+  <span class="tag">Engine/Renderer/Vulkan/VulkanRenderer.h</span>
+  <span class="tag">private</span>
+  destroy the four mesh handles and zero the counts — no idle wait, the caller owns the timing
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>void ReleaseVertexBuffers() noexcept</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  Private. Destroys the four mesh handles — index buffer, index memory, vertex buffer, vertex memory, in that order —
+  and zeroes all six pieces of mesh state, including the counts. Every handle is null-checked, so the function is safe
+  on a renderer that never uploaded a mesh, and calling it twice in a row is harmless.
+</p>
+
+<pre><code>	if (indexBuffer != VK_NULL_HANDLE)
+		vkDestroyBuffer(device, indexBuffer, nullptr);
+	if (indexMemory != VK_NULL_HANDLE)
+		vkFreeMemory(device, indexMemory, nullptr);
+	if (vertexBuffer != VK_NULL_HANDLE)
+		vkDestroyBuffer(device, vertexBuffer, nullptr);
+	if (vertexMemory != VK_NULL_HANDLE)
+		vkFreeMemory(device, vertexMemory, nullptr);
+
+	indexBuffer = VK_NULL_HANDLE;
+	indexMemory = VK_NULL_HANDLE;
+	vertexBuffer = VK_NULL_HANDLE;
+	vertexMemory = VK_NULL_HANDLE;
+	vertexCount = 0;
+	indexCount = 0;</code></pre>
+<p class="meta">From Engine/Renderer/Vulkan/VulkanRenderer.cpp, VulkanRenderer::ReleaseVertexBuffers()</p>
+
+<div class="gap">
+  <strong>There is no device wait idle in here, and that is the whole hazard.</strong> Destroying a buffer the GPU is
+  still reading is undefined behaviour in Vulkan, and this function does not protect against it — the caller owns the
+  timing. Its two callers each do:
+  <a href="createvertexbuffers.html"><code>CreateVertexBuffers</code></a> releases the previous mesh before creating
+  the new one (safe before the loop starts, unsafe while a frame that binds the old buffers is in flight — the
+  <a href="set-mesh.html"><code>SetMesh</code></a> page states that cost), and
+  <a href="destroy.html"><code>Destroy</code></a> calls it only after <code>vkDeviceWaitIdle</code>.
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<p>None.</p>
+
+<h2 id="return">Return value</h2>
+
+<p>None — <code>void</code>. On return the renderer holds no mesh: all four handles are null and both counts are zero,
+so the next frames draw clear colour only.</p>
+
+<h2 id="example">Examples</h2>
+
+<p>Both call sites, in order of execution:</p>
+
+<p class="meta">From Engine/Renderer/Vulkan/VulkanRenderer.cpp, VulkanRenderer::CreateVertexBuffers(const Mesh&amp;)</p>
+
+<pre><code>	ReleaseVertexBuffers();
+
+	if (commandPool != VK_NULL_HANDLE)</code></pre>
+
+<p class="meta">From Engine/Renderer/Vulkan/VulkanRenderer.cpp, VulkanRenderer::Destroy()</p>
+
+<pre><code>	ReleaseVertexBuffers();
+
+	if (commandPool != VK_NULL_HANDLE)</code></pre>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; VulkanRenderer</a></span>
+  <span><a href="index.html#methods">All VulkanRenderer methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

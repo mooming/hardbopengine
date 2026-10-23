@@ -62,6 +62,7 @@ inline void IdentityMatrix(float m[16]) noexcept
 /// @brief Concrete Vulkan renderer (no inheritance).
 /// @details The cross-platform Vulkan pipeline lives in VulkanRenderer.cpp; the
 ///          macOS surface is created in VulkanRenderer.mm (OSAL-style split).
+/// API reference: docs/Renderer/VulkanRenderer/index.html
 class VulkanRenderer
 {
 private:

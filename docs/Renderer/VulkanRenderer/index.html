@@ -40,8 +40,8 @@
 
   <h3>Methods</h3>
   <ul class="methods">
-    <li><a href="constructors.html">constructors</a></li>
-    <li><a href="destructor.html">destructor</a></li>
+        <li><a href="constructors.html">VulkanRenderer</a></li>
+    <li><a href="destructor.html">~VulkanRenderer</a></li>
     <li><a href="initialize.html">Initialize</a></li>
     <li><a href="shutdown.html">Shutdown</a></li>
     <li><a href="begin-frame.html">BeginFrame</a></li>
@@ -53,6 +53,24 @@
     <li><a href="set-view.html">SetView</a></li>
     <li><a href="set-proj.html">SetProj</a></li>
     <li><a href="get-extent.html">GetExtent</a></li>
+    <li><a href="createbuffer.html">CreateBuffer</a></li>
+    <li><a href="createcommandbuffers.html">CreateCommandBuffers</a></li>
+    <li><a href="createdepthresource.html">CreateDepthResource</a></li>
+    <li><a href="createdevice.html">CreateDevice</a></li>
+    <li><a href="createframebuffers.html">CreateFramebuffers</a></li>
+    <li><a href="createinstance.html">CreateInstance</a></li>
+    <li><a href="createmetalsurface.html">CreateMetalSurface</a></li>
+    <li><a href="createpipeline.html">CreatePipeline</a></li>
+    <li><a href="createrenderpass.html">CreateRenderPass</a></li>
+    <li><a href="createsurface.html">CreateSurface</a></li>
+    <li><a href="createswapchain.html">CreateSwapchain</a></li>
+    <li><a href="createsyncobjects.html">CreateSyncObjects</a></li>
+    <li><a href="createvertexbuffers.html">CreateVertexBuffers</a></li>
+    <li><a href="destroy.html">Destroy</a></li>
+    <li><a href="pickdevice.html">PickDevice</a></li>
+    <li><a href="querycapabilities.html">QueryCapabilities</a></li>
+    <li><a href="recordframe.html">RecordFrame</a></li>
+    <li><a href="releasevertexbuffers.html">ReleaseVertexBuffers</a></li>
   </ul>
 </nav>
 
@@ -403,7 +421,10 @@
 <h2 id="methods">Class methods</h2>
 
 <p>
-  Thirteen documented names. The lifecycle pair is <a href="initialize.html"><code>Initialize</code></a> /
+  Thirty-one documented names: the thirteen public entry points below, and the eighteen private creation and teardown
+  steps that <a href="initialize.html"><code>Initialize</code></a> and
+  <a href="shutdown.html"><code>Shutdown</code></a> drive, each with its own page. The lifecycle pair is
+  <a href="initialize.html"><code>Initialize</code></a> /
   <a href="shutdown.html"><code>Shutdown</code></a>; the frame trio must run in the order its name spells; the three
   setters are plain copies that can run any time.
 </p>
@@ -486,6 +507,110 @@
     <td>The swapchain extent captured at <code>Initialize</code> — {0,0} before it, and never updated for a resized
         window afterwards</td>
   </tr>
+  <tr>
+    <td><a href="createinstance.html">CreateInstance</a><span class="badge">private</span></td>
+    <td class="sig">bool CreateInstance() noexcept</td>
+    <td>The first Vulkan object: portability enumeration asked unconditionally, so MoltenVK appears in the device
+        list; failure leaves <code>instance</code> null</td>
+  </tr>
+  <tr>
+    <td><a href="createsurface.html">CreateSurface</a><span class="badge">private</span></td>
+    <td class="sig">bool CreateSurface() noexcept</td>
+    <td>Platform dispatch — Metal layer on macOS, window handle on Windows, a bare <code>false</code> on every
+        platform with no backend</td>
+  </tr>
+  <tr>
+    <td><a href="pickdevice.html">PickDevice</a><span class="badge">private</span></td>
+    <td class="sig">bool PickDevice() noexcept</td>
+    <td>The first adapter with a graphics queue that can present to <em>this</em> surface; device and family index are
+        stored together</td>
+  </tr>
+  <tr>
+    <td><a href="createdevice.html">CreateDevice</a><span class="badge">private</span></td>
+    <td class="sig">bool CreateDevice() noexcept</td>
+    <td>One queue, no optional features, <code>VK_KHR_swapchain</code> only — and the capability query runs here, the
+        first moment a device exists</td>
+  </tr>
+  <tr>
+    <td><a href="querycapabilities.html">QueryCapabilities</a><span class="badge">private</span></td>
+    <td class="sig">void QueryCapabilities() noexcept</td>
+    <td>One call to <a href="../VulkanCapabilities/index.html"><code>FillRenderCapabilities</code></a>; the only
+        writer of <code>capabilities</code>, run once per <code>Initialize</code></td>
+  </tr>
+  <tr>
+    <td><a href="createswapchain.html">CreateSwapchain</a><span class="badge">private</span></td>
+    <td class="sig">bool CreateSwapchain() noexcept</td>
+    <td>Extent, format, present mode and image count chosen once from the surface, with a colour view per image —
+        there is no recreation path</td>
+  </tr>
+  <tr>
+    <td><a href="createrenderpass.html">CreateRenderPass</a><span class="badge">private</span></td>
+    <td class="sig">bool CreateRenderPass() noexcept</td>
+    <td>Colour plus depth attachments, one subpass, the external dependency that keeps writes behind the acquire —
+        and <code>depthFormat</code> is chosen here, not by the depth resource</td>
+  </tr>
+  <tr>
+    <td><a href="createdepthresource.html">CreateDepthResource</a><span class="badge">private</span></td>
+    <td class="sig">bool CreateDepthResource() noexcept</td>
+    <td>The depth image at <code>extent</code>, device local; only the no-memory-type failure path cleans up after
+        itself</td>
+  </tr>
+  <tr>
+    <td><a href="createframebuffers.html">CreateFramebuffers</a><span class="badge">private</span></td>
+    <td class="sig">bool CreateFramebuffers() noexcept</td>
+    <td>One framebuffer per swapchain image, each pairing that image's view with the one shared depth view</td>
+  </tr>
+  <tr>
+    <td><a href="createcommandbuffers.html">CreateCommandBuffers</a><span class="badge">private</span></td>
+    <td class="sig">bool CreateCommandBuffers() noexcept</td>
+    <td>The command pool and two primary buffers, one per frame in flight, resettable and re-recorded every frame</td>
+  </tr>
+  <tr>
+    <td><a href="createvertexbuffers.html">CreateVertexBuffers</a><span class="badge">private</span></td>
+    <td class="sig">bool CreateVertexBuffers(const Mesh&amp; mesh) noexcept</td>
+    <td>Releases the previous mesh, creates and binds the new buffer pair, and map-copies the data up; an empty mesh
+        is a clear-only success, not an error</td>
+  </tr>
+  <tr>
+    <td><a href="releasevertexbuffers.html">ReleaseVertexBuffers</a><span class="badge">private</span></td>
+    <td class="sig">void ReleaseVertexBuffers() noexcept</td>
+    <td>Destroys the four mesh handles and zeroes the counts — no idle wait inside, the caller owns the timing</td>
+  </tr>
+  <tr>
+    <td><a href="createpipeline.html">CreatePipeline</a><span class="badge">private</span></td>
+    <td class="sig">bool CreatePipeline() noexcept</td>
+    <td>Shader modules from <code>ShadersSpv.h</code>, fixed-function state, and the 128-byte push range — layout
+        first, pipeline against it and the render pass</td>
+  </tr>
+  <tr>
+    <td><a href="createsyncobjects.html">CreateSyncObjects</a><span class="badge">private</span></td>
+    <td class="sig">bool CreateSyncObjects() noexcept</td>
+    <td>Two semaphores per slot plus a fence, fences created already-signalled so frame 0 does not block</td>
+  </tr>
+  <tr>
+    <td><a href="createmetalsurface.html">CreateMetalSurface</a><span class="badge">private</span></td>
+    <td class="sig">bool CreateMetalSurface() noexcept</td>
+    <td>macOS only, implemented in <code>VulkanRenderer.mm</code>: a <code>CAMetalLayer</code> adopted by a
+        layer-backed view; a stub returning <code>false</code> everywhere else</td>
+  </tr>
+  <tr>
+    <td><a href="createbuffer.html">CreateBuffer</a><span class="badge">private</span></td>
+    <td class="sig">bool CreateBuffer(VkBuffer&amp; buffer, VkDeviceMemory&amp; memory, size_t size, VkBufferUsageFlags usage) noexcept</td>
+    <td>Creates the buffer and allocates host-visible, host-coherent memory — and does <em>not</em> bind; the caller
+        binds. Zero size is refused without a log</td>
+  </tr>
+  <tr>
+    <td><a href="recordframe.html">RecordFrame</a><span class="badge">private</span></td>
+    <td class="sig">void RecordFrame() noexcept</td>
+    <td>Records this slot's buffer: clears, render pass, pipeline, dynamic viewport and scissor, pushed constants,
+        one indexed draw</td>
+  </tr>
+  <tr>
+    <td><a href="destroy.html">Destroy</a><span class="badge">private</span></td>
+    <td class="sig">void Destroy() noexcept</td>
+    <td>Idle wait first, then reverse-dependency teardown — views before images, device before surface, surface
+        before instance</td>
+  </tr>
 </table>
 
 <h3>Frame contract</h3>
@@ -555,14 +680,14 @@
   <tr><th>Gap</th><th>Detail</th></tr>
   <tr>
     <td>The private creation sequence</td>
-    <td>Thirteen private steps — <code>CreateInstance</code>, <code>CreateSurface</code>, <code>CreateMetalSurface</code>,
-        <code>PickDevice</code>, <code>CreateDevice</code>, <code>QueryCapabilities</code>,
-        <code>CreateSwapchain</code>, <code>CreateRenderPass</code>, <code>CreateDepthResource</code>,
-        <code>CreateFramebuffers</code>, <code>CreateCommandBuffers</code>, <code>CreatePipeline</code>,
-        <code>CreateSyncObjects</code> — plus <code>CreateBuffer</code>, <code>RecordFrame</code>,
-        <code>ReleaseVertexBuffers</code> and <code>Destroy</code>. Their per-field Vulkan detail is implementation
-        and belongs in a design document; there is none for this backend yet, which is why the frame and lifetime
-        contracts above are stated from the code rather than from a document</td>
+    <td>Documented per name now: <a href="createinstance.html"><code>CreateInstance</code></a> through
+        <a href="createsyncobjects.html"><code>CreateSyncObjects</code></a> follow the order
+        <a href="initialize.html"><code>Initialize</code></a> fixes, and <a href="createbuffer.html">
+        <code>CreateBuffer</code></a>, <a href="recordframe.html"><code>RecordFrame</code></a>,
+        <a href="releasevertexbuffers.html"><code>ReleaseVertexBuffers</code></a> and
+        <a href="destroy.html"><code>Destroy</code></a> carry the per-resource and teardown contracts. Per-field
+        Vulkan struct detail beyond those contracts is still implementation without a design document, which is why
+        the frame and lifetime contracts above are stated from the code</td>
   </tr>
   <tr>
     <td>Swapchain recreation</td>

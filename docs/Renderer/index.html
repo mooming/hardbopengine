@@ -44,6 +44,7 @@
     <li><a href="RenderCapabilities/index.html">RenderCapabilities</a></li>
     <li><a href="DeviceType/index.html">DeviceType</a></li>
     <li><a href="RHICapabilities/index.html">RHICapabilities</a></li>
+    <li><a href="VulkanCapabilities/index.html">VulkanCapabilities</a></li>
     <li><a href="VulkanRenderer/index.html">VulkanRenderer</a></li>
     <li><a href="Vertex/index.html">Vertex</a></li>
     <li><a href="MeshVertex/index.html">MeshVertex</a></li>
@@ -171,8 +172,16 @@
     <td>Answers capability questions before a renderer exists — one compile-time bool, one probe that creates and discards
         a Vulkan instance</td>
   </tr>
+  <tr id="vulkancapabilities">
+    <td><a href="VulkanCapabilities/index.html">VulkanCapabilities</a><span class="badge">no method pages</span></td>
+    <td>Utility header, two free functions</td>
+    <td>Vulkan/VulkanCapabilities.h</td>
+    <td>Translates one Vulkan physical device into the neutral
+        <a href="RenderCapabilities/index.html"><code>RenderCapabilities</code></a> — the seam a second backend copies
+        rather than extends</td>
+  </tr>
   <tr id="vulkanrenderer">
-    <td><a href="VulkanRenderer/index.html">VulkanRenderer</a><span class="badge">13 method pages</span></td>
+    <td><a href="VulkanRenderer/index.html">VulkanRenderer</a><span class="badge">31 method pages</span></td>
     <td>Class, no base, non-copyable</td>
     <td>Vulkan/VulkanRenderer.h</td>
     <td>The Vulkan backend: instance, surface, device, swapchain, pipeline, two frames in flight. Constructed directly —
@@ -269,9 +278,9 @@
 <h2 id="functions">Module functions</h2>
 
 <p>
-  Three free functions live at namespace scope in <code>hbe::Renderer</code>. The previous version of this page said
-  "None at namespace scope" while quoting one of them in prose; all three are real, and none has a page of its own in this
-  batch — they are named here and detailed in their headers.
+  Three free functions live at namespace scope in <code>hbe::Renderer</code>. The two capability functions are
+  documented together at <a href="VulkanCapabilities/index.html">VulkanCapabilities</a>; <code>IdentityMatrix</code>
+  has no page of its own and is named here.
 </p>
 
 <table>
@@ -285,7 +294,7 @@
         matrix slots before any caller sets them</td>
   </tr>
   <tr>
-    <td><code>FillRenderCapabilities</code></td>
+    <td><a href="VulkanCapabilities/index.html"><code>FillRenderCapabilities</code></a></td>
     <td>Vulkan/VulkanCapabilities.h</td>
     <td><code>void FillRenderCapabilities(VkPhysicalDevice physicalDevice, RenderCapabilities&amp; outCapabilities) noexcept</code>
         — resets the descriptor to "unknown", then reads the physical device's properties and features into it and sets
@@ -294,7 +303,7 @@
         copies rather than extends</td>
   </tr>
   <tr>
-    <td><code>QueryDefaultDeviceCapabilities</code></td>
+    <td><a href="VulkanCapabilities/index.html"><code>QueryDefaultDeviceCapabilities</code></a></td>
     <td>Vulkan/VulkanCapabilities.h</td>
     <td><code>bool QueryDefaultDeviceCapabilities(RenderCapabilities&amp; outCapabilities) noexcept</code> — creates a
         throwaway instance, enables <code>VK_KHR_portability_enumeration</code> only if the loader advertises it, takes the
@@ -424,19 +433,22 @@
         <a href="../RendererDesign.html">docs/RendererDesign.html</a></td>
   </tr>
   <tr>
-    <td>The capability translation seam has no page</td>
-    <td><code>Vulkan/VulkanCapabilities.h</code> holds the two free functions under
-        <a href="#functions">Module functions</a>. Its per-field Vulkan-to-descriptor mapping — which
-        <code>VkPhysicalDeviceFeatures</code> member feeds which bit, and which limits are cast — is documented in that
-        header and in the design document, not restated here. Two of its behaviours do appear on class pages:
-        <code>supportsComputeShader</code> is set <code>true</code> without a query because Vulkan makes compute mandatory,
-        and <code>uniformBufferOffsetAlignment</code> comes from the <em>minimum</em> alignment</td>
+    <td>The capability translation seam</td>
+    <td><code>Vulkan/VulkanCapabilities.h</code> now has its page:
+        <a href="VulkanCapabilities/index.html">VulkanCapabilities</a> documents both free functions, the seam
+        argument, and the two translator decisions that are not pure copies — <code>supportsComputeShader</code> set
+        <code>true</code> without a query because Vulkan makes compute mandatory, and
+        <code>uniformBufferOffsetAlignment</code> taken from the <em>minimum</em> alignment. The field-by-field
+        Vulkan-to-descriptor mapping stays with the source and the design document, not restated on the page</td>
   </tr>
   <tr>
     <td><a href="VulkanRenderer/index.html"><code>VulkanRenderer</code></a> internals</td>
-    <td>Swapchain recreation, synchronisation objects, descriptor and pipeline construction are implementation and belong in
-        a design document under <code>docs/design/</code> — there is none for the Vulkan backend yet, which is why the frame
-        and lifetime rules on this page are stated from the source. The private step list is named there too</td>
+    <td>The private creation and teardown steps now carry per-name pages under
+        <a href="VulkanRenderer/index.html">VulkanRenderer</a>, following the order
+        <a href="VulkanRenderer/initialize.html"><code>Initialize</code></a> fixes. Per-field Vulkan struct detail
+        beyond those page contracts — swapchain recreation (which does not exist), descriptor construction — is still
+        implementation without a design document under <code>docs/design/</code>, which is why the frame and lifetime
+        rules on this page are stated from the source</td>
   </tr>
   <tr>
     <td>Thread-safety is asserted nowhere</td>
