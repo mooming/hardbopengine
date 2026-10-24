@@ -11,9 +11,9 @@
 <div style="border-left:4px solid #b45309;background:#fffbeb;padding:10px 14px;margin:0 0 22px 0;font-size:0.94em;">
   <strong>Lifecycle changed on 2026-09-28.</strong> The one-call run this page describes is gone. A test is now a
   <a href="../Testlet/index.html"><code>Testlet</code></a> and the unit the harness schedules, so
-  <a href="../TestCollection/start.html"><code>TestCollection::Start</code></a> became
+  <code>TestCollection::Start</code> became
   <code>PrepareTests</code> / <code>RunTestAt</code> / <code>Complete</code>,
-  <a href="../TestEnv/start.html"><code>TestEnv::Start</code></a> became <code>PrepareTestlets</code> /
+  <code>TestEnv::Start</code> became <code>PrepareTestlets</code> /
   <code>RunTestlet</code> / <code>Finalize</code>, and <code>hbe::Test::RunTests</code> became
   <a href="../UnitTestCollection/suite-entry-points.html"><code>RegisterSuite</code> and
   <code>ScheduleSuiteOnBaseStream</code></a>. The statements below that name the old lifecycle are history, not
@@ -68,7 +68,6 @@
     <li><a href="is-success.html">IsSuccess</a></li>
     <li><a href="constructors.html">constructors</a></li>
     <li><a href="destructor.html">destructor</a></li>
-    <li><a href="start.html">Start (removed)</a></li>
   </ul>
 </nav>
 
@@ -90,19 +89,19 @@
 
 <h2 id="signature">Signature</h2>
 
-<pre><code>[[nodiscard]] <span class="kw">bool</span> <span class="fn">IsDone</span>() <span class="kw">const</span> <span class="kw">noexcept</span>;</code></pre>
+<pre><code>[[nodiscard]] bool IsDone() const noexcept</code></pre>
 
 <h2 id="description">Function description</h2>
 
 <p>
-  Returns <code>isDone</code>. It is set false on entry to <a href="start.html"><code>Start</code></a> and true
+  Returns <code>isDone</code>. It is set false on entry to <code>Start</code> and true
   after the last case, immediately before the collection's verdict is printed. So there are three states and only
   one flag: a collection that has never run, one that is mid-run, and one whose <code>Start</code> never returned
   all read as <code>false</code>.
 </p>
 
 <p>
-  <a href="../TestEnv/start.html"><code>TestEnv::ExecuteTest</code></a> is what reads it, and what it does with the
+  <code>TestEnv::ExecuteTest</code> is what reads it, and what it does with the
   answer defines the module's idea of an "invalid" test: a collection that is not done lands in
   <code>invalidTests</code> and is counted by
   <a href="../TestEnv/get-failure-count.html"><code>GetFailureCount</code></a> without contributing any message text.
@@ -136,7 +135,7 @@
   <tr>
     <td><code>bool</code></td>
     <td>
-      <code>true</code> only after a <a href="start.html"><code>Start</code></a> call returned normally; false before
+      <code>true</code> only after a <code>Start</code> call returned normally; false before
       the first one, during a run, and after a run that did not complete. <code>[[nodiscard]]</code>
     </td>
   </tr>

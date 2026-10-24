@@ -11,9 +11,9 @@
 <div style="border-left:4px solid #b45309;background:#fffbeb;padding:10px 14px;margin:0 0 22px 0;font-size:0.94em;">
   <strong>Lifecycle changed on 2026-09-28.</strong> The one-call run this page describes is gone. A test is now a
   <a href="../Testlet/index.html"><code>Testlet</code></a> and the unit the harness schedules, so
-  <a href="../TestCollection/start.html"><code>TestCollection::Start</code></a> became
+  <code>TestCollection::Start</code> became
   <code>PrepareTests</code> / <code>RunTestAt</code> / <code>Complete</code>,
-  <a href="../TestEnv/start.html"><code>TestEnv::Start</code></a> became <code>PrepareTestlets</code> /
+  <code>TestEnv::Start</code> became <code>PrepareTestlets</code> /
   <code>RunTestlet</code> / <code>Finalize</code>, and <code>hbe::Test::RunTests</code> became
   <a href="../UnitTestCollection/suite-entry-points.html"><code>RegisterSuite</code> and
   <code>ScheduleSuiteOnBaseStream</code></a>. The statements below that name the old lifecycle are history, not
@@ -56,13 +56,14 @@
     <li><a href="prepare-testlets.html">PrepareTestlets</a></li>
     <li><a href="run-testlet.html">RunTestlet</a></li>
     <li><a href="finalize.html">Finalize</a></li>
-    <li><a href="global-allocation-totals.html">Global allocation totals</a></li>
+    <li><a href="get-global-allocation-bytes.html">GetGlobalAllocationBytes</a></li>
+    <li><a href="get-global-allocation-count.html">GetGlobalAllocationCount</a></li>
+    <li><a href="get-testlet-count-with-global-allocations.html">GetTestletCountWithGlobalAllocations</a></li>
     <li><a href="add-test-collection.html">AddTestCollection</a></li>
     <li><a href="get-pass-count.html">GetPassCount</a></li>
     <li><a href="get-failure-count.html">GetFailureCount</a></li>
     <li><a class="current" href="constructors.html">constructors</a></li>
     <li><a href="get-env.html">GetEnv</a></li>
-    <li><a href="start.html">Start (removed)</a></li>
   </ul>
 </nav>
 
@@ -85,7 +86,9 @@
 
 <h2 id="signature">Signature</h2>
 
-<pre><code><span class="fn">TestEnv</span>() <span class="kw">noexcept</span> : testedCount(<span class="nu">0</span>), passCount(<span class="nu">0</span>) {}</code></pre>
+<pre><code>TestEnv() noexcept
+		: testedCount(0)
+		, passCount(0)</code></pre>
 
 <h2 id="description">Function description</h2>
 
@@ -106,9 +109,9 @@
 
 <div class="gap">
   <strong>There is no way back to zero.</strong> No constructor is called again on a live environment, no
-  <code>Reset</code> exists, and <a href="start.html"><code>Start</code></a> clears only the two name lists — not
+  <code>Reset</code> exists, and <code>Start</code> clears only the two name lists — not
   <code>passCount</code>, not <code>testedCount</code>, not the merged message vectors. So a single environment cannot
-  be re-used for a fresh measurement: a second <a href="start.html"><code>Start</code></a> yields a per-run failure
+  be re-used for a fresh measurement: a second <code>Start</code> yields a per-run failure
   count and a cumulative pass count at the same time. If you need two independent runs, use two environments and
   remember that only one of them is the one the executable reads.
 </div>
@@ -129,7 +132,7 @@
 
 <p>
   Constructors have no return value. The observable state afterwards is an empty <code>tests</code> vector, so
-  <a href="start.html"><code>Start</code></a> on a freshly built environment prints a completed report with a total of
+  <code>Start</code> on a freshly built environment prints a completed report with a total of
   zero and both counters at zero — a run that is entirely green because there was nothing in it.
 </p>
 

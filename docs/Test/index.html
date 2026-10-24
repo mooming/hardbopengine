@@ -48,6 +48,7 @@
     <li><a href="TestCollection/index.html">TestCollection</a></li>
     <li><a href="TestEnv/index.html">TestEnv</a></li>
     <li><a href="Testlet/index.html">Testlet</a></li>
+    <li><a href="TestletDispatch/index.html">TestletDispatch</a></li>
     <li><a href="UnitTestCollection/index.html">UnitTestCollection</a></li>
   </ul>
 
@@ -77,9 +78,9 @@
 <div style="border-left:4px solid #b45309;background:#fffbeb;padding:10px 14px;margin:0 0 22px 0;font-size:0.94em;">
   <strong>Lifecycle changed on 2026-09-28.</strong> The one-call run this page describes is gone. A test is now a
   <a href="Testlet/index.html"><code>Testlet</code></a> and the unit the harness schedules, so
-  <a href="TestCollection/start.html"><code>TestCollection::Start</code></a> became
+  <code>TestCollection::Start</code> became
   <code>PrepareTests</code> / <code>RunTestAt</code> / <code>Complete</code>,
-  <a href="TestEnv/start.html"><code>TestEnv::Start</code></a> became <code>PrepareTestlets</code> /
+  <code>TestEnv::Start</code> became <code>PrepareTestlets</code> /
   <code>RunTestlet</code> / <code>Finalize</code>, and <code>hbe::Test::RunTests</code> became
   <a href="UnitTestCollection/suite-entry-points.html"><code>RegisterSuite</code> and
   <code>ScheduleSuiteOnBaseStream</code></a>. The statements below that name the old lifecycle are history, not
@@ -293,7 +294,7 @@
 <p>
   <code>hbe::Test</code> and <code>hbe::TestHelper</code> are the module's entire free-function surface; everything else
   is reached through the three types above. One more free function waits —
-  <code>hbe::WaitUntil</code> at <code>Engine/Test/TestCollection.h:32</code> — and owns no page; see the row for it in
+  <code>hbe::WaitUntil</code> at <code>Engine/Test/TestCollection.h</code> (a free function template) — and owns no page; see the row for it in
   <a href="#coverage">Coverage</a>.
 </p>
 
@@ -372,7 +373,7 @@
   <tr>
     <td>Per-case results exist only as console output</td>
     <td>
-      <a href="TestCollection/start.html"><code>Start</code></a> prints <code>[PASS]</code> or <code>[FAIL]</code> per
+      <code>Start</code> prints <code>[PASS]</code> or <code>[FAIL]</code> per
       case and keeps nothing: no accessor answers how many cases a collection ran, and no accessor names the failing
       one. Nothing can be reported as a failure either — a case that crashes, leaks, hangs or registers nothing is
       indistinguishable from one that passed. Details on
@@ -431,7 +432,7 @@
     <td>Two of the module's three test waits own no page</td>
     <td>
       <a href="TestHelper/drive-until.html"><code>TestHelper::DriveUntil</code></a> is documented; the other two are
-      not. <code>hbe::WaitUntil</code> (<code>Engine/Test/TestCollection.h:32</code>) is a deadline sleep-poll with five
+      not. <code>hbe::WaitUntil</code> (<code>Engine/Test/TestCollection.h</code>) is a deadline sleep-poll with five
       callers, all of them in <code>Engine/Core/TaskSystem.cpp</code>, and <code>AdvanceWindowsUntil</code>
       (<code>Engine/Core/TaskSystem.cpp:855</code>, internal linkage, three callers) advances budget windows rather than
       pumping a stream. Both were left where they were on 2026-10-02 when the drive wait moved, so the change stayed a

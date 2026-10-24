@@ -134,16 +134,16 @@ def declarations(header, cls):
         while lines and not lines[-1].strip():
             lines.pop()
         text = '\n'.join(lines).strip()
-        if '(' not in text or text.startswith('using '):
+        if text.startswith('using '):
+            continue
+        if '(' not in text and not text.startswith('static constexpr'):
             continue
         # A `static constexpr` chunk is data when the `=` sits before the first `(` — the initialiser —
         # and a function when the `(` comes first, with any `=` inside the parameter list a default
         # argument. `static constexpr SourceLocation current(...)` was once skipped wholesale, which left
-        # a factory function owning no page and its page unverifiable.
-        if text.startswith('static constexpr'):
-            eq, paren = text.find('='), text.find('(')
-            if paren < 0 or (0 <= eq < paren):
-                continue
+        # a factory function owning no page and its page unverifiable. The data shape is collected too,
+        # because a constant with a page of its own (TestCollection's retention ceiling) must verify
+        # against the header like any other entry; its name is the identifier before the `=`.
         # `friend` declarations were skipped wholesale, which left an in-class friend operator owning no
         # page — the same shape the operator search below exists to catch. A friend declaration without a
         # parenthesis is a class friendship and is dropped by the paren test above.
@@ -155,6 +155,8 @@ def declarations(header, cls):
         name = ('operator' + operator.group(1)) if (operator and operator.group(1)) else None
         if name is None:
             match = re.search(r'([A-Za-z_~]\w*)\s*\(', text)
+            if match is None and text.startswith('static constexpr'):
+                match = re.search(r'static\s+constexpr\s+[\w:&<>\s]+?([A-Za-z_]\w*)\s*=', text)
             name = match.group(1) if match else None
         if name:
             grouped.setdefault(name, []).append(text)

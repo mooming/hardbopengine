@@ -11,9 +11,9 @@
 <div style="border-left:4px solid #b45309;background:#fffbeb;padding:10px 14px;margin:0 0 22px 0;font-size:0.94em;">
   <strong>Lifecycle changed on 2026-09-28.</strong> The one-call run this page describes is gone. A test is now a
   <a href="../Testlet/index.html"><code>Testlet</code></a> and the unit the harness schedules, so
-  <a href="../TestCollection/start.html"><code>TestCollection::Start</code></a> became
+  <code>TestCollection::Start</code> became
   <code>PrepareTests</code> / <code>RunTestAt</code> / <code>Complete</code>,
-  <a href="../TestEnv/start.html"><code>TestEnv::Start</code></a> became <code>PrepareTestlets</code> /
+  <code>TestEnv::Start</code> became <code>PrepareTestlets</code> /
   <code>RunTestlet</code> / <code>Finalize</code>, and <code>hbe::Test::RunTests</code> became
   <a href="../UnitTestCollection/suite-entry-points.html"><code>RegisterSuite</code> and
   <code>ScheduleSuiteOnBaseStream</code></a>. The statements below that name the old lifecycle are history, not
@@ -56,13 +56,14 @@
     <li><a href="prepare-testlets.html">PrepareTestlets</a></li>
     <li><a href="run-testlet.html">RunTestlet</a></li>
     <li><a href="finalize.html">Finalize</a></li>
-    <li><a href="global-allocation-totals.html">Global allocation totals</a></li>
+    <li><a href="get-global-allocation-bytes.html">GetGlobalAllocationBytes</a></li>
+    <li><a href="get-global-allocation-count.html">GetGlobalAllocationCount</a></li>
+    <li><a href="get-testlet-count-with-global-allocations.html">GetTestletCountWithGlobalAllocations</a></li>
     <li><a href="add-test-collection.html">AddTestCollection</a></li>
     <li><a href="get-pass-count.html">GetPassCount</a></li>
     <li><a href="get-failure-count.html">GetFailureCount</a></li>
     <li><a href="constructors.html">constructors</a></li>
     <li><a class="current" href="get-env.html">GetEnv</a></li>
-    <li><a href="start.html">Start (removed)</a></li>
   </ul>
 </nav>
 
@@ -85,7 +86,7 @@
 
 <h2 id="signature">Signature</h2>
 
-<pre><code>[[nodiscard]] <span class="kw">static</span> <span class="ty">TestEnv</span>&amp; <span class="fn">GetEnv</span>();</code></pre>
+<pre><code>[[nodiscard]] static TestEnv&amp; GetEnv()</code></pre>
 
 <h2 id="description">Function description</h2>
 
@@ -109,7 +110,7 @@
 <p>
   Local statics are initialised once even under concurrent first calls, so this is safe to reach for from any task.
   That is a property of the idiom, not of this class — once you hold the reference, its <code>private</code> state is
-  unsynchronised, and <a href="start.html"><code>Start</code></a> walking sixty collections while a second thread
+  unsynchronised, and <code>Start</code> walking sixty collections while a second thread
   registers one is a data race.
 </p>
 
@@ -117,7 +118,7 @@
   <strong>It hands back an empty environment.</strong> Nothing registers itself: the registry is filled by whoever
   calls <a href="add-test-collection.html"><code>AddTestCollection</code></a>, and in the engine that is
   <a href="../UnitTestCollection/suite-entry-points.html"><code>RunTests</code></a>, which adds all sixty collections and then
-  calls <a href="start.html"><code>Start</code></a>. Calling <code>GetEnv</code> before that is legitimate and returns
+  calls <code>Start</code>. Calling <code>GetEnv</code> before that is legitimate and returns
   an environment with a total of zero.
 </div>
 
@@ -140,7 +141,7 @@
     <td><code>TestEnv&amp;</code></td>
     <td>
       The process-wide environment — mutable, so the same reference serves
-      <a href="add-test-collection.html"><code>AddTestCollection</code></a> and <a href="start.html"><code>Start</code></a>
+      <a href="add-test-collection.html"><code>AddTestCollection</code></a> and <code>Start</code>
       as well as the two const counters. <code>[[nodiscard]]</code>, since calling it and dropping the result does
       nothing at all
     </td>

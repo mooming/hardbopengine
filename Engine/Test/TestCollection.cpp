@@ -126,17 +126,10 @@ bool TestCollection::RunTestAt(const std::size_t testIndex)
 		const auto osRequestsOverBody = MemoryManager::GetOSAllocationCount() - osRequestsBefore;
 		const auto osFreedBytesOverBody = MemoryManager::GetOSFreeBytes() - osFreedBytesBefore;
 
-		/*
-		 * Retention is what a ceiling has to be about. A stress loop can request hundreds of megabytes while
-		 * holding almost none of it, and a leak of the same size holds every byte without requesting more. The
-		 * comparison is unsigned, so the clamp is not decoration: an unsized delete reports no size and releases
-		 * nothing against the total, which can push freed above requested.
-		 */
 		const auto engineBytesOverBody =
 				globalBytesOverBody > osBytesOverBody ? globalBytesOverBody - osBytesOverBody : 0;
 		const auto engineFreedBytesOverBody =
 				globalFreedBytesOverBody > osFreedBytesOverBody ? globalFreedBytesOverBody - osFreedBytesOverBody : 0;
-
 		const auto retainedBytesOverBody =
 				engineBytesOverBody > engineFreedBytesOverBody ? engineBytesOverBody - engineFreedBytesOverBody : 0;
 
@@ -157,10 +150,7 @@ bool TestCollection::RunTestAt(const std::size_t testIndex)
 				   << ". Free it, or raise the ceiling with a reason that survives review #\n";
 			});
 
-			/*
-			 * Recorded as an error as well as logged, because whether this testlet passed is decided by the
-			 * error count, and a guard that only prints is a comment with a number in it.
-			 */
+
 			errorMessages.push_back(std::string(testName) +
 									" retained more engine-owned global heap than the ceiling allows");
 		}
@@ -168,7 +158,6 @@ bool TestCollection::RunTestAt(const std::size_t testIndex)
 		globalAllocationBytes += globalBytesOverBody;
 		globalAllocationCount += globalRequestsOverBody;
 		testletsWithGlobalAllocations += globalRequestsOverBody == 0 ? 0 : 1;
-
 		alloc.PrintUsage();
 
 		if (globalRequestsOverBody != 0)
@@ -189,8 +178,7 @@ bool TestCollection::RunTestAt(const std::size_t testIndex)
 					   << " bytes requested, " << (MemoryManager::GetOSFreeCount() - osFreedCountBefore) << " releases";
 				}
 
-				// A testlet that asked for its own budget says so on every line it produces, so the exception is
-				// legible in a log excerpt and not only in the source that registered it.
+
 				if (retainedCeiling != MaxRetainedGlobalBytes)
 				{
 					ls << ", against a declared ceiling of " << retainedCeiling;
@@ -284,7 +272,7 @@ std::ostream& operator<<(std::ostream& os, const TestCollection::LogFlush& lf)
 	return os;
 
 #if 0
-	// Add prefix for the current test case.
+
 
 	auto log = Logger::Get(lf.name, lf.level);
 	log.Out([&lf, &os](auto& ls)

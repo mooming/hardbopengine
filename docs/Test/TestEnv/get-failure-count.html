@@ -11,9 +11,9 @@
 <div style="border-left:4px solid #b45309;background:#fffbeb;padding:10px 14px;margin:0 0 22px 0;font-size:0.94em;">
   <strong>Lifecycle changed on 2026-09-28.</strong> The one-call run this page describes is gone. A test is now a
   <a href="../Testlet/index.html"><code>Testlet</code></a> and the unit the harness schedules, so
-  <a href="../TestCollection/start.html"><code>TestCollection::Start</code></a> became
+  <code>TestCollection::Start</code> became
   <code>PrepareTests</code> / <code>RunTestAt</code> / <code>Complete</code>,
-  <a href="../TestEnv/start.html"><code>TestEnv::Start</code></a> became <code>PrepareTestlets</code> /
+  <code>TestEnv::Start</code> became <code>PrepareTestlets</code> /
   <code>RunTestlet</code> / <code>Finalize</code>, and <code>hbe::Test::RunTests</code> became
   <a href="../UnitTestCollection/suite-entry-points.html"><code>RegisterSuite</code> and
   <code>ScheduleSuiteOnBaseStream</code></a>. The statements below that name the old lifecycle are history, not
@@ -56,13 +56,14 @@
     <li><a href="prepare-testlets.html">PrepareTestlets</a></li>
     <li><a href="run-testlet.html">RunTestlet</a></li>
     <li><a href="finalize.html">Finalize</a></li>
-    <li><a href="global-allocation-totals.html">Global allocation totals</a></li>
+    <li><a href="get-global-allocation-bytes.html">GetGlobalAllocationBytes</a></li>
+    <li><a href="get-global-allocation-count.html">GetGlobalAllocationCount</a></li>
+    <li><a href="get-testlet-count-with-global-allocations.html">GetTestletCountWithGlobalAllocations</a></li>
     <li><a href="add-test-collection.html">AddTestCollection</a></li>
     <li><a href="get-pass-count.html">GetPassCount</a></li>
     <li><a class="current" href="get-failure-count.html">GetFailureCount</a></li>
     <li><a href="constructors.html">constructors</a></li>
     <li><a href="get-env.html">GetEnv</a></li>
-    <li><a href="start.html">Start (removed)</a></li>
   </ul>
 </nav>
 
@@ -85,20 +86,15 @@
 
 <h2 id="signature">Signature</h2>
 
-<pre><code><span class="cm">/// @brief Collections that ran and failed, plus any that never completed.</span>
-<span class="cm">/// @details Valid after Start(); Start() clears both lists on entry.</span>
-[[nodiscard]] <span class="kw">unsigned int</span> <span class="fn">GetFailureCount</span>() <span class="kw">const</span> <span class="kw">noexcept</span>
-{
-        <span class="kw">return</span> <span class="kw">static_cast</span>&lt;<span class="kw">unsigned int</span>&gt;(failedTests.size() + invalidTests.size());
-}</code></pre>
+<pre><code>[[nodiscard]] unsigned int GetFailureCount() const noexcept</code></pre>
 
 <h2 id="description">Function description</h2>
 
 <p>
   Computed on demand from the two name lists rather than stored in a counter: collections that ran and reported an
-  error message, plus collections whose <a href="../TestCollection/start.html"><code>Start</code></a> never completed.
+  error message, plus collections whose <code>Start</code> never completed.
   Unlike <a href="get-pass-count.html"><code>GetPassCount</code></a> there is nothing to accumulate —
-  <a href="start.html"><code>Start</code></a> empties both lists on entry, so what you read after a run describes that
+  <code>Start</code> empties both lists on entry, so what you read after a run describes that
   run. The header's <code>@details</code> line states exactly that clearing rule.
 </p>
 
@@ -138,7 +134,7 @@
     <td><code>unsigned int</code></td>
     <td>
       <code>failedTests.size() + invalidTests.size()</code>, narrowed from <code>size_t</code> by an explicit cast.
-      Zero before the first <a href="start.html"><code>Start</code></a>, since both lists start empty and the
+      Zero before the first <code>Start</code>, since both lists start empty and the
       constructor does not touch them. <code>[[nodiscard]]</code>
     </td>
   </tr>

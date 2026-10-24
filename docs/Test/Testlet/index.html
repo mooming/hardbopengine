@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Testlet — Test — HardBop Engine API reference</title>
+<title>Testlet — Test module — HardBop Engine API reference</title>
 <link rel="stylesheet" href="../../assets/hbe-docs.css">
 </head>
 <body>
@@ -25,7 +25,7 @@
     <li><a href="../../Renderer/index.html">Renderer</a></li>
     <li><a href="../../Resource/index.html">Resource</a></li>
     <li><a href="../../String/index.html">String</a></li>
-    <li><a href="../index.html">Test</a></li>
+    <li><a class="current" href="../../Test/index.html">Test</a></li>
   </ul>
 
   <h3>This class</h3>
@@ -39,204 +39,108 @@
   </ul>
 </nav>
 
-<main>
-
-<h1>Testlet</h1>
-<p><code>Engine/Test/Testlet.h</code> &nbsp;·&nbsp; <code>hbe::Testlet</code> &nbsp;·&nbsp; class template, <code>final</code></p>
-
-<h2 id="description">Class description</h2>
-<p>
-One registered test: the name it was registered under, and the lambda that runs it. Both are held
-<em>inside</em> the object, which is the entire reason the type exists. Registering a test must not
-allocate, because the suite is the thing that audits allocation, and a registration that quietly took
-from the global heap would be invisible to every allocator scope it is supposed to be measuring.
-</p>
-<p>
-Measured, not argued: 151 of the 378 test names in this suite are longer than a small-string buffer
-holds, so a <code>std::string</code> name member heap-allocated for two in five tests. And
-<code>std::function</code> — the obvious way to hold the lambda — has a small-object buffer whose size is
-a library implementation detail; a closure larger than it allocates with nothing recorded anywhere the
-suite could read. Both cases are compile errors here instead, naming the limit that was exceeded.
-</p>
-<p>
-Two design alternatives were considered and rejected, and the reasons are worth keeping:
-</p>
-<table>
-<thead><tr><th>Alternative</th><th>Why it was not used</th></tr></thead>
-<tbody>
-<tr><td>A borrowed view of the callable (a <code>function_ref</code> shape)</td>
-<td>It allocates nothing, and it does not work here. Every <code>AddTest</code> call hands over a temporary
-lambda that dies at the end of that expression, and a view cannot extend a lifetime. It would dangle, or
-refuse to compile — the same outcome with better manners.</td></tr>
-<tr><td>A plain function pointer, as <code>TRunnable</code> does</td>
-<td>Zero allocation and zero capture, which the engine's own task contract already uses. Rejected on proportion:
-measured across the tree, 0 of 379 test lambdas are non-capturing (315 use <code>[this]</code>), so it would
-mean rewriting every test in the engine to reach the same storage property.</td></tr>
-<tr><td><code>maxRetainedGlobalBytes</code></td><td><code>std::size_t</code></td>
-<td>Per-testlet memory allowance, set at registration and read once after the body finishes. See
-<a href="get-max-retained-global-bytes.html"><code>GetMaxRetainedGlobalBytes</code></a>.</td></tr>
-</tbody>
-</table>
-<p>
-<em>Ownership and lifetime.</em> A testlet owns its name bytes and its closure bytes. Copies are deleted —
-copying an arbitrary closure would need a clone hook that nothing in the suite asks for. Moving one
-relocates the closure into the new storage and leaves the source with no dispatch table, so a moved-from
-testlet reports itself and does nothing rather than invoking a closure that no longer lives there.
-</p>
-<p>
-<em>Thread safety.</em> Registration is main-thread only and happens before the run is posted. During the
-run each testlet is executed by exactly one thread — the one driving the base stream — and never
-concurrently with another testlet of the same collection.
-</p>
-
-<h2 id="template">Template parameters</h2>
-<table>
-<thead><tr><th>Parameter</th><th>Default</th><th>Meaning</th></tr></thead>
-<tbody>
-<tr><td><code>TClosureBytes</code></td><td><code>48</code></td>
-<td>Inline storage reserved for the closure. A parameter rather than a constant inside the type because the
-ceiling belongs where the captures are known — by whoever holds the testlets — and raising it should be a
-visible edit at the use site, not an edit to a shared type. The default is measured: 375 of 379 closures in
-this suite fit in 32 bytes, and the four that do not are all 40 (the importance-sampling tests, whose
-<code>[&amp;]</code> captures hold pointers to locals, not the static generator they share). 48 is that
-maximum plus one word.</td></tr>
-</tbody>
-</table>
-
-<h2 id="properties">Class properties</h2>
-<table>
-<thead><tr><th>Name</th><th>Type</th><th>Meaning</th></tr></thead>
-<tbody>
-<tr><td><code>ClosureBytes</code></td><td><code>static constexpr size_t</code></td>
-<td>The storage this instantiation reserved for the closure, reported back to the caller that chose it.</td></tr>
-<tr><td><code>MaxNameBytes</code></td><td><code>static constexpr size_t</code></td>
-<td>Inline storage for the test name: 128. Long enough for the longest name measured in the suite today
-(105 characters) plus room for one more clause. Enforced by a <code>static_assert</code> in the constructor,
-so a longer name is a compile error at the registration site rather than a truncated label in a failure
-report.</td></tr>
-</tbody>
-</table>
-<p>
-Three <code>static_assert</code>s guard the parameters themselves: <code>TClosureBytes &gt; 0</code>,
-<code>TClosureBytes</code> a whole number of words, and <code>MaxNameBytes &gt; 1</code>.
-</p>
-
-<h2 id="methods">Class methods</h2>
-
-<h3><code>template &lt;size_t TNameBytes, typename TClosure&gt; Testlet(const char (&amp;testName)[TNameBytes], TClosure&amp;&amp; closure)</code></h3>
-<p>
-Registers one test. The name is a char-array parameter rather than a pointer or a view, so <strong>only a
-literal compiles</strong>: that gives the buffer something to copy from, gives the per-testlet allocator the
-null terminator it needs as a property of the type, and refuses a computed name at its call site instead of
-dangling later. The closure is a template parameter so it arrives with its real type — that is what allows
-the size check below and keeps any allocation off the path. <code>noexcept</code> is deliberately absent:
-constructing an arbitrary closure is the case the coding standard points at when it declines to promise
-exception freedom for something whose body this type cannot see.
-</p>
-<p><strong>Preconditions.</strong> <code>testName</code> must be a literal of 2 to
-<code>MaxNameBytes</code> characters including its terminator; <code>sizeof(closure)</code> must fit
-<code>TClosureBytes</code> and must not be over-aligned. All are compile-time checks, not runtime ones.</p>
-<p><strong>Postconditions.</strong> The testlet owns a copy of the name and a constructed closure. Neither
-can outlive the testlet; both need no external storage.</p>
-
-<h3><code>Testlet(Testlet&amp;&amp; other) noexcept</code></h3>
-<p>
-Relocates. The name bytes are copied, the closure is placement-moved into this object's storage, and the
-source loses its dispatch table so its destructor has nothing to destroy. Required because the collections
-hold testlets in a vector that grows during registration. <code>noexcept</code> holds because the closures
-being relocated were written by this suite and the engine is exception-free.</p>
-
-<h3><code>Testlet(const Testlet&amp;) = delete</code> · <code>operator=</code> both deleted</h3>
-<p>A copy would need a clone hook for an arbitrary closure type, and nothing in the suite asks to duplicate a test.</p>
-
-<h3><code>~Testlet()</code></h3>
-<p>Destroys the closure through the dispatch table when there is one; a moved-from testlet destroys nothing.</p>
-
-<h3><code>void Run(TLogOut&amp; outLog) const noexcept</code></h3>
-<p>
-Invokes the closure. <code>outLog</code> is a write-only parameter by the coding standard's
-<code>out</code>-prefix convention: a testlet's whole effect is what it writes there, plus whatever its
-assertions record. A testlet that has been moved from writes an error to <code>std::cerr</code>, asserts,
-and returns without running.
-</p>
-<p><strong>Thread-safety.</strong> Called by the thread driving the base stream, once per testlet, never
-concurrently with another testlet of the same collection.</p>
-<p><strong>Contract note.</strong> <code>noexcept</code> here is a promise about the suite, not about this
-function: a testlet signals failure by logging and asserting, and the engine is exception-free. A testlet
-that ever threw would terminate rather than unwind the run.</p>
-
-<h3><code>const char* GetName() const noexcept</code></h3>
-<p>The registered name, owned by this testlet and null terminated by construction, so a caller may print it freely.</p>
-
-<h3><code>std::size_t GetMaxRetainedGlobalBytes() const noexcept</code> &mdash; <a href="get-max-retained-global-bytes.html">documented in full</a></h3>
-<p>
-The global heap this one testlet is permitted to still hold when its body ends. It arrives through the constructor
-and travels with the testlet rather than sitting in a parallel array in the collection, because a second container has
-to be kept in step by hand and every way of failing that produces a test judged by another test's budget - a silent
-failure that reads as a flaky test. Cost: eight bytes per testlet, taking <code>sizeof(Testlet)</code> from 184 to
-192, about three kilobytes across the suite's 372 testlets.
-</p>
-
-<h2 id="non-member">Non-member helper functions</h2>
-<p>No free functions. One companion type lives in the same header:</p>
-<table>
-<thead><tr><th>Type</th><th>Meaning</th></tr></thead>
-<tbody>
-<tr><td><code>TestletDispatch</code></td>
-<td>A POD of three function pointers — <code>invoke</code>, <code>destroy</code>, <code>relocate</code> — with
-one <code>constexpr</code> instance generated per closure type. Its address is stable and it needs no vptr,
-which is what lets a testlet be two words of bookkeeping plus its own storage.</td></tr>
-</tbody>
-</table>
-<p>
-Logging inside this type goes to <code>std::cerr</code> rather than the engine logger, following the rest of
-the Test module and deliberately so: pulling <code>Log/Logger.h</code> into this header would make every
-test file in the engine sensitive to the logger's own include order, which is a real fragility in the tree —
-<code>HSTL/HUnorderedMap.h</code> uses <code>Memory::DefaultAllocator</code> without including its header —
-found when this change tried it.
-</p>
-
-<h2 id="guard">The memory ceiling guard, and why no test covers it</h2>
-<p>
-  The harness compares what a testlet retained against this allowance. Nothing inside the suite tests that comparison,
-  and nothing can: a testlet cannot run a testlet, and a testlet that went over its own ceiling would fail the very run
-  whose behaviour it was demonstrating. What stands in for the unit test is mutating the ceiling and reading the
-  refusal, which was done in both directions - with the default lowered to 1 KiB, nine testlets were refused under the
-  wording "a testlet may hold", a testlet declaring 64 KiB for itself survived retaining 12,352 bytes, and one
-  declaring only 256 was refused under the wording "this testlet declared for itself".
-</p>
-
-<h2 id="coverage">Coverage</h2>
-<p>
-No unit test exercises <code>Testlet</code> directly, and this page says so rather than implying otherwise.
-What covers it instead:
-</p>
-<ul>
-<li><strong>Every testlet in the engine is a <code>Testlet</code>.</strong> A broken one does not fail a test;
-it removes a test, and <a href="../TestEnv/index.html"><code>TestEnv</code></a>'s registered-versus-executed
-check makes that removal a run failure rather than a shorter green run.</li>
-<li><strong>Double execution is refused by name.</strong> <code>TestEnv</code> counts runs per testlet, because
-the suite's own totals cannot see this defect: a schedule that ran one testlet 372 times would still report
-372 of 372.</li>
-<li><strong>The limits are compile-time and were fired on purpose.</strong> Setting the closure ceiling to 32
-refused exactly four closures at their registration sites; setting <code>MaxNameBytes</code> to 100 refused
-the 105-character name at its own site. Those are the witnesses for the two decided numbers.</li>
-<li><strong>Relocation was mutated.</strong> Removing the <code>relocate</code> call from the move constructor
-makes the suite die by signal — detected, but as a crash rather than a named assertion, which is recorded here
-as the weaker half of this coverage.</li>
-</ul>
-<p>
-Still allocated and disclosed: <code>TestCollection::tests</code> is a <code>std::vector</code> of testlets, so
-its buffer — roughly 372 × 192 bytes — comes from global <code>operator new</code> at registration. The
-testlets themselves allocate nothing; the array that holds them is the next thing that should move onto the
-engine's books.
-</p>
+<main class="main">
 
 <p class="breadcrumb">
-  <a href="../../index.html">HardBop Engine</a> /
+  <a href="../../index.html">Module Index</a> /
   <a href="../index.html">Test</a> /
   Testlet
 </p>
+
+<h1>Testlet</h1>
+<p class="subtitle">
+  <span class="tag">Engine/Test/Testlet.h</span>
+  <span class="tag">template &lt;size_t TClosureBytes = 32&gt;</span>
+  <span class="tag">final</span>
+  one registered test, owning its closure inline
+</p>
+
+<h2 id="description">Class description</h2>
+
+<p>
+  <code>Testlet</code> is one registered test: a name, a retention ceiling, and the test's closure — all
+  held <em>inline</em>. The inline storage is the design's whole point: registering a test cannot allocate,
+  so a suite's registration is a known-cost operation, and the
+  <a href="../TestletDispatch/index.html"><code>TestletDispatch</code></a> table (one <code>constexpr</code> instance
+  per closure type) is what lets the closure be invoked, destroyed and relocated without a virtual table or
+  a heap slot.
+</p>
+
+<p>
+  The type is parameterised on <code>TClosureBytes</code> rather than fixing a constant inside itself,
+  because the ceiling has to be set where the captures are known — by whoever holds the testlets — and
+  because raising it is then a visible edit at the use site instead of a change to a shared type. The
+  measured basis for the default: 375 of the 379 closures in this suite fit in 32 bytes, and the four that
+  do not are all 40 bytes (the importance-sampling tests, whose <code>[&amp;]</code> captures are wider).
+</p>
+
+<h2 id="template">Template parameters</h2>
+
+<table>
+  <tr><th>Parameter</th><th>Requirement</th></tr>
+  <tr><td><code>TClosureBytes</code></td><td>Inline storage reserved for the closure, in bytes. Must be a whole
+  number of words and greater than zero — the class's own <code>static_assert</code>s refuse both. Who sets it
+  and why is the sentence above.</td></tr>
+</table>
+
+<h2 id="properties">Class properties</h2>
+
+<table>
+  <tr><th>Type + Name</th><th>Default Value</th><th>Description</th></tr>
+  <tr><td><code>using TLogOut = std::stringstream;</code> <span class="badge">alias</span></td>
+      <td>not applicable</td><td>The stream type a testlet's output is written to.</td></tr>
+  <tr><td><code>static constexpr size_t ClosureBytes = TClosureBytes;</code> <span class="badge">public</span></td>
+      <td><code>= TClosureBytes</code></td><td>The storage this instantiation reserved, reported back to callers that chose it.</td></tr>
+  <tr><td><code>static constexpr size_t MaxNameBytes = 128;</code> <span class="badge">public</span></td>
+      <td><code>128</code></td><td>Long enough for the longest name measured in the suite today (105 characters) with room for one more clause; enforced, so a longer name is a compile error at the registering site.</td></tr>
+  <tr><td><code>char name[MaxNameBytes];</code> <span class="badge">private</span></td>
+      <td>none in the header</td><td>The test's name, copied at registration.</td></tr>
+  <tr><td><code>const TestletDispatch* dispatch;</code> <span class="badge">private</span></td>
+      <td>none in the header</td><td>The closure type's dispatch table; nulled by the move constructor, which is how a moved-from testlet refuses <a href="run.html"><code>Run</code></a>.</td></tr>
+  <tr><td><code>std::size_t maxRetainedGlobalBytes;</code> <span class="badge">private</span></td>
+      <td>none in the header</td><td>The retention ceiling this testlet was registered with.</td></tr>
+  <tr><td><code>alignas(alignof(std::max_align_t)) std::byte storage[TClosureBytes];</code> <span class="badge">private</span></td>
+      <td>none in the header</td><td>The inline storage the closure is constructed into.</td></tr>
+</table>
+
+<h2 id="methods">Class methods</h2>
+
+<table class="methods">
+  <tr><th>Name</th><th>Signature</th><th>What a caller depends on</th></tr>
+  <tr><td><a href="constructors.html"><code>Testlet</code></a> <span class="badge">2 overloads</span></td>
+      <td class="sig">template &lt;size_t TNameBytes, typename TClosure&gt; requires(...) Testlet(const char (&amp;testName)[TNameBytes], std::size_t retainedByteCeiling, TClosure&amp;&amp; closure)<br>Testlet(Testlet&amp;&amp; other) noexcept</td>
+      <td>Registration constructs the closure in place and cannot allocate; the move relocates it and nulls the source. Copy and assignment are deleted.</td></tr>
+  <tr><td><a href="destructor.html"><code>~Testlet</code></a></td>
+      <td class="sig">~Testlet()</td>
+      <td>Destroys the closure through the dispatch table; does nothing on a moved-from testlet.</td></tr>
+  <tr><td><a href="run.html"><code>Run</code></a></td>
+      <td class="sig">void Run(TLogOut&amp; outLog) const noexcept</td>
+      <td>Runs the closure, writing to <code>outLog</code>; a moved-from testlet reports itself and does nothing.</td></tr>
+  <tr><td><a href="getname.html"><code>GetName</code></a></td>
+      <td class="sig">[[nodiscard]] const char* GetName() const noexcept</td>
+      <td>The registered name, valid for the testlet's lifetime.</td></tr>
+  <tr><td><a href="get-max-retained-global-bytes.html"><code>GetMaxRetainedGlobalBytes</code></a></td>
+      <td class="sig">[[nodiscard]] std::size_t GetMaxRetainedGlobalBytes() const noexcept</td>
+      <td>The ceiling this testlet was registered with.</td></tr>
+</table>
+
+<h2 id="non-member">Non-member helpers</h2>
+
+<p>None. The dispatch table's per-closure <code>constexpr</code> instances are built by the private static
+<code>GetDispatch&lt;TClosure&gt;()</code>.</p>
+
+<h2 id="coverage">Coverage</h2>
+
+<p>
+  This page documents the class completely: the template parameter, all four data members, all five method
+  names, and the four compile-time refusals the constructor raises. The harness-level story — who registers,
+  who runs, who judges — is owned by <a href="../TestCollection/index.html">TestCollection</a> and
+  <a href="../TestEnv/index.html">TestEnv</a>.
+</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; Testlet</a></span>
+  <span><a href="index.html#methods">All Testlet methods</a></span>
+</footer>
 
 </main>
 </body>

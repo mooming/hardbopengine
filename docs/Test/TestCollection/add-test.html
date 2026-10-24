@@ -54,7 +54,6 @@
     <li><a href="is-success.html">IsSuccess</a></li>
     <li><a href="constructors.html">constructors</a></li>
     <li><a href="destructor.html">destructor</a></li>
-    <li><a href="start.html">Start (removed)</a></li>
   </ul>
 </nav>
 
@@ -76,9 +75,11 @@
 
 <h2 id="signature">Signature</h2>
 
-<pre><code><span class="kw">template</span> &lt;<span class="kw">size_t</span> TNameBytes, <span class="kw">typename</span> TClosure&gt;
-<span class="kw">void</span> <span class="fn">AddTest</span>(<span class="kw">const char</span> (&amp;testName)[TNameBytes],
-                  TClosure&amp;&amp; testCase)</code></pre>
+<pre><code>template &lt;size_t TNameLength, typename TClosure&gt;
+	void AddTest(const char (&amp;testName)[TNameLength], TClosure&amp;&amp; testCase)
+
+template &lt;size_t TNameLength, typename TClosure&gt;
+	void AddTest(const char (&amp;testName)[TNameLength], std::size_t maxRetainedGlobalBytes, TClosure&amp;&amp; testCase)</code></pre>
 
 <p>
   A second form declares the testlet's memory allowance beside it instead of taking the suite default. Everything

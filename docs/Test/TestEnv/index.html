@@ -11,9 +11,9 @@
 <div style="border-left:4px solid #b45309;background:#fffbeb;padding:10px 14px;margin:0 0 22px 0;font-size:0.94em;">
   <strong>Lifecycle changed on 2026-09-28.</strong> The one-call run this page describes is gone. A test is now a
   <a href="../Testlet/index.html"><code>Testlet</code></a> and the unit the harness schedules, so
-  <a href="../TestCollection/start.html"><code>TestCollection::Start</code></a> became
+  <code>TestCollection::Start</code> became
   <code>PrepareTests</code> / <code>RunTestAt</code> / <code>Complete</code>,
-  <a href="../TestEnv/start.html"><code>TestEnv::Start</code></a> became <code>PrepareTestlets</code> /
+  <code>TestEnv::Start</code> became <code>PrepareTestlets</code> /
   <code>RunTestlet</code> / <code>Finalize</code>, and <code>hbe::Test::RunTests</code> became
   <a href="../UnitTestCollection/suite-entry-points.html"><code>RegisterSuite</code> and
   <code>ScheduleSuiteOnBaseStream</code></a>. The statements below that name the old lifecycle are history, not
@@ -54,16 +54,17 @@
 
   <h3>Methods</h3>
   <ul class="methods">
-    <li><a href="constructors.html">constructors</a></li>
+        <li><a href="constructors.html">constructors</a></li>
     <li><a href="get-env.html">GetEnv</a></li>
-    <li><a href="start.html">Start</a></li>
     <li><a href="add-test-collection.html">AddTestCollection</a></li>
     <li><a href="prepare-testlets.html">PrepareTestlets</a></li>
     <li><a href="run-testlet.html">RunTestlet</a></li>
     <li><a href="finalize.html">Finalize</a></li>
     <li><a href="get-pass-count.html">GetPassCount</a></li>
     <li><a href="get-failure-count.html">GetFailureCount</a></li>
-    <li><a href="global-allocation-totals.html">Global allocation totals</a></li>
+    <li><a href="get-global-allocation-bytes.html">GetGlobalAllocationBytes</a></li>
+    <li><a href="get-global-allocation-count.html">GetGlobalAllocationCount</a></li>
+    <li><a href="get-testlet-count-with-global-allocations.html">GetTestletCountWithGlobalAllocations</a></li>
   </ul>
 </nav>
 
@@ -96,8 +97,8 @@
 
 <p>
   A <a href="add-test-collection.html"><code>TestCollection</code></a> is registered by type into this class, and
-  <a href="start.html"><code>Start</code></a> walks the registrations, calls each collection's own
-  <a href="../TestCollection/start.html"><code>Start</code></a>, sorts the outcomes into a pass count and two name
+  <code>Start</code> walks the registrations, calls each collection's own
+  <code>Start</code>, sorts the outcomes into a pass count and two name
   lists, merges the collected message text, and prints the report. That is the whole job: it schedules nothing and
   owns no thread.
 </p>
@@ -161,7 +162,7 @@
     <td><code>std::vector&lt;TCPtr&gt; tests;</code></td>
     <td>
       <span class="badge">private</span> The registered collections, in registration order, and the order
-      <a href="start.html"><code>Start</code></a> runs them in. Never erased or reordered — nothing can take a
+      <code>Start</code> runs them in. Never erased or reordered — nothing can take a
       collection back out
     </td>
   </tr>
@@ -227,11 +228,11 @@
 
 <ul>
   <li><code>bool ExecuteTest(TestCollection&amp;)</code> — one collection's run. Calls its
-      <a href="../TestCollection/start.html"><code>Start</code></a>, routes the name into <code>invalidTests</code> if
+      <code>Start</code>, routes the name into <code>invalidTests</code> if
       it is not done, else increments <code>testedCount</code> and either <code>passCount</code> or
       <code>failedTests</code>, then merges that collection's warnings (both branches) and errors (failure only) into
       the environment's lists. Its <code>bool</code> return — the collection's own verdict — is discarded by the only
-      caller, <a href="start.html"><code>Start</code></a>.</li>
+      caller, <code>Start</code>.</li>
   <li><code>void Report()</code> — prints the tally under <code>##### TEST COMPLETED #####</code>: total registered,
       done, invalid, pass, fail; then the invalid, failed, error and warning blocks in that order at error severity
       except the warning block; then flushes the logger.</li>
@@ -309,7 +310,7 @@
   </tr>
   <tr>
     <td>State that outlives a run</td>
-    <td><a href="start.html"><code>Start</code></a> clears <code>invalidTests</code> and <code>failedTests</code> only.
+    <td><code>Start</code> clears <code>invalidTests</code> and <code>failedTests</code> only.
         <code>passCount</code>, <code>testedCount</code>, <code>warningMessages</code> and <code>errorMessages</code>
         accumulate across calls, so a second <code>Start</code> reports a cumulative pass count over a per-run failure
         count. The header's doc comment on <code>GetFailureCount</code> states the clearing rule for the two lists it
@@ -339,7 +340,7 @@
 <h2 id="memory">Global allocation totals</h2>
 
 <p>
-  <a href="global-allocation-totals.html"><code>GetGlobalAllocationBytes</code></a>,
+  <a href="get-global-allocation-bytes.html"><code>GetGlobalAllocationBytes</code></a>,
   <code>GetGlobalAllocationCount</code> and <code>GetTestletCountWithGlobalAllocations</code> sum the matching
   per-collection figures, so the suite reports one triple instead of one per collection. They are the numbers behind
   the report line <code># Global heap over testlet bodies = …</code>. Read them together with the whole-process figures

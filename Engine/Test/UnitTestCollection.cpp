@@ -111,10 +111,6 @@ std::size_t RunTestletTask(void* userData, std::size_t, std::size_t)
 {
 	auto& testEnv = TestEnv::GetEnv();
 
-	// Asked of the stream before the testlet runs, because this is a question about who is driving, and a testlet
-	// that has already reported cannot answer it. The engine loop driving this item means the shutdown pump has
-	// not started; if it has, the loop is dead or absent and whatever follows was produced by the rescue path -
-	// which is the run that must not be allowed to look like a pass.
 	if (Engine::Get().GetTaskSystem().GetStream(TaskSystem::GetBaseTaskStreamIndex()).IsDrivenByShutdownPump())
 	{
 		testEnv.NoteSuiteDrivenByShutdownPump();
@@ -233,10 +229,6 @@ void ScheduleSuiteOnBaseStream()
 {
 	auto& testEnv = TestEnv::GetEnv();
 
-	// Each slot holds its own index, and a testlet task is handed the address of its slot: a work item's payload is a
-	// bare void*, so the index has to live somewhere that outlives the item that reads it. Resizing alone would leave
-	// every slot zero, and a suite where every step is told it is step zero re-runs its first testlet forever - which
-	// is what this looked like the first time, until the task registry ran out of records and named it.
 	testletIndices.resize(testEnv.GetTestletCount());
 	std::iota(testletIndices.begin(), testletIndices.end(), 0);
 

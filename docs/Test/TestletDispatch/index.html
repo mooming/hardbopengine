@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TestletDispatch — Test module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a class="current" href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This class</h3>
+  <ul>
+    <li><a href="#description">Class description</a></li>
+    <li><a href="#template">Template parameters</a></li>
+    <li><a href="#properties">Class properties</a></li>
+    <li><a href="#methods">Class methods</a></li>
+    <li><a href="#non-member">Non-member helpers</a></li>
+    <li><a href="#coverage">Coverage</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Test</a> /
+  TestletDispatch
+</p>
+
+<h1>TestletDispatch</h1>
+<p class="subtitle">
+  <span class="tag">Engine/Test/Testlet.h</span>
+  the three-function-pointer table that keeps a closure inline without a vptr
+</p>
+
+<h2 id="description">Class description</h2>
+
+<p>
+  <code>TestletDispatch</code> is the three-function-pointer table that lets a
+  <a href="../Testlet/index.html">Testlet</a> hold an arbitrary closure without a virtual table: one
+  <code>invoke</code>, one <code>destroy</code>, one <code>relocate</code>, each operating on the testlet's
+  inline storage through a <code>void*</code>. A <code>constexpr</code> instance exists per closure type —
+  built by <code>Testlet::GetDispatch&lt;TClosure&gt;()</code> — so the pointer is stable for the program's
+  lifetime and holding it allocates nothing.
+</p>
+
+<p>
+  The type exists so the storage question stays answered at compile time. A vptr would make every testlet
+  two words larger and its closure heap-adjacent; this table keeps the closure inline, and the
+  <code>static_assert</code>s in the <a href="../Testlet/constructors.html">constructor</a> are what refuse
+  a capture that does not fit.
+</p>
+
+<h2 id="template">Template parameters</h2>
+
+<p>None — the struct is not a template.</p>
+
+<h2 id="properties">Class properties</h2>
+
+<table>
+  <tr><th>Type + Name</th><th>Default Value</th><th>Description</th></tr>
+  <tr><td><code>void (*invoke)(const void* object, std::stringstream&amp; log);</code> <span class="badge">public</span></td>
+      <td>none in the header</td><td>Runs the closure held at <code>object</code>, writing its output to <code>log</code>.</td></tr>
+  <tr><td><code>void (*destroy)(void* object) noexcept;</code> <span class="badge">public</span></td>
+      <td>none in the header</td><td>Destroys the closure in place; the <a href="../Testlet/destructor.html">destructor</a> calls it.</td></tr>
+  <tr><td><code>void (*relocate)(void* source, void* destination) noexcept;</code> <span class="badge">public</span></td>
+      <td>none in the header</td><td>Move-constructs the closure into <code>destination</code> and destroys the one at <code>source</code>; the <a href="../Testlet/constructors.html">move constructor</a> calls it.</td></tr>
+</table>
+
+<h2 id="methods">Class methods</h2>
+
+<p>None — the struct is pure data: three function pointers, no member functions.</p>
+
+<h2 id="non-member">Non-member helpers</h2>
+
+<p>None. The only producer of instances is <code>Testlet::GetDispatch&lt;TClosure&gt;()</code>, a private
+static of <a href="../Testlet/index.html">Testlet</a>.</p>
+
+<h2 id="coverage">Coverage</h2>
+
+<p>
+  This page documents the struct completely: three pointers, their signatures, and who calls each. The
+  per-closure <code>constexpr</code> instance story and the inline-storage trade it enables are on the
+  <a href="../Testlet/index.html">Testlet</a> page.
+</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; TestletDispatch</a></span>
+  <span><a href="index.html#methods">All TestletDispatch methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

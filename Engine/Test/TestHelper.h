@@ -8,11 +8,11 @@
 #include "Core/TaskStream.h"
 #include "Core/TaskSystem.h"
 
-
 namespace hbe
 {
 namespace TestHelper
 {
+/// API reference: docs/Test/TestHelper/index.html
 void ReportDriveTimeout(TaskSystem& taskSystem, const char* waitingFor, std::chrono::milliseconds patience) noexcept;
 
 template <class Predicate>

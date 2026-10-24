@@ -11,9 +11,9 @@
 <div style="border-left:4px solid #b45309;background:#fffbeb;padding:10px 14px;margin:0 0 22px 0;font-size:0.94em;">
   <strong>Lifecycle changed on 2026-09-28.</strong> The one-call run this page describes is gone. A test is now a
   <a href="../Testlet/index.html"><code>Testlet</code></a> and the unit the harness schedules, so
-  <a href="../TestCollection/start.html"><code>TestCollection::Start</code></a> became
+  <code>TestCollection::Start</code> became
   <code>PrepareTests</code> / <code>RunTestAt</code> / <code>Complete</code>,
-  <a href="../TestEnv/start.html"><code>TestEnv::Start</code></a> became <code>PrepareTestlets</code> /
+  <code>TestEnv::Start</code> became <code>PrepareTestlets</code> /
   <code>RunTestlet</code> / <code>Finalize</code>, and <code>hbe::Test::RunTests</code> became
   <a href="../UnitTestCollection/suite-entry-points.html"><code>RegisterSuite</code> and
   <code>ScheduleSuiteOnBaseStream</code></a>. The statements below that name the old lifecycle are history, not
@@ -68,7 +68,6 @@
     <li><a href="is-success.html">IsSuccess</a></li>
     <li><a class="current" href="constructors.html">constructors</a></li>
     <li><a href="destructor.html">destructor</a></li>
-    <li><a href="start.html">Start (removed)</a></li>
   </ul>
 </nav>
 
@@ -91,7 +90,7 @@
 
 <h2 id="signature">Signature</h2>
 
-<pre><code><span class="kw">explicit</span> <span class="fn">TestCollection</span>(<span class="kw">const char</span>* title);</code></pre>
+<pre><code>explicit TestCollection(const char* title)</code></pre>
 
 <h2 id="description">Function description</h2>
 
@@ -106,7 +105,7 @@
 <p>
   Beyond that, the constructor only establishes initial state: <code>isDone</code> and <code>isSuccess</code> false,
   the guard buffers empty, each guard's <code>testIndex</code> at <code>0</code> and its <code>testName</code> at
-  <code>"None"</code> until <a href="start.html"><code>Start</code></a> starts rewriting them per case. No test is
+  <code>"None"</code> until <code>Start</code> starts rewriting them per case. No test is
   registered and nothing runs, which is why a subclass's constructor body is empty in every example in the engine.
 </p>
 
@@ -161,7 +160,7 @@
   <code>std::string</code> copy, and that copy uses the default allocator in whichever
   <a href="../../Memory/index.html#allocatorscope"><code>AllocatorScope</code></a> is open — the
   collection's own memory is therefore <em>not</em> attributed to the per-case scope that
-  <a href="start.html"><code>Start</code></a> opens for the cases.
+  <code>Start</code> opens for the cases.
 </p>
 
 <h2 id="example">Examples</h2>
@@ -184,7 +183,7 @@
 
 <p>
   The empty body is the correct shape: registering cases there would be undone by the next
-  <a href="start.html"><code>Start</code></a>, and constructing anything else there would be attributed to no case.
+  <code>Start</code>, and constructing anything else there would be attributed to no case.
   See <a href="prepare.html">Prepare</a> for where the cases belong.
 </p>
 

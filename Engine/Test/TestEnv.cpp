@@ -91,9 +91,6 @@ void TestEnv::RunTestlet(const std::size_t testletIndex)
 	}
 }
 
-/// @brief Close one collection whose last testlet has just run, and tally it exactly as the batch loop used to.
-/// @details The collection reports its own testlets; this decides what the collection as a whole contributes
-///          to the suite: a pass, a failure, and the warnings it left behind.
 void TestEnv::FinalizeCollection(TestCollection& testCollection)
 {
 	testCollection.Complete();

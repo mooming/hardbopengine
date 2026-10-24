@@ -11,9 +11,9 @@
 <div style="border-left:4px solid #b45309;background:#fffbeb;padding:10px 14px;margin:0 0 22px 0;font-size:0.94em;">
   <strong>Lifecycle changed on 2026-09-28.</strong> The one-call run this page describes is gone. A test is now a
   <a href="../Testlet/index.html"><code>Testlet</code></a> and the unit the harness schedules, so
-  <a href="../TestCollection/start.html"><code>TestCollection::Start</code></a> became
+  <code>TestCollection::Start</code> became
   <code>PrepareTests</code> / <code>RunTestAt</code> / <code>Complete</code>,
-  <a href="../TestEnv/start.html"><code>TestEnv::Start</code></a> became <code>PrepareTestlets</code> /
+  <code>TestEnv::Start</code> became <code>PrepareTestlets</code> /
   <code>RunTestlet</code> / <code>Finalize</code>, and <code>hbe::Test::RunTests</code> became
   <a href="../UnitTestCollection/suite-entry-points.html"><code>RegisterSuite</code> and
   <code>ScheduleSuiteOnBaseStream</code></a>. The statements below that name the old lifecycle are history, not
@@ -71,7 +71,6 @@
     <li><a href="is-success.html">IsSuccess</a></li>
     <li><a href="constructors.html">constructors</a></li>
     <li><a href="destructor.html">destructor</a></li>
-    <li><a href="start.html">Start (removed)</a></li>
   </ul>
 </nav>
 
@@ -91,7 +90,7 @@
   the ceiling on global heap memory one testlet may still be holding when its body ends
 </p>
 
-<h2 id="signature">Declaration</h2>
+<h2 id="signature">Signature</h2>
 <pre><code><span class="kw">static constexpr std::size_t</span> <span class="fn">MaxRetainedGlobalBytes</span> = 64 * 1024;</code></pre>
 
 <h2 id="description">What it guards</h2>
@@ -216,7 +215,7 @@
 <ul>
   <li><a href="get-max-retained-global-bytes.html"><code>GetMaxRetainedGlobalBytes</code></a> - the quantity compared</li>
   <li><a href="get-global-allocation-count.html">The cumulative read-out</a> - requests and bytes</li>
-  <li><a href="../TestEnv/global-allocation-totals.html">Suite-wide totals</a></li>
+  <li><a href="../TestEnv/get-global-allocation-bytes.html">Suite-wide totals</a></li>
   <li><a href="../../Memory/index.html#global-allocation">Global allocation accounting</a> - where the counters come from</li>
 </ul>
 

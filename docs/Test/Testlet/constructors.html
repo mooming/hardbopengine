@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Testlet::Constructors — Test module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a class="current" href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Test</a> /
+  <a href="index.html">Testlet</a> / Constructors
+</p>
+
+<h1><span class="fn">Constructors</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::Testlet</span>
+  <span class="tag">Engine/Test/Testlet.h</span>
+  registration constructs the closure in place; the move relocates it
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>Testlet(Testlet&amp;&amp; other) noexcept
+		: dispatch(other.dispatch)
+		, maxRetainedGlobalBytes(other.maxRetainedGlobalBytes)
+
+Testlet(const Testlet&amp;) = delete</code></pre>
+
+<pre><code>Testlet(Testlet&amp;&amp; other) noexcept</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  Two constructors, and every other special member is deleted. The registering constructor is the only way a
+  testlet comes into existence: it copies the name into the inline buffer, records the retention ceiling, and
+  constructs the closure <em>in place</em> in the inline storage — which is why registering a test cannot
+  allocate. The name parameter is a char array reference rather than a pointer or a view so that a literal is
+  the only thing that can arrive: it has static storage, so the testlet may hold a view of it, and it is null
+  terminated, which the logger and the per-testlet allocator both need. A computed name fails to compile here
+  rather than dangling later.
+</p>
+
+<p>
+  Four <code>static_assert</code>s refuse what cannot be honoured: a name longer than
+  <code>MaxNameBytes</code>, an empty name, a closure whose captured state does not fit
+  <code>TClosureBytes</code>, and a closure over-aligned for the inline buffer. Each message says what to do
+  instead — shrink the capture, or instantiate <code>Testlet</code> with more bytes where the testlets are
+  held and say why. The closure constructor's <code>noexcept</code> is deliberately absent: constructing an
+  arbitrary closure is the case the coding standard points at when it says not to promise exception freedom
+  for something whose implementation this type cannot see.
+</p>
+
+<p>
+  The move constructor steals the dispatch pointer and the ceiling, copies the name, and relocates the
+  closure through <code>TestletDispatch::relocate</code> — then
+  nulls the source's dispatch, which is how a moved-from testlet knows to refuse
+  <a href="run.html"><code>Run</code></a>. Copy and both assignments are deleted: the inline storage makes a
+  copy a closure-copying problem the type chooses not to solve.
+</p>
+
+<h2 id="parameters">Parameters</h2>
+
+<table>
+  <tr><th>Parameter</th><th>Type</th><th>Requirement</th></tr>
+  <tr><td><code>testName</code></td><td><code>const char (&amp;)[TNameBytes]</code></td>
+  <td>A string literal: static storage, null terminated, at most <code>MaxNameBytes</code> bytes including the terminator.</td></tr>
+  <tr><td><code>retainedByteCeiling</code></td><td><code>std::size_t</code></td>
+  <td>The most global heap this testlet may still hold when its body ends; declared where the testlet was registered.</td></tr>
+  <tr><td><code>closure</code></td><td><code>TClosure&amp;&amp;</code></td>
+  <td>The test body. Constructed in place; its size and alignment are checked at compile time against the inline storage.</td></tr>
+</table>
+
+<h2 id="return">Return value</h2>
+
+<p>None — a constructor.</p>
+
+<h2 id="example">Examples</h2>
+
+<p>
+  Call sites write plain lambdas through
+  <a href="../TestCollection/add-test.html"><code>TestCollection::AddTest</code></a>; nothing about the
+  syntax reveals the dispatch table or the inline storage underneath.
+</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; Testlet</a></span>
+  <span><a href="index.html#methods">All Testlet methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>
