@@ -1,5 +1,32 @@
 # Journal
 
+## 2026-10-24 01:30 — the Test cycle, and the pages that documented a removed lifecycle
+
+**Cause.** Sixth module done out of order while the String worker ran: Test's layout was independent
+work, and its docs turned out to be a smaller gap than the first measurement suggested — the tree-wide
+scan's "21 method pages" was stale; the live count was ten, plus the TestletDispatch struct page.
+
+**Closed in this round.** The twelve-block layout over three headers — TestCollection, TestEnv and
+Testlet — with one language-forced waiver: `TTestlet` is `Testlet<MaxClosureBytes>`, so the constant
+stays above the type it sizes under `hb-standards:ignore`, the reason recorded in the unit test
+selection design doc. The TestletDispatch page, Testlet's four method pages and TestCollection's six
+authored by me. The 115 comments stripped with token-identical proofs; the post-strip seams closed by
+a rule-directed pass (the checker's report line semantics differ per rule — A11 with `found 0` is an
+insert, not a delete — which the first pass got wrong and the second encoded).
+
+**The catches.** First, two `start.html` pages — TestEnv's and TestCollection's — documented a
+`Start` method removed from both classes; the surviving prose already told the rename story
+("Start became PrepareTestlets / RunTestAt / Complete"), so the pages were deleted, the links
+rewritten, and the history kept in prose. Second, TestEnv's three global-allocation getters shared one
+page under a name no header declares — `docs_pass` refuses such a page, so it was split into its three
+getters, each verbatim. Third, `docs_pass` now collects `static constexpr` data declarations, because
+TestCollection's retention ceiling has a page of its own and a page that cannot verify against the
+header is decoration. Fourth, the module page cited `WaitUntil` with a line number — the one citation
+form the prose rules forbid.
+
+**Verification.** Test scoped gates all 0: comments, layout (2 waived), blank lines, includes, docs
+coverage 5/5, method pages, htmlcheck 72 pages. EngineTest 66/66.
+
 ## 2026-10-23 23:50 — the Math cycle, and the stale page no gate had ever compared
 
 **Cause.** Fifth module, the worklist's largest docs job: all sixteen class pages owed from zero, 127

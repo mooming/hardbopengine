@@ -17,8 +17,8 @@ Source comments are banned, so a missing page means the contract is nowhere.
 | OSAL | 14 | 14 | 0 | 5 | 14 | 0 |
 | Renderer | 9 | 9 | 0 | 2 | 9 | 1 |
 | Resource | 7 | 7 | 0 | 3 | 0 | 0 |
-| String | 9 | 1 | 8 | 5 | 0 | 14 |
-| Test | 5 | 4 | 1 | 5 | 0 | 125 |
+| String | 9 | 2 | 7 | 5 | 1 | 14 |
+| Test | 5 | 5 | 0 | 5 | 5 | 0 |
 
 ## Entries
 
@@ -219,10 +219,10 @@ Source comments are banned, so a missing page means the contract is nowhere.
 | Resource | BufferUtil | utility header | `Engine/Resource/BufferUtil.h` | `docs/Resource/BufferUtil/index.html` | 0 | **no** | documented |
 | Resource | Resource | class | `Engine/Resource/Resource.h` | `docs/Resource/Resource/index.html` | 2 | **no** | documented |
 | Resource | ResourceManager | class | `Engine/Resource/ResourceManager.h` | `docs/Resource/ResourceManager/index.html` | 6 | **no** | documented |
-| String | EndLine | class | `Engine/String/EndLine.h` | `docs/String/EndLine/index.html` | 1 | **no** | documented |
+| String | EndLine | class | `Engine/String/EndLine.h` | `docs/String/EndLine/index.html` | 1 | yes | documented |
 | String | InlineStringBuilder | class | `Engine/String/InlineStringBuilder.h` | `docs/String/InlineStringBuilder/index.html` | 0 | — | MISSING |
 | String | InlineStringBuilderTest | test-only | `Engine/String/InlineStringBuilder.h` | `docs/String/InlineStringBuilderTest/index.html` | 0 | — | test-only — owns a Coverage row |
-| String | Letter | class | `Engine/String/Letter.h` | `docs/String/Letter/index.html` | 0 | — | MISSING |
+| String | Letter | class | `Engine/String/Letter.h` | `docs/String/Letter/index.html` | 2 | **no** | documented |
 | String | StaticString | class | `Engine/String/StaticString.h` | `docs/String/StaticString/index.html` | 0 | — | MISSING |
 | String | StaticStringID | struct | `Engine/String/StaticStringID.h` | `docs/String/StaticStringID/index.html` | 0 | — | MISSING |
 | String | StaticStringTable | class | `Engine/String/StaticStringTable.h` | `docs/String/StaticStringTable/index.html` | 0 | — | MISSING |
@@ -238,8 +238,8 @@ Source comments are banned, so a missing page means the contract is nowhere.
 | Test | PerfSample | test-only | `Engine/Test/PerfHarness.h` | `docs/Test/PerfSample/index.html` | 0 | yes | documented |
 | Test | RingBufferPerfBenchmarkTest | test-only | `Engine/Test/RingBufferPerf.h` | `docs/Test/RingBufferPerfBenchmarkTest/index.html` | 2 | yes | documented |
 | Test | RingBufferPerfTest | test-only | `Engine/Test/RingBufferPerf.h` | `docs/Test/RingBufferPerfTest/index.html` | 2 | yes | documented |
-| Test | TestCollection | class | `Engine/Test/TestCollection.h` | `docs/Test/TestCollection/index.html` | 16 | **no** | documented |
-| Test | TestEnv | class | `Engine/Test/TestEnv.h` | `docs/Test/TestEnv/index.html` | 10 | **no** | documented |
-| Test | TestHelper | utility header | `Engine/Test/TestHelper.h` | `docs/Test/TestHelper/index.html` | 2 | **no** | documented |
-| Test | Testlet | class | `Engine/Test/Testlet.h` | `docs/Test/Testlet/index.html` | 1 | **no** | documented |
-| Test | TestletDispatch | struct | `Engine/Test/Testlet.h` | `docs/Test/TestletDispatch/index.html` | 0 | — | MISSING |
+| Test | TestCollection | class | `Engine/Test/TestCollection.h` | `docs/Test/TestCollection/index.html` | 21 | yes | documented |
+| Test | TestEnv | class | `Engine/Test/TestEnv.h` | `docs/Test/TestEnv/index.html` | 11 | yes | documented |
+| Test | TestHelper | utility header | `Engine/Test/TestHelper.h` | `docs/Test/TestHelper/index.html` | 2 | yes | documented |
+| Test | Testlet | class | `Engine/Test/Testlet.h` | `docs/Test/Testlet/index.html` | 5 | yes | documented |
+| Test | TestletDispatch | struct | `Engine/Test/Testlet.h` | `docs/Test/TestletDispatch/index.html` | 0 | yes | documented |
