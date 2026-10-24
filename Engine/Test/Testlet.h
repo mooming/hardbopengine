@@ -44,6 +44,7 @@ private:
 	std::size_t maxRetainedGlobalBytes;
 	alignas(alignof(std::max_align_t)) std::byte storage[TClosureBytes];
 
+public:
 	template <size_t TNameBytes, typename TClosure>
 		requires(!std::same_as<std::remove_cvref_t<TClosure>, Testlet>)
 	Testlet(const char (&testName)[TNameBytes], std::size_t retainedByteCeiling, TClosure&& closure)
