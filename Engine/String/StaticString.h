@@ -17,6 +17,9 @@ concept CToZeroTerminateStr = requires(T t) { t.c_str(); };
 /// @brief An interned string stored in a global table for efficient comparison and storage.
 class StaticString final
 {
+private:
+	StaticStringID id;
+
 public:
 	StaticString() noexcept;
 	StaticString(StaticStringID id) noexcept;
@@ -64,9 +67,6 @@ public:
 
 		return os;
 	}
-
-private:
-	StaticStringID id;
 };
 } // namespace hbe
 

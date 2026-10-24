@@ -20,6 +20,11 @@ public:
 	using Vector = hbe::HVector<T>;
 	static constexpr Index InvalidIndex = std::is_unsigned<Index>::value ? std::numeric_limits<Index>::max() : -1;
 
+private:
+	Shareable<Vector<TChar>> buffer;
+	Index hashCode;
+
+public:
 	String() noexcept
 		: hashCode(0)
 	{
@@ -414,8 +419,6 @@ public:
 	void ParseKeyValue(String& outKey, String& outValue) noexcept;
 
 private:
-	Shareable<Vector<TChar>> buffer;
-	Index hashCode;
 	void CalculateHashCode() noexcept;
 };
 } // namespace hbe

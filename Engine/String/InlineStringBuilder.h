@@ -20,10 +20,16 @@ template <size_t BufferSize = 1024, class TChar = char>
 class InlineStringBuilder final
 {
 public:
-	static_assert(BufferSize > 0, "BufferSize should be greater than 0.");
-	static constexpr size_t LastIndex = BufferSize - 1;
 	using TThis = InlineStringBuilder;
 
+	static_assert(BufferSize > 0, "BufferSize should be greater than 0.");
+	static constexpr size_t LastIndex = BufferSize - 1;
+
+private:
+	size_t length;
+	TChar buffer[BufferSize];
+
+public:
 	InlineStringBuilder() noexcept
 		: length(0)
 	{
@@ -361,10 +367,6 @@ public:
 	{
 		return *this << '\n';
 	}
-
-private:
-	size_t length;
-	TChar buffer[BufferSize];
 };
 } // namespace hbe
 

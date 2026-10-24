@@ -19,13 +19,17 @@ template <class TCh = char, class TAlloc = DefaultAllocator<TCh>>
 class StringBuilder final
 {
 public:
+	using TThis = StringBuilder;
+	using TString = std::basic_string<TCh, std::char_traits<TCh>, TAlloc>;
+
 	static constexpr int InlineBufferSize = 32;
 	static constexpr int InlineFloatBufferSize = 64;
 	static constexpr int InlineLongDoubleBufferSize = 512;
 
-	using TThis = StringBuilder;
-	using TString = std::basic_string<TCh, std::char_traits<TCh>, TAlloc>;
+private:
+	TString buffer;
 
+public:
 	StringBuilder() = default;
 	~StringBuilder() = default;
 
@@ -232,9 +236,6 @@ public:
 
 		return *this;
 	}
-
-private:
-	TString buffer;
 };
 } // namespace hbe
 

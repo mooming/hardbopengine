@@ -20,7 +20,6 @@ class StaticStringTable final
 {
 public:
 	using TIndex = size_t;
-	static constexpr size_t NumTables = Config::StaticStringNumHashBuckets;
 
 private:
 	template <typename T>
@@ -63,6 +62,9 @@ private:
 
 	using TTable = std::vector<std::string_view>;
 
+public:
+	static constexpr size_t NumTables = Config::StaticStringNumHashBuckets;
+
 private:
 	mutable std::mutex tableLock;
 	TTable tables[NumTables];
@@ -70,7 +72,6 @@ private:
 public:
 	static StaticStringTable& GetInstance();
 
-public:
 	StaticStringTable();
 	~StaticStringTable();
 
@@ -83,13 +84,13 @@ public:
 	void PrintStringTable() const;
 
 private:
+	static void* Allocate(size_t n);
+
 	void RegisterPredefinedStrings();
 	TIndex GetTableID(const char* text) const;
 	TIndex GetTableID(const std::string_view& str) const;
 
 	std::string_view Store(const char* text);
 	std::string_view Store(const std::string_view& str);
-
-	static void* Allocate(size_t n);
 };
 } // namespace hbe
