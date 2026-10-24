@@ -10,6 +10,7 @@
 
 #include "TestCollection.h"
 
+
 namespace hbe
 {
 /// @brief Owns the test collections, their registration order, and the tally of what actually ran.
@@ -21,14 +22,33 @@ namespace hbe
 ///          the zero that ran, and call the dead run balanced.
 class TestEnv final
 {
+private:
+	using TCPtr = std::unique_ptr<TestCollection>;
+
+	std::vector<TCPtr> tests;
+	std::vector<std::size_t> collectionOffsets;
+	std::vector<std::string> testletLabels;
+	std::vector<std::string> invalidTests;
+	std::vector<std::string> failedTests;
+	std::vector<std::string> warningMessages;
+	std::vector<std::string> errorMessages;
+
+	std::size_t executedTestletCount{0};
+	std::vector<unsigned int> testletRunCounts;
+
+	unsigned int testedCount;
+	unsigned int passCount;
+
+	bool suiteDrivenByShutdownPump{false};
+
 public:
+	[[nodiscard]] static TestEnv& GetEnv();
+
 	TestEnv() noexcept
 		: testedCount(0)
 		, passCount(0)
 	{
 	}
-
-	[[nodiscard]] static TestEnv& GetEnv();
 
 	template <typename T, typename... Types>
 	void AddTestCollection(Types&&... args)
@@ -120,26 +140,7 @@ public:
 	}
 
 private:
-	using TCPtr = std::unique_ptr<TestCollection>;
-
-	std::vector<TCPtr> tests;
-	std::vector<std::size_t> collectionOffsets;
-	std::vector<std::string> testletLabels;
-	std::vector<std::string> invalidTests;
-	std::vector<std::string> failedTests;
-	std::vector<std::string> warningMessages;
-	std::vector<std::string> errorMessages;
-
-	std::size_t executedTestletCount{0};
-	std::vector<unsigned int> testletRunCounts;
-
-	unsigned int testedCount;
-	unsigned int passCount;
-
-	bool suiteDrivenByShutdownPump{false};
-
 	void FinalizeCollection(TestCollection& testCollection);
 	void Report();
 };
-
 } // namespace hbe

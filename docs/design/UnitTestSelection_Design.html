@@ -133,6 +133,17 @@ comfortable default instead is wrong even when every other field is right.
   </p>
 </div>
 
+<h2 id="ttestlet-waiver">Why <code>TTestlet</code> sits below a constant it is sized by</h2>
+
+<p>
+  <code>TestCollection::TTestlet</code> is <code>Testlet&lt;MaxClosureBytes&gt;</code> — the alias's own
+  definition names the constant declared one line above it, so the twelve-block order the layout checker
+  wants (every type before every constant) cannot compile here. The declaration line carries
+  <code>hb-standards:ignore</code> for that reason; this paragraph is the reason the waiver asks for. The
+  same shape exists in <code>RingBuffer</code>'s <code>Block</code> and <code>ProducerSlot</code>, waived
+  in that header for the same cause.
+</p>
+
 <h2 id="seealso">Where else to look</h2>
 <table>
   <tr><th>Question</th><th>Where it lives</th></tr>

@@ -17,6 +17,7 @@
 #include "Log/LogLevel.h"
 #include "Testlet.h"
 
+
 namespace hbe
 {
 /// @brief Wait for a condition with a deadline, which is the only honest way a test can wait for work it dispatched.
@@ -44,11 +45,30 @@ bool WaitUntil(Predicate&& isReady, const std::uint32_t timeoutMilliSecs = 2000)
 class TestCollection
 {
 public:
+	using TLogOut = std::stringstream;
+	using TLogBuffer = std::vector<std::string>;
+
+	class LogFlush final
+	{
+	public:
+		const char* name;
+		ELogLevel level;
+		uint32_t testIndex;
+		const char* testName;
+		TLogBuffer* messageBuffer;
+
+		LogFlush(const char* name, ELogLevel level, TLogBuffer* buffer);
+		~LogFlush() = default;
+	};
+
 	/*
 	 * How much inline storage each testlet of this suite gets, chosen here because the collections are what hold
 	 * the testlets. A collection whose tests genuinely need a larger capture changes the alias below, and the
 	 * static_assert in Testlet's constructor is what tells it so at the registration site.
 	 */
+	static constexpr size_t MaxClosureBytes = 48;
+	using TTestlet = Testlet<MaxClosureBytes>; // hb-standards:ignore
+
 	/*
 	 * The most engine-owned global heap memory a single testlet may still be holding when its body ends.
 	 *
@@ -66,32 +86,29 @@ public:
 	 */
 	static constexpr std::size_t MaxRetainedGlobalBytes = 64 * 1024;
 
-	static constexpr size_t MaxClosureBytes = 48;
-	using TTestlet = Testlet<MaxClosureBytes>;
-
 	/// @brief Longest test name this suite can hold, reported from the type that owns the storage.
 	static constexpr size_t MaxTestNameBytes = TTestlet::MaxNameBytes;
-
-	using TLogOut = std::stringstream;
-	using TLogBuffer = std::vector<std::string>;
-
-	class LogFlush final
-	{
-	public:
-		const char* name;
-		ELogLevel level;
-		uint32_t testIndex;
-		const char* testName;
-		TLogBuffer* messageBuffer;
-
-		LogFlush(const char* name, ELogLevel level, TLogBuffer* buffer);
-		~LogFlush() = default;
-	};
 
 	LogFlush lf;
 	LogFlush lfwarn;
 	LogFlush lferr;
 
+protected:
+	std::vector<TTestlet> tests;
+	std::vector<std::string> warningMessages;
+	std::vector<std::string> errorMessages;
+
+	std::size_t globalAllocationBytes{0};
+	std::uint64_t globalAllocationCount{0};
+	std::size_t testletsWithGlobalAllocations{0};
+	std::size_t maxRetainedGlobalBytes{0};
+
+private:
+	std::string title;
+	bool isDone;
+	bool isSuccess;
+
+public:
 	explicit TestCollection(const char* title);
 	virtual ~TestCollection() = default;
 
@@ -197,25 +214,11 @@ protected:
 	 */
 	void ReportNullTestCase(std::string_view testName) noexcept;
 
-	std::vector<TTestlet> tests;
-	std::vector<std::string> warningMessages;
-	std::vector<std::string> errorMessages;
-
-	std::size_t globalAllocationBytes{0};
-	std::uint64_t globalAllocationCount{0};
-	std::size_t testletsWithGlobalAllocations{0};
-	std::size_t maxRetainedGlobalBytes{0};
-
-	friend std::ostream& operator<<(std::ostream& os, const LogFlush& lf);
-
 	virtual void Prepare() = 0;
 
 private:
-	std::string title;
-	bool isDone;
-	bool isSuccess;
-
 	void Report() const;
-};
 
+	friend std::ostream& operator<<(std::ostream& os, const LogFlush& lf);
+};
 } // namespace hbe

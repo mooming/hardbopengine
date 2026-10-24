@@ -8,6 +8,7 @@
 #include "Core/TaskStream.h"
 #include "Core/TaskSystem.h"
 
+
 namespace hbe
 {
 namespace TestHelper
@@ -60,6 +61,5 @@ bool DriveUntil(TaskSystem& taskSystem, const char* waitingFor, Predicate&& isDo
 
 	return isDone();
 }
-
 } // namespace TestHelper
 } // namespace hbe

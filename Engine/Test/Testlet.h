@@ -45,6 +45,7 @@
  * logger's own include order, which is not something a test should have to get right to compile.
  */
 
+
 namespace hbe
 {
 /* POD dispatch table: one constexpr instance per closure type, so the storage below needs no vptr and no allocation. */
@@ -82,6 +83,12 @@ public:
 	static_assert(TClosureBytes > 0, "A testlet with no inline storage can only ever hold a null callable");
 	static_assert(TClosureBytes % sizeof(void*) == 0, "TClosureBytes should be a whole number of words");
 	static_assert(MaxNameBytes > 1, "MaxNameBytes has to leave room for a name and its terminator");
+
+private:
+	char name[MaxNameBytes];
+	const TestletDispatch* dispatch;
+	std::size_t maxRetainedGlobalBytes;
+	alignas(alignof(std::max_align_t)) std::byte storage[TClosureBytes];
 
 	/*
 	 * Constructs the closure in place. noexcept is deliberately absent: constructing an arbitrary closure is the
@@ -188,7 +195,6 @@ public:
 		return maxRetainedGlobalBytes;
 	}
 
-private:
 	template <typename TClosure>
 	static void InvokeClosure(const void* object, TLogOut& outLog)
 	{
@@ -221,11 +227,5 @@ private:
 
 		return dispatch;
 	}
-
-	char name[MaxNameBytes];
-	const TestletDispatch* dispatch;
-	std::size_t maxRetainedGlobalBytes;
-	alignas(alignof(std::max_align_t)) std::byte storage[TClosureBytes];
 };
-
 } // namespace hbe
