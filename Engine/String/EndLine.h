@@ -6,6 +6,7 @@
 namespace hbe
 {
 /// @brief A marker class for inserting newlines in string builders.
+/// API reference: docs/String/EndLine/index.html
 class EndLine final
 {
 public:
