@@ -591,13 +591,9 @@ String String::Append(const String& string) const noexcept
 
 void String::AppendSelf(const TChar letter) noexcept
 {
-	// Optimized single-pass append: obtain a reference to the buffer once,
-	// resize to accommodate the letter + trailing null, and write both
-	// directly. This halves the Shareable dereferencing overhead versus
-	// the previous push_back('\0') + assign-at-index pattern.
 	auto& buf = buffer.Get();
 	const auto index = buf.size();
-	buf.resize(index + 2); // room for the letter + trailing null terminator
+	buf.resize(index + 2);
 	buf.data()[index] = letter;
 	buf.data()[index + 1] = '\0';
 }
@@ -843,7 +839,7 @@ void String::CalculateHashCode() noexcept
 	for (Index i = 0; i < length; ++i)
 	{
 		Index ch = text[i];
-		hashCode = ((hashCode << 5) + hashCode) + ch; /* hash * 33 + c */
+		hashCode = ((hashCode << 5) + hashCode) + ch;
 	}
 }
 

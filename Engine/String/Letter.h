@@ -7,7 +7,7 @@
 
 namespace hbe
 {
-/// @brief Utility class for character classification and validation.
+/// API reference: docs/String/Letter/index.html
 class Letter
 {
 public:

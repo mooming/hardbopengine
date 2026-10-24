@@ -14,7 +14,7 @@ namespace hbe
 template <typename T>
 concept CToZeroTerminateStr = requires(T t) { t.c_str(); };
 
-/// @brief An interned string stored in a global table for efficient comparison and storage.
+/// API reference: docs/String/StaticString/index.html
 class StaticString final
 {
 private:

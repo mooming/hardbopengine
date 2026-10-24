@@ -12,6 +12,7 @@
 
 namespace hbe
 {
+/// API reference: docs/String/StringUtil/index.html
 namespace StringUtil
 {
 template <typename T>

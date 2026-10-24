@@ -15,8 +15,8 @@
 
 namespace hbe
 {
-/// @brief A fixed-size inline string builder with a static buffer for efficient string construction.
 template <size_t BufferSize = 1024, class TChar = char>
+/// API reference: docs/String/InlineStringBuilder/index.html
 class InlineStringBuilder final
 {
 public:

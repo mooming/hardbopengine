@@ -11,7 +11,7 @@
 
 namespace hbe
 {
-/// @brief A dynamic string class with automatic memory management and various utility methods.
+/// API reference: docs/String/String/index.html
 class String
 {
 public:
