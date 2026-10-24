@@ -13,6 +13,7 @@
 
 #include "Core/Debug.h"
 
+
 namespace hbe
 {
 /// API reference: docs/Test/TestletDispatch/index.html
@@ -30,7 +31,6 @@ class Testlet final
 public:
 	using TLogOut = std::stringstream;
 	static constexpr size_t ClosureBytes = TClosureBytes;
-
 
 	static constexpr size_t MaxNameBytes = 128;
 

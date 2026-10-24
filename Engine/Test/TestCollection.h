@@ -17,6 +17,7 @@
 #include "Log/LogLevel.h"
 #include "Testlet.h"
 
+
 namespace hbe
 {
 template <class Predicate>
@@ -56,7 +57,6 @@ public:
 	using TTestlet = Testlet<MaxClosureBytes>; // hb-standards:ignore
 	static constexpr std::size_t MaxRetainedGlobalBytes = 64 * 1024;
 
-
 	static constexpr size_t MaxTestNameBytes = TTestlet::MaxNameBytes;
 	LogFlush lf;
 	LogFlush lfwarn;
@@ -80,12 +80,9 @@ public:
 	explicit TestCollection(const char* title);
 	virtual ~TestCollection() = default;
 
-
 	void PrepareTests();
 
-
 	bool RunTestAt(std::size_t testIndex);
-
 
 	void Complete();
 
@@ -104,9 +101,11 @@ public:
 			if (testCase == nullptr)
 			{
 				ReportNullTestCase(testName);
+
 				return;
 			}
 		}
+
 		tests.emplace_back(testName, maxRetainedGlobalBytes, std::forward<TClosure>(testCase));
 	}
 
@@ -120,9 +119,7 @@ public:
 	[[nodiscard]] std::size_t GetGlobalAllocationBytes() const noexcept;
 	[[nodiscard]] std::uint64_t GetGlobalAllocationCount() const noexcept;
 
-
 	[[nodiscard]] std::size_t GetTestletCountWithGlobalAllocations() const noexcept;
-
 
 	[[nodiscard]] std::size_t GetMaxRetainedGlobalBytes() const noexcept;
 	[[nodiscard]] const std::vector<std::string>& GetWarningMessages() const noexcept;

@@ -11,12 +11,13 @@
 #include "Log/Logger.h"
 #include "TestCollection.h"
 
+
 namespace hbe
 {
-
 TestEnv& TestEnv::GetEnv()
 {
 	static TestEnv instance;
+
 	return instance;
 }
 
@@ -65,6 +66,7 @@ void TestEnv::RunTestlet(const std::size_t testletIndex)
 		std::cerr << "Error: testlet index " << testletIndex << " is past the " << testletLabels.size()
 				  << " testlets the suite registered, so the run cannot be scheduled as far as it is reaching."
 				  << std::endl;
+
 		return;
 	}
 
@@ -258,5 +260,4 @@ void TestEnv::Report()
 	auto& logger = Logger::Get();
 	logger.Flush();
 }
-
 } // namespace hbe

@@ -8,9 +8,9 @@
 #include "Log/Logger.h"
 #include "Memory/MemoryManager.h"
 
+
 namespace hbe
 {
-
 TestCollection::LogFlush::LogFlush(const char* name, ELogLevel level, TLogBuffer* buffer)
 	: name(name)
 	, level(level)
@@ -99,7 +99,6 @@ bool TestCollection::RunTestAt(const std::size_t testIndex)
 
 	auto log = Logger::Get(GetName());
 	log.Out([indexLabel, testName](auto& ls) { ls << "# TC" << indexLabel << '.' << testName << " #"; });
-
 	{
 		TLogOut logStream;
 
@@ -150,7 +149,6 @@ bool TestCollection::RunTestAt(const std::size_t testIndex)
 				   << ". Free it, or raise the ceiling with a reason that survives review #\n";
 			});
 
-
 			errorMessages.push_back(std::string(testName) +
 									" retained more engine-owned global heap than the ceiling allows");
 		}
@@ -177,7 +175,6 @@ bool TestCollection::RunTestAt(const std::size_t testIndex)
 					ls << ", of which OS-image " << osRequestsOverBody << " requests, " << osBytesOverBody
 					   << " bytes requested, " << (MemoryManager::GetOSFreeCount() - osFreedCountBefore) << " releases";
 				}
-
 
 				if (retainedCeiling != MaxRetainedGlobalBytes)
 				{
@@ -259,7 +256,6 @@ std::ostream& operator<<(std::ostream& os, const TestCollection::LogFlush& lf)
 		auto messages = lf.messageBuffer;
 		if (messages == nullptr)
 			return;
-
 		{
 			std::stringstream msg;
 			msg << ls.c_str();
@@ -272,7 +268,6 @@ std::ostream& operator<<(std::ostream& os, const TestCollection::LogFlush& lf)
 	return os;
 
 #if 0
-
 
 	auto log = Logger::Get(lf.name, lf.level);
 	log.Out([&lf, &os](auto& ls)
@@ -309,5 +304,4 @@ std::size_t TestCollection::GetMaxRetainedGlobalBytes() const noexcept
 {
 	return maxRetainedGlobalBytes;
 }
-
 } // namespace hbe

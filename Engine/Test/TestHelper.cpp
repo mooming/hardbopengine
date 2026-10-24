@@ -5,11 +5,11 @@
 #include "Core/TaskSystem.h"
 #include "Log/Logger.h"
 
+
 namespace hbe
 {
 namespace TestHelper
 {
-
 void ReportDriveTimeout(TaskSystem& taskSystem, const char* waitingFor,
 						const std::chrono::milliseconds patience) noexcept
 {
@@ -24,6 +24,5 @@ void ReportDriveTimeout(TaskSystem& taskSystem, const char* waitingFor,
 					 "thing to look at.";
 	});
 }
-
 } // namespace TestHelper
 } // namespace hbe
