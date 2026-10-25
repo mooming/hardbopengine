@@ -1,5 +1,39 @@
 # Journal
 
+## 2026-10-25 09:20 — the worklist closes: 147 of 147, and the gate that says so
+
+**The worklist's result.** Seven modules cycled, and the two the first measurement called "clean"
+turned out to owe sixteen pointer lines and eight method pages the refreshed compile database exposed —
+all closed in the same pass. The final ledger reads **147 API entries, 147 documented, 0 missing**, and
+the full-tree gate reports clang-format PASS, include layout PASS, member layout 0 violations (6
+recorded waivers, each with its reason in a design document), the build 12/12 and the suite 66/66 in all
+three configurations. The one remaining exit-1 contributor is the 120-comment count on
+`Engine/CodingStandards.h` — the standard's own BAD EXAMPLE teaching file, exempt by design and counted
+only by the raw tally. Nothing above master is pushed; the forty-plus commits await the owner's review.
+
+## 2026-10-25 08:45 — the String cycle, and the ledger that reads 147 of 147
+
+**Cause.** Sixth module. The first String worker died after ten hours having written nothing — a
+provider stall, 34 tool calls in 10.2 hours — so the small entries (Letter, with its name/behaviour
+mismatch on IsGenuineLetter) were authored by me and the remaining six re-queued to one fresh worker,
+which finished 124 pages in eighty minutes.
+
+**Closed in this round.** The twelve-block layout over six headers; the eight entry pages and their
+method pages verified (signatures verbatim for the seven class-shaped entries, htmlcheck 124 pages,
+quoted_blocks 0 stale 0 unresolved); eight pointer lines; and the 14-comment strip with token-identical
+proofs. The AppendSelf single-pass optimisation note moved onto its method page before the strip.
+
+**The catches.** Three more docs_pass collector members of the same family: conversion operators with
+spaced types (`operator const char*()`) were unparseable — the capture now admits anything but a
+parenthesis — and the lookup normalises whitespace on both sides, because the key glues the prefix
+(`operatorconst char*`) while the page spells the space the grammar has. TestCollection's retention-
+ceiling page is why constexpr data is collected at all. And the ledger's final line is the round's real
+result: 147 API entries, 147 documented, 0 missing — every entry the engine declares owns a page, every
+page addressed from its header.
+
+**Verification.** String scoped gates all 0; the full-tree gate's verdict is read after this entry.
+The worklist's seven modules are done; what remains above master is unpushed and awaits the owner.
+
 ## 2026-10-24 01:30 — the Test cycle, and the pages that documented a removed lifecycle
 
 **Cause.** Sixth module done out of order while the String worker ran: Test's layout was independent

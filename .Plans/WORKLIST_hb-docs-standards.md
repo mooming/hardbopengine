@@ -23,9 +23,9 @@ Measured 2026-10-23 against `master` (`dffb5c0`) with `check.sh --all --no-build
 | 3 | Renderer | 0 (was 1 + 18 method pages) | 0 (was 239) | 0 (was 44) | 0 | M | **done** |
 | 4 | OSAL | 0 (was 14 + methods) | 0 (was 96) | 0 (was 14) | 0 (was 11+11) | L | **done** |
 | 5 | Math | 0 (was 16 + 263 method pages) | 0 (was 127) | 0 (was 42) | 0 | XL | **done** |
-| 6 | String | 8 | 14 in 9 files | 14 in 1 file | — | L | pending (per-header) |
+| 6 | String | 0 (was 8 + methods) | 0 (was 14) | 0 (was 14) | 0 | L | **done** |
 | 7 | Test | 0 (was 1 + 10 method pages) | 0 (was 125) | 0 (was 35) | 0 | M | **done** |
-| 8 | Core/Log/Config | 0 | 0 | 10 in 8 files | — | S | pending |
+| 8 | Core/Log/Config + Engine/HSTL/Resource pointers | 0 | 0 | 0 (was 10) | 0 | S | **done** |
 
 Clean already: Config (docs), Core (docs), HSTL, Engine, Log (docs), Resource.
 

@@ -9,15 +9,15 @@ Source comments are banned, so a missing page means the contract is nowhere.
 | Config | 5 | 5 | 0 | 0 | 5 | 0 |
 | Container | 19 | 19 | 0 | 15 | 19 | 0 |
 | Core | 31 | 31 | 0 | 9 | 31 | 0 |
-| Engine | 2 | 2 | 0 | 0 | 0 | 0 |
-| HSTL | 3 | 3 | 0 | 1 | 0 | 0 |
-| Log | 4 | 4 | 0 | 0 | 0 | 0 |
+| Engine | 2 | 2 | 0 | 0 | 2 | 0 |
+| HSTL | 3 | 3 | 0 | 1 | 3 | 0 |
+| Log | 4 | 4 | 0 | 0 | 4 | 0 |
 | Math | 16 | 16 | 0 | 15 | 16 | 0 |
 | Memory | 23 | 23 | 0 | 12 | 23 | 0 |
 | OSAL | 14 | 14 | 0 | 5 | 14 | 0 |
 | Renderer | 9 | 9 | 0 | 2 | 9 | 1 |
-| Resource | 7 | 7 | 0 | 3 | 0 | 0 |
-| String | 9 | 2 | 7 | 5 | 1 | 14 |
+| Resource | 7 | 7 | 0 | 3 | 7 | 0 |
+| String | 9 | 9 | 0 | 5 | 9 | 0 |
 | Test | 5 | 5 | 0 | 5 | 5 | 0 |
 
 ## Entries
@@ -103,16 +103,16 @@ Source comments are banned, so a missing page means the contract is nowhere.
 | Core | True_t | class | `Engine/Core/CommonUtil.h` | `docs/Core/True_t/index.html` | 0 | yes | documented |
 | Core | Types | utility header | `Engine/Core/Types.h` | `docs/Core/Types/index.html` | 0 | yes | documented |
 | Core | WorkItem | class | `Engine/Core/WorkItem.h` | `docs/Core/WorkItem/index.html` | 5 | yes | documented |
-| Engine | EInitLevel | enum | `Engine/Engine/EngineInitLevel.h` | `docs/Engine/EInitLevel/index.html` | 2 | **no** | documented |
-| Engine | Engine | class | `Engine/Engine/Engine.h` | `docs/Engine/Engine/index.html` | 31 | **no** | documented |
-| HSTL | HString | utility header | `Engine/HSTL/HString.h` | `docs/HSTL/HString/index.html` | 0 | **no** | documented |
-| HSTL | HUnorderedMap | utility header | `Engine/HSTL/HUnorderedMap.h` | `docs/HSTL/HUnorderedMap/index.html` | 0 | **no** | documented |
+| Engine | EInitLevel | enum | `Engine/Engine/EngineInitLevel.h` | `docs/Engine/EInitLevel/index.html` | 2 | yes | documented |
+| Engine | Engine | class | `Engine/Engine/Engine.h` | `docs/Engine/Engine/index.html` | 31 | yes | documented |
+| HSTL | HString | utility header | `Engine/HSTL/HString.h` | `docs/HSTL/HString/index.html` | 0 | yes | documented |
+| HSTL | HUnorderedMap | utility header | `Engine/HSTL/HUnorderedMap.h` | `docs/HSTL/HUnorderedMap/index.html` | 0 | yes | documented |
 | HSTL | HUnorderedMapTest | test-only | `Engine/HSTL/HUnorderedMap.h` | `docs/HSTL/HUnorderedMapTest/index.html` | 0 | — | test-only — owns a Coverage row |
-| HSTL | HVector | utility header | `Engine/HSTL/HVector.h` | `docs/HSTL/HVector/index.html` | 0 | **no** | documented |
-| Log | ELogLevel | enum | `Engine/Log/LogLevel.h` | `docs/Log/ELogLevel/index.html` | 0 | **no** | documented |
-| Log | LogLine | class | `Engine/Log/LogLine.h` | `docs/Log/LogLine/index.html` | 3 | **no** | documented |
-| Log | LogUtil | utility header | `Engine/Log/LogUtil.h` | `docs/Log/LogUtil/index.html` | 4 | **no** | documented |
-| Log | Logger | class | `Engine/Log/Logger.h` | `docs/Log/Logger/index.html` | 19 | **no** | documented |
+| HSTL | HVector | utility header | `Engine/HSTL/HVector.h` | `docs/HSTL/HVector/index.html` | 0 | yes | documented |
+| Log | ELogLevel | enum | `Engine/Log/LogLevel.h` | `docs/Log/ELogLevel/index.html` | 0 | yes | documented |
+| Log | LogLine | class | `Engine/Log/LogLine.h` | `docs/Log/LogLine/index.html` | 3 | yes | documented |
+| Log | LogUtil | utility header | `Engine/Log/LogUtil.h` | `docs/Log/LogUtil/index.html` | 4 | yes | documented |
+| Log | Logger | class | `Engine/Log/Logger.h` | `docs/Log/Logger/index.html` | 19 | yes | documented |
 | Math | AABB | class | `Engine/Math/AABB.h` | `docs/Math/AABB/index.html` | 16 | yes | documented |
 | Math | AABBTest | test-only | `Engine/Math/AABB.h` | `docs/Math/AABBTest/index.html` | 0 | — | test-only — owns a Coverage row |
 | Math | ImportanceResampling | class | `Engine/Math/ImportanceResampling.h` | `docs/Math/ImportanceResampling/index.html` | 9 | yes | documented |
@@ -209,29 +209,29 @@ Source comments are banned, so a missing page means the contract is nowhere.
 | Renderer | Vertex | struct | `Engine/Renderer/Vertex.h` | `docs/Renderer/Vertex/index.html` | 1 | yes | documented |
 | Renderer | VulkanCapabilities | utility header | `Engine/Renderer/Vulkan/VulkanCapabilities.h` | `docs/Renderer/VulkanCapabilities/index.html` | 0 | yes | documented |
 | Renderer | VulkanRenderer | class | `Engine/Renderer/Vulkan/VulkanRenderer.h` | `docs/Renderer/VulkanRenderer/index.html` | 31 | yes | documented |
-| Resource | Buffer | class | `Engine/Resource/Buffer.h` | `docs/Resource/Buffer/index.html` | 8 | **no** | documented |
-| Resource | BufferInputStream | class | `Engine/Resource/BufferInputStream.h` | `docs/Resource/BufferInputStream/index.html` | 9 | **no** | documented |
+| Resource | Buffer | class | `Engine/Resource/Buffer.h` | `docs/Resource/Buffer/index.html` | 8 | yes | documented |
+| Resource | BufferInputStream | class | `Engine/Resource/BufferInputStream.h` | `docs/Resource/BufferInputStream/index.html` | 9 | yes | documented |
 | Resource | BufferInputStreamTest | test-only | `Engine/Resource/BufferInputStream.h` | `docs/Resource/BufferInputStreamTest/index.html` | 0 | — | test-only — owns a Coverage row |
-| Resource | BufferOutputStream | class | `Engine/Resource/BufferOutputStream.h` | `docs/Resource/BufferOutputStream/index.html` | 10 | **no** | documented |
+| Resource | BufferOutputStream | class | `Engine/Resource/BufferOutputStream.h` | `docs/Resource/BufferOutputStream/index.html` | 10 | yes | documented |
 | Resource | BufferOutputStreamTest | test-only | `Engine/Resource/BufferOutputStream.h` | `docs/Resource/BufferOutputStreamTest/index.html` | 0 | — | test-only — owns a Coverage row |
 | Resource | BufferTest | test-only | `Engine/Resource/Buffer.h` | `docs/Resource/BufferTest/index.html` | 0 | — | test-only — owns a Coverage row |
-| Resource | BufferTypes | utility header | `Engine/Resource/BufferTypes.h` | `docs/Resource/BufferTypes/index.html` | 0 | **no** | documented |
-| Resource | BufferUtil | utility header | `Engine/Resource/BufferUtil.h` | `docs/Resource/BufferUtil/index.html` | 0 | **no** | documented |
-| Resource | Resource | class | `Engine/Resource/Resource.h` | `docs/Resource/Resource/index.html` | 2 | **no** | documented |
-| Resource | ResourceManager | class | `Engine/Resource/ResourceManager.h` | `docs/Resource/ResourceManager/index.html` | 6 | **no** | documented |
+| Resource | BufferTypes | utility header | `Engine/Resource/BufferTypes.h` | `docs/Resource/BufferTypes/index.html` | 0 | yes | documented |
+| Resource | BufferUtil | utility header | `Engine/Resource/BufferUtil.h` | `docs/Resource/BufferUtil/index.html` | 0 | yes | documented |
+| Resource | Resource | class | `Engine/Resource/Resource.h` | `docs/Resource/Resource/index.html` | 2 | yes | documented |
+| Resource | ResourceManager | class | `Engine/Resource/ResourceManager.h` | `docs/Resource/ResourceManager/index.html` | 6 | yes | documented |
 | String | EndLine | class | `Engine/String/EndLine.h` | `docs/String/EndLine/index.html` | 1 | yes | documented |
-| String | InlineStringBuilder | class | `Engine/String/InlineStringBuilder.h` | `docs/String/InlineStringBuilder/index.html` | 0 | — | MISSING |
+| String | InlineStringBuilder | class | `Engine/String/InlineStringBuilder.h` | `docs/String/InlineStringBuilder/index.html` | 8 | yes | documented |
 | String | InlineStringBuilderTest | test-only | `Engine/String/InlineStringBuilder.h` | `docs/String/InlineStringBuilderTest/index.html` | 0 | — | test-only — owns a Coverage row |
-| String | Letter | class | `Engine/String/Letter.h` | `docs/String/Letter/index.html` | 2 | **no** | documented |
-| String | StaticString | class | `Engine/String/StaticString.h` | `docs/String/StaticString/index.html` | 0 | — | MISSING |
-| String | StaticStringID | struct | `Engine/String/StaticStringID.h` | `docs/String/StaticStringID/index.html` | 0 | — | MISSING |
-| String | StaticStringTable | class | `Engine/String/StaticStringTable.h` | `docs/String/StaticStringTable/index.html` | 0 | — | MISSING |
+| String | Letter | class | `Engine/String/Letter.h` | `docs/String/Letter/index.html` | 3 | yes | documented |
+| String | StaticString | class | `Engine/String/StaticString.h` | `docs/String/StaticString/index.html` | 9 | yes | documented |
+| String | StaticStringID | struct | `Engine/String/StaticStringID.h` | `docs/String/StaticStringID/index.html` | 3 | yes | documented |
+| String | StaticStringTable | class | `Engine/String/StaticStringTable.h` | `docs/String/StaticStringTable/index.html` | 11 | yes | documented |
 | String | StaticStringTest | test-only | `Engine/String/StaticString.h` | `docs/String/StaticStringTest/index.html` | 0 | — | test-only — owns a Coverage row |
-| String | String | class | `Engine/String/String.h` | `docs/String/String/index.html` | 0 | — | MISSING |
-| String | StringBuilder | class | `Engine/String/StringBuilder.h` | `docs/String/StringBuilder/index.html` | 0 | — | MISSING |
+| String | String | class | `Engine/String/String.h` | `docs/String/String/index.html` | 53 | yes | documented |
+| String | StringBuilder | class | `Engine/String/StringBuilder.h` | `docs/String/StringBuilder/index.html` | 8 | yes | documented |
 | String | StringBuilderTest | test-only | `Engine/String/StringBuilder.h` | `docs/String/StringBuilderTest/index.html` | 0 | — | test-only — owns a Coverage row |
 | String | StringTest | test-only | `Engine/String/String.h` | `docs/String/StringTest/index.html` | 0 | — | test-only — owns a Coverage row |
-| String | StringUtil | utility header | `Engine/String/StringUtil.h` | `docs/String/StringUtil/index.html` | 0 | — | MISSING |
+| String | StringUtil | utility header | `Engine/String/StringUtil.h` | `docs/String/StringUtil/index.html` | 18 | yes | documented |
 | String | StringUtilTest | test-only | `Engine/String/StringUtil.h` | `docs/String/StringUtilTest/index.html` | 0 | — | test-only — owns a Coverage row |
 | Test | EPerfGrade | test-only | `Engine/Test/PerfHarness.h` | `docs/Test/EPerfGrade/index.html` | 0 | yes | documented |
 | Test | PerfBenchmark | test-only | `Engine/Test/PerfHarness.h` | `docs/Test/PerfBenchmark/index.html` | 14 | yes | documented |
@@ -239,7 +239,7 @@ Source comments are banned, so a missing page means the contract is nowhere.
 | Test | RingBufferPerfBenchmarkTest | test-only | `Engine/Test/RingBufferPerf.h` | `docs/Test/RingBufferPerfBenchmarkTest/index.html` | 2 | yes | documented |
 | Test | RingBufferPerfTest | test-only | `Engine/Test/RingBufferPerf.h` | `docs/Test/RingBufferPerfTest/index.html` | 2 | yes | documented |
 | Test | TestCollection | class | `Engine/Test/TestCollection.h` | `docs/Test/TestCollection/index.html` | 21 | yes | documented |
-| Test | TestEnv | class | `Engine/Test/TestEnv.h` | `docs/Test/TestEnv/index.html` | 11 | yes | documented |
+| Test | TestEnv | class | `Engine/Test/TestEnv.h` | `docs/Test/TestEnv/index.html` | 19 | yes | documented |
 | Test | TestHelper | utility header | `Engine/Test/TestHelper.h` | `docs/Test/TestHelper/index.html` | 2 | yes | documented |
 | Test | Testlet | class | `Engine/Test/Testlet.h` | `docs/Test/Testlet/index.html` | 5 | yes | documented |
 | Test | TestletDispatch | struct | `Engine/Test/Testlet.h` | `docs/Test/TestletDispatch/index.html` | 0 | yes | documented |
