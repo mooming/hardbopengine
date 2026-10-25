@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>String::AppendSelf — String module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a class="current" href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">String</a> /
+  <a href="index.html">String</a> / AppendSelf
+</p>
+
+<h1><span class="fn">AppendSelf</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::String</span>
+  <span class="tag">Engine/String/String.h</span>
+  the piece appended in place, 1.5x growth when needed
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>void AppendSelf(const TChar letter) noexcept
+
+void AppendSelf(const int value) noexcept
+
+void AppendSelf(const float value) noexcept
+
+void AppendSelf(const TChar* text) noexcept
+
+void AppendSelf(const String&amp; string) noexcept</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  The mutating form of <a href="append.html"><code>Append</code></a>: the piece goes onto
+  <em>this</em> string's buffer. Growth reserves 1.5× the needed size when the buffer must expand, then
+  resizes and copies the piece in — the loop-friendly allocation pattern:
+</p>
+
+<pre><code>	if (newLength &gt; buffer-&gt;capacity())
+	{
+		buffer-&gt;reserve(newLength * 3 / 2);
+	}
+
+	buffer-&gt;resize(newLength);
+	memcpy(buffer-&gt;data() + length, text, textLength + 1);</code></pre>
+<p class="meta">From Engine/String/String.cpp, String::AppendSelf(const TChar* text) noexcept — the grow-then-copy shape shared by the int, float, pointer and String overloads</p>
+
+<p>
+  The character overload is the special case — it writes the letter and the terminator in one pass without
+  the reserve logic, since two bytes always fit or the buffer is already at its size:
+</p>
+
+<pre><code>	auto&amp; buf = buffer.Get();
+	const auto index = buf.size();
+	...
+	buf.data()[index] = letter;
+	buf.data()[index + 1] = '\0';</code></pre>
+<p class="meta">From Engine/String/String.cpp, String::AppendSelf(const TChar letter) noexcept</p>
+
+<p>
+  An empty <code>String</code> operand appends nothing. These overloads are what
+  <a href="operator-add-assign.html"><code>operator+=</code></a> dispatches to.
+</p>
+
+<p>
+  The <code>TChar</code> overload is a single-pass append on purpose: it takes the buffer reference once,
+  resizes to make room for the letter and the trailing null, and writes both directly — half the
+  <code>Shareable</code> dereferencing of the previous push-then-assign pattern. The trailing null is what
+  keeps <code>c_str()</code> valid without a second pass.
+</p>
+
+<h2 id="parameters">Parameters</h2>
+
+<table>
+  <tr><th>Parameter</th><th>Type</th><th>Requirement</th></tr>
+  <tr><td><code>letter</code></td><td><code>const TChar</code></td>
+  <td>The character to add.</td></tr>
+  <tr><td><code>value</code></td><td><code>const int</code> / <code>const float</code></td>
+  <td>Formatted with <code>%d</code> / <code>%f</code> through a 16-byte temp.</td></tr>
+  <tr><td><code>text</code></td><td><code>const TChar*</code></td>
+  <td>Zero-terminated; measured with <code>strlen</code>.</td></tr>
+  <tr><td><code>string</code></td><td><code>const String&amp;</code></td>
+  <td>The text to add; empty appends nothing.</td></tr>
+</table>
+
+<h2 id="return">Return value</h2>
+
+<p>None — the receiver is modified.</p>
+
+<h2 id="example">Examples</h2>
+
+<pre><code>			str = "";
+			for (char ch = 'a'; ch &lt;= 'z'; ++ch)
+			{
+				str += ch;
+			}</code></pre>
+<p class="meta">From Engine/String/String.cpp, the "Performance" testlet — the += spelling of AppendSelf in the measured loop</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; String</a></span>
+  <span><a href="index.html#methods">All String methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

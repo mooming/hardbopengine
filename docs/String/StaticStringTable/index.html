@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>StaticStringTable — String module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a class="current" href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This class</h3>
+  <ul>
+    <li><a href="#description">Class description</a></li>
+    <li><a href="#template">Template parameters</a></li>
+    <li><a href="#properties">Class properties</a></li>
+    <li><a href="#methods">Class methods</a></li>
+    <li><a href="#non-member">Non-member helpers</a></li>
+    <li><a href="#coverage">Coverage</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">String</a> /
+  StaticStringTable
+</p>
+
+<h1>StaticStringTable</h1>
+<p class="subtitle">
+  <span class="tag">Engine/String/StaticStringTable.h</span>
+  <span class="tag">namespace hbe</span>
+  <span class="tag">final</span>
+  the global intern table — one address per distinct text, forever
+</p>
+
+<h2 id="description">Class description</h2>
+
+<p>
+  The global intern table behind <code>StaticString</code>: one process-wide singleton that owns every byte of
+  interned text from first registration to process exit. <code>Register</code> maps text to a stable address —
+  the first caller's bytes, reused by everyone afterwards — and <code>Get</code> maps an id back to the
+  characters. Equality of <code>StaticString</code> values is pointer equality on what this table mints, so
+  the table's core promise is <strong>one address per distinct text, forever</strong>.
+</p>
+
+<p>
+  Lookup is hashed, not global: <code>GetTableID</code> hashes the text with
+  <code>StringUtil::CalculateHash</code> and takes it modulo <code>NumTables</code>
+  (<code>Config::StaticStringNumHashBuckets</code>), and the linear search runs only inside that one bucket.
+  Storage is a bump allocator over <code>malloc</code>'d banks — see the private members below — so text bytes
+  never move and an id handed out by <code>Register</code> stays valid until the table is destroyed.
+</p>
+
+<div class="gap">
+  <strong>The table never shrinks.</strong> Memory is released only when the singleton is destroyed at
+  process exit; there is no unregister. After that destructor runs, the bytes behind every
+  <code>StaticStringID</code> ever handed out are freed — a <code>StaticString</code> in static storage that
+  outlives the table would read freed memory. Ordinary engine lifetime (wrappers created after engine
+  initialisation, destroyed before it ends) never reaches that point.
+</div>
+
+<h2 id="template">Template parameters</h2>
+
+<p>None — the class is not a template. Its nested <code>Allocator</code> is, and it is documented in the
+properties table below.</p>
+
+<h2 id="properties">Class properties</h2>
+
+<table>
+  <tr><th>Type + Name</th><th>Default Value</th><th>Description</th></tr>
+  <tr><td><code>using TIndex = size_t;</code> <span class="badge">alias</span></td>
+      <td>not applicable</td><td>Index type of the bucket array and of <code>GetTableID</code>'s result.</td></tr>
+  <tr><td><code>template &lt;typename T&gt; class Allocator final;</code> <span class="badge">private nested</span></td>
+      <td>not applicable</td><td>Allocator adapter so STL containers of the table can allocate through the bank mechanism: <code>allocate</code> forwards to the static <code>Allocate</code>, <code>deallocate</code> does nothing — banks are freed wholesale, not per object.</td></tr>
+  <tr><td><code>using TTable = std::vector&lt;std::string_view&gt;;</code> <span class="badge">private</span></td>
+      <td>not applicable</td><td>One bucket: views into bank memory, searched linearly.</td></tr>
+  <tr><td><code>static constexpr size_t NumTables = Config::StaticStringNumHashBuckets;</code> <span class="badge">public</span></td>
+      <td><code>Config::StaticStringNumHashBuckets</code></td><td>Bucket count — the modulus of <code>GetTableID</code> and the array size of <code>tables</code>.</td></tr>
+  <tr><td><code>mutable std::mutex tableLock;</code> <span class="badge">private</span></td>
+      <td>none in the header</td><td>Serialises each registration's search-plus-store; <code>mutable</code> so <code>const</code> members may take it.</td></tr>
+  <tr><td><code>TTable tables[NumTables];</code> <span class="badge">private</span></td>
+      <td>none in the header</td><td>The buckets. A view's position in this array is where its text hashes to, never where it was inserted.</td></tr>
+</table>
+
+<h2 id="methods">Class methods</h2>
+
+<table class="methods">
+  <tr><th>Name</th><th>Signature</th><th>What a caller depends on</th></tr>
+  <tr><td><a href="get-instance.html"><code>GetInstance</code></a></td>
+      <td class="sig">static StaticStringTable&amp; GetInstance()</td>
+      <td>The one instance, built on first use — construction registers the predefined strings.</td></tr>
+  <tr><td><a href="constructors.html"><code>Constructor</code></a></td>
+      <td class="sig">StaticStringTable()</td>
+      <td>Interns the predefined strings (<code>"None"</code>, <code>"Null"</code>, <code>"True"</code>… ) before any caller sees the table.</td></tr>
+  <tr><td><a href="destructor.html"><code>Destructor</code></a></td>
+      <td class="sig">~StaticStringTable()</td>
+      <td>Frees every bank — after this, all ids ever minted are dangling.</td></tr>
+  <tr><td><a href="get-name.html"><code>GetName</code></a></td>
+      <td class="sig">[[nodiscard]] StaticString GetName() const</td>
+      <td>The table's own interned name, <code>"StaticStringTable"</code>, used as its log category.</td></tr>
+  <tr><td><a href="register.html"><code>Register</code></a> <span class="badge">2 overloads</span></td>
+      <td class="sig">[[nodiscard]] StaticStringID Register(const char* str)<br>[[nodiscard]] StaticStringID Register(const std::string_view&amp; str)</td>
+      <td>The mint: hash into a bucket, linear search, reuse the found address or store a fresh NUL-terminated copy. Thread-safe.</td></tr>
+  <tr><td><a href="get.html"><code>Get</code></a></td>
+      <td class="sig">[[nodiscard]] const char* Get(StaticStringID id) const</td>
+      <td>Id back to characters; the null id reads as <code>"None"</code>. No lock — the bytes never move.</td></tr>
+  <tr><td><a href="print-string-table.html"><code>PrintStringTable</code></a></td>
+      <td class="sig">void PrintStringTable() const</td>
+      <td>Diagnostic dump of banks and buckets at verbose level; its per-element address column always prints <code>0x0</code> — a defect, stated on the page.</td></tr>
+  <tr><td><a href="allocate.html"><code>Allocate</code></a></td>
+      <td class="sig">static void* Allocate(size_t n)</td>
+      <td>Private. Bump allocation over 1&nbsp;MiB banks under <code>memLock</code>; an oversized request gets a bank of its own.</td></tr>
+  <tr><td><a href="register-predefined-strings.html"><code>RegisterPredefinedStrings</code></a></td>
+      <td class="sig">void RegisterPredefinedStrings()</td>
+      <td>Private. Interns the empty string, the four null-ish spellings, <code>"True"</code>/<code>"False"</code>, <code>"Unknown"</code> and <code>"HardbopEngine"</code> at construction.</td></tr>
+  <tr><td><a href="get-table-id.html"><code>GetTableID</code></a> <span class="badge">2 overloads</span></td>
+      <td class="sig">TIndex GetTableID(const char* text) const<br>TIndex GetTableID(const std::string_view&amp; str) const</td>
+      <td>Private. <code>CalculateHash(text) % NumTables</code> — both overloads hash identically, so one text always lands in one bucket.</td></tr>
+  <tr><td><a href="store.html"><code>Store</code></a> <span class="badge">2 overloads</span></td>
+      <td class="sig">std::string_view Store(const char* text)<br>std::string_view Store(const std::string_view&amp; str)</td>
+      <td>Private. Copies the bytes into bank memory, NUL-terminates, returns the view that both the bucket and the id will name.</td></tr>
+</table>
+
+<h2 id="non-member">Non-member helpers</h2>
+
+<p>
+  None declared in the header. The <code>Bank</code> struct and the <code>banks</code>/<code>bankIndex</code>/
+  <code>memLock</code> globals in <code>Engine/String/StaticStringTable.cpp</code>'s anonymous namespace are
+  the storage mechanism — implementation, not API, and documented through
+  <a href="allocate.html"><code>Allocate</code></a> and the
+  <a href="destructor.html"><code>destructor</code></a>.
+</p>
+
+<h2 id="coverage">Coverage</h2>
+
+<p>
+  This page documents every member the header declares, including the private ones — the storage contract is
+  the point of the class. Two omissions are named rather than glossed: the nested <code>Allocator</code>'s
+  member functions are covered by one row above rather than pages of their own (they are one-line forwards),
+  and the exact growth schedule of the banks is stated at the level the code fixes it — 1&nbsp;MiB default,
+  oversized requests get their own bank — without a performance analysis the code does not carry.
+</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; StaticStringTable</a></span>
+  <span><a href="index.html#methods">All StaticStringTable methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>StaticStringID — String module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a class="current" href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This class</h3>
+  <ul>
+    <li><a href="#description">Class description</a></li>
+    <li><a href="#template">Template parameters</a></li>
+    <li><a href="#properties">Class properties</a></li>
+    <li><a href="#methods">Class methods</a></li>
+    <li><a href="#non-member">Non-member helpers</a></li>
+    <li><a href="#coverage">Coverage</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">String</a> /
+  StaticStringID
+</p>
+
+<h1>StaticStringID</h1>
+<p class="subtitle">
+  <span class="tag">Engine/String/StaticStringID.h</span>
+  <span class="tag">namespace hbe</span>
+  <span class="tag">final</span>
+  the interned pointer on its own — identity by address
+</p>
+
+<h2 id="description">Class description</h2>
+
+<p>
+  <code>StaticStringID</code> is the interned pointer on its own: a <code>struct final</code> whose entire
+  state is one <code>const uint8_t*</code> naming where a string's bytes live inside the global intern table.
+  The pointer <em>is</em> the identity — two ids are equal exactly when they name the same address, which is
+  what makes <code>StaticString</code> comparison a single pointer test. A caller that wants the identity
+  without the string wrapper — a hash key, a value in a lookup table — uses this type directly.
+</p>
+
+<div class="note">
+  <strong>An id is constructed from nothing but nothing.</strong> The only constructor default-constructs to
+  <code>Default</code> (<code>nullptr</code>); ids pointing at real text are minted by
+  <code>StaticStringTable::Register</code> and read back through <code>StaticStringTable::Get</code>, which
+  answers <code>"None"</code> for the null id.
+</div>
+
+<h2 id="template">Template parameters</h2>
+
+<p>None — the struct is not a template.</p>
+
+<h2 id="properties">Class properties</h2>
+
+<table>
+  <tr><th>Type + Name</th><th>Default Value</th><th>Description</th></tr>
+  <tr><td><code>static constexpr uint8_t* Default = nullptr;</code> <span class="badge">public</span></td>
+      <td><code>nullptr</code></td><td>The null entry a default-constructed id holds.</td></tr>
+  <tr><td><code>const uint8_t* ptr;</code> <span class="badge">public</span></td>
+      <td>none in the header</td><td>Address of the interned bytes — the identity itself, not a copy of the text.</td></tr>
+</table>
+
+<h2 id="methods">Class methods</h2>
+
+<table class="methods">
+  <tr><th>Name</th><th>Signature</th><th>What a caller depends on</th></tr>
+  <tr><td><a href="constructors.html"><code>Constructors</code></a></td>
+      <td class="sig">StaticStringID()<br>&nbsp;: ptr(Default)</td>
+      <td>Default-constructs to the null entry; there is no constructor from text — interning is the table's job.</td></tr>
+  <tr><td><a href="operator-equal.html"><code>operator==</code></a></td>
+      <td class="sig">[[nodiscard]] bool operator==(const StaticStringID&amp; rhs) const</td>
+      <td>Pointer equality — same address, same interned string.</td></tr>
+  <tr><td><a href="operator-less.html"><code>operator&lt;</code></a></td>
+      <td class="sig">[[nodiscard]] bool operator&lt;(const StaticStringID&amp; rhs) const</td>
+      <td>Ordering by table address, not alphabetically — deterministic container order, never user-facing sorting.</td></tr>
+</table>
+
+<h2 id="non-member">Non-member helpers</h2>
+
+<p>
+  <code>std::hash&lt;hbe::StaticStringID&gt;</code> is specialised in this header as the reinterpreted pointer,
+  so an id works as an unordered key. The specialisation lives in <code>namespace std</code>, which is why this
+  header has to be included for the hash to exist at all.
+</p>
+
+<h2 id="coverage">Coverage</h2>
+
+<p>
+  This page documents the struct completely: both properties, the constructor and both comparison operators,
+  and the hash specialisation above. The lifetime of the bytes behind a non-null pointer is owned by
+  <code>StaticStringTable</code>, whose pages carry that contract.
+</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; StaticStringID</a></span>
+  <span><a href="index.html#methods">All StaticStringID methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

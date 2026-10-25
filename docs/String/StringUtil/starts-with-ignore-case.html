@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>StringUtil::StartsWithIgnoreCase — String module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a class="current" href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">String</a> /
+  <a href="index.html">StringUtil</a> / StartsWithIgnoreCase
+</p>
+
+<h1><span class="fn">StartsWithIgnoreCase</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::StringUtil</span>
+  <span class="tag">Engine/String/StringUtil.h</span>
+  prefix test after folding both sides
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>[[nodiscard]] bool StartsWithIgnoreCase(const TString&amp; src, const TString&amp; startTerm)</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  <code>StartsWith(ToLowerCase(src), ToLowerCase(startTerm))</code> — the prefix test after ASCII-folding
+  both sides. The cost is two lowercased copies plus the head substring of the folded source; correctness
+  inherits <a href="to-lower-case.html"><code>ToLowerCase</code></a>'s ASCII-only rule, so a term containing
+  non-ASCII bytes can only match itself, never a differently-cased spelling.
+</p>
+
+<h2 id="parameters">Parameters</h2>
+
+<table>
+  <tr><th>Parameter</th><th>Type</th><th>Requirement</th></tr>
+  <tr><td><code>src</code></td><td><code>const TString&amp;</code></td>
+  <td>The string tested; read-only.</td></tr>
+  <tr><td><code>startTerm</code></td><td><code>const TString&amp;</code></td>
+  <td>The prefix to look for; read-only.</td></tr>
+</table>
+
+<h2 id="return">Return value</h2>
+
+<p><code>true</code> when <code>src</code> begins with <code>startTerm</code> ignoring ASCII case.</p>
+
+<h2 id="example">Examples</h2>
+
+<p>
+  Illustrative — no call site for this function exists in the repository today. It exists as the paired
+  spelling of <a href="starts-with.html"><code>StartsWith</code></a> for callers that cannot trust their
+  input's case.
+</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; StringUtil</a></span>
+  <span><a href="index.html#methods">All StringUtil methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

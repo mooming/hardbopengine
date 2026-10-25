@@ -149,9 +149,10 @@ def declarations(header, cls):
         # parenthesis is a class friendship and is dropped by the paren test above.
         # `operator<(` has no identifier before its parenthesis, so the plain-name pattern finds nothing
         # and an operator's declaration silently owns no page. `operator()` is the sharper case: the
-        # parenthesis pair IS the operator's spelling, so the group must admit an empty-ish match —
-        # the alternation `\(\)` captures it where `[^(]+` cannot.
-        operator = re.search(r'\boperator\s*(\(\)|[^\s(]+)?\s*\(', text)
+        # parenthesis pair IS the operator's spelling. And a conversion operator's type may carry spaces
+        # (`operator const char*()`), so the general capture admits anything but a parenthesis up to the
+        # parameter list's own `(`.
+        operator = re.search(r'\boperator\s*(\(\)|[^()]+?)\s*\(', text)
         name = ('operator' + operator.group(1)) if (operator and operator.group(1)) else None
         if name is None:
             match = re.search(r'([A-Za-z_~]\w*)\s*\(', text)
@@ -180,6 +181,15 @@ def signatures(folder, header, cls):
         # A conversion operator is spelled `operator bool` on a page and collected as `operatorbool` here,
         # because the space belongs to the reading and not to the grammar.
         decls = grouped.get(name) or grouped.get(name.replace(' ', ''))
+        if not decls:
+            # A conversion operator's key carries the whitespace the capture kept (`operatorconst char*`),
+            # while the page's label spells it with the space the grammar has (`operator const char*`).
+            # Compare both sides with all whitespace removed before declaring a page unverifiable.
+            norm = re.sub(r'\s+', '', name).lower()
+            for key, value in grouped.items():
+                if re.sub(r'\s+', '', key).lower() == norm:
+                    decls = value
+                    break
         if not decls:
             problems.append((stem, name, 'NOT IN HEADER')); continue
         block = '<pre><code>%s</code></pre>' % '\n\n'.join(

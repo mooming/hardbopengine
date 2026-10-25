@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>String::Replace — String module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a class="current" href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">String</a> /
+  <a href="index.html">String</a> / Replace
+</p>
+
+<h1><span class="fn">Replace</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::String</span>
+  <span class="tag">Engine/String/String.h</span>
+  first occurrence in [offset, endIndex) swapped
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>[[nodiscard]] String Replace(const String&amp; from, const String&amp; to, Index offset = 0,
+								 Index endIndex = InvalidIndex) const noexcept</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  The <em>first</em> occurrence of <code>from</code> within <code>[offset, endIndex)</code> is swapped for
+  <code>to</code>; the result is a new string and the receiver is untouched. Defaults make it whole-string:
+  <code>offset = 0</code>, <code>endIndex = InvalidIndex</code> (resolved to the length). Not found, an
+  empty <code>from</code>, or an empty range each return a <a href="clone.html"><code>Clone</code></a> —
+  replacement that finds nothing still costs a copy.
+</p>
+
+<div class="gap">
+  <strong>A search term longer than the range scans out of bounds.</strong> The scan loop runs
+  <code>for (Index i = actualOffset; i &lt;= actualEndIndex - searchLength; ++i)</code> with
+  <code>Index</code> = <code>size_t</code>: when <code>searchLength</code> exceeds
+  <code>actualEndIndex</code>, the bound underflows to a huge value and the loop reads past the buffer's
+  characters. <a href="replace-all.html"><code>ReplaceAll</code></a> guards exactly this case
+  (<code>if (searchLength &gt; strLength) return Clone();</code>); <code>Replace</code> does not. Passing a
+  <code>from</code> longer than the string — or longer than the range from <code>offset</code> — is
+  undefined behaviour today, not a clean <code>false</code>.
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<table>
+  <tr><th>Parameter</th><th>Type</th><th>Requirement</th></tr>
+  <tr><td><code>from</code></td><td><code>const String&amp;</code></td>
+  <td>The text to find; empty returns a clone. Must not be longer than the search range — see the gap.</td></tr>
+  <tr><td><code>to</code></td><td><code>const String&amp;</code></td>
+  <td>The replacement; any length, including empty (a deletion).</td></tr>
+  <tr><td><code>offset</code></td><td><code>Index</code></td>
+  <td>Search start; invalid values resolve to 0, values at or past the end return a clone.</td></tr>
+  <tr><td><code>endIndex</code></td><td><code>Index</code></td>
+  <td>Search end (exclusive); <code>InvalidIndex</code> resolves to the length.</td></tr>
+</table>
+
+<h2 id="return">Return value</h2>
+
+<p>A new <code>String</code> with the first match replaced, or a clone when nothing matched.</p>
+
+<h2 id="example">Examples</h2>
+
+<pre><code>	String str("foo bar foo baz");
+	auto result = str.Replace(String("foo"), String("XXX"), 5);
+
+	if (result != "foo bar XXX baz")
+	{
+		ls &lt;&lt; "Replace with offset failed: expected 'foo bar XXX baz', got '" &lt;&lt; result.c_str() &lt;&lt; "'" &lt;&lt; lferr;
+	}</code></pre>
+<p class="meta">From Engine/String/String.cpp, the "Replace With Offset" testlet — the second foo, only</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; String</a></span>
+  <span><a href="index.html#methods">All String methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

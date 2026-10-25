@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>String::Find — String module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a class="current" href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">String</a> /
+  <a href="index.html">String</a> / Find
+</p>
+
+<h1><span class="fn">Find</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::String</span>
+  <span class="tag">Engine/String/String.h</span>
+  first occurrence — of a char, a set, or a substring in a range
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>[[nodiscard]] Index Find(const TChar ch) const noexcept
+
+[[nodiscard]] Index Find(const Array&lt;TChar&gt;&amp; chs) const noexcept
+
+[[nodiscard]] Index Find(const String&amp; keyword) const noexcept
+
+[[nodiscard]] Index Find(const String&amp; keyword, Index startIndex, Index endIndex = InvalidIndex) const noexcept</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  Four searches over one rule: <strong>the answer is an index, and "absent" is <code>Length()</code></strong>
+  — never a sentinel, never a negative. Compare against <code>Length()</code>, or use
+  <a href="contains.html"><code>Contains</code></a>.
+</p>
+
+<p>
+  <strong>Single character</strong> — first position equal to <code>ch</code>, scanning from 0.
+  <strong>Any of a set</strong> — <code>chs</code> is an <code>Array&lt;TChar&gt;</code>; the first position
+  matching <em>any</em> character in it, which is what
+  <a href="head.html"><code>Head</code></a> uses for its whitespace set.
+  <strong>Substring</strong> — the first position where
+  <a href="contains-at.html"><code>ContainsAt</code></a> succeeds, scanning every start; an empty keyword is
+  found at 0. <strong>Ranged substring</strong> — the same, confined to
+  <code>[startIndex, endIndex)</code>, with the range clamped before use:
+</p>
+
+<pre><code>	Assert(startIndex &lt; length);
+	if (startIndex &gt;= length)
+	{
+		startIndex = length - 1;
+	}
+
+	Assert(endIndex &gt;= startIndex);
+	if (endIndex &lt; startIndex)
+	{
+		endIndex = startIndex;
+	}
+
+	Assert(endIndex &lt;= length);
+	if (endIndex &gt; length)
+	{
+		endIndex = length;
+	}</code></pre>
+<p class="meta">From Engine/String/String.cpp, String::Find(const String&amp; keyword, Index startIndex, Index endIndex) const noexcept — the clamp block</p>
+
+<div class="note">
+  <strong>The asserts fire before the clamps.</strong> A <code>startIndex</code> at or past the length is a
+  debug-build <code>Assert</code> failure even though the release behaviour is defined (clamped to
+  <code>length - 1</code>); a caller passing out-of-range values is relying on undocumented tolerance.
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<table>
+  <tr><th>Parameter</th><th>Type</th><th>Requirement</th></tr>
+  <tr><td><code>ch</code></td><td><code>const TChar</code></td>
+  <td>The character to find.</td></tr>
+  <tr><td><code>chs</code></td><td><code>const Array&lt;TChar&gt;&amp;</code></td>
+  <td>The candidate set; first match of any member wins.</td></tr>
+  <tr><td><code>keyword</code></td><td><code>const String&amp;</code></td>
+  <td>The substring to find; empty finds position 0.</td></tr>
+  <tr><td><code>startIndex</code></td><td><code>Index</code></td>
+  <td>Scan start; asserted in-range, then clamped.</td></tr>
+  <tr><td><code>endIndex</code></td><td><code>Index</code></td>
+  <td>Scan end (exclusive); <code>InvalidIndex</code> means to the end. Asserted, then clamped.</td></tr>
+</table>
+
+<h2 id="return">Return value</h2>
+
+<p>The first matching index, or <code>Length()</code> when nothing matches within the range.</p>
+
+<h2 id="example">Examples</h2>
+
+<pre><code>	String str("Hello? World!");
+	auto lastL = str.FindLast('l');</code></pre>
+<p class="meta">From Engine/String/String.cpp, the "Find Last" testlet — the single-character family's sibling is on find-last.html</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; String</a></span>
+  <span><a href="index.html#methods">All String methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

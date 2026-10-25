@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>StaticStringTable::Get — String module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a class="current" href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">String</a> /
+  <a href="index.html">StaticStringTable</a> / Get
+</p>
+
+<h1><span class="fn">Get</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::StaticStringTable</span>
+  <span class="tag">Engine/String/StaticStringTable.h</span>
+  id back to characters; null reads as None
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>[[nodiscard]] const char* Get(StaticStringID id) const</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  Id back to characters. The null id maps to the literal <code>"None"</code>; anything else is the id pointer
+  reinterpreted as <code>const char*</code> — no search, no lock, no hash. The bytes never move after
+  registration, so the pointer is stable for the life of the table (see the
+  <a href="destructor.html"><code>destructor</code></a> for the one boundary).
+</p>
+
+<pre><code>const char* StaticStringTable::Get(StaticStringID id) const
+{
+	if (id.ptr == nullptr)
+	{
+		return "None";
+	}
+
+	return reinterpret_cast&lt;const char*&gt;(id.ptr);
+}</code></pre>
+<p class="meta">From Engine/String/StaticStringTable.cpp, StaticStringTable::Get(StaticStringID) const</p>
+
+<h2 id="parameters">Parameters</h2>
+
+<table>
+  <tr><th>Parameter</th><th>Type</th><th>Requirement</th></tr>
+  <tr><td><code>id</code></td><td><code>StaticStringID</code></td>
+  <td>Any id. Null is answered, not rejected; an id that was never minted by this table has no defence — it is reinterpreted as text.</td></tr>
+</table>
+
+<h2 id="return">Return value</h2>
+
+<p>
+  Zero-terminated characters owned by the table; never <code>nullptr</code>. A fabricated id points at
+  arbitrary memory — only ids from <a href="register.html"><code>Register</code></a> (or
+  <code>Default</code>) are valid input.
+</p>
+
+<h2 id="example">Examples</h2>
+
+<p>
+  <code>StaticString::c_str()</code> is this function with the wrapper removed —
+  <code>Engine/String/StaticString.cpp</code>, the entire body of that accessor.
+</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; StaticStringTable</a></span>
+  <span><a href="index.html#methods">All StaticStringTable methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

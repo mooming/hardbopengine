@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Letter — String module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a class="current" href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This class</h3>
+  <ul>
+    <li><a href="#description">Class description</a></li>
+    <li><a href="#template">Template parameters</a></li>
+    <li><a href="#properties">Class properties</a></li>
+    <li><a href="#methods">Class methods</a></li>
+    <li><a href="#non-member">Non-member helpers</a></li>
+    <li><a href="#coverage">Coverage</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">String</a> /
+  Letter
+</p>
+
+<h1>Letter</h1>
+<p class="subtitle">
+  <span class="tag">Engine/String/Letter.h</span>
+  <span class="tag">namespace hbe</span>
+  three static character predicates — and one whose name says letter while the code tests whitespace
+</p>
+
+<h2 id="description">Class description</h2>
+
+<p>
+  <code>Letter</code> is a namespace-shaped utility: three static predicates over a single
+  <code>char</code>, with no state and no instance. Two of them classify ASCII case, and one — despite its
+  name — classifies whitespace, which is the page's most important sentence: a reader who calls
+  <code>IsGenuineLetter</code> expecting a letter test gets the opposite answer for every letter of the
+  alphabet.
+</p>
+
+<div class="gap">
+  <strong>The name says letter; the code tests whitespace.</strong>
+  <code>IsGenuineLetter</code> returns <code>true</code> for a character that is <em>not</em> a space, tab,
+  newline or carriage return — that is, for every printable letter, digit and punctuation mark alike. The
+  name survives from an earlier intent; the behaviour is what the tests and callers rely on, so the page
+  documents the behaviour and flags the name. Renaming it is the real fix and is recorded as such.
+</div>
+
+<h2 id="template">Template parameters</h2>
+
+<p>None — the class is not a template.</p>
+
+<h2 id="properties">Class properties</h2>
+
+<table>
+  <tr><th>Type + Name</th><th>Default Value</th><th>Description</th></tr>
+  <tr><td><code>using TChar = char;</code> <span class="badge">alias</span></td>
+      <td>not applicable</td><td>The character type every predicate takes.</td></tr>
+</table>
+
+<h2 id="methods">Class methods</h2>
+
+<table class="methods">
+  <tr><th>Name</th><th>Signature</th><th>What a caller depends on</th></tr>
+  <tr><td><a href="is-lower-case.html"><code>IsLowerCase</code></a></td>
+      <td class="sig">static bool IsLowerCase(TChar letter)</td>
+      <td>True exactly for <code>'a'</code> through <code>'z'</code>; everything else, including digits and upper case, is false.</td></tr>
+  <tr><td><a href="is-upper-case.html"><code>IsUpperCase</code></a></td>
+      <td class="sig">static bool IsUpperCase(TChar letter)</td>
+      <td>True exactly for <code>'A'</code> through <code>'Z'</code>; everything else is false.</td></tr>
+  <tr><td><a href="is-genuine-letter.html"><code>IsGenuineLetter</code></a></td>
+      <td class="sig">static bool IsGenuineLetter(TChar letter)</td>
+      <td>Despite the name: true for every character that is <em>not</em> whitespace — letters, digits and punctuation all pass.</td></tr>
+</table>
+
+<h2 id="non-member">Non-member helpers</h2>
+
+<p>None.</p>
+
+<h2 id="coverage">Coverage</h2>
+
+<p>
+  This page documents the class completely: the alias, all three predicates, and the name/behaviour
+  mismatch on <code>IsGenuineLetter</code>. The predicates are ASCII-only — no locale, no Unicode — which
+  the range comparisons in each method page make plain.
+</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; Letter</a></span>
+  <span><a href="index.html#methods">All Letter methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

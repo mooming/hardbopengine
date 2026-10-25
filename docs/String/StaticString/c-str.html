@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>StaticString::c_str — String module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a class="current" href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">String</a> /
+  <a href="index.html">StaticString</a> / c_str
+</p>
+
+<h1><span class="fn">c_str</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::StaticString</span>
+  <span class="tag">Engine/String/StaticString.h</span>
+  the interned characters; a null id reads as None
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>[[nodiscard]] const char* c_str() const noexcept</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  Reads the characters back from the table: <code>StaticStringTable::Get(id)</code>, which for a null id
+  answers the literal <code>"None"</code> and otherwise reinterprets the id pointer as
+  <code>const char*</code>. The returned pointer is stable for the life of the process — interning never
+  moves or frees a registered string until the table's destructor runs — so a caller may hold it across
+  calls, which is exactly what log categories and task names rely on.
+</p>
+
+<h2 id="parameters">Parameters</h2>
+
+<p>None.</p>
+
+<h2 id="return">Return value</h2>
+
+<p>
+  The interned zero-terminated characters; never <code>nullptr</code>. Pointing into the intern table — do not
+  write through it, and do not expect the bytes to be freed with the wrapper.
+</p>
+
+<h2 id="example">Examples</h2>
+
+<p>
+  The logger takes the characters directly — <code>Engine/Log/Logger.cpp</code> builds categories from
+  <code>StaticString</code> and prints them through this pointer; the test collection prints with it too:
+</p>
+
+<pre><code>	StaticString str("Hello?");
+	ls &lt;&lt; str.c_str() &lt;&lt; lf;</code></pre>
+<p class="meta">From Engine/String/StaticString.cpp, StaticStringTest::Prepare(), the "StaticStic Print" testlet</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; StaticString</a></span>
+  <span><a href="index.html#methods">All StaticString methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

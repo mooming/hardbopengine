@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>StaticString::operator< — String module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a class="current" href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">String</a> /
+  <a href="index.html">StaticString</a> / operator<
+</p>
+
+<h1><span class="fn">operator<</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::StaticString</span>
+  <span class="tag">Engine/String/StaticString.h</span>
+  table-address ordering, not alphabetical
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>[[nodiscard]] bool operator&lt;(const StaticString&amp; rhs) const noexcept</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  <code>id.ptr &lt; rhs.id.ptr</code> — the same table-address ordering as
+  <code>StaticStringID::operator&lt;</code>, forwarded through the ids. Deterministic for a given run and
+  allocation history; unrelated to the characters. An ordered container of <code>StaticString</code> iterates
+  in intern order, which is stable within a run but not across runs.
+</p>
+
+<div class="gap">
+  <strong>This is not alphabetical order.</strong> For display or lexicographic needs, compare the
+  characters — e.g. through <code>StringUtil::EqualsIgnoreCase</code> for case-insensitive text comparison —
+  never the wrappers.
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<table>
+  <tr><th>Parameter</th><th>Type</th><th>Requirement</th></tr>
+  <tr><td><code>rhs</code></td><td><code>const StaticString&amp;</code></td>
+  <td>Another wrapper. Its text is never read — only its id pointer.</td></tr>
+</table>
+
+<h2 id="return">Return value</h2>
+
+<p><code>true</code> when this id's table address sorts before <code>rhs</code>'s.</p>
+
+<h2 id="example">Examples</h2>
+
+<p>
+  The test collection exercises only equality; ordering exists so the type satisfies the requirements of
+  ordered containers. No call site in the repository relies on the ordering today.
+</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; StaticString</a></span>
+  <span><a href="index.html#methods">All StaticString methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

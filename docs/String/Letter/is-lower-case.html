@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Letter::IsLowerCase — String module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a class="current" href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">String</a> /
+  <a href="index.html">Letter</a> / IsLowerCase
+</p>
+
+<h1><span class="fn">IsLowerCase</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::Letter</span>
+  <span class="tag">Engine/String/Letter.h</span>
+  true exactly for 'a' through 'z'
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>[[nodiscard]] static bool IsLowerCase(TChar letter)</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  Two range comparisons: <code>returnValueIf(false, letter &lt; 'a')</code> and
+  <code>returnValueIf(false, letter &gt; 'z')</code>, then <code>true</code>. The macro reads as "return
+  <code>false</code> if the condition holds", so the answer is true exactly for the closed range
+  <code>'a'</code>–<code>'z'</code> — the twenty-six lower-case ASCII letters and nothing else. Digits,
+  upper-case letters, punctuation and every non-ASCII byte are <code>false</code>.
+</p>
+
+<h2 id="parameters">Parameters</h2>
+
+<table>
+  <tr><th>Parameter</th><th>Type</th><th>Requirement</th></tr>
+  <tr><td><code>letter</code></td><td><code>TChar</code> (<code>char</code>)</td>
+  <td>The character to classify. Compared numerically against ASCII bounds; any byte value is accepted.</td></tr>
+</table>
+
+<h2 id="return">Return value</h2>
+
+<p><code>true</code> exactly when <code>letter</code> is in <code>['a', 'z']</code>; <code>false</code> otherwise.</p>
+
+<h2 id="example">Examples</h2>
+
+<p>
+  The paired test is <a href="is-upper-case.html"><code>IsUpperCase</code></a>; a caller that wants "a letter
+  of either case" writes the disjunction of the two — there is no combined predicate, and
+  <a href="is-genuine-letter.html"><code>IsGenuineLetter</code></a> does not mean this despite its name.
+</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; Letter</a></span>
+  <span><a href="index.html#methods">All Letter methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

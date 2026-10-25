@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>StaticStringTable::GetName — String module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a class="current" href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">String</a> /
+  <a href="index.html">StaticStringTable</a> / GetName
+</p>
+
+<h1><span class="fn">GetName</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::StaticStringTable</span>
+  <span class="tag">Engine/String/StaticStringTable.h</span>
+  the table's own interned name
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>[[nodiscard]] StaticString GetName() const</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  The table's own name, interned once through a function-local static fed by
+  <code>StringUtil::ToCompactClassName(__PRETTY_FUNCTION__)</code> — the self-documenting trick the engine
+  uses everywhere a class needs its own name without writing it twice:
+</p>
+
+<pre><code>StaticString StaticStringTable::GetName() const
+{
+	static StaticString className = StringUtil::ToCompactClassName(__PRETTY_FUNCTION__);
+
+	return className;
+}</code></pre>
+<p class="meta">From Engine/String/StaticStringTable.cpp, StaticStringTable::GetName() const</p>
+
+<p>
+  The result is <code>"StaticStringTable"</code>, and it is the log category the table's diagnostic output
+  uses — <a href="print-string-table.html"><code>PrintStringTable</code></a> opens its logger with it.
+</p>
+
+<h2 id="parameters">Parameters</h2>
+
+<p>None.</p>
+
+<h2 id="return">Return value</h2>
+
+<p>A <code>StaticString</code> naming the class — the interned <code>"StaticStringTable"</code>, identical
+address on every call.</p>
+
+<h2 id="example">Examples</h2>
+
+<pre><code>	auto log = Logger::Get(GetName(), ELogLevel::Verbose);</code></pre>
+<p class="meta">From Engine/String/StaticStringTable.cpp, StaticStringTable::PrintStringTable() const</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; StaticStringTable</a></span>
+  <span><a href="index.html#methods">All StaticStringTable methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

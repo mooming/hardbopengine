@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>String::Constructors — String module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a class="current" href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">String</a> /
+  <a href="index.html">String</a> / Constructors
+</p>
+
+<h1><span class="fn">Constructors</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::String</span>
+  <span class="tag">Engine/String/String.h</span>
+  default, share, move, fifteen numeric formattings, text, and a clamped substring slice
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>String() noexcept
+		: hashCode(0)
+
+String(String&amp; rhs) noexcept
+		: buffer(rhs.buffer)
+		, hashCode(rhs.hashCode)
+
+String(String&amp;&amp; rhs) noexcept
+		: buffer(std::move(rhs.buffer))
+		, hashCode(rhs.hashCode)
+
+explicit String(const bool value) noexcept
+
+explicit String(const Pointer ptr) noexcept
+
+explicit String(const char letter) noexcept
+
+explicit String(const unsigned char value) noexcept
+
+explicit String(const short value) noexcept
+
+explicit String(const unsigned short value) noexcept
+
+explicit String(const int value) noexcept
+
+explicit String(const unsigned int value) noexcept
+
+explicit String(const long value) noexcept
+
+explicit String(const unsigned long value) noexcept
+
+explicit String(const long long value) noexcept
+
+explicit String(const unsigned long long value) noexcept
+
+explicit String(const float value) noexcept
+
+explicit String(const double value) noexcept
+
+explicit String(const long double value) noexcept
+
+String(const char* text) noexcept
+
+explicit String(const std::string str) noexcept
+		: String(str.c_str())
+
+explicit String(const String&amp; string, Index startIndex, Index endIndex = InvalidIndex) noexcept</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  Four families. <strong>The default constructor</strong> starts with a single terminator —
+  <code>buffer-&gt;push_back('\0')</code> — so an empty <code>String</code> is a buffer of one character and
+  <code>Length()</code> is 0.
+</p>
+
+<p>
+  <strong>The share-and-move pair.</strong> <code>String(String&amp; rhs)</code> is the copy constructor, and
+  it takes a <em>non-const</em> lvalue: it shares <code>rhs</code>'s buffer (the refcount rises) and copies
+  the hash — no bytes move. <code>String(String&amp;&amp; rhs)</code> moves the buffer and copies the hash,
+  leaving <code>rhs</code> with a zeroed hash.
+</p>
+
+<div class="gap">
+  <strong>A <code>const</code> source cannot reach the copy constructor.</strong> The probe removes
+  <code>operator const char*</code> from a copy of the header; without the conversion, the compile fails:
+</div>
+
+<pre><code>error: no matching constructor for initialization of 'hbe::String'
+note: candidate constructor not viable: 1st argument ('const hbe::String') would lose const qualifier
+   34 |         String(String&amp; rhs) noexcept</code></pre>
+<p class="meta">From a compile probe against the engine headers (c++ -std=c++2b -fsyntax-only), const-source copy-initialisation with the conversion operator removed</p>
+
+<p>
+  With the conversion in place the same call compiles and selects <code>String(const char*)</code> through
+  it — a deep copy, confirmed by running it (the copy reads back identical text). The substring constructor
+  below needs at least two arguments — <code>startIndex</code> has no default — so it is not a candidate for
+  a one-argument call either way.
+</p>
+
+<p>
+  <strong>The numeric set</strong> — fifteen <code>explicit</code> constructors from <code>bool</code>,
+  <code>Pointer</code>, the character types and every arithmetic type — format through
+  <code>snprintf</code> into a freshly sized buffer and hash the result. The spellings: <code>bool</code>
+  writes <code>true</code>/<code>false</code> in full, <code>Pointer</code> uses <code>%p</code>,
+  <code>unsigned char</code> uses <code>0x%02X</code> (hexadecimal, unlike every other integer), the signed
+  and unsigned integers use <code>%d</code>/<code>%u</code> with the <code>l</code>/<code>ll</code>
+  modifiers, and the floating types use <code>%f</code> — <code>%Lf</code> for <code>long double</code>.
+</p>
+
+<p>
+  <strong>The text constructors.</strong> <code>String(const char* text)</code> accepts null (becomes
+  <code>""</code>) and copies <code>strlen + 1</code> bytes. <code>String(const std::string str)</code>
+  takes the string <em>by value</em> — the copy is the price of the convenience — and delegates to its
+  <code>c_str()</code>. The substring constructor builds from a range of another string with clamping:
+  <code>startIndex</code> at or past the source length and an <code>endIndex</code> past it both clamp to the
+  length, <code>startIndex</code> above <code>endIndex</code> falls back to <code>endIndex</code>, and an
+  empty range produces an empty buffer with hash 0 — the one shape for which
+  <a href="operator-equal.html"><code>operator==(std::nullptr_t)</code></a> answers <code>true</code>.
+</p>
+
+<h2 id="parameters">Parameters</h2>
+
+<table>
+  <tr><th>Parameter</th><th>Type</th><th>Requirement</th></tr>
+  <tr><td><code>rhs</code></td><td><code>String&amp;</code> / <code>String&amp;&amp;</code></td>
+  <td>The source shared or moved from; non-const for the copy — see the gap above.</td></tr>
+  <tr><td><code>value</code></td><td><em>one arithmetic type per overload</em></td>
+  <td>Formatted through <code>snprintf</code>; see the spellings above.</td></tr>
+  <tr><td><code>ptr</code></td><td><code>const Pointer</code> (<code>void* const</code>)</td>
+  <td>Formatted with <code>%p</code>.</td></tr>
+  <tr><td><code>text</code></td><td><code>const char*</code></td>
+  <td>Zero-terminated; null accepted and treated as <code>""</code>.</td></tr>
+  <tr><td><code>str</code></td><td><code>const std::string</code></td>
+  <td>Taken by value; delegated to its <code>c_str()</code>.</td></tr>
+  <tr><td><code>string</code></td><td><code>const String&amp;</code></td>
+  <td>The source of the slice.</td></tr>
+  <tr><td><code>startIndex</code></td><td><code>Index</code></td>
+  <td>First character of the slice; no default — at least two arguments are required. Clamped into range.</td></tr>
+  <tr><td><code>endIndex</code></td><td><code>Index</code></td>
+  <td>One past the last character; <code>InvalidIndex</code> means "to the end". Clamped into range.</td></tr>
+</table>
+
+<h2 id="return">Return value</h2>
+
+<p>None — constructors.</p>
+
+<h2 id="example">Examples</h2>
+
+<pre><code>	unsigned short value = 42;
+	String str(value);
+	ls &lt;&lt; "Unsigned short 42 = " &lt;&lt; str.c_str() &lt;&lt; lf;</code></pre>
+<p class="meta">From Engine/String/String.cpp, the "Unsigned Short Constructor" testlet</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; String</a></span>
+  <span><a href="index.html#methods">All String methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

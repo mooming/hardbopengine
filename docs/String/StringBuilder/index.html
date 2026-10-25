@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>StringBuilder — String module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a class="current" href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This class</h3>
+  <ul>
+    <li><a href="#description">Class description</a></li>
+    <li><a href="#template">Template parameters</a></li>
+    <li><a href="#properties">Class properties</a></li>
+    <li><a href="#methods">Class methods</a></li>
+    <li><a href="#non-member">Non-member helpers</a></li>
+    <li><a href="#coverage">Coverage</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">String</a> /
+  StringBuilder
+</p>
+
+<h1>StringBuilder</h1>
+<p class="subtitle">
+  <span class="tag">Engine/String/StringBuilder.h</span>
+  <span class="tag">namespace hbe</span>
+  <span class="tag">template &lt;class TCh = char, class TAlloc = DefaultAllocator&lt;TCh&gt;&gt;</span>
+  <span class="tag">final</span>
+  stream-style formatting into a growing engine-allocated buffer
+</p>
+
+<h2 id="description">Class description</h2>
+
+<p>
+  Stream-style formatting into a growing buffer:
+  <code>builder &lt;&lt; "score " &lt;&lt; score &lt;&lt; hendl;</code>. Each <code>&lt;&lt;</code> appends to one
+  <code>std::basic_string</code> specialised on the engine's allocator, so a multi-part line is one allocation
+  strategy rather than one string per piece. This is the allocating sibling of
+  <a href="../InlineStringBuilder/index.html">InlineStringBuilder</a> — same interface, same overload set,
+  but the buffer grows instead of clamping, and the price is that growth goes through the allocator.
+</p>
+
+<p>
+  The class template is explicitly instantiated for <code>StringBuilder&lt;char,
+  DefaultAllocator&lt;char&gt;&gt;</code> in <code>Engine/String/StringBuilder.cpp</code> — the only
+  instantiation the binary carries, so callers using the defaults pay no template bloat and callers wanting
+  another character type or allocator instantiate their own.
+</p>
+
+<h2 id="template">Template parameters</h2>
+
+<table>
+  <tr><th>Parameter</th><th>Default</th><th>Requirement</th></tr>
+  <tr><td><code>TCh</code></td><td><code>char</code></td><td>Character type of the buffer and of every
+      <code>&lt;&lt;</code> overload's spelling.</td></tr>
+  <tr><td><code>TAlloc</code></td><td><code>DefaultAllocator&lt;TCh&gt;</code></td>
+      <td>Allocator the underlying <code>std::basic_string</code> grows with — the engine's allocator, not the global heap.</td></tr>
+</table>
+
+<h2 id="properties">Class properties</h2>
+
+<table>
+  <tr><th>Type + Name</th><th>Default Value</th><th>Description</th></tr>
+  <tr><td><code>using TThis = StringBuilder;</code> <span class="badge">alias</span></td>
+      <td>not applicable</td><td>Shorthand every operator's return type is written with.</td></tr>
+  <tr><td><code>using TString = std::basic_string&lt;TCh, std::char_traits&lt;TCh&gt;, TAlloc&gt;;</code> <span class="badge">alias</span></td>
+      <td>not applicable</td><td>The buffer type — the standard string, retargeted at the engine's allocator.</td></tr>
+  <tr><td><code>static constexpr int InlineBufferSize = 32;</code> <span class="badge">public</span></td>
+      <td><code>32</code></td><td>Stack-temp size for the integer, pointer and <code>unsigned char</code> formats.</td></tr>
+  <tr><td><code>static constexpr int InlineFloatBufferSize = 64;</code> <span class="badge">public</span></td>
+      <td><code>64</code></td><td>Stack-temp size for the <code>float</code> format.</td></tr>
+  <tr><td><code>static constexpr int InlineLongDoubleBufferSize = 512;</code> <span class="badge">public</span></td>
+      <td><code>512</code></td><td>Stack-temp size for <code>double</code> and <code>long double</code>.</td></tr>
+  <tr><td><code>TString buffer;</code> <span class="badge">private</span></td>
+      <td>none in the header</td><td>The growing text; everything appended lands here.</td></tr>
+</table>
+
+<h2 id="methods">Class methods</h2>
+
+<table class="methods">
+  <tr><th>Name</th><th>Signature</th><th>What a caller depends on</th></tr>
+  <tr><td><a href="constructors.html"><code>Constructor</code></a></td>
+      <td class="sig">StringBuilder() = default</td>
+      <td>Defaulted — an empty builder, no allocation until the first append.</td></tr>
+  <tr><td><a href="destructor.html"><code>Destructor</code></a></td>
+      <td class="sig">~StringBuilder() = default</td>
+      <td>Defaulted — the buffer frees itself through <code>TAlloc</code>.</td></tr>
+  <tr><td><a href="reserve.html"><code>Reserve</code></a></td>
+      <td class="sig">void Reserve(size_t size) noexcept</td>
+      <td>Pre-grows the buffer — the one way to keep a known-large append allocation-free.</td></tr>
+  <tr><td><a href="clear.html"><code>Clear</code></a></td>
+      <td class="sig">void Clear() noexcept</td>
+      <td>Empties the buffer in place; capacity is kept.</td></tr>
+  <tr><td><a href="c-str.html"><code>c_str</code></a></td>
+      <td class="sig">[[nodiscard]] auto c_str() const noexcept</td>
+      <td>The buffer's zero-terminated characters, valid until the next append.</td></tr>
+  <tr><td><a href="size.html"><code>Size</code></a></td>
+      <td class="sig">[[nodiscard]] auto Size() const noexcept</td>
+      <td>Characters written, terminator excluded.</td></tr>
+  <tr><td><a href="operator-cast.html"><code>operator const TCh*</code></a></td>
+      <td class="sig">[[nodiscard]] operator const TCh*() const noexcept</td>
+      <td>Implicit conversion to the buffer's characters.</td></tr>
+  <tr><td><a href="operator-left-shift.html"><code>operator&lt;&lt;</code></a> <span class="badge">21 overloads</span></td>
+      <td class="sig">TThis&amp; operator&lt;&lt;(…)</td>
+      <td>Append and return <code>*this</code>; the buffer grows as needed. The full set has its own page.</td></tr>
+</table>
+
+<h2 id="non-member">Non-member helpers</h2>
+
+<p>None.</p>
+
+<h2 id="coverage">Coverage</h2>
+
+<p>
+  This page documents every member the header declares. The 21 <code>operator&lt;&lt;</code> overloads share
+  one page, grouped by family; the format strings are stated per family rather than quoting every body. The
+  engine-side call sites are the pool-allocator configuration logging and the math types' stream output —
+  <a href="../InlineStringBuilder/index.html">InlineStringBuilder</a>'s page carries the per-loop reuse
+  pattern this class shares.
+</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; StringBuilder</a></span>
+  <span><a href="index.html#methods">All StringBuilder methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>StringUtil::CalculateHash — String module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a class="current" href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">String</a> /
+  <a href="index.html">StringUtil</a> / CalculateHash
+</p>
+
+<h1><span class="fn">CalculateHash</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::StringUtil</span>
+  <span class="tag">Engine/String/StringUtil.h</span>
+  djb2, identical through both overloads
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>[[nodiscard]] size_t CalculateHash(const char* text)
+
+[[nodiscard]] size_t CalculateHash(const std::string_view&amp; str)</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  djb2 over the bytes: start at 5381, and for every character
+  <code>hashCode = ((hashCode &lt;&lt; 5) + hashCode) + ch</code> — hash times 33 plus the byte. Both
+  overloads run the identical loop (the view one iterates the span, the pointer one walks to the
+  terminator), so the same characters hash to the same value through either — the property that lets
+  <code>StaticStringTable</code> bucket <code>const char*</code> and <code>std::string_view</code>
+  registrations into one interning space:
+</p>
+
+<pre><code>size_t CalculateHash(const std::string_view&amp; str)
+{
+	size_t hashCode = 5381;
+
+	for (size_t ch : str)
+	{
+		hashCode = ((hashCode &lt;&lt; 5) + hashCode) + ch;
+	}
+
+	return hashCode;
+}</code></pre>
+<p class="meta">From Engine/String/StringUtil.cpp, StringUtil::CalculateHash(const std::string_view&amp; str)</p>
+
+<p>
+  Note what the loop does not do: no finalisation, no length mixing, no seed. Two strings that are anagrams
+  of each other hash differently only by the luck of the order; this is a table-bucket hash, not a
+  cryptographic or even a well-scattered general-purpose one — and it is also, byte for byte, what
+  <code>String</code>'s cached <code>hashCode</code> computes.
+</p>
+
+<h2 id="parameters">Parameters</h2>
+
+<table>
+  <tr><th>Parameter</th><th>Type</th><th>Requirement</th></tr>
+  <tr><td><code>text</code></td><td><code>const char*</code></td>
+  <td>Zero-terminated text; the pointer walk relies on the terminator. Null is not checked.</td></tr>
+  <tr><td><code>str</code></td><td><code>const std::string_view&amp;</code></td>
+  <td>The span to hash — the overload for bytes that are not terminated, or whose length is already known.</td></tr>
+</table>
+
+<h2 id="return">Return value</h2>
+
+<p>The djb2 hash of the bytes, as <code>size_t</code>.</p>
+
+<h2 id="example">Examples</h2>
+
+<p>
+  The intern table selects buckets with it — <code>Engine/String/StaticStringTable.cpp</code>:
+</p>
+
+<pre><code>	auto hashValue = StringUtil::CalculateHash(text);
+	auto tableId = static_cast&lt;TIndex&gt;(hashValue % NumTables);</code></pre>
+<p class="meta">From Engine/String/StaticStringTable.cpp, StaticStringTable::GetTableID(const char* text) const</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; StringUtil</a></span>
+  <span><a href="index.html#methods">All StringUtil methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>StringUtil::ToFunctionName — String module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a class="current" href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">String</a> /
+  <a href="index.html">StringUtil</a> / ToFunctionName
+</p>
+
+<h1><span class="fn">ToFunctionName</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::StringUtil</span>
+  <span class="tag">Engine/String/StringUtil.h</span>
+  function name with parameter list, from __PRETTY_FUNCTION__
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>[[nodiscard]] StaticString ToFunctionName(const char* PrettyFunction)</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  The function name <em>with its parameter list</em>, read out of <code>__PRETTY_FUNCTION__</code>: cut at
+  the last <code>(</code>, find the last <code>::</code> before it, and keep everything from one past that
+  scope separator through the closing parenthesis:
+</p>
+
+<pre><code>	auto bracketEnd = str.find_last_of(')') + 1;
+	auto bracketStart = str.find_last_of('(');
+	if (unlikely(bracketStart == TStr::npos))
+	{
+		return StaticString(PrettyFunction);
+	}
+
+	auto subStr = str.substr(0, bracketStart);
+	auto start = subStr.find_last_of("::") + 1;
+	if (start == TStr::npos)
+	{
+		return StaticString(PrettyFunction);
+	}
+
+	str = str.substr(start, bracketEnd - start);
+
+	return StaticString(str);</code></pre>
+<p class="meta">From Engine/String/StringUtil.cpp, StringUtil::ToFunctionName(const char*)</p>
+
+<p>
+  For <code>void hbe::StringUtilTest::Prepare()</code> the answer is <code>Prepare()</code> — the test
+  accepts <code>Prepare(void)</code> too, for compilers that spell it that way. Two fallbacks to know. An
+  input with no <code>(</code> comes back verbatim. An input with a parenthesis but no scope separator
+  <em>should</em> come back verbatim — but <code>find_last_of("::") + 1</code> wraps <code>npos</code> to
+  <code>0</code>, so the guard never fires and the result is instead the text up to the closing parenthesis.
+  The reader functions all share this dead-guard shape; the intended input, a member-function signature, is
+  unaffected.
+</p>
+
+<p>
+  The result is interned through <a href="../StaticString/index.html">StaticString</a>'s constructor, so
+  repeated calls with the same signature cost one pointer comparison each.
+</p>
+
+<h2 id="parameters">Parameters</h2>
+
+<table>
+  <tr><th>Parameter</th><th>Type</th><th>Requirement</th></tr>
+  <tr><td><code>PrettyFunction</code></td><td><code>const char*</code></td>
+  <td>The <code>__PRETTY_FUNCTION__</code> of a member function, spelled by the compiler. Zero-terminated; read-only.</td></tr>
+</table>
+
+<h2 id="return">Return value</h2>
+
+<p>
+  The interned function name with its parameter list — <code>Prepare()</code> for the test's own
+  <code>Prepare()</code>.
+</p>
+
+<h2 id="example">Examples</h2>
+
+<p>
+  Per-function loggers name themselves this way — <code>Engine/OSAL/LinuxInputOutput.cpp</code>, throughout:
+</p>
+
+<pre><code>	static auto log = Logger::Get(ToFunctionName(__PRETTY_FUNCTION__));</code></pre>
+<p class="meta">From Engine/OSAL/LinuxInputOutput.cpp, a representative per-function logger</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; StringUtil</a></span>
+  <span><a href="index.html#methods">All StringUtil methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

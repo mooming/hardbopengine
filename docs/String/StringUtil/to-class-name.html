@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>StringUtil::ToClassName — String module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a class="current" href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">String</a> /
+  <a href="index.html">StringUtil</a> / ToClassName
+</p>
+
+<h1><span class="fn">ToClassName</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::StringUtil</span>
+  <span class="tag">Engine/String/StringUtil.h</span>
+  namespace-qualified class name, from __PRETTY_FUNCTION__
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>[[nodiscard]] StaticString ToClassName(const char* PrettyFunction)</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  The namespace-qualified class name from <code>__PRETTY_FUNCTION__</code> — <code>hbe::StringUtilTest</code>
+  for the test collection's own <code>Prepare()</code>. The algorithm: cut the text before the final
+  <code>::</code> (dropping the method name), then keep what follows the last space:
+</p>
+
+<pre><code>	auto end = str.find_last_of("::") - 1;
+	if (end == TStr::npos)
+	{
+		return StaticString();
+	}
+
+	str = str.substr(0, end);
+
+	auto start = str.find_last_of(" ") + 1;
+	str = str.substr(start);
+
+	return StaticString(str);</code></pre>
+<p class="meta">From Engine/String/StringUtil.cpp, StringUtil::ToClassName(const char*)</p>
+
+<p>
+  The <code>find_last_of(" ") + 1</code> wrap is load-bearing here rather than dead: for a constructor's
+  signature — <code>hbe::Foo::Foo()</code> — there is no space, the wrap lands on <code>0</code>, and the
+  whole pre-<code>::</code> text is the answer, which is correct. The <code>end == npos</code> guard, by
+  contrast, is dead (<code>npos - 1</code> is never <code>npos</code>), so the empty
+  <code>StaticString</code> it returns is unreachable; an input with no <code>::</code> at all loses its last
+  character to the <code>substr</code> instead.
+</p>
+
+<h2 id="parameters">Parameters</h2>
+
+<table>
+  <tr><th>Parameter</th><th>Type</th><th>Requirement</th></tr>
+  <tr><td><code>PrettyFunction</code></td><td><code>const char*</code></td>
+  <td>The <code>__PRETTY_FUNCTION__</code> of a member function. Zero-terminated; read-only.</td></tr>
+</table>
+
+<h2 id="return">Return value</h2>
+
+<p>
+  The interned, namespace-qualified class name. For a free function's signature the result follows the
+  dead-guard fallback described above rather than a class name.
+</p>
+
+<h2 id="example">Examples</h2>
+
+<p>
+  The module's own test asserts the exact expected value — <code>Engine/String/StringUtil.cpp</code>:
+</p>
+
+<pre><code>	StaticString className("hbe::StringUtilTest");
+
+	auto name = ToClassName(prettyFunction);</code></pre>
+<p class="meta">From Engine/String/StringUtil.cpp, the "ToClassName" testlet — prettyFunction is __PRETTY_FUNCTION__ captured inside StringUtilTest::Prepare()</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; StringUtil</a></span>
+  <span><a href="index.html#methods">All StringUtil methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

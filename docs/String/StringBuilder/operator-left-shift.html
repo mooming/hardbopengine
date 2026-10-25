@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>StringBuilder::operator&lt;&lt; — String module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a class="current" href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">String</a> /
+  <a href="index.html">StringBuilder</a> / operator&lt;&lt;
+</p>
+
+<h1><span class="fn">operator&lt;&lt;</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::StringBuilder</span>
+  <span class="tag">Engine/String/StringBuilder.h</span>
+  append and grow — 21 overloads, three families
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>TThis&amp; operator&lt;&lt;(nullptr_t) noexcept
+
+TThis&amp; operator&lt;&lt;(bool value) noexcept
+
+TThis&amp; operator&lt;&lt;(char ch) noexcept
+
+TThis&amp; operator&lt;&lt;(unsigned char value) noexcept
+
+TThis&amp; operator&lt;&lt;(const char* str) noexcept
+
+TThis&amp; operator&lt;&lt;(StaticString str) noexcept
+
+TThis&amp; operator&lt;&lt;(const std::string_view&amp; str) noexcept
+
+template &lt;class CharT, class Traits, class Allocator&gt;
+	TThis&amp; operator&lt;&lt;(const std::basic_string&lt;CharT, Traits, Allocator&gt;&amp; str) noexcept
+
+TThis&amp; operator&lt;&lt;(short value) noexcept
+
+TThis&amp; operator&lt;&lt;(unsigned short value) noexcept
+
+TThis&amp; operator&lt;&lt;(int value) noexcept
+
+TThis&amp; operator&lt;&lt;(unsigned int value) noexcept
+
+TThis&amp; operator&lt;&lt;(long value) noexcept
+
+TThis&amp; operator&lt;&lt;(unsigned long value) noexcept
+
+TThis&amp; operator&lt;&lt;(long long value) noexcept
+
+TThis&amp; operator&lt;&lt;(unsigned long long value) noexcept
+
+TThis&amp; operator&lt;&lt;(float value) noexcept
+
+TThis&amp; operator&lt;&lt;(double value) noexcept
+
+TThis&amp; operator&lt;&lt;(long double value) noexcept
+
+TThis&amp; operator&lt;&lt;(void* value) noexcept
+
+TThis&amp; operator&lt;&lt;(EndLine) noexcept</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  Every overload appends to the buffer and returns <code>*this</code>; the buffer is a
+  <code>std::basic_string</code>, so append is growth, never truncation — the contract difference from
+  <a href="../InlineStringBuilder/index.html">InlineStringBuilder</a> in one sentence. The twenty-one
+  overloads fall into three families.
+</p>
+
+<p>
+  <strong>Direct appends.</strong> <code>char</code> <code>push_back</code>s;
+  <code>const char*</code>, <code>std::string_view</code> and the <code>std::basic_string</code> overload
+  (which casts to a view and re-dispatches) <code>append</code>; <code>StaticString</code> appends its
+  <code>c_str()</code>. A null <code>const char*</code> appends the literal <code>Null</code> instead of
+  crashing.
+</p>
+
+<p>
+  <strong>Spellings.</strong> <code>nullptr_t</code> writes <code>Null</code>, <code>bool</code> writes
+  <code>True</code> or <code>False</code>, and <a href="../EndLine/index.html">EndLine</a> appends
+  <code>"\n"</code> — the same spellings the intern table pre-registers.
+</p>
+
+<p>
+  <strong>Numbers through a stack temp.</strong> Every numeric overload formats into a fixed stack buffer
+  with <code>snprintf</code> and appends the result: <code>InlineBufferSize</code> (32) for
+  <code>unsigned char</code> and the integers plus <code>void*</code> (<code>%u</code>, <code>%d</code>,
+  <code>%ld</code>, <code>%lu</code>, <code>%lld</code>, <code>%llu</code>, <code>%p</code>),
+  <code>InlineFloatBufferSize</code> (64) for <code>float</code> (<code>%f</code>),
+  <code>InlineLongDoubleBufferSize</code> (512) for <code>double</code> (<code>%lf</code>) and
+  <code>long double</code> (<code>%Le</code>). A value whose digits exceed the temp is truncated
+  <em>by the temp</em>, then the truncated text is appended — the growth of the big buffer never rescues a
+  formatted value that did not fit its temp.
+</p>
+
+<h2 id="parameters">Parameters</h2>
+
+<table>
+  <tr><th>Parameter</th><th>Type</th><th>Requirement</th></tr>
+  <tr><td><em>(one value per overload)</em></td><td><em>see the signature block</em></td>
+  <td>The value to append. Only the string-like overloads take references, and they only read.</td></tr>
+</table>
+
+<h2 id="return">Return value</h2>
+
+<p><code>*this</code> as <code>TThis&amp;</code>, so <code>&lt;&lt;</code> chains left to right.</p>
+
+<h2 id="example">Examples</h2>
+
+<pre><code>		StringBuilder args;
+		args &lt;&lt; "Opt.{";
+
+		for (auto&amp; item : usageMap)
+		{
+			args &lt;&lt; " {" &lt;&lt; item.first &lt;&lt; ", " &lt;&lt; item.second &lt;&lt; "}, ";
+		}
+
+		args &lt;&lt; "}";</code></pre>
+<p class="meta">From Engine/Memory/MultiPoolAllocator.cpp, the configuration-logging site — text and integer overloads in one chain</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; StringBuilder</a></span>
+  <span><a href="index.html#methods">All StringBuilder methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

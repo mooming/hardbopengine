@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>StaticStringTable::Allocate — String module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a class="current" href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">String</a> /
+  <a href="index.html">StaticStringTable</a> / Allocate
+</p>
+
+<h1><span class="fn">Allocate</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::StaticStringTable</span>
+  <span class="tag">Engine/String/StaticStringTable.h</span>
+  bump allocation over 1 MiB banks
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>static void* Allocate(size_t n)</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  The bank bump allocator, private and static — reachable from outside only through the nested
+  <code>Allocator</code> adapter, and from <code>Register</code> through <code>Store</code>. Text bytes come
+  from <code>malloc</code>'d banks of one mebibyte (<code>capacity = 1024UL * 1024</code>, a local constant —
+  not <code>Config::StaticStringBufferSize</code>, which nothing in the engine reads):
+</p>
+
+<pre><code>	std::lock_guard lock(memLock);
+	while (banks.size() &lt;= bankIndex)
+	{
+		banks.emplace_back(capacity);
+	}
+
+	if (!banks[bankIndex].IsAvailable(n))
+	{
+		banks.emplace_back(std::max(n, capacity));
+		++bankIndex;
+	}
+
+	auto&amp; bank = banks[bankIndex];
+	auto ptr = bank.Allocate(n);
+
+	return ptr;</code></pre>
+<p class="meta">From Engine/String/StaticStringTable.cpp, StaticStringTable::Allocate(size_t)</p>
+
+<p>
+  Three facts a caller of the public surface inherits. Storage is bump-only: no per-allocation free, ever —
+  the destructor releases whole banks. An oversized request (larger than one bank) gets a bank of its own,
+  sized <code>max(n, capacity)</code>. And a bank that cannot fit a request is <em>abandoned</em>:
+  <code>bankIndex</code> only moves forward, so the failed bank's remaining space is never used again —
+  scattered large registrations can waste bank tails.
+</p>
+
+<div class="note">
+  <strong>Two locks, one order.</strong> <code>memLock</code> guards bank growth and cursor advance;
+  <a href="register.html"><code>Register</code></a> holds <code>tableLock</code> while calling down into
+  here. The order is always <code>tableLock</code> then <code>memLock</code>; no code path reverses it.
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<table>
+  <tr><th>Parameter</th><th>Type</th><th>Requirement</th></tr>
+  <tr><td><code>n</code></td><td><code>size_t</code></td>
+  <td>Bytes to carve out. Callers pass text length plus terminator; there is no upper bound check beyond the bank arithmetic itself.</td></tr>
+</table>
+
+<h2 id="return">Return value</h2>
+
+<p>
+  A pointer into bank memory, valid until the table is destroyed. Never freed individually; never moved.
+</p>
+
+<h2 id="example">Examples</h2>
+
+<p>
+  Only <a href="store.html"><code>Store</code></a> and the nested <code>Allocator::allocate</code> call it —
+  the latter so that, say, a <code>std::vector</code> templated on the nested allocator grows inside the same
+  banks as the strings it indexes.
+</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; StaticStringTable</a></span>
+  <span><a href="index.html#methods">All StaticStringTable methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

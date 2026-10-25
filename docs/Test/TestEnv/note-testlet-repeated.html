@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TestEnv::NoteTestletRepeated — Test module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a class="current" href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Test</a> /
+  <a href="index.html">TestEnv</a> / NoteTestletRepeated
+</p>
+
+<h1><span class="fn">NoteTestletRepeated</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::TestEnv</span>
+  <span class="tag">Engine/Test/TestEnv.h</span>
+  records a testlet that ran more than once — no scheduling may do that
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>void NoteTestletRepeated(std::size_t testletIndex)</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  Records that one testlet ran more than once — which no scheduling of this suite is allowed to do. The
+  suite's own totals cannot see this defect: a chain whose every step is told it is step zero runs one
+  testlet N times and still reports N of N executed, which is exactly how a real bug in this harness once
+  looked green right up to the registry ceiling. Counting runs per testlet is what turns that into a named
+  failure.
+</p>
+
+<p>
+  The record is a failure entry naming the first offender — later repeats append, so a report names the
+  repeat rather than a count. The testlet still runs when asked; refusing to execute what the schedule handed
+  over would hide the defect that produced the repeat.
+</p>
+
+<h2 id="parameters">Parameters</h2>
+
+<table>
+  <tr><th>Parameter</th><th>Type</th><th>Requirement</th></tr>
+  <tr><td><code>testletIndex</code></td><td><code>std::size_t</code></td>
+  <td>The index that ran more than once.</td></tr>
+</table>
+
+<h2 id="return">Return value</h2>
+
+<p>None.</p>
+
+<h2 id="example">Examples</h2>
+
+<p>
+  The run-count bookkeeping that detects the repeat lives in
+  <a href="run-testlet.html"><code>RunTestlet</code></a>.
+</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; TestEnv</a></span>
+  <span><a href="index.html#methods">All TestEnv methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

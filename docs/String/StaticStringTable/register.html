@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>StaticStringTable::Register — String module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a class="current" href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">String</a> /
+  <a href="index.html">StaticStringTable</a> / Register
+</p>
+
+<h1><span class="fn">Register</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::StaticStringTable</span>
+  <span class="tag">Engine/String/StaticStringTable.h</span>
+  the mint — hash, search, reuse or store
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>[[nodiscard]] StaticStringID Register(const char* str)
+
+[[nodiscard]] StaticStringID Register(const std::string_view&amp; str)</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  The mint. Both overloads run the same four steps: hash the text into a bucket
+  (<a href="get-table-id.html"><code>GetTableID</code></a>), take <code>tableLock</code>, linear-search that
+  bucket, and either reuse the found view's address or store a fresh copy. The id is the address of the
+  stored bytes — <strong>the table's memory, never the caller's</strong>:
+</p>
+
+<pre><code>		auto&amp; table = tables[tableID];
+		std::string_view tmp(text);
+
+		auto found = std::find(table.begin(), table.end(), tmp);
+		if (found != table.end())
+		{
+			id.ptr = reinterpret_cast&lt;const uint8_t*&gt;(found-&gt;data());
+
+			return id;
+		}
+
+		std::string_view sv = Store(tmp);
+		table.emplace_back(sv);
+
+		id.ptr = reinterpret_cast&lt;const uint8_t*&gt;(sv.data());</code></pre>
+<p class="meta">From Engine/String/StaticStringTable.cpp, StaticStringTable::Register(const char* text) — the locked body, table lookup and store</p>
+
+<p>
+  The search is bucket-local, so cost grows with how many distinct texts land in one bucket rather than with
+  the total table size. Registration is serialized per table by <code>tableLock</code>; the store inside the
+  lock descends into <a href="allocate.html"><code>Allocate</code></a>, which takes its own <code>memLock</code>
+  — the fixed lock order is <code>tableLock</code> then <code>memLock</code>, and no path takes them the other
+  way around. The <code>std::string_view</code> overload needs no zero termination from the caller;
+  <a href="store.html"><code>Store</code></a> terminates the copy it makes.
+</p>
+
+<div class="note">
+  <strong>Equal text, equal address.</strong> Both overloads hash with the same function
+  (<code>StringUtil::CalculateHash</code>), so the same text always lands in the same bucket and the search
+  always finds the earlier registration. A <code>const char*</code> and a <code>std::string_view</code>
+  carrying the same characters produce the same id.
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<table>
+  <tr><th>Parameter</th><th>Type</th><th>Requirement</th></tr>
+  <tr><td><code>str</code></td><td><code>const char*</code></td>
+  <td>Zero-terminated text. Read only during this call; the id never references it afterwards.</td></tr>
+  <tr><td><code>str</code></td><td><code>const std::string_view&amp;</code></td>
+  <td>Character span of any length. Same copy-and-terminate treatment.</td></tr>
+</table>
+
+<h2 id="return">Return value</h2>
+
+<p>
+  The id naming this text's permanent address in the table. Re-registering the same text returns an id with
+  the same pointer, which is the whole interning contract.
+</p>
+
+<h2 id="example">Examples</h2>
+
+<p>
+  Every <code>StaticString</code> constructor from characters registers through here; the predefined strings
+  register at construction via <a href="register-predefined-strings.html"><code>RegisterPredefinedStrings</code></a>.
+</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; StaticStringTable</a></span>
+  <span><a href="index.html#methods">All StaticStringTable methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

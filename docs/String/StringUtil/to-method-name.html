@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>StringUtil::ToMethodName — String module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a class="current" href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">String</a> /
+  <a href="index.html">StringUtil</a> / ToMethodName
+</p>
+
+<h1><span class="fn">ToMethodName</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::StringUtil</span>
+  <span class="tag">Engine/String/StringUtil.h</span>
+  qualified Class::Method, no parameter list
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>[[nodiscard]] StaticString ToMethodName(const char* PrettyFunction)</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  <code>Class::Method</code>, namespace-qualified, without the parameter list —
+  <code>hbe::StringUtilTest::Prepare</code> for the test's own <code>Prepare()</code>. The algorithm: cut at
+  the last <code>(</code>, drop the method name by cutting before the final <code>::</code>, take what
+  follows the last space of <em>that</em> as the class, then splice class and method back together from the
+  original text:
+</p>
+
+<pre><code>	auto subStr = str.substr(0, bracketStart);
+	auto start = subStr.find_last_of("::") + 1;
+	if (start == TStr::npos)
+	{
+		return StaticString(PrettyFunction);
+	}
+
+	subStr = str.substr(0, start - 2);
+	start = subStr.find_last_of(" ") + 1;
+	str = str.substr(start, bracketStart - start);
+
+	return StaticString(str);</code></pre>
+<p class="meta">From Engine/String/StringUtil.cpp, StringUtil::ToMethodName(const char*) — bracketStart is find_last_of('('), guarded two lines above</p>
+
+<p>
+  An input with no <code>(</code> comes back verbatim. The <code>start == npos</code> guard is dead — the
+  <code>npos + 1</code> wrap lands on <code>0</code> — so a scope-less input runs the arithmetic anyway; the
+  intended input, a member-function signature, always carries the <code>::</code> the algorithm needs.
+</p>
+
+<h2 id="parameters">Parameters</h2>
+
+<table>
+  <tr><th>Parameter</th><th>Type</th><th>Requirement</th></tr>
+  <tr><td><code>PrettyFunction</code></td><td><code>const char*</code></td>
+  <td>The <code>__PRETTY_FUNCTION__</code> of a member function. Zero-terminated; read-only.</td></tr>
+</table>
+
+<h2 id="return">Return value</h2>
+
+<p>The interned <code>Class::Method</code> spelling, qualified, no parameter list.</p>
+
+<h2 id="example">Examples</h2>
+
+<pre><code>	StaticString funcName("hbe::StringUtilTest::Prepare");
+	auto name = ToMethodName(prettyFunction);</code></pre>
+<p class="meta">From Engine/String/StringUtil.cpp, the "ToMethodName" testlet</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; StringUtil</a></span>
+  <span><a href="index.html#methods">All StringUtil methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

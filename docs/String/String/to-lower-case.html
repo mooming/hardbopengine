@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>String::ToLowerCase — String module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a class="current" href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">String</a> /
+  <a href="index.html">String</a> / ToLowerCase
+</p>
+
+<h1><span class="fn">ToLowerCase</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::String</span>
+  <span class="tag">Engine/String/String.h</span>
+  in place, ASCII-only, hash recomputed
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>void ToLowerCase() noexcept</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  Lower-cases <em>this</em> string in place: every character
+  <code>Letter::IsUpperCase</code> accepts (ASCII <code>'A'</code>–<code>'Z'</code>) is shifted by
+  <code>'a' - 'A'</code>, everything else is untouched — then the hash is recomputed. ASCII-only, like the
+  whole module's case handling; no locale, no Unicode.
+</p>
+
+<pre><code>	constexpr TChar diff = 'a' - 'A';
+
+	auto tmp = GetBuffer();
+	const auto length = Length();
+	for (Index i = 0; i &lt; length; ++i)
+	{
+		if (Letter::IsUpperCase(tmp[i]))
+		{
+			tmp[i] += diff;
+		}
+	}
+
+	CalculateHashCode();</code></pre>
+<p class="meta">From Engine/String/String.h, String::ToLowerCase() noexcept</p>
+
+<p>
+  Note the pattern <a href="get-buffer.html"><code>GetBuffer</code></a>'s page prescribes: raw edit, then
+  <a href="calculate-hash-code.html"><code>CalculateHashCode</code></a> — this method restores the hash
+  invariant itself. For the building form see
+  <a href="get-lower-case.html"><code>GetLowerCase</code></a>.
+</p>
+
+<h2 id="parameters">Parameters</h2>
+
+<p>None.</p>
+
+<h2 id="return">Return value</h2>
+
+<p>None — the receiver is modified.</p>
+
+<h2 id="example">Examples</h2>
+
+<pre><code>		auto lower = str.GetLowerCase();
+
+		if (lower != "hello? world!")
+		{
+			ls &lt;&lt; "To lowercase failed. " &lt;&lt; lower &lt;&lt; lferr;
+		}</code></pre>
+<p class="meta">From Engine/String/String.cpp, the "To Lower Case" testlet — exercised through the building form, which calls this one</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; String</a></span>
+  <span><a href="index.html#methods">All String methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

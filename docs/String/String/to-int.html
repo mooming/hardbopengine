@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>String::ToInt — String module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a class="current" href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">String</a> /
+  <a href="index.html">String</a> / ToInt
+</p>
+
+<h1><span class="fn">ToInt</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::String</span>
+  <span class="tag">Engine/String/String.h</span>
+  std::stoi — garbage input terminates
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>[[nodiscard]] int ToInt() const noexcept</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  <code>return buffer ? std::stoi(buffer-&gt;data()) : 0;</code> — a real numeric parse via the standard
+  library, not a character read. Two consequences worth their weight:
+</p>
+
+<div class="gap">
+  <strong>Garbage input terminates the process.</strong> <code>std::stoi</code> throws
+  <code>std::invalid_argument</code> on text that is not a number and <code>std::out_of_range</code> on
+  overflow — and this function is <code>noexcept</code>, so the exception escapes the function and
+  <code>std::terminate</code> ends the program. An <em>empty</em> buffer (one terminator, as a
+  default-constructed <code>String</code> has) is garbage by this rule. Validate before converting; there
+  is no error-returning variant.
+</div>
+
+<p>
+  The <code>buffer</code> test guards only the absence of a buffer, not emptiness — a held-but-empty buffer
+  still reaches <code>std::stoi</code>.
+</p>
+
+<h2 id="parameters">Parameters</h2>
+
+<p>None.</p>
+
+<h2 id="return">Return value</h2>
+
+<p>The parsed <code>int</code>; <code>0</code> only when no buffer is held. Throws-through-<code>noexcept</code> otherwise on bad input.</p>
+
+<h2 id="example">Examples</h2>
+
+<p>
+  The whole numeric family (<a href="to-long.html"><code>ToLong</code></a>,
+  <a href="to-float.html"><code>ToFloat</code></a>, …) shares this contract; this page carries the warning
+  they all inherit.
+</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; String</a></span>
+  <span><a href="index.html#methods">All String methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

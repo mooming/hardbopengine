@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TestEnv::GetTestletLabel — Test module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a class="current" href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Test</a> /
+  <a href="index.html">TestEnv</a> / GetTestletLabel
+</p>
+
+<h1><span class="fn">GetTestletLabel</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::TestEnv</span>
+  <span class="tag">Engine/Test/TestEnv.h</span>
+  the Collection TC&lt;n&gt;.&lt;name&gt; label that names a stuck testlet in the registry
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>[[nodiscard]] const char* GetTestletLabel(std::size_t testletIndex) const</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  "Collection TC&lt;n&gt;.&lt;name&gt;" for one testlet — the label used as its task name, so the registry
+  names what is stuck rather than a bare index. Built from the collection's title and the testlet's
+  <a href="../Testlet/getname.html"><code>GetName</code></a>.
+</p>
+
+<h2 id="parameters">Parameters</h2>
+
+<table>
+  <tr><th>Parameter</th><th>Type</th><th>Requirement</th></tr>
+  <tr><td><code>testletIndex</code></td><td><code>std::size_t</code></td>
+  <td>Index into the flattened sequence, not into a collection.</td></tr>
+</table>
+
+<h2 id="return">Return value</h2>
+
+<p>The label string; the storage it points at lives with the environment's label table.</p>
+
+<h2 id="example">Examples</h2>
+
+<p>
+  The harness hands this label to the task it posts, which is why a hung testlet's registry entry names the
+  test instead of a stream position.
+</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; TestEnv</a></span>
+  <span><a href="index.html#methods">All TestEnv methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

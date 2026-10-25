@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>InlineStringBuilder — String module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a class="current" href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This class</h3>
+  <ul>
+    <li><a href="#description">Class description</a></li>
+    <li><a href="#template">Template parameters</a></li>
+    <li><a href="#properties">Class properties</a></li>
+    <li><a href="#methods">Class methods</a></li>
+    <li><a href="#non-member">Non-member helpers</a></li>
+    <li><a href="#coverage">Coverage</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">String</a> /
+  InlineStringBuilder
+</p>
+
+<h1>InlineStringBuilder</h1>
+<p class="subtitle">
+  <span class="tag">Engine/String/InlineStringBuilder.h</span>
+  <span class="tag">namespace hbe</span>
+  <span class="tag">template &lt;size_t BufferSize = 1024, class TChar = char&gt;</span>
+  <span class="tag">final</span>
+  the builder that never allocates — a hard inline ceiling
+</p>
+
+<h2 id="description">Class description</h2>
+
+<p>
+  The builder that never allocates: a <code>&lt;&lt;</code> interface writing into a
+  <code>TChar buffer[BufferSize]</code> carried inside the object itself. This is what a formatter inside a
+  frame, a per-stream name builder, or a logger's inline text path uses when even one heap allocation is one
+  too many — <code>Engine/Core/TaskSystem.cpp</code> builds stream names with
+  <code>InlineStringBuilder&lt;64&gt;</code>, and the pool allocators name their banks with
+  <code>InlineStringBuilder&lt;1024&gt;</code>.
+</p>
+
+<div class="gap">
+  <strong>There is no growth, and overflow is silent truncation.</strong> Every append clamps:
+  <code>length = std::min(LastIndex, length + written)</code>, where <code>LastIndex</code> is
+  <code>BufferSize - 1</code> — the slot the terminator permanently owns. A write that does not fit is cut
+  off mid-content, an <code>Assert</code> fires in debug builds, and nothing throws or grows. Pick the size
+  from the largest thing that will be written, not from what is usually written.
+</div>
+
+<p>
+  The whole surface is one shape: every <code>operator&lt;&lt;</code> appends and returns
+  <code>*this</code>, so a line reads left to right and ends with
+  <a href="operator-left-shift.html"><code>&lt;&lt; hendl</code></a> for the newline. The interface matches
+  <code>StringBuilder</code>'s entry for entry — the two are interchangeable at a call site that does not
+  care where the bytes live.
+</p>
+
+<h2 id="template">Template parameters</h2>
+
+<table>
+  <tr><th>Parameter</th><th>Requirement</th></tr>
+  <tr><td><code>BufferSize</code></td><td>Bytes carried inline in the object — a hard ceiling, not a starting
+      size. Guarded by <code>static_assert(BufferSize &gt; 0)</code>; the default is 1024.</td></tr>
+  <tr><td><code>TChar</code></td><td>Character type, <code>char</code> by default. In practice <code>char</code>:
+      <a href="c-str.html"><code>c_str</code></a> casts the buffer to <code>const char*</code> unconditionally.</td></tr>
+</table>
+
+<h2 id="properties">Class properties</h2>
+
+<table>
+  <tr><th>Type + Name</th><th>Default Value</th><th>Description</th></tr>
+  <tr><td><code>using TThis = InlineStringBuilder;</code> <span class="badge">alias</span></td>
+      <td>not applicable</td><td>Shorthand every operator's return type is written with.</td></tr>
+  <tr><td><code>static constexpr size_t LastIndex = BufferSize - 1;</code> <span class="badge">public</span></td>
+      <td><code>BufferSize - 1</code></td><td>The terminator's slot — every append clamps against it.</td></tr>
+  <tr><td><code>size_t length;</code> <span class="badge">private</span></td>
+      <td>none in the header</td><td>Characters written so far, terminator excluded.</td></tr>
+  <tr><td><code>TChar buffer[BufferSize];</code> <span class="badge">private</span></td>
+      <td>none in the header</td><td>The inline storage; slot <code>0</code> and slot <code>LastIndex</code> are NUL from construction on.</td></tr>
+</table>
+
+<h2 id="methods">Class methods</h2>
+
+<table class="methods">
+  <tr><th>Name</th><th>Signature</th><th>What a caller depends on</th></tr>
+  <tr><td><a href="constructors.html"><code>Constructor</code></a></td>
+      <td class="sig">InlineStringBuilder() noexcept</td>
+      <td>Starts empty with both buffer ends terminated; no allocation, ever.</td></tr>
+  <tr><td><a href="destructor.html"><code>Destructor</code></a></td>
+      <td class="sig">~InlineStringBuilder() = default</td>
+      <td>Defaulted — the buffer is inline storage, nothing is released.</td></tr>
+  <tr><td><a href="clear.html"><code>Clear</code></a></td>
+      <td class="sig">void Clear() noexcept</td>
+      <td>Resets to empty in place — the reuse path for a builder in a loop.</td></tr>
+  <tr><td><a href="c-str.html"><code>c_str</code></a></td>
+      <td class="sig">[[nodiscard]] auto c_str() const noexcept</td>
+      <td>The buffer as <code>const char*</code>, terminated at <code>length</code>.</td></tr>
+  <tr><td><a href="size.html"><code>Size</code></a></td>
+      <td class="sig">[[nodiscard]] auto Size() const noexcept</td>
+      <td>Characters written, terminator excluded.</td></tr>
+  <tr><td><a href="hex.html"><code>Hex</code></a></td>
+      <td class="sig">TThis&amp; Hex(uint8_t value) noexcept</td>
+      <td>Printable bytes as the character, everything else as two hex digits — the byte-level formatter.</td></tr>
+  <tr><td><a href="operator-cast.html"><code>operator const TChar*</code></a></td>
+      <td class="sig">[[nodiscard]] operator const TChar*() const noexcept</td>
+      <td>Implicit conversion to the buffer — same pointer <code>c_str</code> returns.</td></tr>
+  <tr><td><a href="operator-left-shift.html"><code>operator&lt;&lt;</code></a> <span class="badge">22 overloads</span></td>
+      <td class="sig">TThis&amp; operator&lt;&lt;(…)</td>
+      <td>Append and return <code>*this</code>; every overload clamps at <code>LastIndex</code>. The full set has its own page.</td></tr>
+</table>
+
+<h2 id="non-member">Non-member helpers</h2>
+
+<p>None.</p>
+
+<h2 id="coverage">Coverage</h2>
+
+<p>
+  This page documents every member the header declares. The 22 <code>operator&lt;&lt;</code> overloads share
+  one page, grouped by how they format; the numeric ones differ only in the <code>snprintf</code> format
+  string, and the page states the format for each family rather than quoting every body. The
+  <code>static_assert</code> on <code>BufferSize</code> is stated in the template table above.
+</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; InlineStringBuilder</a></span>
+  <span><a href="index.html#methods">All InlineStringBuilder methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

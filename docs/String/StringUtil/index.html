@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>StringUtil — String module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a class="current" href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This class</h3>
+  <ul>
+    <li><a href="#description">Class description</a></li>
+    <li><a href="#template">Template parameters</a></li>
+    <li><a href="#properties">Class properties</a></li>
+    <li><a href="#methods">Class methods</a></li>
+    <li><a href="#non-member">Non-member helpers</a></li>
+    <li><a href="#coverage">Coverage</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">String</a> /
+  StringUtil
+</p>
+
+<h1>StringUtil</h1>
+<p class="subtitle">
+  <span class="tag">Engine/String/StringUtil.h</span>
+  <span class="tag">namespace hbe::StringUtil</span>
+  <span class="tag">utility header</span>
+  trim, case, prefix and suffix, paths, tokens, reflection names, C-string primitives, hash
+</p>
+
+<h2 id="description">Class description</h2>
+
+<p>
+  A utility header, not a class: free functions in <code>namespace hbe::StringUtil</code> over text that
+  needs no object of its own. Two groups. The first trims, compares and reshapes a <code>TString</code>
+  (the engine's <code>HString</code>) — <code>Trim</code>, case conversion, prefix and suffix tests, path
+  splitting, tokenising. The second reads names out of the compiler's <code>__PRETTY_FUNCTION__</code> —
+  <code>ToFunctionName</code> and friends — which is how engine code logs a class or function name without
+  writing it twice. The rest is the C-string layer the log line and the builders are built on:
+  <code>StrLen</code>, <code>StrCopy</code>, and the djb2 <code>CalculateHash</code> the intern table hashes
+  with.
+</p>
+
+<p>
+  Everything is defined in <code>Engine/String/StringUtil.cpp</code>; the header declares and nothing else.
+  The <code>__PRETTY_FUNCTION__</code> readers return <a href="../StaticString/index.html">StaticString</a>,
+  so every extracted name is interned once and compares by pointer afterwards.
+</p>
+
+<div class="gap">
+  <strong>The case functions are ASCII-only.</strong> <code>ToLowerCase</code> shifts <code>'A'</code>–<code>'Z'</code>
+  by a fixed offset and <code>Trim</code> tests <code>std::isspace</code> — no locale argument is passed and
+  no Unicode is considered. Non-ASCII bytes pass through untouched, which is a feature for the engine's
+  identifier-and-path workloads and a trap for real text processing.
+</div>
+
+<h2 id="template">Template parameters</h2>
+
+<p>None — the header declares no class and no function template. The two aliases below are the whole type
+surface.</p>
+
+<h2 id="properties">Class properties</h2>
+
+<table>
+  <tr><th>Type + Name</th><th>Default Value</th><th>Description</th></tr>
+  <tr><td><code>template &lt;typename T&gt; using TVector = HVector&lt;T&gt;;</code> <span class="badge">alias template</span></td>
+      <td>not applicable</td><td>The vector the test collection collects tokens into; a rename shield over <code>HVector</code>.</td></tr>
+  <tr><td><code>using TString = HString;</code> <span class="badge">alias</span></td>
+      <td>not applicable</td><td>The string type every text function takes and returns — the engine's <code>HString</code>.</td></tr>
+</table>
+
+<h2 id="methods">Class methods</h2>
+
+<p>None — the functions are free functions, and their contracts are tabled under
+<a href="#non-member">Non-member helpers</a> below.</p>
+
+<h2 id="non-member">Non-member helpers</h2>
+
+<table>
+  <tr><th>Name</th><th>Signature</th><th>What a caller depends on</th></tr>
+  <tr>
+    <td><a href="trim.html"><code>Trim</code></a></td>
+    <td class="sig">[[nodiscard]] TString Trim(const TString&amp; str)</td>
+    <td>Whitespace stripped from both ends, by <code>std::isspace</code>; all-whitespace input comes back empty</td>
+  </tr>
+  <tr>
+    <td><a href="trim-path.html"><code>TrimPath</code></a></td>
+    <td class="sig">[[nodiscard]] TString TrimPath(const TString&amp; path)</td>
+    <td>Backslashes become slashes and one trailing slash is dropped — and the input must not exceed <code>PATH_MAX</code>, or the stack buffer overflows</td>
+  </tr>
+  <tr>
+    <td><a href="to-lower-case.html"><code>ToLowerCase</code></a></td>
+    <td class="sig">[[nodiscard]] TString ToLowerCase(const TString&amp; src)</td>
+    <td>A lowercased copy; ASCII <code>'A'</code>–<code>'Z'</code> only, everything else untouched</td>
+  </tr>
+  <tr>
+    <td><a href="equals-ignore-case.html"><code>EqualsIgnoreCase</code></a></td>
+    <td class="sig">[[nodiscard]] bool EqualsIgnoreCase(const TString&amp; a, const TString&amp; b)</td>
+    <td>Equality of the two lowercased copies — two allocations per call, ASCII-only folding</td>
+  </tr>
+  <tr>
+    <td><a href="starts-with.html"><code>StartsWith</code></a></td>
+    <td class="sig">[[nodiscard]] bool StartsWith(const TString&amp; src, const TString&amp; startTerm)</td>
+    <td>Prefix test; a term longer than the source is simply <code>false</code></td>
+  </tr>
+  <tr>
+    <td><a href="starts-with-ignore-case.html"><code>StartsWithIgnoreCase</code></a></td>
+    <td class="sig">[[nodiscard]] bool StartsWithIgnoreCase(const TString&amp; src, const TString&amp; startTerm)</td>
+    <td>The same test after lowercasing both sides</td>
+  </tr>
+  <tr>
+    <td><a href="ends-with.html"><code>EndsWith</code></a></td>
+    <td class="sig">[[nodiscard]] bool EndsWith(const TString&amp; src, const TString&amp; endTerm)</td>
+    <td>Suffix test, built from the raw tail of the source</td>
+  </tr>
+  <tr>
+    <td><a href="ends-with-ignore-case.html"><code>EndsWithIgnoreCase</code></a></td>
+    <td class="sig">[[nodiscard]] bool EndsWithIgnoreCase(const TString&amp; src, const TString&amp; endTerm)</td>
+    <td>The same test after lowercasing both sides</td>
+  </tr>
+  <tr>
+    <td><a href="path-to-name.html"><code>PathToName</code></a></td>
+    <td class="sig">[[nodiscard]] TString PathToName(const TString&amp; path)</td>
+    <td>Everything after the last <code>/</code> or <code>\</code>; a path with no separator, or one ending in a separator, comes back unchanged</td>
+  </tr>
+  <tr>
+    <td><a href="for-each-token.html"><code>ForEachToken</code></a></td>
+    <td class="sig">void ForEachToken(const char* str, const std::function&lt;void(std::string_view)&gt; func,<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;const char* separators = " \t\n\r")</td>
+    <td>Splits by walking and hands each token as a view into the input — no substring copies; views live only as long as <code>str</code></td>
+  </tr>
+  <tr>
+    <td><a href="to-function-name.html"><code>ToFunctionName</code></a></td>
+    <td class="sig">[[nodiscard]] StaticString ToFunctionName(const char* PrettyFunction)</td>
+    <td>Function name with its parameter list, read from <code>__PRETTY_FUNCTION__</code>; interned</td>
+  </tr>
+  <tr>
+    <td><a href="to-class-name.html"><code>ToClassName</code></a></td>
+    <td class="sig">[[nodiscard]] StaticString ToClassName(const char* PrettyFunction)</td>
+    <td>Namespace-qualified class name from <code>__PRETTY_FUNCTION__</code></td>
+  </tr>
+  <tr>
+    <td><a href="to-method-name.html"><code>ToMethodName</code></a></td>
+    <td class="sig">[[nodiscard]] StaticString ToMethodName(const char* PrettyFunction)</td>
+    <td><code>Class::Method</code>, qualified, without the parameter list</td>
+  </tr>
+  <tr>
+    <td><a href="to-compact-class-name.html"><code>ToCompactClassName</code></a></td>
+    <td class="sig">[[nodiscard]] StaticString ToCompactClassName(const char* PrettyFunction)</td>
+    <td>Bare class name, no namespace — the log-category form</td>
+  </tr>
+  <tr>
+    <td><a href="to-compact-method-name.html"><code>ToCompactMethodName</code></a></td>
+    <td class="sig">[[nodiscard]] StaticString ToCompactMethodName(const char* PrettyFunction)</td>
+    <td><code>Class::Method</code> without namespaces — the log-column form</td>
+  </tr>
+  <tr>
+    <td><a href="str-len.html"><code>StrLen</code></a> <span class="badge">2 overloads</span></td>
+    <td class="sig">[[nodiscard]] size_t StrLen(const char* text)<br>[[nodiscard]] size_t StrLen(const char* text, size_t bufferSize)</td>
+    <td>Null pointer is a debug break and <code>0</code>; the bounded overload is the safe one for a buffer the caller did not fill</td>
+  </tr>
+  <tr>
+    <td><a href="str-copy.html"><code>StrCopy</code></a></td>
+    <td class="sig">[[nodiscard]] const char* StrCopy(char* dst, const char* src, size_t n)</td>
+    <td>Bounded copy via <code>strncpy</code> — a source of <code>n</code> characters or more leaves the destination unterminated</td>
+  </tr>
+  <tr>
+    <td><a href="calculate-hash.html"><code>CalculateHash</code></a> <span class="badge">2 overloads</span></td>
+    <td class="sig">[[nodiscard]] size_t CalculateHash(const char* text)<br>[[nodiscard]] size_t CalculateHash(const std::string_view&amp; str)</td>
+    <td>djb2 over the bytes; the two overloads agree, which is what lets <code>char*</code> and view lookups share one table</td>
+  </tr>
+</table>
+
+<h2 id="coverage">Coverage</h2>
+
+<p>
+  Every declared function has a page, and each page states the fallback behaviour its
+  <code>__PRETTY_FUNCTION__</code> input can produce. Not documented here: the
+  <code>StringUtilTest</code> collection in <code>Engine/String/StringUtil.cpp</code>'s
+  <code>TEST_ENABLED</code> section (test-only, owning its coverage there), and the exact
+  <code>__PRETTY_FUNCTION__</code> spellings of compilers other than Clang — the readers are exercised in the
+  tests against this compiler's output, and the pages describe the parsing rules rather than promising a
+  spelling.
+</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; StringUtil</a></span>
+  <span><a href="index.html#methods">All StringUtil methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

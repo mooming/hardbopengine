@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>String::operator= — String module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a class="current" href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">String</a> /
+  <a href="index.html">String</a> / operator=
+</p>
+
+<h1><span class="fn">operator=</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::String</span>
+  <span class="tag">Engine/String/String.h</span>
+  move swaps; copies never write a shared buffer in place
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>String&amp; operator=(String&amp;&amp; rhs) noexcept
+
+String&amp; operator=(const char* text) noexcept
+
+String&amp; operator=(const String&amp; rhs) noexcept</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  Three assignment forms with one shared idea: <strong>a shared buffer is never written in place</strong>.
+  The move form swaps — <code>Swap(std::move(rhs))</code> — so <code>rhs</code> walks away with this
+  string's old content. Both copy forms check
+  <code>buffer.GetReferenceCount() &gt; 1</code> first: when others share the buffer, they build a fresh
+  string and swap it in rather than corrupting the sharers' text:
+</p>
+
+<pre><code>String&amp; String::operator=(const char* text) noexcept
+{
+	if (text == nullptr)
+	{
+		text = "";
+	}
+
+	if (buffer.GetReferenceCount() &gt; 1)
+	{
+		Swap(String(text));
+	}
+	else
+	{
+		const auto textLength = strlen(text) + 1;
+		buffer-&gt;resize(textLength);
+		memcpy(buffer-&gt;data(), text, textLength);
+	}
+
+	return *this;
+}</code></pre>
+<p class="meta">From Engine/String/String.cpp, String::operator=(const char* text) noexcept</p>
+
+<p>
+  When the buffer is uniquely owned, the assignment resizes in place and copies. The
+  <code>const String&amp;</code> form copies the whole buffer including the terminator; the
+  <code>const char*</code> form accepts null as <code>""</code>. Note there is no
+  <code>operator=(const String&amp;&amp;)</code> distinct from the move — a const rvalue binds the copy form
+  and pays the copy.
+</p>
+
+<h2 id="parameters">Parameters</h2>
+
+<table>
+  <tr><th>Parameter</th><th>Type</th><th>Requirement</th></tr>
+  <tr><td><code>rhs</code></td><td><code>String&amp;&amp;</code></td>
+  <td>Moved from by swap; pass with <code>std::move</code>.</td></tr>
+  <tr><td><code>text</code></td><td><code>const char*</code></td>
+  <td>Zero-terminated; null accepted as <code>""</code>.</td></tr>
+  <tr><td><code>rhs</code></td><td><code>const String&amp;</code></td>
+  <td>Copied from; shared buffers are never written through.</td></tr>
+</table>
+
+<h2 id="return">Return value</h2>
+
+<p><code>*this</code>, for chaining.</p>
+
+<h2 id="example">Examples</h2>
+
+<pre><code>		String str("Hello? World!");
+
+		auto upper = str.GetUpperCase();
+		auto tmpString = std::move(upper);</code></pre>
+<p class="meta">From Engine/String/String.cpp, the "Move Semantics" testlet — the move path the assignment form shares with the move constructor</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; String</a></span>
+  <span><a href="index.html#methods">All String methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>StaticString::operator== — String module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a class="current" href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">String</a> /
+  <a href="index.html">StaticString</a> / operator==
+</p>
+
+<h1><span class="fn">operator==</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::StaticString</span>
+  <span class="tag">Engine/String/StaticString.h</span>
+  pointer equality — the point of the type
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>[[nodiscard]] bool operator==(const StaticString&amp; rhs) const noexcept</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  <code>id.ptr == rhs.id.ptr</code> — the pointer comparison the whole type exists for. Two wrappers are equal
+  when both texts were interned, because the table hands out one address per distinct text; the characters are
+  never read. Inequality is reachable through C++20's rewritten candidates from this operator — the header
+  declares no <code>operator!=</code>, and the test collection's <code>str != strInline</code> relies on the
+  rewrite.
+</p>
+
+<pre><code>	AddTest("Two Strings Comparison", [this](auto&amp; ls)
+	{
+		StaticString strA("Hello?");
+		StaticString strB("Hello?");
+
+		if (strA != strB)
+		{
+			ls &lt;&lt; "Test failes due to comparison failure." &lt;&lt; lferr;
+		}
+	});</code></pre>
+<p class="meta">From Engine/String/StaticString.cpp, StaticStringTest::Prepare(), the "Two Strings Comparison" testlet — two separately constructed wrappers, one interned address</p>
+
+<h2 id="parameters">Parameters</h2>
+
+<table>
+  <tr><th>Parameter</th><th>Type</th><th>Requirement</th></tr>
+  <tr><td><code>rhs</code></td><td><code>const StaticString&amp;</code></td>
+  <td>Another wrapper. Only its id participates.</td></tr>
+</table>
+
+<h2 id="return">Return value</h2>
+
+<p><code>true</code> when both wrappers carry the same interned address; <code>false</code> otherwise.</p>
+
+<h2 id="example">Examples</h2>
+
+<p>
+  Config keys and log categories compare this way on every lookup — <code>Engine/Config/ConfigSystem.cpp</code>
+  keys its values by <code>StaticString</code>, so a get is one hash plus one pointer comparison, never a
+  character scan.
+</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; StaticString</a></span>
+  <span><a href="index.html#methods">All StaticString methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

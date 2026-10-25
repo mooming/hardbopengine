@@ -78,14 +78,15 @@
 
 <table>
   <tr><th>Name</th><th>Kind</th><th>Header</th><th>Role</th></tr>
-  <tr><td><a href="#string">String</a></td><td>Class</td><td>String.h</td><td>Shareable-buffer string with search, transform and conversion</td></tr>
-  <tr><td><a href="#staticstring">StaticString</a></td><td>Class</td><td>StaticString.h</td><td>Interned string; pointer-equality comparison</td></tr>
-  <tr><td><a href="#staticstringid">StaticStringID</a></td><td>Struct</td><td>StaticStringID.h</td><td>The pointer into the intern table, on its own</td></tr>
-  <tr><td><a href="#stringbuilder">StringBuilder</a></td><td>Class template</td><td>StringBuilder.h</td><td>Stream-style <code>&lt;&lt;</code> formatting into a growing buffer</td></tr>
-  <tr><td><a href="#inlinestringbuilder">InlineStringBuilder</a></td><td>Class template</td><td>InlineStringBuilder.h</td><td>The same interface in a fixed inline buffer — no heap at all</td></tr>
+  <tr><td><a href="String/index.html">String</a></td><td>Class</td><td>String.h</td><td>Shareable-buffer string with search, transform and conversion</td></tr>
+  <tr><td><a href="StaticString/index.html">StaticString</a></td><td>Class</td><td>StaticString.h</td><td>Interned string; pointer-equality comparison</td></tr>
+  <tr><td><a href="StaticStringID/index.html">StaticStringID</a></td><td>Struct</td><td>StaticStringID.h</td><td>The pointer into the intern table, on its own</td></tr>
+  <tr><td><a href="StaticStringTable/index.html">StaticStringTable</a></td><td>Class</td><td>StaticStringTable.h</td><td>The global intern table — one address per distinct text, forever</td></tr>
+  <tr><td><a href="StringBuilder/index.html">StringBuilder</a></td><td>Class template</td><td>StringBuilder.h</td><td>Stream-style <code>&lt;&lt;</code> formatting into a growing buffer</td></tr>
+  <tr><td><a href="InlineStringBuilder/index.html">InlineStringBuilder</a></td><td>Class template</td><td>InlineStringBuilder.h</td><td>The same interface in a fixed inline buffer — no heap at all</td></tr>
   <tr><td><a href="EndLine/index.html">EndLine</a><span class="badge">1 method page</span></td><td>Class</td><td>EndLine.h</td><td>Marker that a builder turns into a newline</td></tr>
-  <tr><td><a href="#letter">Letter</a></td><td>Class of statics</td><td>Letter.h</td><td>Character classification</td></tr>
-  <tr><td><a href="#stringutil">StringUtil</a></td><td>Namespace</td><td>StringUtil.h</td><td>Trim, case, prefix and suffix, path names, hashes, reflection names</td></tr>
+  <tr><td><a href="Letter/index.html">Letter</a></td><td>Class of statics</td><td>Letter.h</td><td>Character classification</td></tr>
+  <tr><td><a href="StringUtil/index.html">StringUtil</a></td><td>Namespace</td><td>StringUtil.h</td><td>Trim, case, prefix and suffix, path names, hashes, reflection names</td></tr>
 </table>
 
 <h2 id="variables">Module variables</h2>
@@ -96,7 +97,7 @@
   <tr><td><code>StaticStringID::Default</code></td><td><code>static constexpr uint8_t*</code></td><td>StaticStringID.h</td><td>The null intern entry, which is <code>nullptr</code></td></tr>
 </table>
 
-<p>Interning table sizing is <a href="../Config/index.html#variables"><code>Config::StaticStringBufferSize</code></a> (8 MB) and <code>StaticStringNumHashBuckets</code> (256).</p>
+<p>Buckets: <a href="../Config/index.html#variables"><code>Config::StaticStringNumHashBuckets</code></a> (256). The banks the text itself lives in are 1&nbsp;MiB each, grown by <code>StaticStringTable::Allocate</code> — <code>Config::StaticStringBufferSize</code> (8&nbsp;MB) is declared but read by nothing.</p>
 
 <h2 id="functions">Module functions</h2>
 
@@ -366,7 +367,7 @@
 
 <pre><code>[[nodiscard]] <span class="kw">static bool</span> IsLowerCase(TChar letter);
 [[nodiscard]] <span class="kw">static bool</span> IsUpperCase(TChar letter);
-[[nodiscard]] <span class="kw">static bool</span> IsGenuineLetter(TChar letter);   <span class="cm">// an alphabetic character</span></code></pre>
+[[nodiscard]] <span class="kw">static bool</span> IsGenuineLetter(TChar letter);   <span class="cm">// despite the name: true when NOT whitespace</span></code></pre>
 
 <h3>Non-member helper functions</h3>
 <p>None.</p>
@@ -413,19 +414,12 @@
 <table>
   <tr><th>Gap</th><th>Detail</th></tr>
   <tr>
-    <td><a href="#string"><code>String</code></a> constructor set</td>
-    <td>The formatted-construction overloads exist but their exact parameter lists are not tabulated here, and
-        <code>ParseKeyValue</code>'s argument list is left as written in the header rather than guessed.</td>
-  </tr>
-  <tr>
-    <td><a href="#stringbuilder"><code>StringBuilder</code></a> result accessor</td>
-    <td>How a built string is read back out is named in the header and not restated here.</td>
-  </tr>
-  <tr>
-    <td>The intern table itself</td>
-    <td>Where <a href="#staticstring"><code>StaticString</code></a>'s global table is written, and what happens
-        when 8 MB is exhausted, is design behaviour with no document yet — the one real hole in this module's
-        documentation.</td>
+    <td>The deep sections below</td>
+    <td>Summaries only. Every class now owns a page — <a href="String/index.html">String</a>,
+        <a href="StaticString/index.html">StaticString</a>, <a href="StaticStringID/index.html">StaticStringID</a>,
+        <a href="StaticStringTable/index.html">StaticStringTable</a>, <a href="StringBuilder/index.html">StringBuilder</a>,
+        <a href="InlineStringBuilder/index.html">InlineStringBuilder</a>, <a href="Letter/index.html">Letter</a> and
+        <a href="StringUtil/index.html">StringUtil</a> — and those pages, not these sections, carry the contracts.</td>
   </tr>
 </table>
 

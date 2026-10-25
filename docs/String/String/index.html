@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>String — String module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a class="current" href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This class</h3>
+  <ul>
+    <li><a href="#description">Class description</a></li>
+    <li><a href="#template">Template parameters</a></li>
+    <li><a href="#properties">Class properties</a></li>
+    <li><a href="#methods">Class methods</a></li>
+    <li><a href="#non-member">Non-member helpers</a></li>
+    <li><a href="#coverage">Coverage</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">String</a> /
+  String
+</p>
+
+<h1>String</h1>
+<p class="subtitle">
+  <span class="tag">Engine/String/String.h</span>
+  <span class="tag">namespace hbe</span>
+  shareable-buffer string with a cached hash — Get builds, To changes
+</p>
+
+<h2 id="description">Class description</h2>
+
+<p>
+  The engine's text type: a shareable, ref-counted character buffer plus a cached hash code. Copying is
+  cheap by design — the buffer is a <code>Shareable&lt;Vector&lt;TChar&gt;&gt;</code>, so sharing increments
+  a count rather than copying bytes — and the hash is computed once per mutation, so comparisons short-circuit
+  on it before reading a single character.
+</p>
+
+<p>
+  Naming carries the contract. A method that <em>builds</em> returns a new <code>String</code> and leaves the
+  receiver alone: <code>Clone</code>, <code>SubString</code>, <code>Append</code>, <code>Replace</code>,
+  <code>ReplaceAll</code>, <code>Trim</code>, <code>Head</code>, <code>ExceptHead</code>,
+  <code>GetLowerCase</code>, <code>GetUpperCase</code>. A method that <em>changes</em> this string returns
+  nothing: <code>ToLowerCase</code>, <code>ToUpperCase</code>, <code>AppendSelf</code>, <code>Swap</code>,
+  <code>ResetBuffer</code>. The one letter — <code>Get</code> builds, <code>To</code> changes — is the rule
+  to remember, because both spellings compile for the lower-case pair.
+</p>
+
+<div class="gap">
+  <strong>Copying a <code>const String</code> is not the copy constructor.</strong> The copy constructor takes
+  <code>String&amp;</code> — a non-const lvalue — and shares the buffer. Given a <code>const</code> source,
+  that constructor is not viable, and the conversion
+  <a href="operator-cast.html"><code>operator const char*</code></a> routes the call into
+  <code>String(const char*)</code>: a fresh, deep copy (verified against the engine's own headers and
+  libraries). The result is correct but allocated; the sharing copy requires a non-const source.
+</div>
+
+<div class="gap">
+  <strong>Writes through <a href="get-buffer.html"><code>GetBuffer</code></a> bypass the cached hash.</strong>
+  The hash is recomputed only by the mutating methods; a caller that edits the buffer through the raw pointer
+  leaves <code>hashCode</code> stale, and <a href="operator-equal.html"><code>operator==</code></a> — which
+  compares hashes first — can then report two equal strings unequal.
+</div>
+
+<h2 id="template">Template parameters</h2>
+
+<p>None — <code>String</code> is not a template. The character type is the alias <code>TChar</code>
+(<code>char</code>), and the buffer element type is <code>Vector&lt;TChar&gt;</code>.</p>
+
+<h2 id="properties">Class properties</h2>
+
+<table>
+  <tr><th>Type + Name</th><th>Default Value</th><th>Description</th></tr>
+  <tr><td><code>using TChar = char;</code> <span class="badge">alias</span></td>
+      <td>not applicable</td><td>The character type; the whole class is typed over it.</td></tr>
+  <tr><td><code>template &lt;class T&gt; using Vector = hbe::HVector&lt;T&gt;;</code> <span class="badge">alias template</span></td>
+      <td>not applicable</td><td>The buffer's container — the engine's vector.</td></tr>
+  <tr><td><code>static constexpr Index InvalidIndex = std::is_unsigned&lt;Index&gt;::value ? std::numeric_limits&lt;Index&gt;::max() : -1;</code> <span class="badge">public</span></td>
+      <td><code>std::is_unsigned&lt;Index&gt;::value ? std::numeric_limits&lt;Index&gt;::max() : -1</code></td>
+      <td>The "absent" index every search returns; with <code>Index</code> = <code>size_t</code>, the maximum value.</td></tr>
+  <tr><td><code>Shareable&lt;Vector&lt;TChar&gt;&gt; buffer;</code> <span class="badge">private</span></td>
+      <td>none in the header</td><td>The shareable character store, terminator included in its length.</td></tr>
+  <tr><td><code>Index hashCode;</code> <span class="badge">private</span></td>
+      <td>none in the header</td><td>The cached djb2 hash, maintained by the mutating methods.</td></tr>
+</table>
+
+<h2 id="methods">Class methods</h2>
+
+<table class="methods">
+  <tr><th>Name</th><th>Signature</th><th>What a caller depends on</th></tr>
+  <tr><td><a href="constructors.html"><code>Constructors</code></a> <span class="badge">21 overloads</span></td>
+      <td class="sig">String() noexcept<br>String(String&amp; rhs) noexcept<br>String(String&amp;&amp; rhs) noexcept<br>explicit String(…numeric…) noexcept<br>String(const char* text) noexcept<br>explicit String(const std::string str) noexcept<br>explicit String(const String&amp; string, Index startIndex, Index endIndex = InvalidIndex) noexcept</td>
+      <td>Default starts with one terminator; the numeric set formats through <code>snprintf</code>; the substring constructor clamps its range; the <code>String&amp;</code> copy shares the buffer.</td></tr>
+  <tr><td><a href="operator-assign.html"><code>operator=</code></a> <span class="badge">3 overloads</span></td>
+      <td class="sig">String&amp; operator=(String&amp;&amp; rhs) noexcept<br>String&amp; operator=(const char* text) noexcept<br>String&amp; operator=(const String&amp; rhs) noexcept</td>
+      <td>Move swaps; the copy forms replace in place when uniquely owned and swap a fresh copy when shared.</td></tr>
+  <tr><td><a href="operator-less.html"><code>operator&lt;</code></a></td>
+      <td class="sig">bool operator&lt;(const String&amp; rhs) const noexcept</td>
+      <td>Lexicographic by byte; a prefix sorts before its extension.</td></tr>
+  <tr><td><a href="operator-greater.html"><code>operator&gt;</code></a></td>
+      <td class="sig">bool operator&gt;(const String&amp; rhs) const noexcept</td>
+      <td><code>rhs &lt; *this</code>.</td></tr>
+  <tr><td><a href="operator-less-equal.html"><code>operator&lt;=</code></a></td>
+      <td class="sig">bool operator&lt;=(const String&amp; rhs) const noexcept</td>
+      <td><code>!(*this &gt; rhs)</code> — and <code>operator&gt;</code> is <code>rhs &lt; *this</code>.</td></tr>
+  <tr><td><a href="operator-greater-equal.html"><code>operator&gt;=</code></a></td>
+      <td class="sig">bool operator&gt;=(const String&amp; rhs) const noexcept</td>
+      <td><code>!(*this &lt; rhs)</code>.</td></tr>
+  <tr><td><a href="operator-equal.html"><code>operator==</code></a> <span class="badge">3 overloads</span></td>
+      <td class="sig">bool operator==(const String&amp; rhs) const noexcept<br>bool operator==(const char* rhs) const noexcept<br>bool operator==(std::nullptr_t) const noexcept</td>
+      <td>Hash first, then length, then bytes; <code>nullptr_t</code> means "the buffer is empty".</td></tr>
+  <tr><td><a href="operator-not-equal.html"><code>operator!=</code></a> <span class="badge">3 overloads</span></td>
+      <td class="sig">bool operator!=(const String&amp; rhs) const noexcept<br>bool operator!=(const char* rhs) const noexcept<br>bool operator!=(std::nullptr_t) const noexcept</td>
+      <td>The negations, declared explicitly.</td></tr>
+  <tr><td><a href="operator-add.html"><code>operator+</code></a></td>
+      <td class="sig">String operator+(const String&amp; str) const noexcept</td>
+      <td><code>Append(str)</code> — a new string, receiver untouched.</td></tr>
+  <tr><td><a href="operator-add-assign.html"><code>operator+=</code></a></td>
+      <td class="sig">template &lt;typename U&gt;<br>void operator+=(U str) noexcept</td>
+      <td><code>AppendSelf(str)</code> — mutates; accepts every type <code>AppendSelf</code> does.</td></tr>
+  <tr><td><a href="operator-cast.html"><code>operator const char*</code></a></td>
+      <td class="sig">[[nodiscard]] operator const char*() const noexcept</td>
+      <td>Forwards to <a href="to-char-array.html"><code>ToCharArray</code></a>; the path a const copy takes.</td></tr>
+  <tr><td><a href="c-str.html"><code>c_str</code></a></td>
+      <td class="sig">[[nodiscard]] const char* c_str() const noexcept</td>
+      <td>Forwards to <a href="to-char-array.html"><code>ToCharArray</code></a>.</td></tr>
+  <tr><td><a href="length.html"><code>Length</code></a></td>
+      <td class="sig">[[nodiscard]] Index Length() const noexcept</td>
+      <td>Characters excluding the terminator — one less than the buffer's size.</td></tr>
+  <tr><td><a href="is-empty.html"><code>IsEmpty</code></a></td>
+      <td class="sig">[[nodiscard]] bool IsEmpty() const noexcept</td>
+      <td><code>Length() == 0</code>.</td></tr>
+  <tr><td><a href="hash-code.html"><code>HashCode</code></a></td>
+      <td class="sig">[[nodiscard]] Index HashCode() const noexcept</td>
+      <td>The cached hash, not a recomputation — current only if no raw-pointer write intervened.</td></tr>
+  <tr><td><a href="clone.html"><code>Clone</code></a></td>
+      <td class="sig">[[nodiscard]] String Clone() const noexcept</td>
+      <td>A genuine deep copy, even from a shared buffer.</td></tr>
+  <tr><td><a href="sub-string.html"><code>SubString</code></a></td>
+      <td class="sig">[[nodiscard]] String SubString(Index startIndex, Index endIndex = InvalidIndex) const noexcept</td>
+      <td>Range-clamped slice; out-of-range ends clamp, an empty range gives an empty string.</td></tr>
+  <tr><td><a href="contains-at.html"><code>ContainsAt</code></a></td>
+      <td class="sig">[[nodiscard]] bool ContainsAt(const String&amp; keyword, Index startIndex) const noexcept</td>
+      <td>The primitive every search builds on: does the keyword sit exactly here.</td></tr>
+  <tr><td><a href="find.html"><code>Find</code></a> <span class="badge">4 overloads</span></td>
+      <td class="sig">Index Find(const TChar ch) const noexcept<br>Index Find(const Array&lt;TChar&gt;&amp; chs) const noexcept<br>Index Find(const String&amp; keyword) const noexcept<br>Index Find(const String&amp; keyword, Index startIndex, Index endIndex = InvalidIndex) const noexcept</td>
+      <td>First occurrence of a character, any-of-a-set, or substring within an optional range; absent returns <code>Length()</code>.</td></tr>
+  <tr><td><a href="find-last.html"><code>FindLast</code></a></td>
+      <td class="sig">[[nodiscard]] Index FindLast(const TChar ch) const noexcept</td>
+      <td>Last occurrence of a character; absent returns <code>Length()</code>.</td></tr>
+  <tr><td><a href="is-valid-index.html"><code>IsValidIndex</code></a></td>
+      <td class="sig">[[nodiscard]] bool IsValidIndex(Index index) const noexcept</td>
+      <td><code>index &lt; Length()</code> — the guard the range APIs clamp with.</td></tr>
+  <tr><td><a href="starts-with.html"><code>StartsWith</code></a> <span class="badge">2 overloads</span></td>
+      <td class="sig">bool StartsWith(const TChar ch) const noexcept<br>bool StartsWith(const String&amp; header) const noexcept</td>
+      <td>First character, or <code>ContainsAt(header, 0)</code>.</td></tr>
+  <tr><td><a href="ends-with.html"><code>EndsWith</code></a> <span class="badge">2 overloads</span></td>
+      <td class="sig">bool EndsWith(const TChar ch) const noexcept<br>bool EndsWith(const String&amp; tail) const noexcept</td>
+      <td>Last character, or the tail compared at <code>Length() - tail.Length()</code>.</td></tr>
+  <tr><td><a href="contains.html"><code>Contains</code></a></td>
+      <td class="sig">[[nodiscard]] bool Contains(const String&amp; keyword) const noexcept</td>
+      <td><code>Find(keyword) &lt; Length()</code> — the "not found" value makes this the idiom.</td></tr>
+  <tr><td><a href="append.html"><code>Append</code></a> <span class="badge">5 overloads</span></td>
+      <td class="sig">String Append(const TChar letter) const noexcept<br>String Append(const int value) const noexcept<br>String Append(const float value) const noexcept<br>String Append(const TChar* text) const noexcept<br>String Append(const String&amp; string) const noexcept</td>
+      <td>A new string with the piece added; the receiver is untouched.</td></tr>
+  <tr><td><a href="append-self.html"><code>AppendSelf</code></a> <span class="badge">5 overloads</span></td>
+      <td class="sig">void AppendSelf(const TChar letter) noexcept<br>void AppendSelf(const int value) noexcept<br>void AppendSelf(const float value) noexcept<br>void AppendSelf(const TChar* text) noexcept<br>void AppendSelf(const String&amp; string) noexcept</td>
+      <td>The same pieces appended in place, growing the buffer 1.5× when needed.</td></tr>
+  <tr><td><a href="replace.html"><code>Replace</code></a></td>
+      <td class="sig">[[nodiscard]] String Replace(const String&amp; from, const String&amp; to, Index offset = 0,<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Index endIndex = InvalidIndex) const noexcept</td>
+      <td>First occurrence within <code>[offset, endIndex)</code> swapped for <code>to</code>; not found returns a clone.</td></tr>
+  <tr><td><a href="replace-all.html"><code>ReplaceAll</code></a> <span class="badge">2 overloads</span></td>
+      <td class="sig">[[nodiscard]] String ReplaceAll(char from, char to) const noexcept<br>[[nodiscard]] String ReplaceAll(String from, String to) const noexcept</td>
+      <td>Every occurrence mapped; the string form replaces in place while scanning.</td></tr>
+  <tr><td><a href="trim.html"><code>Trim</code></a></td>
+      <td class="sig">[[nodiscard]] String Trim() const noexcept</td>
+      <td>Whitespace off both ends, via <code>Letter::IsGenuineLetter</code>; all-whitespace gives an empty string.</td></tr>
+  <tr><td><a href="head.html"><code>Head</code></a></td>
+      <td class="sig">[[nodiscard]] String Head() const noexcept</td>
+      <td>Everything before the first whitespace — the first word.</td></tr>
+  <tr><td><a href="except-head.html"><code>ExceptHead</code></a></td>
+      <td class="sig">[[nodiscard]] String ExceptHead() const noexcept</td>
+      <td>Everything from the first whitespace on; empty when there is none.</td></tr>
+  <tr><td><a href="get-buffer.html"><code>GetBuffer</code></a> <span class="badge">2 overloads</span></td>
+      <td class="sig">[[nodiscard]] TChar* GetBuffer() noexcept<br>[[nodiscard]] const TChar* GetBuffer() const noexcept</td>
+      <td>The raw buffer — writes through it bypass the terminator discipline and the cached hash.</td></tr>
+  <tr><td><a href="reset-buffer.html"><code>ResetBuffer</code></a></td>
+      <td class="sig">void ResetBuffer(size_t size) noexcept</td>
+      <td>Reserve <code>size + 1</code>, then empty with a single terminator.</td></tr>
+  <tr><td><a href="swap.html"><code>Swap</code></a></td>
+      <td class="sig">void Swap(String&amp;&amp; target) noexcept</td>
+      <td>Exchanges buffer and hash with <code>target</code>; the rvalue-ref parameter demands <code>std::move</code> at the call site.</td></tr>
+  <tr><td><a href="to-lower-case.html"><code>ToLowerCase</code></a></td>
+      <td class="sig">void ToLowerCase() noexcept</td>
+      <td>In place, ASCII-only, hash recomputed.</td></tr>
+  <tr><td><a href="get-lower-case.html"><code>GetLowerCase</code></a></td>
+      <td class="sig">[[nodiscard]] String GetLowerCase() const noexcept</td>
+      <td><code>Clone</code> then <code>ToLowerCase</code> — the building form.</td></tr>
+  <tr><td><a href="to-upper-case.html"><code>ToUpperCase</code></a></td>
+      <td class="sig">void ToUpperCase() noexcept</td>
+      <td>In place, ASCII-only, hash recomputed.</td></tr>
+  <tr><td><a href="get-upper-case.html"><code>GetUpperCase</code></a></td>
+      <td class="sig">[[nodiscard]] String GetUpperCase() const noexcept</td>
+      <td><code>Clone</code> then <code>ToUpperCase</code>.</td></tr>
+  <tr><td><a href="to-char-array.html"><code>ToCharArray</code></a></td>
+      <td class="sig">[[nodiscard]] const char* ToCharArray() const noexcept</td>
+      <td>The buffer's characters, or <code>""</code> when there is no buffer.</td></tr>
+  <tr><td><a href="to-char.html"><code>ToChar</code></a></td>
+      <td class="sig">[[nodiscard]] char ToChar() const noexcept</td>
+      <td>First character, or <code>'\0'</code> when empty.</td></tr>
+  <tr><td><a href="to-unsigned-char.html"><code>ToUnsignedChar</code></a></td>
+      <td class="sig">[[nodiscard]] char ToUnsignedChar() const noexcept</td>
+      <td>First character narrowed through <code>unsigned char</code> — the return type is still <code>char</code>.</td></tr>
+  <tr><td><a href="to-int.html"><code>ToInt</code></a></td>
+      <td class="sig">[[nodiscard]] int ToInt() const noexcept</td>
+      <td><code>std::stoi</code> on the buffer — throws on garbage, and <code>noexcept</code> turns that into termination.</td></tr>
+  <tr><td><a href="to-unsigned-int.html"><code>ToUnsignedInt</code></a></td>
+      <td class="sig">[[nodiscard]] unsigned int ToUnsignedInt() const noexcept</td>
+      <td><code>std::stoul</code>, narrowed to <code>unsigned int</code>.</td></tr>
+  <tr><td><a href="to-long.html"><code>ToLong</code></a></td>
+      <td class="sig">[[nodiscard]] long ToLong() const noexcept</td>
+      <td><code>std::stol</code>.</td></tr>
+  <tr><td><a href="to-unsigned-long.html"><code>ToUnsignedLong</code></a></td>
+      <td class="sig">[[nodiscard]] unsigned long ToUnsignedLong() const noexcept</td>
+      <td><code>std::stoul</code>.</td></tr>
+  <tr><td><a href="to-long-long.html"><code>ToLongLong</code></a></td>
+      <td class="sig">[[nodiscard]] long long ToLongLong() const noexcept</td>
+      <td><code>std::stoll</code>.</td></tr>
+  <tr><td><a href="to-unsigned-long-long.html"><code>ToUnsignedLongLong</code></a></td>
+      <td class="sig">[[nodiscard]] unsigned long long ToUnsignedLongLong() const noexcept</td>
+      <td><code>std::stoull</code>.</td></tr>
+  <tr><td><a href="to-float.html"><code>ToFloat</code></a></td>
+      <td class="sig">[[nodiscard]] float ToFloat() const noexcept</td>
+      <td><code>std::stof</code>.</td></tr>
+  <tr><td><a href="to-double.html"><code>ToDouble</code></a></td>
+      <td class="sig">[[nodiscard]] double ToDouble() const noexcept</td>
+      <td><code>std::stod</code>.</td></tr>
+  <tr><td><a href="to-long-double.html"><code>ToLongDouble</code></a></td>
+      <td class="sig">[[nodiscard]] long double ToLongDouble() const noexcept</td>
+      <td><code>std::stold</code>.</td></tr>
+  <tr><td><a href="to-pointer.html"><code>ToPointer</code></a></td>
+      <td class="sig">[[nodiscard]] void* ToPointer() const noexcept</td>
+      <td>Parses the text as <em>hexadecimal</em> (<code>std::stoull</code>, base 16) and reinterprets.</td></tr>
+  <tr><td><a href="parse-key-value.html"><code>ParseKeyValue</code></a></td>
+      <td class="sig">void ParseKeyValue(String&amp; outKey, String&amp; outValue) noexcept</td>
+      <td>Splits at the first <code>=</code> and trims both halves; no separator means key = whole string, value empty.</td></tr>
+  <tr><td><a href="calculate-hash-code.html"><code>CalculateHashCode</code></a></td>
+      <td class="sig">void CalculateHashCode() noexcept</td>
+      <td>Private. Recomputes the cached djb2 hash — the call the mutating methods make and a raw-pointer writer cannot.</td></tr>
+</table>
+
+<h2 id="non-member">Non-member helpers</h2>
+
+<p>None declared in the header; the free operations on text are
+<a href="../StringUtil/index.html">StringUtil</a>'s.</p>
+
+<h2 id="coverage">Coverage</h2>
+
+<p>
+  Every declared member has a page, including the private <code>CalculateHashCode</code>. Claims verified
+  beyond the header text: the const-source copy path (a compile probe against the engine headers, quoted on
+  <a href="constructors.html"><code>constructors</code></a>), and the search "not found" value, which the
+  test collection exercises. The numeric constructors' exact formatting — <code>%d</code>, <code>%f</code>,
+  <code>%p</code> and friends — is stated per overload on the constructors page from the definitions in
+  <code>Engine/String/String.cpp</code>.
+</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; String</a></span>
+  <span><a href="index.html#methods">All String methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>
