@@ -44,4 +44,5 @@ Clean already: Config (docs), Core (docs), HSTL, Engine, Log (docs), Resource.
 - Blank-line/include debt is `[DEBT]`-gated tree-wide but hard-fails scoped runs; absorbed by each
   module's format stage (mostly Memory + OSAL).
 - Open owner decisions outside this worklist: O14 (`quoted_blocks.py` wiring), O27 (double-release
-  detection), O22 (sharded option on `wip/option-c-sharded`).
+  detection), O22 (sharded option on `wip/option-c-sharded`). RESOLVED 2026-10-25: the
+  `Letter::IsGenuineLetter` name/behaviour mismatch — renamed `IsNotWhiteSpace` (`5af48d1`).

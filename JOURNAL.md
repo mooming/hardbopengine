@@ -1,5 +1,23 @@
 # Journal
 
+## 2026-10-25 10:30 — the rename that proves which half was the contract
+
+**Cause.** The owner read the `IsGenuineLetter` finding and approved the fix: the method is
+`IsNotWhiteSpace` now.
+
+**Closed.** One call site (`String::Trim`), the header, the page file (`is-genuine-letter.html` →
+`is-not-white-space.html`), the page chrome regenerated with the new label, the class page's prominent
+mismatch note retired, and every cross-reference — the module page's code quote, the String and Trim
+pages, the sibling predicate pages. The renamed page records the rename itself, with the reason: the old
+name promised a letter test, the code tested whitespace, and the one caller needed the whitespace meaning
+— so the name was the defect and the behaviour was the contract. Changing the behaviour instead would
+have silently broken `Trim`, which is the trap the finding was written to prevent.
+
+**Verification.** Signatures verbatim (Letter, String), `docs_methods` 0, htmlcheck 124 pages,
+`quoted_blocks` 0 stale 0 unresolved, comments and blank lines and layout at 0, EngineTest 66/66. The
+commit sits above the pushed history and waits for the owner's push approval like the rest of the
+session's work.
+
 ## 2026-10-25 09:20 — the worklist closes: 147 of 147, and the gate that says so
 
 **The worklist's result.** Seven modules cycled, and the two the first measurement called "clean"
