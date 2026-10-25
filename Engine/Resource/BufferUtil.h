@@ -20,6 +20,7 @@ class FileHandle;
 
 namespace hbe
 {
+/// API reference: docs/Resource/BufferUtil/index.html
 namespace BufferUtil
 {
 using namespace BufferTypes;

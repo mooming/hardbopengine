@@ -5,6 +5,7 @@
 
 namespace hbe
 {
+/// API reference: docs/Log/ELogLevel/index.html
 enum class ELogLevel : unsigned char
 {
 	Verbose,

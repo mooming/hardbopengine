@@ -7,6 +7,7 @@
 
 namespace hbe
 {
+/// API reference: docs/Engine/EInitLevel/index.html
 enum class EInitLevel : uint8_t
 {
 	None = 0,

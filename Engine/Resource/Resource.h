@@ -10,6 +10,7 @@
 
 namespace hbe
 {
+/// API reference: docs/Resource/Resource/index.html
 class Resource final
 {
 public:

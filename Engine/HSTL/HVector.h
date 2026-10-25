@@ -11,6 +11,7 @@
 namespace hbe
 {
 template <typename T>
+/// API reference: docs/HSTL/HVector/index.html
 using HVector = std::vector<T, hbe::DefaultAllocator<T>>;
 
 template <typename T, size_t PoolSize = 16>

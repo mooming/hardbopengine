@@ -13,6 +13,7 @@ namespace hbe
 class Engine;
 class TaskSystem;
 
+/// API reference: docs/Resource/ResourceManager/index.html
 class ResourceManager final
 {
 public:

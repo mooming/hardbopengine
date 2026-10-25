@@ -26,6 +26,7 @@ class TaskStream;
 class Engine;
 class TaskSystem;
 
+/// API reference: docs/Log/Logger/index.html
 class Logger final
 {
 public:

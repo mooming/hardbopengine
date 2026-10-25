@@ -14,6 +14,7 @@
 
 namespace hbe
 {
+/// API reference: docs/Resource/BufferOutputStream/index.html
 class BufferOutputStream final
 {
 public:

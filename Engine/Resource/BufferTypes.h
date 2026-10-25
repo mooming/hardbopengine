@@ -9,6 +9,7 @@
 
 namespace hbe
 {
+/// API reference: docs/Resource/BufferTypes/index.html
 namespace BufferTypes
 {
 using TSize = size_t;

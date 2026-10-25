@@ -19,6 +19,7 @@ namespace hbe
 template <size_t, class>
 class InlineStringBuilder;
 
+/// API reference: docs/Engine/Engine/index.html
 class Engine final
 {
 public:

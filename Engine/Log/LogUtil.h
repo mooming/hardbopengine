@@ -11,6 +11,7 @@
 
 namespace hbe
 {
+/// API reference: docs/Log/LogUtil/index.html
 namespace LogUtil
 {
 using TTimePoint = std::chrono::time_point<std::chrono::steady_clock>;

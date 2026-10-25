@@ -5,6 +5,7 @@
 #include "Config/BuildConfig.h"
 #include "RenderCapabilities.h"
 
+
 namespace hbe
 {
 namespace Renderer

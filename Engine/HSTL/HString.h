@@ -10,6 +10,7 @@
 
 namespace hbe
 {
+/// API reference: docs/HSTL/HString/index.html
 using HString = std::basic_string<char, std::char_traits<char>, hbe::DefaultAllocator<char>>;
 
 template <size_t PoolSize = 128>

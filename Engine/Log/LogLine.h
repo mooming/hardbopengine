@@ -11,6 +11,7 @@
 
 namespace hbe
 {
+/// API reference: docs/Log/LogLine/index.html
 class LogLine final
 {
 public:

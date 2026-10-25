@@ -9,6 +9,7 @@
 
 namespace hbe
 {
+/// API reference: docs/Resource/Buffer/index.html
 class Buffer final
 {
 public:

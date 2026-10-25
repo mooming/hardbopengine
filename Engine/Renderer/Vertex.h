@@ -6,6 +6,7 @@
 #include "Math/Vector3.h"
 #include "Math/Vector4.h"
 
+
 namespace hbe::Renderer
 {
 /// API reference: docs/Renderer/Vertex/index.html
