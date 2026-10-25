@@ -1,5 +1,34 @@
 # Journal
 
+## 2026-10-25 22:30 — O27 closed the only way a header-less design can be: the state moved into the page
+
+**Cause.** The owner's proposal: a released page, protected, is its own "freed" record — so a probe read
+at release time detects a double release with no bitmap and no second source of truth. The discussion
+that followed (stomp allocation, Electric Fence, page-heap, and what the MMU's page granularity does and
+does not buy) ended in a design the owner approved.
+
+**Closed in this round.** The investigation mode of SystemAllocator grew two-sided guard pages: the
+mapping is `pageCount + 2` pages, first and last protected at allocation, and the existing
+`MEMORY_BUFFER_UNDERRUN_CHECK_ENABLED` placement selector now chooses which side of a sub-page allocation
+is watched at one-byte resolution — front placement puts the leading guard at `ptr[-1]`, end placement
+puts the trailing guard at `ptr[nBytes]`, and a page-multiple size gets both. In
+`MEMORY_DANGLING_POINTER_CHECK_ENABLED` mode the release probes one volatile byte before reporting: a live
+allocation answers silently, a freed one faults at the probing call, because the mapping is never returned
+to the OS and the protection bit is the freed state. The three investigation switches joined the
+feature-macro proof — 144 files compile with all five macros on — so a dormant mode can no longer rot
+uncompiled. `docs/design/SystemAllocatorInvestigation_Design.html` records the mechanism, the resolution
+trade (page on the unselected side), the probe's blind window (release-after-reuse is the stale-pointer
+class, which needs generations), and the costs that keep every switch at 0.
+
+**The proof the gate gave for itself.** The newly wired quoted-blocks check caught a real defect on its
+first full run: `docs/OSAL/OSMemory/virtual-alloc.html` quoted AllocateBytes' old geometry — the page was
+stale because the code changed under it. One line fixed; the gate's first catch and its purpose,
+demonstrated in the same hour it was wired.
+
+**Verification.** The feature-macro proof at 144 clean; build 12/12 and 66/66 testlets per
+configuration; quoted blocks, signatures, htmlcheck, comments, blank lines and layout all at 0; the
+final gate's verdict is read after this entry.
+
 ## 2026-10-25 12:30 — O14 wired: the tree's quotations now answer to the gate
 
 **Cause.** The owner resolved O14's standing question with "triage-then-wire": the 102-finding backlog
