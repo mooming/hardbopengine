@@ -81,11 +81,12 @@
 <pre><code>if (const auto now = std::chrono::duration_cast&lt;std::chrono::nanoseconds&gt;(time::ElapsedSinceEngineEpoch());
         drainPolicy.IsOverAge(workItem-&gt;offerTime, now))
 {
-    agedOutWorkCount.fetch_add(1, std::memory_order_relaxed);
-    ReportAgedOutWorkItem(*workItem, now - workItem-&gt;offerTime);
-    FireAbandonedNotice(*workItem);
-    restore();
-    return true;
+        agedOutWorkCount.fetch_add(1, std::memory_order_relaxed);
+        ReportAgedOutWorkItem(*workItem, now - workItem-&gt;offerTime);
+        FireAbandonedNotice(*workItem);
+        restore();
+
+        return true;
 }</code></pre>
 
 <p class="meta">From Engine/Core/TaskStream.cpp, TaskStream::Update()</p>

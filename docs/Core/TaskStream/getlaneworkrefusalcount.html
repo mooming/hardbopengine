@@ -74,7 +74,7 @@
 
 <pre><code>if (lane == StreamDrainPolicy::ELane::None &amp;&amp; (!fifoQueue.IsEmpty() || !priorityQueue.IsEmpty()))
 {
-    laneWorkRefusals.fetch_add(1, std::memory_order_relaxed);
+        laneWorkRefusals.fetch_add(1, std::memory_order_relaxed);
 }</code></pre>
 
 <p class="meta">From Engine/Core/TaskStream.cpp, TaskStream::Update()</p>

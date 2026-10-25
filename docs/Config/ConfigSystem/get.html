@@ -115,11 +115,15 @@
 
 <p>The engine's own use: take the reference once at the top of the block, then use it.</p>
 
-<pre><code><span class="kw">auto</span>&amp; configSys = hbe::ConfigSystem::<span class="fn">Get</span>();
+<pre><code>{
+        <span class="kw">auto</span>&amp; configSys = ConfigSystem::<span class="fn">Get</span>();
 
-<span class="cm">// … a debug-only SetByte pair elided here …</span>
-
-configSys.<span class="fn">PrintAllParameters</span>();</code></pre>
+        <span class="kw">auto</span>&amp; staticStrTable = StaticStringTable::<span class="fn">GetInstance</span>();
+        staticStrTable.<span class="fn">PrintStringTable</span>();
+        configSys.<span class="fn">PrintAllParameters</span>();
+        statistics.<span class="fn">Print</span>();
+        statistics.<span class="fn">PrintAllocatorProfiles</span>();
+}</code></pre>
 
 <p class="meta">From Engine/Engine/Engine.cpp, <code>hbe::Engine::ShutDown</code></p>
 

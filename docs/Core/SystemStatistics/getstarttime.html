@@ -104,14 +104,13 @@ auto minutes = chrono::duration_cast&lt;chrono::minutes&gt;(diff);</code></pre>
 <h2 id="example">Examples</h2>
 
 <pre><code>statistics.IncEngineLogCount();
-
 {
-    std::lock_guard lock(logLock);
+        std::lock_guard lock(logLock);
 
-    if (levelAsValue &gt;= CPEnginePrintLogLevel.Get())
-    {
-        std::stringstream ss;
-        ss &lt;&lt; '[' &lt;&lt; intHours &lt;&lt; ':' &lt;&lt; intMins &lt;&lt; ':' &lt;&lt; intSecs &lt;&lt; '.' &lt;&lt; intMSecs &lt;&lt; "] ";</code></pre>
+        if (levelAsValue &gt;= CPEnginePrintLogLevel.Get())
+        {
+                std::stringstream ss;
+                ss &lt;&lt; '[' &lt;&lt; intHours &lt;&lt; ':' &lt;&lt; intMins &lt;&lt; ':' &lt;&lt; intSecs &lt;&lt; '.' &lt;&lt; intMSecs &lt;&lt; "] ";</code></pre>
 
 <p class="meta">From Engine/Engine/Engine.cpp, Engine::Log()</p>
 

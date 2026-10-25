@@ -112,16 +112,16 @@
 <h2 id="example">Examples</h2>
 
 <pre><code>case ComponentState::SLEEP:
-    compo.OnDisable();
-    sleepList.push_back(std::move(compo));
-    break;
+        compo.OnDisable();
+        sleepList.push_back(std::move(compo));
+        break;
 
 case ComponentState::DEAD:
-    compo.SetState(ComponentState::SLEEP);
-    compo.OnDisable();
-    compo.SetState(ComponentState::DEAD);
-    compo.Release();
-    break;</code></pre>
+        compo.SetState(ComponentState::SLEEP);
+        compo.OnDisable();
+        compo.SetState(ComponentState::DEAD);
+        compo.Release();
+        break;</code></pre>
 
 <p class="meta">From Engine/Core/ComponentSystem.h, ComponentSystem::ProcessTransition()</p>
 

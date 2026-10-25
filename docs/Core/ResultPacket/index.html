@@ -68,7 +68,7 @@
 <pre><code>static_assert(SizeBytes == 128, "A result packet must be the 128 bytes the design fixed");
 static_assert(HeaderBytes &gt; DestinationByteIndex, "The header must be wide enough to hold both decided fields");</code></pre>
 
-<p class="meta">From Engine/Core/ResultPacket.h, hbe::ResultPacket</p>
+<p class="meta">From Engine/Core/ResultPacket.h — the two <code>static_assert</code>s at class scope.</p>
 
 <p>
   Two more assertions sit at file scope after the namespace closes:

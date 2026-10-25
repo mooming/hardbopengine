@@ -108,16 +108,19 @@ return index;</code></pre>
 <p class="note">Illustrative — the only call site is inside the class itself.</p>
 
 <pre><code>const auto index = GetIndex(availables);
-if (unlikely(index &gt; numberOfBlocks))
+if (unlikely(index &gt;= numberOfBlocks))
 {
-	…
+	auto&amp; mmgr = MemoryManager::GetInstance();
+	mmgr.LogError([ptr](auto&amp; logStream) { logStream &lt;&lt; ptr &lt;&lt; " is not alloacted by this."; });
+
+	return;
 }</code></pre>
 
 <p class="meta">From Engine/Memory/PoolAllocator.cpp, PoolAllocator::Deallocate(Pointer ptr, size_t size)</p>
 
 <p>
   The real use, quoted from its only caller: the index of the free-list head is compared against the block count, and a head that
-  names a block past the end is taken as evidence the free list itself has been damaged — the corruption report
+  names a block at or past the end is taken as evidence the free list itself has been damaged — the corruption report
   <a href="deallocate.html">Deallocate</a> describes.
 </p>
 <footer class="prevnext">

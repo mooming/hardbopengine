@@ -83,11 +83,11 @@ public:
   <strong>Construction is an ordering step as much as an initialization step.</strong>
 </div>
 
-<pre><code>startTime(time::TStopWatch::now())
-    , currentTime(startTime)
+<pre><code>	, startTime(time::TStopWatch::now())
+	, currentTime(startTime)
 {
-    Assert(engine.IsMemoryManagerReady());
-    engine.SetSystemStatisticsReady();
+	Assert(engine.IsMemoryManagerReady());
+	engine.SetSystemStatisticsReady();
 }</code></pre>
 
 <p class="meta">From Engine/Core/SystemStatistics.cpp, SystemStatistics::SystemStatistics()</p>

@@ -125,8 +125,8 @@
 
 <p>Every parameter this can read is registered in the form below; the read itself has no live call site.</p>
 
-<pre><code><span class="kw">static</span> hbe::TAtomicConfigParam&lt;<span class="ty">uint8_t</span>&gt; CPLogLevel(<span class="st">"Log.Level"</span>, <span class="st">"The Default Log Level"</span>,
-                                                  <span class="kw">static_cast</span>&lt;<span class="ty">uint8_t</span>&gt;(ELogLevel::Info));
+<pre><code><span class="kw">static</span> TAtomicConfigParam&lt;<span class="ty">uint8_t</span>&gt; CPLogLevel(<span class="st">"Log.Level"</span>, <span class="st">"The Default Log Level"</span>,
+                                                                                          <span class="kw">static_cast</span>&lt;<span class="ty">uint8_t</span>&gt;(ELogLevel::Info));
 
 <span class="kw">if</span> (level &lt; <span class="kw">static_cast</span>&lt;ELogLevel&gt;(CPLogLevel.<span class="fn">Get</span>()))
 {

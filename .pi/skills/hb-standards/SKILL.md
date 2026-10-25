@@ -450,6 +450,7 @@ was wired into `check.sh` for a while, and the gap is exactly the failure it was
 | Coverage | does every namespace-scope entry own a page, and does the module index link it | `docs_coverage.py check <Module>` | `[DEBT]` — unauthored work |
 | Method pages | does every declared method own a page of its own | `docs_methods.py <Module>` | `[DEBT]` — unauthored work |
 | Validity | does every page parse, link something real, and use a class the CSS declares | `htmlcheck.py <page ...>` | `[FAIL]` — a defect in what exists |
+| Quotations | does every quoted code block still match the source it names, and does every caption resolve to one definition | `quoted_blocks.py docs/<Module>` | `[FAIL]` — a defect in what exists (wired 2026-10-25, owner decision O14: triage-then-wire; the tree's 102-finding backlog was triaged to zero first) |
 
 A page that exists and is broken is a violation, not remaining work: an undeclared CSS class or a dead
 anchor is a bug in what was just written, and the reader meets it before anyone reads the ledger.

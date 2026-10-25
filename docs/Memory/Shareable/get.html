@@ -102,7 +102,8 @@ returned by reference, with a <code>const</code> overload that follows the handl
 
 <pre><code>	auto&amp; buf = buffer.Get();
 	const auto index = buf.size();
-	buf.resize(index + 2); // room for the letter + trailing null terminator</code></pre>
+	buf.resize(index + 2);
+	buf.data()[index] = letter;</code></pre>
 
 <p class="meta">From Engine/String/String.cpp, String::AppendSelf(const TChar letter)</p>
 

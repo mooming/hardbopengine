@@ -159,8 +159,8 @@
         engine.<span class="fn">FlushLog</span>();
 }</code></pre>
 
-<p class="meta">From Engine/Core/Debug.cpp — called by <code>Assert</code> and <code>FatalAssert</code> before
-<code>std::abort()</code>.</p>
+<p class="meta">From Engine/Core/Debug.cpp, hbe::FlushLogs — called by <code>Assert</code> and
+<code>FatalAssert</code> immediately before they abort.</p>
 
 <p>
   From application code the use is the same one an assertion makes: you are about to leave in a hurry, and the buffered lines have to be on disk

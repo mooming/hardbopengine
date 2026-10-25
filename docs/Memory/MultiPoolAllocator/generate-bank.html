@@ -71,9 +71,18 @@
 
 	InlineStringBuilder&lt;1024&gt; str;
 	str &lt;&lt; name &lt;&lt; '_' &lt;&lt; blockSize &lt;&lt; '_' &lt;&lt; numberOfBlocks;
+
+#if PROFILE_ENABLED
+	size_t incCapacity = 0;
+#endif // PROFILE_ENABLED
 	{
 		AllocatorScope allocScope(parentID);
 		banks.emplace_back(str.c_str(), blockSize, numberOfBlocks);
+
+#if PROFILE_ENABLED
+		incCapacity = banks.back().GetCapacity();
+#endif // PROFILE_ENABLED
+
 		std::sort(banks.begin(), banks.end());
 	}</code></pre>
 
@@ -83,8 +92,8 @@
   The bank's backing buffer is one request to the parent allocator, made inside that scope
   (<code>PoolAllocator::PoolAllocator()</code> calls <code>mmgr.Allocate(totalSize)</code>), and the bank registers
   itself with the manager under the composite name <code>name_blockSize_numberOfBlocks</code>. After the block, a
-  <code>Verbose</code> log line names the bank, and a profiling build adds
-  <code>blockSize * numberOfBlocks</code> to this allocator's registered capacity.
+  <code>Verbose</code> log line names the bank, and a profiling build adds the new bank's capacity
+  (<code>banks.back().GetCapacity()</code>) to this allocator's registered capacity.
 </p>
 
 <table>

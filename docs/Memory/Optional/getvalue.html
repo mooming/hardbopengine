@@ -133,7 +133,8 @@ const TType&amp; GetValue(False_t) const</code></pre>
 
 <pre><code>return reinterpret_cast&lt;TType&amp;&gt;(value[0]);</code></pre>
 
-<p class="meta">From Engine/Memory/Optional.h, Optional::GetValue(False_t)</p>
+<p class="meta">From Engine/Memory/Optional.h — the non-const of the two <code>GetValue(False_t)</code> overloads; the const form
+beside it differs only in the reference it returns.</p>
 
 <p>
   Its reference-type counterpart checks the pointer first and then dereferences it. Both are called through

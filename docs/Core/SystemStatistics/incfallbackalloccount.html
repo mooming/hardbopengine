@@ -90,9 +90,9 @@
 
 <pre><code>void* MultiPoolAllocator::NewBankAllocate(size_t size)
 {
-    auto&amp; engine = Engine::Get();
-    auto&amp; statistics = engine.GetStatistics();
-    statistics.IncFallbackAllocCount();</code></pre>
+        auto&amp; engine = Engine::Get();
+        auto&amp; statistics = engine.GetStatistics();
+        statistics.IncFallbackAllocCount();</code></pre>
 
 <p class="meta">From Engine/Memory/MultiPoolAllocator.cpp, MultiPoolAllocator::NewBankAllocate()</p>
 <footer class="prevnext">

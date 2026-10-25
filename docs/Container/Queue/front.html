@@ -73,7 +73,8 @@ const TElement&amp; Front() const noexcept</code></pre>
 
 	return data[head];
 }</code></pre>
-<p class="meta">From Engine/Container/Deque.h, Deque::Front()</p>
+<p class="meta">From Engine/Container/Deque.h — the non-const <code>Front</code> overload; the const form beside it
+has the same body.</p>
 
 <p>
   So calling <code>Front()</code> on an empty queue stops the process. The reference stays valid until the queue changes

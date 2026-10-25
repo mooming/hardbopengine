@@ -99,7 +99,7 @@
 
 	return len;</code></pre>
 
-<p class="meta">From Engine/Memory/MultiPoolAllocator.cpp, MultiPoolAllocator::GetBankIndex(size_t)</p>
+<p class="meta">From Engine/Memory/MultiPoolAllocator.cpp, MultiPoolAllocator::GetBankIndex(size_t nBytes)</p>
 
 <p>
   The pointer overload answers who owns this block, and can only answer it by asking everyone:
@@ -119,7 +119,7 @@
 
 	return index;</code></pre>
 
-<p class="meta">From Engine/Memory/MultiPoolAllocator.cpp, MultiPoolAllocator::GetBankIndex(void*)</p>
+<p class="meta">From Engine/Memory/MultiPoolAllocator.cpp, MultiPoolAllocator::GetBankIndex(void* ptr)</p>
 
 <p>
   <code>PoolAllocator::IsMine</code> is a range test against the bank's buffer

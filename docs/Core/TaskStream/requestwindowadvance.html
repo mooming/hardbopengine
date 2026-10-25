@@ -75,8 +75,8 @@
 
 <pre><code>if (windowAdvanceRequested.exchange(false, std::memory_order_relaxed))
 {
-    budget.Reset();
-    drainPolicy.EndRound();
+        budget.Reset();
+        drainPolicy.EndRound();
 }</code></pre>
 
 <p class="meta">From Engine/Core/TaskStream.cpp, TaskStream::Update()</p>
@@ -99,7 +99,7 @@
 
 <pre><code>for (auto&amp; stream : streams)
 {
-    stream.RequestWindowAdvance();
+        stream.RequestWindowAdvance();
 }</code></pre>
 
 <p class="meta">From Engine/Core/TaskSystem.cpp, TaskSystem::RunBudgetWindowPass()</p>

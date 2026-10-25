@@ -196,7 +196,7 @@
 	allocator-&gt;Deallocate(ptr, size);
 };</code></pre>
 
-<p class="meta">From Engine/Memory/StackAllocator.cpp, StackAllocator::StackAllocator()</p>
+<p class="meta">From Engine/Memory/StackAllocator.cpp, StackAllocator::StackAllocator(char* name, SizeType inCapacity)</p>
 
 <p>
   No engine or application source calls <code>Deallocate</code> on a stack allocator by name; this lambda, handed to

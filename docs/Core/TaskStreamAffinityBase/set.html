@@ -106,8 +106,9 @@ value = value &amp; mask;</code></pre>
 <pre><code>auto&amp; affinity = workItem.affinity;
 if (!affinity.Get(streamIndex))
 {
-    affinity.Set(streamIndex);
-    return;
+        affinity.Set(streamIndex);
+
+        return;
 }</code></pre>
 
 <p class="meta">From Engine/Core/TaskSystem.cpp, TaskSystem::Dequeue()</p>

@@ -79,7 +79,7 @@
 
 <pre><code>if (auto applied = budget.ApplyRequestedAllowance(); applied.has_value())
 {
-    drainPolicy.ConfigureAllowance(*applied);
+        drainPolicy.ConfigureAllowance(*applied);
 }</code></pre>
 
 <p class="meta">From Engine/Core/TaskStream.cpp, TaskStream::Update()</p>

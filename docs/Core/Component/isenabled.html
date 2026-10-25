@@ -96,16 +96,16 @@
 
 <pre><code>for (auto&amp; compo : updateList)
 {
-    compo.Update(deltaTime);
+        compo.Update(deltaTime);
 
-    if (!compo.IsEnabled())
-    {
-        transitionList.push_back(std::move(compo));
-    }
-    else
-    {
-        swapUpdateList.push_back(std::move(compo));
-    }
+        if (!compo.IsEnabled())
+        {
+                transitionList.push_back(std::move(compo));
+        }
+        else
+        {
+                swapUpdateList.push_back(std::move(compo));
+        }
 }</code></pre>
 
 <p class="meta">From Engine/Core/ComponentSystem.h, ComponentSystem::ProcessUpdate()</p>

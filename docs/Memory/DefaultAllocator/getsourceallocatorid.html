@@ -71,7 +71,8 @@ explicit DefaultAllocator(const DefaultAllocator&lt;TOther&gt;&amp; rhs) noexcep
 {
 }</code></pre>
 
-<p class="meta">From Engine/Memory/DefaultAllocator.h, DefaultAllocator::DefaultAllocator(const DefaultAllocator&lt;TOther&gt;&amp;)</p>
+<p class="meta">From Engine/Memory/DefaultAllocator.h — the converting constructor, the one caller
+<code>GetSourceAllocatorID</code> has.</p>
 
 <p>
   That constructor is what every type-changing copy of an allocator goes through, and the standard library performs such copies

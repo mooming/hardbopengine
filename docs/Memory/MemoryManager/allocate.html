@@ -131,9 +131,10 @@ slot: the manager knows nothing about the strategy on the other end.
 
 <pre><code>auto&amp; mmgr = MemoryManager::GetInstance();
 buffer = static_cast&lt;Byte*&gt;(mmgr.Allocate(totalSize));
-availables = &amp;buffer[0];</code></pre>
+…
+availables = buffer;</code></pre>
 
-<p class="meta">From Engine/Memory/PoolAllocator.cpp, PoolAllocator::PoolAllocator()</p>
+<p class="meta">From Engine/Memory/PoolAllocator.cpp, PoolAllocator::PoolAllocator(char* inName, TSize inBlockSize, TSize inNumberOfBlocks)</p>
 
 <p>
 A pool's own backing buffer, allocated from whatever scope was current when the pool was constructed — which is why the pool

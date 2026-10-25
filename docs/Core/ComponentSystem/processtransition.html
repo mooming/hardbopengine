@@ -68,22 +68,22 @@
 
 <pre><code>switch (compo.GetState())
 {
-    case ComponentState::ALIVE:
-        compo.OnEnable();
-        updateList.push_back(std::move(compo));
-        break;
+        case ComponentState::ALIVE:
+                compo.OnEnable();
+                updateList.push_back(std::move(compo));
+                break;
 
-    case ComponentState::SLEEP:
-        compo.OnDisable();
-        sleepList.push_back(std::move(compo));
-        break;
+        case ComponentState::SLEEP:
+                compo.OnDisable();
+                sleepList.push_back(std::move(compo));
+                break;
 
-    case ComponentState::DEAD:
-        compo.SetState(ComponentState::SLEEP);
-        compo.OnDisable();
-        compo.SetState(ComponentState::DEAD);
-        compo.Release();
-        break;</code></pre>
+        case ComponentState::DEAD:
+                compo.SetState(ComponentState::SLEEP);
+                compo.OnDisable();
+                compo.SetState(ComponentState::DEAD);
+                compo.Release();
+                break;</code></pre>
 
 <p class="meta">From Engine/Core/ComponentSystem.h, ComponentSystem::ProcessTransition()</p>
 
@@ -113,11 +113,11 @@
 </div>
 
 <pre><code>default:
-    Assert(false,
-           "Unexpected component state %d on processing "
-           "transition.\n",
-           compo.GetState());
-    break;</code></pre>
+        Assert(false,
+                   "Unexpected component state %d on processing "
+                   "transition.\n",
+                   compo.GetState());
+        break;</code></pre>
 
 <p class="meta">From Engine/Core/ComponentSystem.h, ComponentSystem::ProcessTransition()</p>
 

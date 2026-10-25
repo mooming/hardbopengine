@@ -103,11 +103,11 @@
 
 <pre><code>if (!compo.IsEnabled())
 {
-    transitionList.push_back(std::move(compo));
+        transitionList.push_back(std::move(compo));
 }
 else
 {
-    swapUpdateList.push_back(std::move(compo));
+        swapUpdateList.push_back(std::move(compo));
 }
 ...
 std::swap(updateList, swapUpdateList);

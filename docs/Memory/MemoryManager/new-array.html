@@ -61,18 +61,28 @@
 <h2 id="description">Function description</h2>
 
 <p>
-Defined in the class body of <code>Engine/Memory/MemoryManager.h</code>: one block big enough for <code>size</code> elements, then
-<code>size</code> constructions in ascending address order, then the block pointer.
+Defined in the class body of <code>Engine/Memory/MemoryManager.h</code>: one block big enough for <code>size</code> elements —
+a failed allocation asserts and returns null — then <code>size</code> constructions in ascending address order, then the
+block pointer.
 </p>
 
-<pre><code>auto ptr = AllocateByType&lt;Type&gt;(size);
-
-for (Index i = 0; i &lt; size; ++i)
+<pre><code>Type* NewArray(Index size, Types&amp;&amp;... args)
 {
-	new (&amp;ptr[i]) Type(std::forward&lt;Types&gt;(args)...);
-}
+	auto ptr = AllocateByType&lt;Type&gt;(size);
+	if (unlikely(ptr == nullptr))
+	{
+		Assert(false, "MemoryManager::NewArray: the allocation failed, so the array cannot be constructed.");
 
-return ptr;</code></pre>
+		return nullptr;
+	}
+
+	for (Index i = 0; i &lt; size; ++i)
+	{
+		new (&amp;ptr[i]) Type(std::forward&lt;Types&gt;(args)...);
+	}
+
+	return ptr;
+}</code></pre>
 
 <p class="meta">From Engine/Memory/MemoryManager.h, MemoryManager::NewArray()</p>
 

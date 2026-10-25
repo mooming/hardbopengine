@@ -81,7 +81,7 @@
 <pre><code>const auto used = fifoUsed + priorityUsed;
 if (used &gt;= std::chrono::duration_cast&lt;std::chrono::nanoseconds&gt;(allowance))
 {
-    return ELane::None;
+        return ELane::None;
 }</code></pre>
 
 <p class="meta">From Engine/Core/StreamDrainPolicy.cpp, StreamDrainPolicy::ChooseLane()</p>
@@ -140,7 +140,7 @@ if (used &gt;= std::chrono::duration_cast&lt;std::chrono::nanoseconds&gt;(allowa
 
 if (lane == StreamDrainPolicy::ELane::None &amp;&amp; (!fifoQueue.IsEmpty() || !priorityQueue.IsEmpty()))
 {
-    laneWorkRefusals.fetch_add(1, std::memory_order_relaxed);
+        laneWorkRefusals.fetch_add(1, std::memory_order_relaxed);
 }</code></pre>
 
 <p>

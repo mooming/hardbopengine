@@ -66,7 +66,7 @@
 
 <pre><code>if (allowance.count() &lt;= 0.0)
 {
-    return std::chrono::duration&lt;double&gt;{};
+        return std::chrono::duration&lt;double&gt;{};
 }
 
 return allowance * (static_cast&lt;double&gt;(priorityWeight) / static_cast&lt;double&gt;(fifoWeight + priorityWeight));</code></pre>
@@ -109,7 +109,7 @@ return allowance * (static_cast&lt;double&gt;(priorityWeight) / static_cast&lt;d
 
 <pre><code>if (policy.ChooseLane(false, true) != Lane::Priority)
 {
-    ls &lt;&lt; "The only lane with work was refused because it had passed its own share, leaving the stream idle."
+        ls &lt;&lt; "The only lane with work was refused because it had passed its own share, leaving the stream idle."
        &lt;&lt; lferr;
 }</code></pre>
 

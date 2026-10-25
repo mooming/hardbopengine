@@ -78,7 +78,8 @@ Queue(Queue&amp;&amp; rhs) noexcept
 	, data(allocator.allocate(DefaultCapacity))
 {
 }</code></pre>
-<p class="meta">From Engine/Container/Deque.h, Deque::Deque()</p>
+<p class="meta">From Engine/Container/Deque.h — the default constructor of the default container, which is what gives
+an empty queue its cost.</p>
 
 <p>
   The copy constructor is <code>= delete</code> — a queue cannot be copied, and attempting it is a compile error, not a

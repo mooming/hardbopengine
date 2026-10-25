@@ -50,7 +50,7 @@
 <p class="subtitle">
   <span class="tag">member of hbe::MemoryManager</span>
   <span class="tag">Engine/Memory/MemoryManager.h</span>
-  Allocate one element from the scoped allocator, then placement-construct — with no null check in between.
+  Allocate one element from the scoped allocator, construct only if the allocation succeeded, return the pointer or null.
 </p>
 
 <h2 id="signature">Signature</h2>
@@ -62,13 +62,24 @@
 
 <p>
 Defined in the class body of <code>Engine/Memory/MemoryManager.h</code>: one element of storage from
-<a href="allocate-by-type.html">AllocateByType</a>, then a placement construction in it, then the same pointer returned.
+<a href="allocate-by-type.html">AllocateByType</a> — a failed allocation asserts and returns null — then a placement
+construction in it, then the same pointer returned.
 </p>
 
-<pre><code>auto ptr = AllocateByType&lt;Type&gt;(1);
-auto tptr = new (ptr) Type(std::forward&lt;Types&gt;(args)...);
+<pre><code>Type* New(Types&amp;&amp;... args)
+{
+	auto ptr = AllocateByType&lt;Type&gt;(1);
+	if (unlikely(ptr == nullptr))
+	{
+		Assert(false, "MemoryManager::New: the allocation failed, so the object cannot be constructed.");
 
-return tptr;</code></pre>
+		return nullptr;
+	}
+
+	auto tptr = new (ptr) Type(std::forward&lt;Types&gt;(args)...);
+
+	return tptr;
+}</code></pre>
 
 <p class="meta">From Engine/Memory/MemoryManager.h, MemoryManager::New()</p>
 
@@ -82,8 +93,8 @@ lists those wrappers under <a href="../index.html#functions">module functions</a
 </p>
 
 <div class="gap">
-  <strong>The allocation result is not tested before the constructor runs.</strong>
-  There is no null check between the two statements. A zero-size request is impossible here, since the count is the constant
+  <strong>The allocation result is tested before the constructor runs.</strong>
+  A zero-size request is impossible here, since the count is the constant
   <code>1</code> and <code>sizeof(Type)</code> is at least one, so the only null that can arrive is an allocator that failed —
   caught by <code>Assert(ptr != nullptr, "Allocation Failed")</code> inside <a href="allocate.html">Allocate</a> in Debug and Dev,
   and in Release arriving here as a null pointer. The body tests that pointer itself: on null the construction is skipped and <code>New</code> returns <code>nullptr</code>, which is the same return-after-assert shape the rest of the module uses, so a caller that can survive exhaustion has to look at the result. The engine does not throw on exhaustion at the

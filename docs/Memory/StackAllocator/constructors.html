@@ -79,13 +79,13 @@
 
 auto&amp; mmgr = MemoryManager::GetInstance();
 parentID = hbe::MemoryManager::GetCurrentAllocatorID();
-bufferPtr = mmgr.Allocate(capacity);</code></pre>
+buffer = static_cast&lt;Byte*&gt;(mmgr.Allocate(capacity));</code></pre>
 
-<p class="meta">From Engine/Memory/StackAllocator.cpp, StackAllocator::StackAllocator()</p>
+<p class="meta">From Engine/Memory/StackAllocator.cpp, StackAllocator::StackAllocator(char* name, SizeType inCapacity)</p>
 
 <pre><code>id = mmgr.RegisterAllocator(this, name, false, capacity, allocFunc, deallocFunc);</code></pre>
 
-<p class="meta">From Engine/Memory/StackAllocator.cpp, StackAllocator::StackAllocator()</p>
+<p class="meta">From Engine/Memory/StackAllocator.cpp, StackAllocator::StackAllocator(char* name, SizeType inCapacity)</p>
 
 <div class="gap">
   <strong>Which allocator owns the buffer is decided by the scope that is open right here.</strong>

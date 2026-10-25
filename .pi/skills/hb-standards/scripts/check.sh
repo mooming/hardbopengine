@@ -33,6 +33,8 @@
 #                          scripts/layout.py
 #   5. docs_coverage.py    every declared entry owns a page under docs/, which is what makes
 #                          deleting a comment safe. scripts/docs_coverage.py
+#   5c. quoted_blocks.py   every quoted code block matches the source it names, and every
+#                          caption resolves to one definition. scripts/../hb-docs/scripts/
 #   5b. prove_feature_macros.py
 #                          compile the scope's sources with PROFILE_ENABLED=1 and
 #                          MEMORY_VERIFICATION_ENABLED=1. BuildConfig.h hardwires both to 0, so no
@@ -594,6 +596,21 @@ if [[ ${#FILES[@]} -gt 0 ]]; then
 			# violation rather than backlog: an undeclared CSS class or a dead anchor is a bug in
 			# what was just written, and the reader meets it before anyone reads the ledger.
 			if [[ $html_code -ne 0 ]]; then VIOL=$((VIOL+1)); fi
+		fi
+
+		qb_pages=()
+		for m in $modules_touched; do
+			[[ -d "docs/$m" ]] && qb_pages+=("docs/$m")
+		done
+		if [[ ${#qb_pages[@]} -gt 0 ]]; then
+			qb_out=$(python3 "$SCRIPT_DIR/../../hb-docs/scripts/quoted_blocks.py" "${qb_pages[@]}" 2>&1)
+			qb_code=$?
+			echo "$qb_out" | grep -E 'STALE|UNRESOLVED|quoted blocks:' | sed 's/^/    /'
+			# A quotation that no longer matches its source is a page telling the reader to copy
+			# code that no longer exists; an unresolved caption names code it cannot point at.
+			# Both are defects in what exists, the same class as htmlcheck — wired 2026-10-25
+			# after the tree's backlog was triaged to zero (owner decision O14, triage-then-wire).
+			if [[ $qb_code -ne 0 ]]; then VIOL=$((VIOL+1)); fi
 		fi
 	fi
 

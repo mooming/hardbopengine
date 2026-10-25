@@ -136,13 +136,22 @@
 
 <pre><code><span class="kw">void</span> TaskSystem::<span class="fn">JoinAndClear</span>() <span class="kw">noexcept</span>
 {
+        <span class="cm">... shutdown pump and close bookkeeping ...</span>
+
         <span class="kw">for</span> (<span class="kw">auto</span>&amp; stream : streams)
         {
-                <span class="cm">// ... request shutdown of each stream, then join its worker thread ...</span>
+                <span class="kw">auto</span>&amp; thread = stream.<span class="fn">GetThread</span>();
+                <span class="kw">if</span> (<span class="fn">unlikely</span>(!thread.<span class="fn">joinable</span>()))
+                {
+                        <span class="kw">continue</span>;
+                }
+
                 thread.<span class="fn">join</span>();
         }
 
-        streams.<span class="fn">Clear</span>();          <span class="cm">// Array&lt;TaskStream&gt;: every TaskStream destroyed, buffer released</span>
+        <span class="cm">... closed-stream assertion loop ...</span>
+
+        streams.<span class="fn">Clear</span>();
 }</code></pre>
 
 <p class="meta">From Engine/Core/TaskSystem.cpp, in <code>TaskSystem::JoinAndClear</code>. Note the

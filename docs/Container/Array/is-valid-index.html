@@ -136,27 +136,27 @@
   and the pattern for anything indexing an <code>Array</code> with a number it did not create:
 </p>
 
-<pre><code>[[nodiscard]] <span class="kw">bool</span> <span class="fn">HasStream</span>(<span class="ty">TIndex</span> index) <span class="kw">const</span> <span class="kw">noexcept</span>
+<pre><code><span class="kw">bool</span> TaskSystem::<span class="fn">HasStream</span>(<span class="ty">TIndex</span> index) <span class="kw">const</span> <span class="kw">noexcept</span>
 {
         <span class="kw">return</span> streams.<span class="fn">IsValidIndex</span>(index);
-}
+}</code></pre>
 
-<span class="kw">bool</span> TaskSystem::<span class="fn">Enqueue</span>(<span class="kw">const</span> <span class="ty">TIndex</span> streamIndex, <span class="kw">const</span> <span class="ty">RangedTask</span>&amp; task) <span class="kw">noexcept</span>
+<p class="meta">From Engine/Core/TaskSystem.cpp, <code>TaskSystem::HasStream(TIndex index)</code> — where
+<code>HasStream</code> is nothing but this call.</p>
+
+<pre><code><span class="kw">void</span> TaskSystem::<span class="fn">Enqueue</span>(<span class="kw">const</span> <span class="ty">TIndex</span> streamIndex, <span class="kw">const</span> <span class="ty">WorkItem</span>&amp; task, <span class="kw">const</span> <span class="ty">StreamDrainPolicy</span>::ELane lane) <span class="kw">noexcept</span>
 {
         <span class="kw">if</span> (!streams.<span class="fn">IsValidIndex</span>(streamIndex))
         {
-                <span class="fn">Assert</span>(<span class="kw">false</span>, <span class="st">&quot;Invalid stream index %d&quot;</span>, streamIndex);
+                <span class="fn">Assert</span>(<span class="kw">false</span>, <span class="st">&quot;Invalid stream index &quot;</span>, streamIndex, <span class="st">&quot;.&quot;</span>);
 
-                <span class="kw">return</span> <span class="kw">false</span>;
-        }
+                <span class="kw">return</span>;
+        }</code></pre>
 
-        <span class="kw">auto</span>&amp; stream = streams[streamIndex];
-        <span class="kw">return</span> stream.<span class="fn">EnqueueFifo</span>(task);
-}</code></pre>
-
-<p class="meta">From Engine/Core/TaskSystem.h, where <code>HasStream</code> is nothing but this call, and
-Engine/Core/TaskSystem.cpp, in <code>TaskSystem::Enqueue</code>. <code>GetStreamName</code> in the same file does
-the same test and returns a static <code>"Unknown"</code> string instead of indexing.</p>
+<p class="meta">From Engine/Core/TaskSystem.cpp,
+<code>TaskSystem::Enqueue(TIndex streamIndex, WorkItem&amp; task, StreamDrainPolicy::ELane lane)</code>.
+<code>GetStreamName</code> in the same file does the same test and returns a static <code>"Unknown"</code> string
+instead of indexing.</p>
 
 <div class="gap">
   <strong>Checking and then indexing is only safe if nothing changes the array in between.</strong> A

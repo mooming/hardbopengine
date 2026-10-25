@@ -97,15 +97,15 @@
 
 <pre><code>switch (compo.GetState())
 {
-    case ComponentState::ALIVE:
-        compo.OnEnable();
-        updateList.push_back(std::move(compo));
-        break;
+        case ComponentState::ALIVE:
+                compo.OnEnable();
+                updateList.push_back(std::move(compo));
+                break;
 
-    case ComponentState::SLEEP:
-        compo.OnDisable();
-        sleepList.push_back(std::move(compo));
-        break;</code></pre>
+        case ComponentState::SLEEP:
+                compo.OnDisable();
+                sleepList.push_back(std::move(compo));
+                break;</code></pre>
 
 <p class="meta">From Engine/Core/ComponentSystem.h, ComponentSystem::ProcessTransition()</p>
 

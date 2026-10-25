@@ -73,7 +73,9 @@ MultiPoolAllocator(const char* name, TInitializerList initialConfigurations,
 …
 	id = mmgr.RegisterAllocator(this, name, false, capacity, allocFunc, deallocFunc);</code></pre>
 
-<p class="meta">From Engine/Memory/MultiPoolAllocator.cpp, both MultiPoolAllocator::MultiPoolAllocator() overloads</p>
+<p class="meta">From Engine/Memory/MultiPoolAllocator.cpp,
+MultiPoolAllocator::MultiPoolAllocator(char* inName, size_t allocationUnit, size_t minBlockSize) — the same two lines
+stand in the initializer-list overload beside it.</p>
 
 <p>
   The <a href="../index.html#allocatorscope"><code>AllocatorScope</code></a> a caller happens to be standing in when

@@ -65,7 +65,7 @@
 
 <pre><code>if (allowance.count() &lt;= 0.0)
 {
-    return std::chrono::duration&lt;double&gt;{};
+        return std::chrono::duration&lt;double&gt;{};
 }
 
 return allowance * (static_cast&lt;double&gt;(fifoWeight) / static_cast&lt;double&gt;(fifoWeight + priorityWeight));</code></pre>

@@ -78,14 +78,14 @@
 </div>
 
 <pre><code>Assert(budget.CanTakeWork(), "Stream ", name,
-       " was asked for provider work while its allowance was spent. The drain gate is what keeps a "
-       "spent stream "
-       "from manufacturing work, so a provider ask here means that gate stopped consulting the "
-       "budget.");
+           " was asked for provider work while its allowance was spent. The drain gate is what keeps a "
+           "spent stream "
+           "from manufacturing work, so a provider ask here means that gate stopped consulting the "
+           "budget.");
 
 if (!budget.CanTakeWork())
 {
-    providerAsksWhileSpent.fetch_add(1, std::memory_order_relaxed);
+        providerAsksWhileSpent.fetch_add(1, std::memory_order_relaxed);
 }</code></pre>
 
 <p class="meta">From Engine/Core/TaskStream.cpp, TaskStream::Update()</p>

@@ -81,13 +81,12 @@
 <h2 id="example">Examples</h2>
 
 <pre><code>statistics.IncEngineLogCount();
-
 {
-    std::lock_guard lock(logLock);
+        std::lock_guard lock(logLock);
 
-    if (levelAsValue &gt;= CPEnginePrintLogLevel.Get())
-    {
-        std::stringstream ss;</code></pre>
+        if (levelAsValue &gt;= CPEnginePrintLogLevel.Get())
+        {
+                std::stringstream ss;</code></pre>
 
 <p class="meta">From Engine/Engine/Engine.cpp, Engine::Log()</p>
 <footer class="prevnext">

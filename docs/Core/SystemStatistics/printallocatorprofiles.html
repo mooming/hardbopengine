@@ -103,13 +103,15 @@ statistics.PrintAllocatorProfiles();</code></pre>
 <h2 id="example">Examples</h2>
 
 <pre><code>#if PROFILE_ENABLED
-    auto log = Logger::Get(GetName(), ELogLevel::Verbose);
-    log.Out("= System Statistics: Allocator Profiles ========================");
+        auto log = Logger::Get(GetName(), ELogLevel::Verbose);
+        log.Out("= System Statistics: Allocator Profiles ========================");
 
-    for (auto&amp; stats : allocStats)
-    {
-        stats.Print();
-    }
+        for (auto&amp; stats : allocStats)
+        {
+                stats.Print();
+        }
+
+        log.Out("================================================================");
 #endif // PROFILE_ENABLED</code></pre>
 
 <p class="meta">From Engine/Core/SystemStatistics.cpp, SystemStatistics::PrintAllocatorProfiles() (elided: the closing banner line)</p>

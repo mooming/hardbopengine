@@ -122,7 +122,7 @@ const TType&amp; operator*() const</code></pre>
 
 <pre><code>FatalAssert(hasValue);</code></pre>
 
-<p class="meta">From Engine/Memory/Optional.h, Optional::operator*</p>
+<p class="meta">From Engine/Memory/Optional.h — the two statements both <code>operator*</code> overloads share.</p>
 
 <p>
   Because that line has no else and no fallback return, the checked read has exactly two outcomes: the element, or

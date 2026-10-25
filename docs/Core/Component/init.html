@@ -115,10 +115,10 @@
 
 <pre><code>for (auto&amp; compo : initList)
 {
-    compo.Init();
-    compo.SetState(ComponentState::ALIVE);
-    compo.OnEnable();
-    updateList.push_back(std::move(compo));
+        compo.Init();
+        compo.SetState(ComponentState::ALIVE);
+        compo.OnEnable();
+        updateList.push_back(std::move(compo));
 }
 
 initList.clear();</code></pre>

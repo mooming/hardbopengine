@@ -64,16 +64,18 @@ Defined in <code>Engine/Memory/MemoryManager.cpp</code> as <code>MemoryManager::
 id it returns <code>allocators[id]</code> — the registration slot itself, by mutable reference, so the caller can rewrite
 the two function pointers, the <code>allocator</code> userData pointer and (under <code>PROFILE_ENABLED</code>) the whole
 <code>AllocStats</code> record. Given an id that fails <a href="is-valid.html">IsValid</a> it logs an
-<code>Error</code> and returns a stand-in instead:
+<code>Error</code>, trips a <code>FatalAssert</code> — which has no release configuration and stops the process — and
+only then reaches the stand-in:
 </p>
 
 <pre><code>if (unlikely(!IsValid(id)))
 {
-	Log(ELogLevel::Error, [funcName = __func__, id](auto& ls)
-	{ ls << "[" << funcName << "] Invalid allocator id(" << id << ") is provided."; });
+	Log(ELogLevel::Error, [funcName = __func__, id](auto&amp; ls)
+	{ ls &lt;&lt; "[" &lt;&lt; funcName &lt;&lt; "] Invalid allocator id(" &lt;&lt; id &lt;&lt; ") is provided."; });
 
-	static AllocatorProxy dummy;
-	new (&dummy) AllocatorProxy();
+	FatalAssert(false, '[', __func__, "] Invalid allocator id(", id, ") is provided.");
+
+	static AllocatorProxy dummy{};
 
 	return dummy;
 }</code></pre>
@@ -81,15 +83,13 @@ the two function pointers, the <code>allocator</code> userData pointer and (unde
 <p class="meta">From Engine/Memory/MemoryManager.cpp, MemoryManager::GetAllocatorProxy()</p>
 
 <div class="gap">
-  <strong>An invalid id answers with a usable-looking dummy, and that is the whole error policy.</strong>
-  The intent is that a bad id cannot index <code>allocators</code> out of bounds. The consequence a caller must carry is
-  that the returned reference is a real <code>AllocatorProxy</code> that never fails: a default-constructed proxy has
-  null <code>allocator</code>, <code>allocate</code> and <code>deallocate</code>, so writes to it succeed, reads from it
-  look legitimate, and the mistake surfaces as a log line rather than at the call that made it. Two properties of the
-  dummy are decided nowhere: the <code>static</code> object is shared by every thread that asks with a bad id, and it is
-  placement-reconstructed on each call — while another thread may still hold a reference to it. Choosing between "fail
-  loudly" and "route the dummy to slot 0 so the work at least happens" is a policy decision, recorded as a named
-  omission in <a href="index.html#coverage">Coverage</a>.
+  <strong>An invalid id stops the process; the dummy below the assert is what the code would return without it.</strong>
+  The intent is that a bad id cannot index <code>allocators</code> out of bounds. The guard logs an <code>Error</code>
+  and then calls <code>FatalAssert(false, ...)</code>, which is compiled in every configuration, so a bad id kills the
+  process rather than coming back as a value. The <code>static</code> dummy stand-in is default-constructed once and
+  shared by every thread that would ask with a bad id; nothing re-constructs it per call, so the old policy question of
+  a usable-looking dummy no longer reaches a caller. What remains undecided is only whether the assert belongs there at
+  all, recorded as a named omission in <a href="index.html#coverage">Coverage</a>.
 </div>
 
 <div class="note">
@@ -115,20 +115,19 @@ the two function pointers, the <code>allocator</code> userData pointer and (unde
 
 <table>
   <tr><th>Parameter</th><th>Type</th><th>Requirement</th></tr>
-  <tr><td><code>id</code></td><td><code>TId</code> (<code>TAllocatorID</code>)</td><td>The id returned by <a href="register-allocator.html">RegisterAllocator</a>. Never out of bounds — an out-of-range value is answered with the dummy, so this call cannot be used to detect a bad id by exception; compare the returned <code>id</code> field if the distinction matters.</td></tr>
+  <tr><td><code>id</code></td><td><code>TId</code> (<code>TAllocatorID</code>)</td><td>The id returned by <a href="register-allocator.html">RegisterAllocator</a>. Never out of bounds — an out-of-range value is logged and fatally asserted, so this call cannot be used to detect a bad id by exception; it stops the process instead.</td></tr>
 </table>
 
 <h2 id="return">Return value</h2>
 
 <table>
   <tr><th>Type</th><th>What you get</th></tr>
-  <tr><td><code>AllocatorProxy&amp;</code></td><td>The live slot for a valid id — mutable, and invalidated only when the slot is deregistered and re-registered (<a href="deregister-allocator.html">DeregisterAllocator</a>). The function-local dummy for anything else. Never null; there is no way to distinguish the two by reference alone.</td></tr>
+  <tr><td><code>AllocatorProxy&amp;</code></td><td>The live slot for a valid id — mutable, and invalidated only when the slot is deregistered and re-registered (<a href="deregister-allocator.html">DeregisterAllocator</a>). The function-local dummy for anything else — but the <code>FatalAssert</code> ahead of it means the process has already stopped, so in practice only the live slot is ever returned. Never null; there is no way to distinguish the two by reference alone.</td></tr>
 </table>
 
 <h2 id="example">Examples</h2>
 
 <pre><code>#if PROFILE_ENABLED
-	const auto incCapacity = blockSize * numberOfBlocks;
 	auto&amp; mmgr = MemoryManager::GetInstance();
 	auto&amp; allocProxy = mmgr.GetAllocatorProxy(GetID());
 	allocProxy.stats.capacity += incCapacity;

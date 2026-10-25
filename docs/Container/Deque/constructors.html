@@ -89,7 +89,8 @@ Deque(Deque&amp;&amp; rhs) noexcept
 	, data(allocator.allocate(DefaultCapacity))
 {
 }</code></pre>
-<p class="meta">From Engine/Container/Deque.h, Deque::Deque()</p>
+<p class="meta">From Engine/Container/Deque.h — the default constructor, quoted from the definition above its copy
+refusal.</p>
 
 <p>
   so an empty <a href="index.html">Deque</a> holds a buffer of <code>DefaultCapacity</code> = 4 elements from birth — there

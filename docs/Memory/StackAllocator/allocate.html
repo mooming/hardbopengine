@@ -160,7 +160,7 @@ Assert(ptr != nullptr, "Allocation Failed");</code></pre>
 	return allocator-&gt;Allocate(n);
 };</code></pre>
 
-<p class="meta">From Engine/Memory/StackAllocator.cpp, StackAllocator::StackAllocator()</p>
+<p class="meta">From Engine/Memory/StackAllocator.cpp, StackAllocator::StackAllocator(char* name, SizeType inCapacity)</p>
 
 <p>
   No engine or application source calls <code>Allocate</code> on a stack allocator by name; this lambda, handed to

@@ -86,18 +86,25 @@ public:
 </p>
 
 <pre><code>parentID = hbe::MemoryManager::GetCurrentAllocatorID();
-…
-const TSize totalSize = blockSize * numberOfBlocks;
-if (totalSize &lt;= 0)
-{
-	return;
-}
+	const TSize totalSize = blockSize * numberOfBlocks;
+	if (totalSize &lt;= 0)
+	{
+		return;
+	}
 
-auto&amp; mmgr = MemoryManager::GetInstance();
-buffer = static_cast&lt;Byte*&gt;(mmgr.Allocate(totalSize));
-availables = &amp;buffer[0];</code></pre>
+	auto&amp; mmgr = MemoryManager::GetInstance();
+	buffer = static_cast&lt;Byte*&gt;(mmgr.Allocate(totalSize));
+	Assert(buffer != nullptr, "PoolAllocator: the backing allocation of ", totalSize,
+		   " bytes failed, so the free list cannot be built.");
 
-<p class="meta">From Engine/Memory/PoolAllocator.cpp, PoolAllocator::PoolAllocator()</p>
+	if (unlikely(buffer == nullptr))
+	{
+		return;
+	}
+
+	availables = buffer;</code></pre>
+
+<p class="meta">From Engine/Memory/PoolAllocator.cpp, PoolAllocator::PoolAllocator(char* inName, TSize inBlockSize, TSize inNumberOfBlocks)</p>
 
 <div class="gap">
   <strong>A block cannot be narrower than <code>sizeof(size_t)</code>, and the constructor stops there rather than
@@ -196,6 +203,7 @@ AllocatorScope allocScope(alloc);</code></pre>
 </p>
 
 <pre><code>banks.emplace_back(str.c_str(), blockSize, numberOfBlocks);
+...
 std::sort(banks.begin(), banks.end());</code></pre>
 
 <p class="meta">From Engine/Memory/MultiPoolAllocator.cpp, MultiPoolAllocator::GenerateBank()</p>

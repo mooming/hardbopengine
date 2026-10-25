@@ -95,33 +95,35 @@
   not-found test rather than inside it, and because <code>configs.reserve(banks.size())</code> guarantees the
   <code>emplace_back</code> does not reallocate, that new element was constructed at the address <code>found</code>
   already held — so the value was added twice for every size class the report introduced. The journal entry at 18:31
-  records the fix, and this function gained its assertion the same day:
+  records the fix, and the function reports under an assertion over the sums:
 </p>
 
-<pre><code>	for (auto&amp; bank : banks)
-	{
-		InsertItem(bank);
-		}
+<pre><code>for (auto&amp; bank : banks)
+{
+	InsertItem(bank);
+	peakBlocks += bank.GetUsedBlocksMax();
+}
 
-	Assert(bank.GetUsedBlocksMax() * bank.GetBlockSize() &lt;= bank.GetCapacity(),
-				   "ReportConfiguration: the bank of ", bank.GetBlockSize(), " bytes peaked at ",
-				   bank.GetUsedBlocksMax(), " blocks, which exceeds its capacity of ", bank.GetCapacity(),
-				   " bytes.");</code></pre>
+for (const auto&amp; config : configs)
+{
+	reportedBlocks += config.numberOfBlocks;
+}
+
+Assert(reportedBlocks == peakBlocks, "ReportConfiguration: the reported block count ", reportedBlocks,
+	   " does not match the summed bank peak ", peakBlocks);</code></pre>
 
 <p class="meta">From Engine/Memory/MultiPoolAllocator.cpp, MultiPoolAllocator::ReportConfiguration()</p>
 
 <div class="gap">
-  <strong>The invariant, and why the old check could not guard it.</strong>
+  <strong>The assert that guards the report cannot fire, and the invariant that could is not asserted.</strong>
   Each bank's lifetime high-water mark must fit inside that bank's own capacity:
-  <code>GetUsedBlocksMax() * GetBlockSize() &lt;= GetCapacity()</code>. The assert sits in the loop over
-  <code>banks</code> under <code>lock</code>, before
-  <code>mmgr.ReportMultiPoolConfiguration(uniqueName.GetID(), std::move(configs))</code>, so in a build where
-  <code>Assert</code> is live — every non-Release build, per <a href="../../Core/index.html#debug">Core: Debug</a> —
-  the process stops without publishing anything, and the cache keeps the last correct ladder. What used to sit there
-  compared the summed configurations against a <code>peakBlocks</code> counter, but both counters were filled from the
-  same <code>GetUsedBlocksMax()</code> values in the same loop over the same banks, so they could not disagree; an
-  assert that cannot fire documents nothing, and it has been replaced by the invariant above, which a mis-booked
-  high-water mark can actually reach.
+  <code>GetUsedBlocksMax() * GetBlockSize() &lt;= GetCapacity()</code>. Nothing in the current function checks that;
+  the assert before the report call compares <code>reportedBlocks</code> — the sum of the aggregated configurations —
+  against <code>peakBlocks</code> — the sum of the same banks' <code>GetUsedBlocksMax()</code> values collected in the
+  same pass — so the two sides cannot disagree, and the assert documents an expectation rather than guarding one. In a
+  build where <code>Assert</code> is live — every non-Release build, per <a href="../../Core/index.html#debug">Core:
+  Debug</a> — a mismatch would stop the process without publishing anything and the cache would keep the last correct
+  ladder; the weakness is that nothing in this function can produce a mismatch to trigger it.
 </div>
 
 <div class="gap">

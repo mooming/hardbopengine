@@ -75,10 +75,10 @@
 
 <pre><code>for (auto&amp; stream : streams)
 {
-    if (&amp;stream != &amp;baseStream &amp;&amp; &amp;stream != &amp;loggerStream)
-    {
-        stream.RequestClose();
-    }
+        if (&amp;stream != &amp;baseStream &amp;&amp; &amp;stream != &amp;ioStream)
+        {
+                stream.RequestClose();
+        }
 }</code></pre>
 
 <p class="meta">From Engine/Core/TaskSystem.cpp, TaskSystem::RequestOtherStreamsClose()</p>

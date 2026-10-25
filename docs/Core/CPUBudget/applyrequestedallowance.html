@@ -67,7 +67,7 @@
 
 if (requested == PendingAllowanceNone)
 {
-    return std::nullopt;
+        return std::nullopt;
 }
 
 allowance = std::chrono::duration_cast&lt;std::chrono::duration&lt;double&gt;&gt;(std::chrono::nanoseconds(requested));

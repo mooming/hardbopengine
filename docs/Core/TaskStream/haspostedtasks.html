@@ -74,10 +74,10 @@
 </div>
 
 <pre><code>while (std::chrono::steady_clock::now() &lt; pumpDeadline &amp;&amp;
-       (!AreUserStreamsClosed() || baseStream.HasPostedTasks() || baseStream.CountPendingItems() &gt; 0))
+           (!AreUserStreamsClosed() || baseStream.HasPostedTasks() || baseStream.CountPendingItems() &gt; 0))
 {
-    baseStream.Update();
-    std::this_thread::sleep_for(std::chrono::milliseconds(1));
+        (void) baseStream.Update();
+        std::this_thread::sleep_for(std::chrono::milliseconds(1));
 }</code></pre>
 
 <p class="meta">From Engine/Core/TaskSystem.cpp, TaskSystem::JoinAndClear()</p>

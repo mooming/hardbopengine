@@ -142,7 +142,7 @@ longTextSize = size + 1;
 longText = (char*) mmgr.SysAllocate(longTextSize);
 std::copy(&amp;inText[0], &amp;inText[longTextSize], longText);</code></pre>
 
-<p class="meta">From Engine/Log/LogLine.cpp, LogLine::LogLine()</p>
+<p class="meta">From Engine/Log/LogLine.cpp, LogLine::LogLine(ELogLevel level, StaticString threadName, StaticString category, char* inText, size_t size)</p>
 
 <p>
 A log line longer than the inline buffer: its lifetime is the log record's, not the emitting thread's scope, so it cannot

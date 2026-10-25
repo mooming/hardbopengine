@@ -121,7 +121,7 @@
 
 <pre><code>return GetValue(typename IsReferenceType&lt;TType&gt;::Result());</code></pre>
 
-<p class="meta">From Engine/Memory/Optional.h, Optional::Value</p>
+<p class="meta">From Engine/Memory/Optional.h — the one statement both <code>Value</code> overloads share.</p>
 
 <p>
   Both overloads end with that call, and <a href="getvalue.html">GetValue</a> is where the reinterpret cast lives.

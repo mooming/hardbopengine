@@ -67,14 +67,14 @@
 
 <pre><code>void CommandLineArguments::Parse(int argc, const char* argv[])
 {
-    using namespace std;
+        using namespace std;
 
-    Assert(argc &gt; 0, "CommandLineArguments::Parse - Incorrect argc = ", argc);
+        Assert(argc &gt; 0, "CommandLineArguments::Parse - Incorrect argc = ", argc);
 
-    for (int i = 0; i &lt; argc; ++i)
-    {
-        cout &lt;&lt; i &lt;&lt; " : " &lt;&lt; argv[i] &lt;&lt; endl;
-    }
+        for (int i = 0; i &lt; argc; ++i)
+        {
+                cout &lt;&lt; i &lt;&lt; " : " &lt;&lt; argv[i] &lt;&lt; endl;
+        }
 }</code></pre>
 
 <p class="meta">From Engine/Core/CommandLineArguments.cpp, CommandLineArguments::Parse()</p>
@@ -124,7 +124,7 @@
 
 <pre><code>CommandLineArguments::CommandLineArguments(int argc, const char* argv[])
 {
-    Parse(argc, argv);
+        Parse(argc, argv);
 }</code></pre>
 
 <p class="meta">From Engine/Core/CommandLineArguments.cpp, CommandLineArguments::CommandLineArguments()</p>

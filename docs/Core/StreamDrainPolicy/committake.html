@@ -65,17 +65,17 @@
 
 <pre><code>if (lane == ELane::Fifo)
 {
-    --fifoCredit;
+        --fifoCredit;
 }
 else if (lane == ELane::Priority)
 {
-    --priorityCredit;
+        --priorityCredit;
 }
 
 if (fifoCredit &lt;= 0 &amp;&amp; priorityCredit &lt;= 0)
 {
-    fifoCredit += static_cast&lt;int64_t&gt;(fifoWeight);
-    priorityCredit += static_cast&lt;int64_t&gt;(priorityWeight);
+        fifoCredit += static_cast&lt;int64_t&gt;(fifoWeight);
+        priorityCredit += static_cast&lt;int64_t&gt;(priorityWeight);
 }</code></pre>
 
 <p class="meta">From Engine/Core/StreamDrainPolicy.cpp, StreamDrainPolicy::CommitTake()</p>
@@ -128,14 +128,14 @@ if (fifoCredit &lt;= 0 &amp;&amp; priorityCredit &lt;= 0)
 
 <pre><code>if (!priorityQueue.IsEmpty())
 {
-    outTask = priorityQueue.Pop();
+        outTask = priorityQueue.Pop();
     drainPolicy.CommitTake(StreamDrainPolicy::ELane::Priority);
     return;
 }
 
 if (!fifoQueue.IsEmpty())
 {
-    outTask = fifoQueue.Front();
+        outTask = fifoQueue.Front();
     fifoQueue.PopFront();
     drainPolicy.CommitTake(StreamDrainPolicy::ELane::Fifo);
     return;

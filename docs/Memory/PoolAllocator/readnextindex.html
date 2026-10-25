@@ -66,10 +66,10 @@
 </p>
 
 <pre><code>auto index = GetAs&lt;TSize&gt;(ptr);
-Assert(index &lt;= numberOfBlocks, "PoolAllocator: free-list link ", index, " is out of bounds for ", numberOfBlocks,
+	Assert(index &lt;= numberOfBlocks, "PoolAllocator: free-list link ", index, " is out of bounds for ", numberOfBlocks,
 		   " blocks.");
 
-return index;</code></pre>
+	return index;</code></pre>
 
 <p class="meta">From Engine/Memory/PoolAllocator.cpp, PoolAllocator::ReadNextIndex(Pointer ptr) const</p>
 

@@ -102,10 +102,11 @@ manager's name appears in them only when the author typed it.
 <h2 id="example">Examples</h2>
 
 <pre><code>AllocatorProxy&amp; allocProxy = allocators[id];
-Assert(allocProxy.allocate != nullptr, "[", GetName(), "::", __func__, "][Error] ",
-	   "No allocate function, ID = ", id);</code></pre>
+if (unlikely(allocProxy.allocate == nullptr))
+{
+	Assert(false, "[", GetName(), "::", __func__, "][Error] ", "No allocate function, ID = ", id);</code></pre>
 
-<p class="meta">From Engine/Memory/MemoryManager.cpp, MemoryManager::Allocate()</p>
+<p class="meta">From Engine/Memory/MemoryManager.cpp, MemoryManager::Allocate(TId id, size_t nBytes)</p>
 
 <p>
 The only call site in the repository, and a small lesson in why the rest of the class does not use it: the matching

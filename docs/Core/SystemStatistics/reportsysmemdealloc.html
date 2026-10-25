@@ -108,9 +108,9 @@ totalUsage -= usage;</code></pre>
 
 <pre><code>if (id == SystemAllocatorID)
 {
-    auto&amp; engine = Engine::Get();
-    auto&amp; statistics = engine.GetStatistics();
-    statistics.ReportSysMemDealloc(allocated);
+        auto&amp; engine = Engine::Get();
+        auto&amp; statistics = engine.GetStatistics();
+        statistics.ReportSysMemDealloc(allocated);
 }</code></pre>
 
 <p class="meta">From Engine/Memory/MemoryManager.cpp, MemoryManager::ReportDeallocation() (under PROFILE_ENABLED)</p>

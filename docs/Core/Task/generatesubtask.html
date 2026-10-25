@@ -66,14 +66,17 @@
   (<code>WorkItem::WorkItem()</code> is private, and <code>Task</code> is one of its three friends).
 </p>
 
-<pre><code>Assert(numGeneratedSubTasks &lt; numSubTasks, …);
+<pre><code>	Assert(numGeneratedSubTasks &lt; numSubTasks,
+		   "&#92;"%s&#92;" handed out a work item beyond the %d it reserved, so this task reports itself finished before"
+		   " the item runs.",
+		   name.c_str(), numSubTasks);
 
-return {*this, start, end, priority};</code></pre>
+	return {*this, start, end, priority};</code></pre>
 
 <p class="meta">From Engine/Core/Task.cpp, Task::GenerateSubTask()</p>
 
 <p>
-  The elided arguments are the assert's message, which names the very failure it is meant to catch: handing out a work
+  The assert's message names the very failure it is meant to catch: handing out a work
   item beyond the number the task reserved, so the task reports itself finished before that item runs.
 </p>
 

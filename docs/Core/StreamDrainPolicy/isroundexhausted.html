@@ -65,7 +65,7 @@
 
 <pre><code>if (allowance.count() &lt;= 0.0)
 {
-    return false;
+        return false;
 }
 
 return (fifoUsed + priorityUsed) &gt;= std::chrono::duration_cast&lt;std::chrono::nanoseconds&gt;(allowance);</code></pre>
@@ -115,7 +115,7 @@ policy.ChargePriority(overspill);
 
 if (!policy.IsRoundExhausted())
 {
-    ls &lt;&lt; "1.2 ms charged against a 1 ms allowance did not exhaust the round." &lt;&lt; lferr;
+        ls &lt;&lt; "1.2 ms charged against a 1 ms allowance did not exhaust the round." &lt;&lt; lferr;
 }</code></pre>
 
 <p>

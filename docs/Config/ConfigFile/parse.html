@@ -59,14 +59,13 @@
 
 <pre><code>void Parse(const char* fileName);</code></pre>
 
-<p class="meta">Declared in Engine/Config/ConfigFile.h, defined in Engine/Config/ConfigFile.cpp as ConfigFile::Parse()</p>
-
 <h2 id="description">Function description</h2>
 
 <p>
-  This is not an operation a caller performs; it is what a <a href="constructors.html">constructor</a> does, and therefore the definition
-  of the file format every <code>ConfigFile</code> reader depends on. Documenting a private member is justified by exactly that: the rules
-  below are the contract of the whole class, and no public name states them.
+  Declared in <code>Engine/Config/ConfigFile.h</code>, defined in <code>Engine/Config/ConfigFile.cpp</code> as
+  <code>ConfigFile::Parse()</code>. This is not an operation a caller performs; it is what a <a href="constructors.html">constructor</a> does,
+  and therefore the definition of the file format every <code>ConfigFile</code> reader depends on. Documenting a private member is justified by
+  exactly that: the rules below are the contract of the whole class, and no public name states them.
 </p>
 
 <p>The sequence, as implemented:</p>

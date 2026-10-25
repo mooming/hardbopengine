@@ -125,7 +125,7 @@ The private one is what the machinery reads: the unsized <a href="allocate.html"
 	mmgr.SetScopedAllocatorID(current);
 }</code></pre>
 
-<p class="meta">From Engine/Memory/AllocatorScope.cpp, AllocatorScope::AllocatorScope()</p>
+<p class="meta">From Engine/Memory/AllocatorScope.cpp, AllocatorScope::AllocatorScope(TAllocatorID id)</p>
 
 <p>
 The friend that exists for this getter and its setter: read the current id, install a new one, restore the saved value in the

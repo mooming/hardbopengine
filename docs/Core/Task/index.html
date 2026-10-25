@@ -83,17 +83,17 @@
   The join is the class's whole reason for existing. <a href="reservesubtasks.html">ReserveSubTasks</a> declares how
   many items the task will be split into; <a href="reportfinishedsubtask.html">ReportFinishedSubTask</a> counts each
   finished item and returns true to exactly the one that closed the join; and the thread that got true is the one that
-  dispatches the successor (<code>TaskStream::TryExecuteWorkItem()</code> in
+  dispatches the successor (the execute-and-dispatch core of <code>TaskStream::Update()</code> in
   <code>Engine/Core/TaskStream.cpp</code> calls <a href="../WorkItem/run.html">WorkItem::Run</a> and, on true,
   <a href="../TaskSystem/dispatch-successor.html">TaskSystem::DispatchSuccessor</a>).
 </p>
 
 <pre><code>if (workItem-&gt;Run(*task))
 {
-    taskSys.DispatchSuccessor(task-&gt;GetID());
+        taskSys.DispatchSuccessor(task-&gt;GetID());
 }</code></pre>
 
-<p class="meta">From Engine/Core/TaskStream.cpp, TaskStream::TryExecuteWorkItem()</p>
+<p class="meta">From Engine/Core/TaskStream.cpp, in <code>TaskStream::Update()</code></p>
 
 <div class="note">
   <strong>The join counter is 8 bits, so 255 items is the ceiling.</strong>
@@ -185,7 +185,7 @@ friend class TaskProvider;
 friend class TaskSystemTest;
 friend class TaskRegistryTest;</code></pre>
 
-<p class="meta">From Engine/Core/Task.h, hbe::Task</p>
+<p class="meta">From Engine/Core/Task.h — the friend declarations that close the class body.</p>
 
 <p>
   Four of them are engine classes and two are test collections, which is what the build can reach: the private

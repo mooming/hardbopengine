@@ -82,9 +82,9 @@ public:
   <code>id</code>, with the slot number, for slots 1 through <code>MaxNumAllocators - 1</code> and parks them in
   <code>proxyPool</code>; slot 0 keeps the constructor's <code>InvalidAllocatorID</code> until
   <a href="../MemoryManager/register-system-allocator.html"><code>RegisterSystemAllocator</code></a> fills its
-  operation pointers (<code>Engine/Memory/MemoryManager.cpp</code>). It is also the state the dummy returned by
-  <a href="../MemoryManager/get-allocator-proxy.html"><code>GetAllocatorProxy</code></a> is rebuilt to on every
-  invalid-id call, and the state of a proxy between being released from the free list and being filled by
+  operation pointers (<code>Engine/Memory/MemoryManager.cpp</code>). It is also the state of the static dummy
+  <a href="../MemoryManager/get-allocator-proxy.html"><code>GetAllocatorProxy</code></a> returns for an invalid id, and
+  the state of a proxy between being released from the free list and being filled by
   <a href="../MemoryManager/register-allocator.html"><code>RegisterAllocator</code></a>.
 </p>
 
@@ -107,17 +107,18 @@ public:
 
 <h2 id="example">Examples</h2>
 
-<pre><code>static AllocatorProxy dummy;
-new (&amp;dummy) AllocatorProxy();
+<pre><code>static AllocatorProxy dummy{};
 
 return dummy;</code></pre>
 
 <p class="meta">From Engine/Memory/MemoryManager.cpp, MemoryManager::GetAllocatorProxy(TId)</p>
 
 <p>
-  The invalid-identity answer: the static dummy is re-constructed into this exact state on every call, so every
-  caller handed a proxy for a bad id holds the same record, and any reference kept from an earlier bad call is reset
-  under its owner. An allocation through it takes the null-<code>allocate</code> assert described above.
+  The invalid-identity answer: the static dummy is default-constructed once, so every caller handed a proxy for a bad
+  id holds the same record, and a reference kept from an earlier bad call is no longer reset — nothing re-constructs
+  it. A <code>FatalAssert</code> ahead of these lines stops the process first, so the stand-in is what the code returns
+  only if that assert is ever relaxed. An allocation through it takes the null-<code>allocate</code> assert described
+  above.
 </p>
 <footer class="prevnext">
   <span><a href="index.html">&larr; AllocatorProxy</a></span>

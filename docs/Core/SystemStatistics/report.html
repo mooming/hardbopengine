@@ -70,9 +70,9 @@
   unlike its two siblings.
 </p>
 
-<pre><code>void SystemStatistics::Report(const AllocStats&amp; stats)
+<pre><code>void SystemStatistics::Report(const AllocStats&amp; stats) noexcept
 {
-    allocStats.emplace_back(stats);
+        allocStats.emplace_back(stats);
 }</code></pre>
 
 <p class="meta">From Engine/Core/SystemStatistics.cpp, SystemStatistics::Report() (under PROFILE_ENABLED)</p>

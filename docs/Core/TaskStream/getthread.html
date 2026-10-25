@@ -83,7 +83,7 @@
 <pre><code>auto&amp; thread = stream.GetThread();
 if (unlikely(!thread.joinable()))
 {
-    continue;
+        continue;
 }
 
 thread.join();</code></pre>

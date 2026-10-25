@@ -114,14 +114,12 @@ next boot are deliberately separate tables, and only a save operation moves one 
 
 <h2 id="example">Examples</h2>
 
-<pre><code>	Assert(bank.GetUsedBlocksMax() * bank.GetBlockSize() &lt;= bank.GetCapacity(),
-				   "ReportConfiguration: the bank of ", bank.GetBlockSize(), " bytes peaked at ",
-				   bank.GetUsedBlocksMax(), " blocks, which exceeds its capacity of ", bank.GetCapacity(),
-				   " bytes.");
+<pre><code>Assert(reportedBlocks == peakBlocks, "ReportConfiguration: the reported block count ", reportedBlocks,
+	   " does not match the summed bank peak ", peakBlocks);
 
-	auto&amp; mmgr = MemoryManager::GetInstance();
-	auto uniqueName = GetName();
-	mmgr.ReportMultiPoolConfiguration(uniqueName.GetID(), std::move(configs));</code></pre>
+auto&amp; mmgr = MemoryManager::GetInstance();
+auto uniqueName = GetName();
+mmgr.ReportMultiPoolConfiguration(uniqueName.GetID(), std::move(configs));</code></pre>
 
 <p class="meta">From Engine/Memory/MultiPoolAllocator.cpp, MultiPoolAllocator::ReportConfiguration()</p>
 

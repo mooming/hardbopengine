@@ -70,20 +70,19 @@
 </p>
 
 <pre><code>size_t localTotalUsage = 0;
-
 {
-    std::lock_guard lock(sysMemReportLock);
-    ++allocCount;
-    totalUsage += usage;
-    maxUsage = std::max(maxUsage, totalUsage);
-    localTotalUsage = totalUsage;
+        std::lock_guard lock(sysMemReportLock);
+        ++allocCount;
+        totalUsage += usage;
+        maxUsage = std::max(maxUsage, totalUsage);
+        localTotalUsage = totalUsage;
 }
 
 if (unlikely(localTotalUsage &gt; Config::MemCapacity))
 {
-    ...
-    log.OutWarning([localTotalUsage](auto&amp; ls)
-    { ls &lt;&lt; "System Memory Usage " &lt;&lt; localTotalUsage &lt;&lt; " exceeds its limit " &lt;&lt; Config::MemCapacity; });
+        ...
+        log.OutWarning([localTotalUsage](auto&amp; ls)
+        { ls &lt;&lt; "System Memory Usage " &lt;&lt; localTotalUsage &lt;&lt; " exceeds its limit " &lt;&lt; Config::MemCapacity; });
 }</code></pre>
 
 <p class="meta">From Engine/Core/SystemStatistics.cpp, SystemStatistics::ReportSysMemAlloc() (under PROFILE_ENABLED; elided: the logger lookup)</p>
@@ -118,9 +117,9 @@ if (unlikely(localTotalUsage &gt; Config::MemCapacity))
 
 <pre><code>if (id == SystemAllocatorID)
 {
-    auto&amp; engine = Engine::Get();
-    auto&amp; statistics = engine.GetStatistics();
-    statistics.ReportSysMemAlloc(allocated);
+        auto&amp; engine = Engine::Get();
+        auto&amp; statistics = engine.GetStatistics();
+        statistics.ReportSysMemAlloc(allocated);
 }</code></pre>
 
 <p class="meta">From Engine/Memory/MemoryManager.cpp, MemoryManager::ReportAllocation() (under PROFILE_ENABLED)</p>

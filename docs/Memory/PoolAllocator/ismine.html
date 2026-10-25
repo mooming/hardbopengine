@@ -122,7 +122,7 @@ return buffer &lt;= bytePtr &amp;&amp; offset &lt; totalSize;</code></pre>
 	++index;
 }</code></pre>
 
-<p class="meta">From Engine/Memory/MultiPoolAllocator.cpp, MultiPoolAllocator::GetBankIndex(void*) const</p>
+<p class="meta">From Engine/Memory/MultiPoolAllocator.cpp, MultiPoolAllocator::GetBankIndex(void* ptr) const</p>
 
 <p>
   The engine's use is a routing loop: a release arrives at a multi-pool as a bare pointer, and the first bank that claims the

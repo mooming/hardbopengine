@@ -36,8 +36,9 @@ Clean already: Config (docs), Core (docs), HSTL, Engine, Log (docs), Resource.
   their class pages exist. Container's real total was 128, not 2 — measure with `docs_methods.py`
   before scheduling, not from the ledger's missing column.
 - `quoted_blocks.py` caption regex fixed (2026-10-23): `operator` captions now capture the symbol
-  past the word match. Still unwired from the gate per O14; 3 structurally-unresolvable `()`-overload
-  captions remain in docs/Container (Deque/constructors, Queue/constructors, Queue/front).
+  past the word match. Wired into the gate 2026-10-25 (owner decision O14, triage-then-wire):
+  the tree's 102-finding backlog was triaged to zero first, and the gate now fails a commit whose
+  pages quote code that no longer matches the source.
 - Pointers on a wrapped multi-line template header must sit directly above the `class` head —
   `comments.py`'s pointer reader cannot skip a `template <...>` continuation line that begins with
   `class` (HashMap.h, Map.h).
