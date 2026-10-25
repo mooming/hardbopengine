@@ -1,5 +1,34 @@
 # Journal
 
+## 2026-10-25 12:30 — O14 wired: the tree's quotations now answer to the gate
+
+**Cause.** The owner resolved O14's standing question with "triage-then-wire": the 102-finding backlog
+(stale 69, unresolved 33 — Core 48, Memory 41, Container 5, Config 5, Engine 2, Resource 1) had to be
+reconciled with the current sources before the checker could fail a commit honestly.
+
+**Closed in this round.** One worker triaged all 102 module by module — every rewritten quote
+byte-identical to current source, every caption now resolving to exactly one definition, including the
+three `()`-overload captions this journal once called structurally unresolvable (they were not; the
+captions were re-pointed at unique symbols). Verified by me: `quoted_blocks.py docs/` reads **0 stale,
+0 unresolved** over 3184 blocks in 1576 pages, and htmlcheck passes every touched module. Then the
+wiring: `check.sh`'s layer 5 gained the fourth check — quoted blocks and captions over the touched
+modules' docs folders, failing as a violation (the htmlcheck class), with the backlog note recording
+the decision and the date. The gate proved itself on both sides: a scoped run passes at 0 backlog, and
+a deliberately corrupted quote in `String/trim.html` reddens it (exit 1, STALE line, `grep rule
+failures: 1`) — after two false-negative injection attempts taught the tester that prose code spans
+(`<code>returnValueIf...`) are not quoted blocks and that a replace that matches nothing must not print
+"injected".
+
+**The catch.** The first negative test passed on a page whose code lives in an inline `<code>` span,
+not a captioned `<pre>` block — the checker's domain is quotes, not prose mentions, which is the right
+boundary. The second attempt printed "injected" without injecting; the assertion that proved the
+corruption real is what made the third attempt a valid negative test.
+
+**Verification.** Scoped `check.sh HEAD` exits 0 with the new check in line; the full-tree gate's
+verdict is read after this entry. O14 is closed; O27 (double-release) and O22 (sharded option) remain
+owner decisions, with the stomp/guard-page analysis recorded in this session's conversation and the
+existing SystemAllocator investigation mode reviewed as the foundation.
+
 ## 2026-10-25 10:30 — the rename that proves which half was the contract
 
 **Cause.** The owner read the `IsGenuineLetter` finding and approved the fix: the method is
