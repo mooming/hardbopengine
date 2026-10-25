@@ -16,4 +16,4 @@ enum class ELogLevel : unsigned char
 	FatalError,
 	MAX
 };
-}
+} // namespace hbe
