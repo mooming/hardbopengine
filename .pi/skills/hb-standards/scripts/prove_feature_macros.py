@@ -33,7 +33,9 @@ import subprocess
 import sys
 import tempfile
 
-FEATURE_MACROS = ("PROFILE_ENABLED", "MEMORY_VERIFICATION_ENABLED")
+FEATURE_MACROS = ("PROFILE_ENABLED", "MEMORY_VERIFICATION_ENABLED",
+                  "MEMORY_INVESTIGATION_ENABLED", "MEMORY_DANGLING_POINTER_CHECK_ENABLED",
+                  "MEMORY_BUFFER_UNDERRUN_CHECK_ENABLED")
 HEADER = "Engine/Config/BuildConfig.h"
 DATABASES = ("cmake-build-debug/compile_commands.json", "cmake-build-release/compile_commands.json",
              "build/compile_commands.json")

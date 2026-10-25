@@ -57,9 +57,8 @@
 
 <pre><code>SystemAllocator() = default
 
-#ifdef _MSC_VER
-	template &lt;class U&gt;
-	SystemAllocator(const SystemAllocator&lt;U&gt;&amp;)</code></pre>
+template &lt;class U&gt;
+	explicit SystemAllocator(const SystemAllocator&lt;U&gt;&amp;) noexcept</code></pre>
 
 <h2 id="description">Function description</h2>
 

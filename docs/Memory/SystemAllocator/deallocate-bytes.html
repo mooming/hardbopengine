@@ -50,7 +50,7 @@
 <p class="subtitle">
   <span class="tag">member of hbe::SystemAllocator</span>
   <span class="tag">Engine/Memory/SystemAllocator.h</span>
-  Private: assert, undo the investigation build's pointer placement, report, and hand the block back - free, protect, or VirtualFree
+  Private: assert, undo the investigation build's pointer placement, probe, report, and hand the block back - free, protect, or VirtualFree
 </p>
 
 <h2 id="signature">Signature</h2>
@@ -68,16 +68,21 @@
 
 <p>
   The undo is the reason the byte count is a parameter at all. On the investigation path the pointer this function was
-  handed is usually not the block base — the allocator returned an end-aligned address — so the base is recomputed as
-  <code>bytePtr + nBytes - allocSize</code>, with the same page rounding the allocation applied; a wrong
-  <code>nBytes</code> here releases (or protects) the wrong range. The underrun-check switch makes the handed pointer
-  the raw base and skips the arithmetic. Then, under <code>PROFILE_ENABLED</code>, comes
+  handed is never the block base — the leading guard occupies the first page, and end placement moves the address again —
+  so the base is recomputed with the same page rounding the allocation applied: one page back on front placement,
+  <code>bytePtr + nBytes - (pageCount + 1) * pageSize</code> on end placement; a wrong <code>nBytes</code> here
+  releases (or protects) the wrong range. Then, with the dangling-pointer switch on and before anything else touches
+  the block, comes <strong>the probe</strong>: one volatile read through the handed pointer. A live allocation answers
+  silently; a freed one faults right here, because the previous release protected the whole mapping and the mapping is
+  never returned to the OS — <em>page protection is the state that says "freed"</em>, so this one-byte read is the
+  double-release detector and the faulting call is its diagnosis. Under <code>PROFILE_ENABLED</code> comes
   <code>mmgr.ReportDeallocation(GetID(), ptr, nBytes, allocated)</code> — the heap path deriving
-  <code>allocated</code> from <code>OS::GetAllocSize(ptr)</code>, the investigation path from the page-rounded size —
-  guarded on that path by <code>Assert(nBytes &lt;= allocated)</code> under <code>MEMORY_VERIFICATION_ENABLED</code>.
-  Finally the block leaves: <code>OS::VirtualFree</code>, or — with the dangling-pointer switch on —
-  <code>OS::ProtectMemory</code>, leaving the pages mapped but unreadable so any later touch faults, or in the shipped
-  configuration, plain <code>free(ptr)</code>.
+  <code>allocated</code> from <code>OS::GetAllocSize(ptr)</code>, the investigation path from the guarded,
+  page-rounded size — guarded on that path by <code>Assert(nBytes &lt;= allocated)</code> under
+  <code>MEMORY_VERIFICATION_ENABLED</code>. Finally the block leaves: <code>OS::VirtualFree</code>, or — with the
+  dangling-pointer switch on — <code>OS::ProtectMemory</code> over the whole mapping, guards included, leaving the
+  pages mapped but unreadable so any later touch faults, or in the shipped configuration, plain
+  <code>free(ptr)</code>.
 </p>
 
 <p>

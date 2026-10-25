@@ -52,7 +52,7 @@
   <span class="tag">Engine/Memory/SystemAllocator.h</span>
   <span class="tag">class template</span>
   <span class="tag">namespace hbe</span>
-  The stateless system-heap allocator in standard-library shape: element arithmetic over a private byte layer that is malloc/free in a shipped build and page-rounded virtual blocks in an investigation build, and the allocator proxy slot 0 stands for
+  The stateless system-heap allocator in standard-library shape: element arithmetic over a private byte layer that is malloc/free in a shipped build and guarded page-rounded virtual blocks in an investigation build, and the allocator proxy slot 0 stands for
 </p>
 
 <h2 id="description">Class description</h2>
@@ -134,7 +134,7 @@
   <tr><td><a href="operator-not-equal.html"><code>operator!=</code></a></td><td class="sig">template &lt;class U&gt;<br>bool operator!=(const SystemAllocator&lt;U&gt;&amp;) noexcept</td><td>Always <code>false</code>; the same missing <code>const</code>.</td></tr>
   <tr><td><a href="get-name.html"><code>GetName</code></a></td><td class="sig">[[nodiscard]] auto GetName() const</td><td>The literal <code>"SystemAllocator"</code> — the name slot 0's statistics carry, spelled here independently of the manager's registration string.</td></tr>
   <tr><td><a href="allocate-bytes.html"><code>AllocateBytes</code></a></td><td class="sig">void* AllocateBytes(std::size_t nBytes)</td><td>Private: the byte-level allocation, where the build configuration chooses heap or virtual pages and where the profiling report is filed.</td></tr>
-  <tr><td><a href="deallocate-bytes.html"><code>DeallocateBytes</code></a></td><td class="sig">void DeallocateBytes(void* ptr, std::size_t nBytes)</td><td>Private: the byte-level release, undoing the investigation mode's pointer placement before the block leaves.</td></tr>
+  <tr><td><a href="deallocate-bytes.html"><code>DeallocateBytes</code></a></td><td class="sig">void DeallocateBytes(void* ptr, std::size_t nBytes)</td><td>Private: the byte-level release — undo the pointer placement, probe under the dangling switch, report, then free or protect.</td></tr>
 </table>
 
 <h2 id="non-member">Non-member helper functions</h2>
@@ -149,7 +149,7 @@ argument.</p>
 <table>
   <tr><th>Not documented here</th><th>Why</th></tr>
   <tr><td>The converting constructor's behaviour on the build that compiles it</td><td>It exists only under <code>_MSC_VER</code>; this tree is authored and checked with clang on macOS, where the preprocessor drops it — and with it any method-page demand from the AST gate. The page documents its declaration, which is everything the source states.</td></tr>
-  <tr><td>The <code>MEMORY_INVESTIGATION_ENABLED</code> family of paths — page-rounded virtual blocks, end-aligned pointer placement, <code>OS::ProtectMemory</code> in place of release, the investigator log lines</td><td>All three investigation switches are <code>0</code> in <code>Engine/Config/BuildConfig.h</code>, so these lines never run in this tree; both helper pages describe them from the source and say so. <code>OS::VirtualAlloc</code>, <code>OS::GetAllocSize</code> and <code>OS::ProtectMemory</code> are OSAL entries owned by their own pages.</td></tr>
+  <tr><td>The <code>MEMORY_INVESTIGATION_ENABLED</code> family of paths — guarded page-rounded virtual blocks, the placement selector, the release-time probe, <code>OS::ProtectMemory</code> in place of release, the investigator log lines</td><td>All three investigation switches are <code>0</code> in <code>Engine/Config/BuildConfig.h</code>, so these lines never run in this tree; both helper pages describe them from the source and say so. <code>OS::VirtualAlloc</code>, <code>OS::GetAllocSize</code> and <code>OS::ProtectMemory</code> are OSAL entries owned by their own pages.</td></tr>
   <tr><td>What the profiling report does with a null pointer</td><td><code>OS::GetAllocSize(nullptr)</code> — reachable on a failed <code>malloc</code> in a profiling build — is OSAL behaviour this wave has not read; the null-return fact is stated on <a href="allocate-bytes.html">AllocateBytes</a>, the consequence is not guessed.</td></tr>
   <tr><td>Zero-size allocation and release</td><td><code>allocate(0)</code> asks <code>malloc</code> for zero bytes, which the C standard leaves implementation-defined; the investigation path's behaviour at zero is arithmetic this wave has not traced to an answer. Neither is documented as a contract because neither is one.</td></tr>
   <tr><td><code>SystemAllocatorTest</code></td><td>Test-only: declared in <code>Engine/Memory/SystemAllocator.h</code> inside <code>#ifdef TEST_ENABLED</code>; owns a Coverage row here rather than a page.</td></tr>

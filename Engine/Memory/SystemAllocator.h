@@ -8,7 +8,6 @@
 #include "MemoryManager.h"
 #include "OSAL/OSMemory.h"
 
-
 namespace hbe
 {
 /// API reference: docs/Memory/SystemAllocator/index.html
@@ -76,16 +75,19 @@ private:
 
 		const auto pageSize = OS::GetPageSize();
 		const size_t pageCount = (nBytes + pageSize - 1) / pageSize;
-		const size_t allocSize = pageCount * pageSize;
+		const size_t allocSize = (pageCount + 2) * pageSize;
 		auto rawPtr = OS::VirtualAlloc(allocSize);
 
+		OS::ProtectMemory(rawPtr, pageSize);
+		OS::ProtectMemory(static_cast<uint8_t*>(rawPtr) + (pageCount + 1) * pageSize, pageSize);
+
 #if MEMORY_BUFFER_UNDERRUN_CHECK_ENABLED
-		T* ptr = reinterpret_cast<T*>(rawPtr);
+		auto bytePtr = static_cast<uint8_t*>(rawPtr) + pageSize;
 #else // MEMORY_BUFFER_UNDERRUN_CHECK_ENABLED
-		auto bytePtr = static_cast<uint8_t*>(rawPtr);
-		bytePtr = bytePtr + allocSize - nBytes;
-		T* ptr = reinterpret_cast<T*>(bytePtr);
+		auto bytePtr = static_cast<uint8_t*>(rawPtr) + (pageCount + 1) * pageSize - nBytes;
 #endif // MEMORY_BUFFER_UNDERRUN_CHECK_ENABLED
+
+		T* ptr = reinterpret_cast<T*>(bytePtr);
 
 #if MEMORY_LOGGING_ENABLED
 		{
@@ -121,16 +123,20 @@ private:
 #if MEMORY_INVESTIGATION_ENABLED
 		const auto pageSize = OS::GetPageSize();
 		const size_t pageCount = (nBytes + pageSize - 1) / pageSize;
-		const size_t allocSize = pageCount * pageSize;
+		const size_t allocSize = (pageCount + 2) * pageSize;
 
 #if MEMORY_BUFFER_UNDERRUN_CHECK_ENABLED
-		auto rawPtr = ptr;
+		auto bytePtr = static_cast<uint8_t*>(ptr) - pageSize;
 #else // MEMORY_BUFFER_UNDERRUN_CHECK_ENABLED
-		auto bytePtr = reinterpret_cast<uint8_t*>(ptr);
-		bytePtr = bytePtr + nBytes - allocSize;
-		auto rawPtr = (void*) bytePtr;
+		auto bytePtr = reinterpret_cast<uint8_t*>(ptr) + nBytes - (pageCount + 1) * pageSize;
 #endif // MEMORY_BUFFER_UNDERRUN_CHECK_ENABLED
+		auto rawPtr = reinterpret_cast<void*>(bytePtr);
 		const auto allocated = allocSize;
+
+#if MEMORY_DANGLING_POINTER_CHECK_ENABLED
+		volatile uint8_t probe = *static_cast<volatile uint8_t*>(ptr);
+		(void) probe;
+#endif // MEMORY_DANGLING_POINTER_CHECK_ENABLED
 #endif // MEMORY_INVESTIGATION_ENABLED
 
 #if PROFILE_ENABLED

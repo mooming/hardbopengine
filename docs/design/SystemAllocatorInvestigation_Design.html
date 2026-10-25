@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>System allocator investigation mode design — Memory module — HardBop Engine design document</title>
+<link rel="stylesheet" href="../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../Config/index.html">Config</a></li>
+    <li><a href="../Container/index.html">Container</a></li>
+    <li><a class="current" href="../Core/index.html">Core</a></li>
+    <li><a href="../Engine/index.html">Engine</a></li>
+    <li><a href="../HSTL/index.html">HSTL</a></li>
+    <li><a href="../Log/index.html">Log</a></li>
+    <li><a href="../Math/index.html">Math</a></li>
+    <li><a class="current" href="../Memory/index.html">Memory</a></li>
+    <li><a href="../OSAL/index.html">OSAL</a></li>
+    <li><a href="../Renderer/index.html">Renderer</a></li>
+    <li><a href="../Resource/index.html">Resource</a></li>
+    <li><a href="../String/index.html">String</a></li>
+    <li><a href="../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This document</h3>
+  <ul>
+<li><a href="#mode">The investigation mode and its three switches</a></li>
+<li><a href="#guards">Two-sided guard pages</a></li>
+<li><a href="#placement">The placement selector is a resolution selector</a></li>
+<li><a href="#probe">The probe: page protection is the freed state</a></li>
+<li><a href="#cost">What the mode costs, and why it stays dormant</a></li>
+<li><a href="#seealso">Where else to look</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<h1>System allocator investigation mode design</h1>
+
+<p>
+  The <a href="../Memory/SystemAllocator/index.html">SystemAllocator</a> reference pages own what a caller
+  depends on; this document owns the investigation mode behind them — the page-rounded allocation shape,
+  the two-sided guards, the placement selector and the probe. Every claim was read from
+  <code>Engine/Memory/SystemAllocator.h</code>.
+</p>
+
+<h2 id="mode">The investigation mode and its three switches</h2>
+
+<p>
+  <code>MEMORY_INVESTIGATION_ENABLED</code> replaces <code>malloc</code>/<code>free</code> with page-granular
+  virtual blocks: every allocation is its own <code>OS::VirtualAlloc</code> mapping, rounded to whole pages,
+  and every release returns it — or protects it. The mode is the engine's Electric Fence: commercial speed
+  and density are traded away so that memory defects are caught by the hardware rather than by luck. Two
+  switches shape what it watches:
+</p>
+
+<ul>
+  <li><code>MEMORY_BUFFER_UNDERRUN_CHECK_ENABLED</code> — the <a href="#placement">placement selector</a>:
+  where inside the guarded region the caller's bytes sit.</li>
+  <li><code>MEMORY_DANGLING_POINTER_CHECK_ENABLED</code> — whether release <code>ProtectMemory</code>s the
+  mapping in place (every later access faults) or <code>VirtualFree</code>s it back to the OS.</li>
+</ul>
+
+<p>
+  All three are hardwired to <code>0</code> in <code>Engine/Config/BuildConfig.h</code>, and the feature-macro
+  proof compiles the guarded paths so that a dormant mode cannot rot — a block nobody has ever compiled is
+  where defects hid before, which is the lesson the profiling macros taught first.
+</p>
+
+<h2 id="guards">Two-sided guard pages</h2>
+
+<p>
+  The mapping is <code>pageCount + 2</code> pages, and the first and last pages are protected
+  <code>PROT_NONE</code>/<code>PAGE_NOACCESS</code> at allocation time. The caller's bytes live in the middle;
+  a one-byte write past either end of the region faults — deterministically, because the fault's cause is the
+  guard page's own protection bit and not the accident of what the OS happened to map next door. The
+  single-sided predecessor relied on the neighbouring page being unmapped, which POSIX does not promise:
+  Linux places mappings adjacent, so a boundary write landed in a live neighbour and corrupted it silently.
+</p>
+
+<p>
+  What guards cannot do is equally exact: the <em>page</em> is the finest protection the MMU sells, so an
+  over-run that stays inside the caller's last data page — the slack between the data's end and the page
+  boundary — is silent. Detection resolution is the page, not the byte; see
+  <a href="#placement">placement</a> for how the selector buys one side back to one byte.
+</p>
+
+<h2 id="placement">The placement selector is a resolution selector</h2>
+
+<table>
+  <tr><th>Placement</th><th>Under-run resolution</th><th>Over-run resolution</th></tr>
+  <tr><td>Front — <code>ptr = rawPtr + pageSize</code></td><td><strong>1 byte</strong> (the leading guard sits at
+  <code>ptr[-1]</code>)</td><td>page — the region's trailing boundary</td></tr>
+  <tr><td>End — <code>ptr = rawPtr + (pageCount + 1) × pageSize − nBytes</code></td><td>page</td>
+  <td><strong>1 byte</strong> (the trailing guard sits at <code>ptr[nBytes]</code>)</td></tr>
+  <tr><td>nBytes an exact page multiple</td><td><strong>1 byte</strong></td><td><strong>1 byte</strong> — the data
+  touches both guards and no choice remains to make</td></tr>
+</table>
+
+<p>
+  The macro's meaning survives the extension unchanged — it always meant "where do the bytes go" — but with
+  guards attached, choosing the placement chooses which side of a sub-page allocation is watched at byte
+  resolution. The end-aligned placement's recovery arithmetic (<code>rawPtr = ptr + nBytes − (pageCount + 1)
+  × pageSize</code>) is the inverse of its placement, exactly as the unguarded code inverted its own.
+</p>
+
+<h2 id="probe">The probe: page protection is the freed state</h2>
+
+<p>
+  In <code>MEMORY_DANGLING_POINTER_CHECK_ENABLED</code> mode a release does not return the mapping to the
+  OS — it protects the whole of it, guards included. The address therefore never comes back into circulation,
+  and <em>page protection is the state that says "freed"</em>. That makes the double-release case detectable
+  with no bookkeeping at all: the next <code>DeallocateBytes</code> of the same pointer begins by reading one
+  byte through it — the probe. A live allocation answers silently; a freed one faults at the probing call,
+  whose stack names the second release. The bitmap alternative needed a second source of truth to keep in
+  step with the free list; here the protection bit <em>is</em> the truth. What the probe still does not catch
+  is a release of an address that was freed and <em>re-allocated</em> to someone else — the fault lands on
+  whoever owns the mapping now, which is the stale-pointer class, and closing it needs generations, not
+  protection.
+</p>
+
+<h2 id="cost">What the mode costs, and why it stays dormant</h2>
+
+<table>
+  <tr><th>Cost</th><th>Figure</th></tr>
+  <tr><td>Memory per allocation</td><td>+2 pages of guards (8 KB at 4 KB pages) — 100-byte objects occupy 12 KB</td></tr>
+  <tr><td>Memory on release (dangling mode)</td><td>the mapping is never returned — RSS grows monotonically for the life of the process</td></tr>
+  <tr><td>Speed</td><td>one <code>mmap</code> and two <code>mprotect</code> calls per allocation; one probe read and one <code>mprotect</code> per release</td></tr>
+  <tr><td>Detection resolution</td><td>the page on the unselected side, one byte on the selected side, one byte both sides for page-multiple sizes</td></tr>
+</table>
+
+<p>
+  The price is only sane where the engine is hunting a defect, which is why every switch ships
+  <code>0</code> and the test-suite fault-injection tests
+  (<code>SystemAllocator.cpp</code>, behind <code>MEMORY_INVESTIGATOR_TEST_ENABLED</code>) are manual: they
+  expect the signal, and an automated run that expects a crash cannot be green.
+</p>
+
+<h2 id="seealso">Where else to look</h2>
+
+<ul>
+  <li><a href="../Memory/SystemAllocator/index.html">SystemAllocator</a> — the reference, including what the
+  investigation paths do at the call level.</li>
+  <li><a href="../OSAL/OSMemory/protect-memory.html">OS::ProtectMemory</a> — the primitive the guards and the
+  dangling mode are built on.</li>
+  <li><a href="../MemoryManagement_Guide.md">Memory management guide</a> — where this allocator sits in the
+  engine's allocation story.</li>
+</ul>
+
+</main>
+</body>
+</html>
