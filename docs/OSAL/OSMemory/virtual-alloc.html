@@ -110,7 +110,7 @@
 
 <pre><code>		const auto pageSize = OS::GetPageSize();
 		const size_t pageCount = (nBytes + pageSize - 1) / pageSize;
-		const size_t allocSize = (pageCount + 2) * pageSize;
+		const size_t allocSize = (pageCount + 1) * pageSize;
 		auto rawPtr = OS::VirtualAlloc(allocSize);</code></pre>
 <p class="meta">From Engine/Memory/SystemAllocator.h, SystemAllocator::AllocateBytes(std::size_t nBytes)</p>
 <footer class="prevnext">

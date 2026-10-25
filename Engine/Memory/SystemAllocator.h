@@ -75,16 +75,15 @@ private:
 
 		const auto pageSize = OS::GetPageSize();
 		const size_t pageCount = (nBytes + pageSize - 1) / pageSize;
-		const size_t allocSize = (pageCount + 2) * pageSize;
+		const size_t allocSize = (pageCount + 1) * pageSize;
 		auto rawPtr = OS::VirtualAlloc(allocSize);
 
-		OS::ProtectMemory(rawPtr, pageSize);
-		OS::ProtectMemory(static_cast<uint8_t*>(rawPtr) + (pageCount + 1) * pageSize, pageSize);
-
 #if MEMORY_BUFFER_UNDERRUN_CHECK_ENABLED
+		OS::ProtectMemory(rawPtr, pageSize);
 		auto bytePtr = static_cast<uint8_t*>(rawPtr) + pageSize;
 #else // MEMORY_BUFFER_UNDERRUN_CHECK_ENABLED
-		auto bytePtr = static_cast<uint8_t*>(rawPtr) + (pageCount + 1) * pageSize - nBytes;
+		OS::ProtectMemory(static_cast<uint8_t*>(rawPtr) + pageCount * pageSize, pageSize);
+		auto bytePtr = static_cast<uint8_t*>(rawPtr) + pageCount * pageSize - nBytes;
 #endif // MEMORY_BUFFER_UNDERRUN_CHECK_ENABLED
 
 		T* ptr = reinterpret_cast<T*>(bytePtr);
@@ -123,12 +122,12 @@ private:
 #if MEMORY_INVESTIGATION_ENABLED
 		const auto pageSize = OS::GetPageSize();
 		const size_t pageCount = (nBytes + pageSize - 1) / pageSize;
-		const size_t allocSize = (pageCount + 2) * pageSize;
+		const size_t allocSize = (pageCount + 1) * pageSize;
 
 #if MEMORY_BUFFER_UNDERRUN_CHECK_ENABLED
 		auto bytePtr = static_cast<uint8_t*>(ptr) - pageSize;
 #else // MEMORY_BUFFER_UNDERRUN_CHECK_ENABLED
-		auto bytePtr = reinterpret_cast<uint8_t*>(ptr) + nBytes - (pageCount + 1) * pageSize;
+		auto bytePtr = reinterpret_cast<uint8_t*>(ptr) + nBytes - pageCount * pageSize;
 #endif // MEMORY_BUFFER_UNDERRUN_CHECK_ENABLED
 		auto rawPtr = reinterpret_cast<void*>(bytePtr);
 		const auto allocated = allocSize;

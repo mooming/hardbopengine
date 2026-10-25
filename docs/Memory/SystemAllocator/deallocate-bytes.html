@@ -68,9 +68,9 @@
 
 <p>
   The undo is the reason the byte count is a parameter at all. On the investigation path the pointer this function was
-  handed is never the block base — the leading guard occupies the first page, and end placement moves the address again —
+  handed is never the block base — the guard occupies one page, and end placement moves the address again —
   so the base is recomputed with the same page rounding the allocation applied: one page back on front placement,
-  <code>bytePtr + nBytes - (pageCount + 1) * pageSize</code> on end placement; a wrong <code>nBytes</code> here
+  <code>bytePtr + nBytes - pageCount * pageSize</code> on end placement; a wrong <code>nBytes</code> here
   releases (or protects) the wrong range. Then, with the dangling-pointer switch on and before anything else touches
   the block, comes <strong>the probe</strong>: one volatile read through the handed pointer. A live allocation answers
   silently; a freed one faults right here, because the previous release protected the whole mapping and the mapping is

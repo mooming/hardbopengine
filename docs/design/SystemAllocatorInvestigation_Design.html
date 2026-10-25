@@ -31,7 +31,7 @@
   <h3>This document</h3>
   <ul>
 <li><a href="#mode">The investigation mode and its three switches</a></li>
-<li><a href="#guards">Two-sided guard pages</a></li>
+<li><a href="#guards">One guard page, on the watched side</a></li>
 <li><a href="#placement">The placement selector is a resolution selector</a></li>
 <li><a href="#probe">The probe: page protection is the freed state</a></li>
 <li><a href="#cost">What the mode costs, and why it stays dormant</a></li>
@@ -46,7 +46,7 @@
 <p>
   The <a href="../Memory/SystemAllocator/index.html">SystemAllocator</a> reference pages own what a caller
   depends on; this document owns the investigation mode behind them — the page-rounded allocation shape,
-  the two-sided guards, the placement selector and the probe. Every claim was read from
+  the single guard page, the placement selector and the probe. Every claim was read from
   <code>Engine/Memory/SystemAllocator.h</code>.
 </p>
 
@@ -73,41 +73,47 @@
   where defects hid before, which is the lesson the profiling macros taught first.
 </p>
 
-<h2 id="guards">Two-sided guard pages</h2>
+<h2 id="guards">One guard page, on the watched side</h2>
 
 <p>
-  The mapping is <code>pageCount + 2</code> pages, and the first and last pages are protected
-  <code>PROT_NONE</code>/<code>PAGE_NOACCESS</code> at allocation time. The caller's bytes live in the middle;
-  a one-byte write past either end of the region faults — deterministically, because the fault's cause is the
-  guard page's own protection bit and not the accident of what the OS happened to map next door. The
-  single-sided predecessor relied on the neighbouring page being unmapped, which POSIX does not promise:
-  Linux places mappings adjacent, so a boundary write landed in a live neighbour and corrupted it silently.
+  The mapping is <code>pageCount + 1</code> pages, and exactly one of them is protected
+  <code>PROT_NONE</code>/<code>PAGE_NOACCESS</code> at allocation time — and its position follows the
+  placement selector: front placement protects the <em>first</em> page, end placement protects the
+  <em>last</em>. The caller's bytes sit on the other side of the guard, so a one-byte crossing of the
+  watched boundary faults — deterministically, because the fault's cause is the guard page's own
+  protection bit and not the accident of what the OS happened to map next door.
 </p>
 
-<p>
-  What guards cannot do is equally exact: the <em>page</em> is the finest protection the MMU sells, so an
-  over-run that stays inside the caller's last data page — the slack between the data's end and the page
-  boundary — is silent. Detection resolution is the page, not the byte; see
-  <a href="#placement">placement</a> for how the selector buys one side back to one byte.
-</p>
+<div class="note">
+  <strong>Owner decision, 2026-10-25: one guard, not two.</strong> A two-guard variant was considered and
+  rejected: the second guard would have made the unwatched side's <em>large</em> crossings fault too (and
+  given page-multiple allocations byte resolution on both sides for free), but the practical value was
+  judged low against the extra page. The accepted consequence is stated plainly: on the unwatched side, a
+  crossing that leaves the mapping lands in whatever the OS mapped next door — on Linux that is usually a
+  neighbouring allocation, so the corruption is silent. The mode's contract is the watched side only.
+</div>
 
-<h2 id="placement">The placement selector is a resolution selector</h2>
+<h2 id="placement">The placement selector chooses the check, exclusively</h2>
 
 <table>
-  <tr><th>Placement</th><th>Under-run resolution</th><th>Over-run resolution</th></tr>
-  <tr><td>Front — <code>ptr = rawPtr + pageSize</code></td><td><strong>1 byte</strong> (the leading guard sits at
-  <code>ptr[-1]</code>)</td><td>page — the region's trailing boundary</td></tr>
-  <tr><td>End — <code>ptr = rawPtr + (pageCount + 1) × pageSize − nBytes</code></td><td>page</td>
-  <td><strong>1 byte</strong> (the trailing guard sits at <code>ptr[nBytes]</code>)</td></tr>
-  <tr><td>nBytes an exact page multiple</td><td><strong>1 byte</strong></td><td><strong>1 byte</strong> — the data
-  touches both guards and no choice remains to make</td></tr>
+  <tr><th>Switch state</th><th>Layout</th><th>Watched boundary</th><th>Unwatched side</th></tr>
+  <tr><td><code>MEMORY_BUFFER_UNDERRUN_CHECK_ENABLED 1</code></td>
+      <td><code>[GUARD][data pages]</code>, <code>ptr = rawPtr + pageSize</code></td>
+      <td>under-run at <strong>1-byte</strong> resolution (<code>ptr[-1]</code> is the guard)</td>
+      <td>over-run is not checked: sub-page slack absorbs it silently, a crossing leaves the mapping into the OS neighbour</td></tr>
+  <tr><td><code>MEMORY_BUFFER_UNDERRUN_CHECK_ENABLED 0</code></td>
+      <td><code>[data pages][GUARD]</code>, <code>ptr = rawPtr + pageCount × pageSize − nBytes</code></td>
+      <td>over-run at <strong>1-byte</strong> resolution (<code>ptr[nBytes]</code> is the guard)</td>
+      <td>under-run is not checked: the same silence, mirrored</td></tr>
 </table>
 
 <p>
-  The macro's meaning survives the extension unchanged — it always meant "where do the bytes go" — but with
-  guards attached, choosing the placement chooses which side of a sub-page allocation is watched at byte
-  resolution. The end-aligned placement's recovery arithmetic (<code>rawPtr = ptr + nBytes − (pageCount + 1)
-  × pageSize</code>) is the inverse of its placement, exactly as the unguarded code inverted its own.
+  The two checks are mutually exclusive <em>by construction</em>: there is one switch, and its two states
+  are the two checks — a single bit cannot assert both. This is deliberate and recorded as the switch's
+  contract: the mode hunts one boundary per run, chosen at build time, and the page-level slack on the
+  unwatched side is silent in every configuration. The end placement's recovery arithmetic
+  (<code>rawPtr = ptr + nBytes − pageCount × pageSize</code>) is the inverse of its placement, exactly as
+  the front placement's <code>rawPtr = ptr − pageSize</code> is of its own.
 </p>
 
 <h2 id="probe">The probe: page protection is the freed state</h2>
@@ -129,10 +135,10 @@
 
 <table>
   <tr><th>Cost</th><th>Figure</th></tr>
-  <tr><td>Memory per allocation</td><td>+2 pages of guards (8 KB at 4 KB pages) — 100-byte objects occupy 12 KB</td></tr>
+  <tr><td>Memory per allocation</td><td>+1 guard page (4 KB at 4 KB pages) — 100-byte objects occupy 8 KB</td></tr>
   <tr><td>Memory on release (dangling mode)</td><td>the mapping is never returned — RSS grows monotonically for the life of the process</td></tr>
-  <tr><td>Speed</td><td>one <code>mmap</code> and two <code>mprotect</code> calls per allocation; one probe read and one <code>mprotect</code> per release</td></tr>
-  <tr><td>Detection resolution</td><td>the page on the unselected side, one byte on the selected side, one byte both sides for page-multiple sizes</td></tr>
+  <tr><td>Speed</td><td>one <code>mmap</code> and one <code>mprotect</code> call per allocation; one probe read and one <code>mprotect</code> per release</td></tr>
+  <tr><td>Detection resolution</td><td>one byte on the watched side only; the unwatched side is unchecked by the owner decision above</td></tr>
 </table>
 
 <p>

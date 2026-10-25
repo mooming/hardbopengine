@@ -50,7 +50,7 @@
 <p class="subtitle">
   <span class="tag">member of hbe::SystemAllocator</span>
   <span class="tag">Engine/Memory/SystemAllocator.h</span>
-  Private: where bytes come from - malloc in a shipped build, guarded page-rounded virtual blocks in an investigation build, and the profiling report either way
+  Private: where bytes come from - malloc in a shipped build, one-guard page-rounded virtual blocks in an investigation build, and the profiling report either way
 </p>
 
 <h2 id="signature">Signature</h2>
@@ -69,12 +69,13 @@
   In the shipped configuration, the body is <code>auto ptr = (T*) malloc(nBytes);</code> and nothing else before the
   report: the pointer, null on failure, is returned as given. With <code>MEMORY_INVESTIGATION_ENABLED</code>, the
   request is rounded up to whole pages (<code>pageCount = (nBytes + pageSize - 1) / pageSize</code> over
-  <code>OS::GetPageSize()</code>), and the block is a <code>pageCount + 2</code> page mapping from
-  <code>OS::VirtualAlloc</code> whose first and last pages are immediately protected — the two-sided guards. The
-  pointer handed back sits inside the guarded middle, placed by the
-  <code>MEMORY_BUFFER_UNDERRUN_CHECK_ENABLED</code> switch: front placement (<code>rawPtr + pageSize</code>) puts the
-  leading guard exactly at <code>ptr[-1]</code>, so a one-byte under-run faults; end placement (region end minus
-  <code>nBytes</code>) puts the trailing guard exactly at <code>ptr[nBytes]</code>, so a one-byte over-run faults.
+  <code>OS::GetPageSize()</code>), and the block is a <code>pageCount + 1</code> page mapping from
+  <code>OS::VirtualAlloc</code> whose <strong>single guard page</strong> is immediately protected — on the side the
+  <code>MEMORY_BUFFER_UNDERRUN_CHECK_ENABLED</code> switch watches, exclusively. Switch on: the guard is the
+  <em>first</em> page and the bytes start right after it, so a one-byte under-run faults at <code>ptr[-1]</code>.
+  Switch off: the guard is the <em>last</em> page and the bytes end right before it, so a one-byte over-run faults
+  at <code>ptr[nBytes]</code>. The two checks cannot be enabled together — one switch, two states. The unwatched
+  side is not checked: see the design document for the owner decision and its accepted silence.
   With <code>MEMORY_LOGGING_ENABLED</code> every such allocation logs raw base and placed pointer through the
   engine logger. One further statement in this configuration deserves recording for what it is: a special case for
   <code>nBytes == 1</code> that assigns <code>1</code> to <code>nBytes</code> — a no-op edit left in the source,
@@ -101,19 +102,22 @@
 
 <p>
   An untyped pointer to room for <code>nBytes</code> — never tested for null here, and the investigation path's pointer
-  is <em>never</em> the block base: the leading guard occupies the first page, so even front placement is one page in.
+  is <em>never</em> the block base: the guard occupies one page of the mapping, so even front placement is one page in.
   That is why <a href="deallocate-bytes.html">DeallocateBytes</a> recomputes the base from the size before releasing.
 </p>
 
 <h2 id="example">Examples</h2>
 
-<pre><code>		const auto pageSize = OS::GetPageSize();
-		const size_t pageCount = (nBytes + pageSize - 1) / pageSize;
-		const size_t allocSize = (pageCount + 2) * pageSize;
+<pre><code>		const size_t allocSize = (pageCount + 1) * pageSize;
 		auto rawPtr = OS::VirtualAlloc(allocSize);
 
+#if MEMORY_BUFFER_UNDERRUN_CHECK_ENABLED
 		OS::ProtectMemory(rawPtr, pageSize);
-		OS::ProtectMemory(static_cast&lt;uint8_t*&gt;(rawPtr) + (pageCount + 1) * pageSize, pageSize);</code></pre>
+		auto bytePtr = static_cast&lt;uint8_t*&gt;(rawPtr) + pageSize;
+#else // MEMORY_BUFFER_UNDERRUN_CHECK_ENABLED
+		OS::ProtectMemory(static_cast&lt;uint8_t*&gt;(rawPtr) + pageCount * pageSize, pageSize);
+		auto bytePtr = static_cast&lt;uint8_t*&gt;(rawPtr) + pageCount * pageSize - nBytes;
+#endif // MEMORY_BUFFER_UNDERRUN_CHECK_ENABLED</code></pre>
 
 <p class="meta">From Engine/Memory/SystemAllocator.h, SystemAllocator::AllocateBytes</p>
 
