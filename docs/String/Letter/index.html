@@ -58,19 +58,10 @@
 
 <p>
   <code>Letter</code> is a namespace-shaped utility: three static predicates over a single
-  <code>char</code>, with no state and no instance. Two of them classify ASCII case, and one — despite its
-  name — classifies whitespace, which is the page's most important sentence: a reader who calls
-  <code>IsGenuineLetter</code> expecting a letter test gets the opposite answer for every letter of the
-  alphabet.
+  <code>char</code>, with no state and no instance. Two of them classify ASCII case, and one classifies
+  whitespace by its absence — <code>IsNotWhiteSpace</code> is true for every character that is not a space,
+  tab, newline or carriage return.
 </p>
-
-<div class="gap">
-  <strong>The name says letter; the code tests whitespace.</strong>
-  <code>IsGenuineLetter</code> returns <code>true</code> for a character that is <em>not</em> a space, tab,
-  newline or carriage return — that is, for every printable letter, digit and punctuation mark alike. The
-  name survives from an earlier intent; the behaviour is what the tests and callers rely on, so the page
-  documents the behaviour and flags the name. Renaming it is the real fix and is recorded as such.
-</div>
 
 <h2 id="template">Template parameters</h2>
 
@@ -94,9 +85,9 @@
   <tr><td><a href="is-upper-case.html"><code>IsUpperCase</code></a></td>
       <td class="sig">static bool IsUpperCase(TChar letter)</td>
       <td>True exactly for <code>'A'</code> through <code>'Z'</code>; everything else is false.</td></tr>
-  <tr><td><a href="is-genuine-letter.html"><code>IsGenuineLetter</code></a></td>
-      <td class="sig">static bool IsGenuineLetter(TChar letter)</td>
-      <td>Despite the name: true for every character that is <em>not</em> whitespace — letters, digits and punctuation all pass.</td></tr>
+  <tr><td><a href="is-not-white-space.html"><code>IsNotWhiteSpace</code></a></td>
+      <td class="sig">static bool IsNotWhiteSpace(TChar letter)</td>
+      <td>True for every character that is <em>not</em> whitespace — letters, digits and punctuation all pass.</td></tr>
 </table>
 
 <h2 id="non-member">Non-member helpers</h2>
@@ -106,8 +97,8 @@
 <h2 id="coverage">Coverage</h2>
 
 <p>
-  This page documents the class completely: the alias, all three predicates, and the name/behaviour
-  mismatch on <code>IsGenuineLetter</code>. The predicates are ASCII-only — no locale, no Unicode — which
+  This page documents the class completely: the alias and all three predicates. The predicates are
+  ASCII-only — no locale, no Unicode — which
   the range comparisons in each method page make plain.
 </p>
 <footer class="prevnext">

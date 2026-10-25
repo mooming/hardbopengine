@@ -29,7 +29,7 @@ public:
 		return true;
 	}
 
-	[[nodiscard]] static bool IsGenuineLetter(TChar letter)
+	[[nodiscard]] static bool IsNotWhiteSpace(TChar letter)
 	{
 		returnValueIf(false, letter == ' ' || letter == '\t' || letter == '\n' || letter == '\r');
 

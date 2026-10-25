@@ -50,7 +50,7 @@
 <p class="subtitle">
   <span class="tag">member of hbe::String</span>
   <span class="tag">Engine/String/String.h</span>
-  whitespace off both ends via IsGenuineLetter
+  whitespace off both ends via IsNotWhiteSpace
 </p>
 
 <h2 id="signature">Signature</h2>
@@ -61,7 +61,7 @@
 
 <p>
   Whitespace off both ends, in one scan: the first and last character for which
-  <code>Letter::IsGenuineLetter</code> holds — the predicate that is true for everything
+  <code>Letter::IsNotWhiteSpace</code> holds — the predicate that is true for everything
   <em>except</em> the four whitespace characters — bound the kept range, and the answer is a
   <a href="sub-string.html"><code>SubString</code></a> of it:
 </p>
@@ -74,7 +74,7 @@
 		const auto length = Length();
 		for (Index i = 0; i &lt; length; ++i)
 		{
-			if (Letter::IsGenuineLetter((*buffer)[i]))
+			if (Letter::IsNotWhiteSpace((*buffer)[i]))
 			{
 				if (startIndex &gt;= length)
 				{
@@ -97,7 +97,7 @@
 <p>
   An all-whitespace or empty string returns a default-constructed <code>String</code>. Note the class's
   <code>Trim</code> and <a href="../StringUtil/trim.html"><code>StringUtil::Trim</code></a> agree on which
-  characters are whitespace only because <code>IsGenuineLetter</code> tests the same four characters the
+  characters are whitespace only because <code>IsNotWhiteSpace</code> tests the same four characters the
   default separator set does — space, tab, newline, carriage return.
 </p>
 

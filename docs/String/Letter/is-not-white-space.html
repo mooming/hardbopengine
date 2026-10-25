@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Letter::IsGenuineLetter — String module — HardBop Engine API reference</title>
+<title>Letter::IsNotWhiteSpace — String module — HardBop Engine API reference</title>
 <link rel="stylesheet" href="../../assets/hbe-docs.css">
 </head>
 <body>
@@ -43,36 +43,36 @@
 <p class="breadcrumb">
   <a href="../../index.html">Module Index</a> /
   <a href="../index.html">String</a> /
-  <a href="index.html">Letter</a> / IsGenuineLetter
+  <a href="index.html">Letter</a> / IsNotWhiteSpace
 </p>
 
-<h1><span class="fn">IsGenuineLetter</span></h1>
+<h1><span class="fn">IsNotWhiteSpace</span></h1>
 <p class="subtitle">
   <span class="tag">member of hbe::Letter</span>
   <span class="tag">Engine/String/Letter.h</span>
-  despite the name: true for everything that is not whitespace
+  true for every character that is not whitespace — letters, digits and punctuation alike
 </p>
 
 <h2 id="signature">Signature</h2>
 
-<pre><code>[[nodiscard]] static bool IsGenuineLetter(TChar letter)</code></pre>
+<pre><code>[[nodiscard]] static bool IsNotWhiteSpace(TChar letter)</code></pre>
 
 <h2 id="description">Function description</h2>
 
 <p>
-  Despite the name, this is a <em>whitespace</em> test in reverse:
+  True when the character is <em>not</em> whitespace:
   <code>returnValueIf(false, letter == ' ' || letter == '\t' || letter == '\n' || letter == '\r')</code>
   returns <code>false</code> for the four whitespace characters and <code>true</code> for everything else.
-  A caller reading the name as "is this a letter" gets the wrong answer for every letter of the alphabet
-  only in the sense that letters pass — but so do digits, punctuation and every non-ASCII byte, so the
-  predicate distinguishes whitespace from non-whitespace, not letters from non-letters.
+  The predicate distinguishes whitespace from non-whitespace — letters, digits, punctuation and every
+  non-ASCII byte pass alike; it does not distinguish letters from non-letters.
 </p>
 
-<div class="gap">
-  <strong>The name does not match the behaviour.</strong> The class page carries this note too, because a
-  reader who arrives from a call site needs it before anything else. The four whitespace characters tested
-  are space, horizontal tab, newline and carriage return — vertical tab and form feed are
-  <code>true</code> here.
+<div class="note">
+  <strong>Named <code>IsGenuineLetter</code> until 2026-10-25.</strong> The old name promised a letter test
+  while the code tested whitespace, and the one caller — <a href="../String/trim.html"><code>String::Trim</code></a> —
+  needed the whitespace meaning, so the name was the defect and the behaviour was the contract. The rename
+  is the fix; the four characters tested are unchanged: space, horizontal tab, newline and carriage return —
+  vertical tab and form feed are <code>true</code> here.
 </div>
 
 <h2 id="parameters">Parameters</h2>

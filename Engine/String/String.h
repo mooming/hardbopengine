@@ -235,7 +235,7 @@ public:
 		const auto length = Length();
 		for (Index i = 0; i < length; ++i)
 		{
-			if (Letter::IsGenuineLetter((*buffer)[i]))
+			if (Letter::IsNotWhiteSpace((*buffer)[i]))
 			{
 				if (startIndex >= length)
 				{

@@ -201,7 +201,7 @@
       <td>Every occurrence mapped; the string form replaces in place while scanning.</td></tr>
   <tr><td><a href="trim.html"><code>Trim</code></a></td>
       <td class="sig">[[nodiscard]] String Trim() const noexcept</td>
-      <td>Whitespace off both ends, via <code>Letter::IsGenuineLetter</code>; all-whitespace gives an empty string.</td></tr>
+      <td>Whitespace off both ends, via <code>Letter::IsNotWhiteSpace</code>; all-whitespace gives an empty string.</td></tr>
   <tr><td><a href="head.html"><code>Head</code></a></td>
       <td class="sig">[[nodiscard]] String Head() const noexcept</td>
       <td>Everything before the first whitespace — the first word.</td></tr>
