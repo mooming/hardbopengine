@@ -22,6 +22,7 @@
 #include "Container/Queue.h"
 #include "Container/RingBuffer.h"
 #include "Container/Vector.h"
+#include "Core/Batch.h"
 #include "Core/CPUBudget.h"
 #include "Core/ComponentSystem.h"
 #include "Core/Debug.h"
@@ -157,6 +158,7 @@ void RegisterSuite()
 	testEnv.AddTestCollection<OSInputOutputTest>();
 	testEnv.AddTestCollection<OSThreadTest>();
 	testEnv.AddTestCollection<TimeTest>();
+	testEnv.AddTestCollection<pipeline::BatchTest>();
 	testEnv.AddTestCollection<CPUBudgetTest>();
 	testEnv.AddTestCollection<TaskProviderTest>();
 	testEnv.AddTestCollection<TaskRegistryTest>();

@@ -34,6 +34,7 @@ include_directories ( ${CMAKE_SOURCE_DIR}
 
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/lib)
 add_library (Core STATIC 
+ Batch.cpp
  CPUBudget.cpp
  CommandLineArguments.cpp
  Component.cpp
@@ -52,6 +53,7 @@ add_library (Core STATIC
  TaskSystem.cpp
  Time.cpp
  WorkItem.cpp
+ Batch.h
  CPUBudget.h
  CommandLineArguments.h
  CommonMacros.h
