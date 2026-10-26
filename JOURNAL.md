@@ -1,5 +1,24 @@
 # Journal
 
+## 2026-10-26 00:10 — the guard halved by decision, and the exclusivity written into the contract
+
+**Cause.** The owner read the two-guard design and cut it: there is no reason to detect the unwatched
+side, and one guard page is enough for the check the switch names. The under-run and over-run checks are
+mutually exclusive — one switch, two states — and this must be unmistakable in the reference.
+
+**Closed in this round.** The mapping is `pageCount + 1` pages with exactly one protected page, and its
+position follows the placement: front placement guards the first page (under-run at one byte), end
+placement guards the last (over-run at one byte). The two-guard variant is recorded in the design document
+as rejected, with the accepted consequence stated plainly: on the unwatched side a crossing leaves the
+mapping into the OS neighbour — on Linux, usually a live allocation — and the corruption is silent. The
+exclusivity is recorded as the switch's contract in the design document, the class page, and both helper
+pages: one bit cannot assert both checks. Page-multiple allocations lost the free both-sides resolution the
+second guard had bought; the cost table now says +1 page and one `mprotect` per allocation.
+
+**Verification.** The five-macro compile proof at 144 clean; EngineTest 66/66; quoted blocks, signatures,
+htmlcheck, comments and format all at 0 — the quoted-blocks gate catching the stale `virtual-alloc`
+quote within minutes of the code change, for the second time.
+
 ## 2026-10-25 22:30 — O27 closed the only way a header-less design can be: the state moved into the page
 
 **Cause.** The owner's proposal: a released page, protected, is its own "freed" record — so a probe read
