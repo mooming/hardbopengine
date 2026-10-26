@@ -11,7 +11,8 @@
 namespace hbe
 {
 Task::Task() noexcept
-	: numSubTasks(0)
+	: id{}
+	, numSubTasks(0)
 	, numGeneratedSubTasks(0)
 	, numFinishedSubTasks(0)
 	, func(nullptr)
