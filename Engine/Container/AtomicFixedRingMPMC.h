@@ -5,6 +5,7 @@
 #include <atomic>
 #include <cstddef>
 #include <new>
+#include <optional>
 #include <thread>
 #include <utility>
 
@@ -97,6 +98,20 @@ public:
 		ReleaseSlot(taken);
 
 		return EPopResult::Element;
+	}
+
+	[[nodiscard]] std::optional<T> Pop() noexcept
+	{
+		size_t taken = 0;
+		returnValueIf(std::nullopt, !TryTakeReadyElement(taken));
+
+		T* element = PayloadAt(taken);
+		T item{std::move(*element)};
+		element->~T();
+
+		ReleaseSlot(taken);
+
+		return item;
 	}
 
 	[[nodiscard]] bool IsEmpty() const noexcept

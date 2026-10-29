@@ -5,6 +5,7 @@
 #include <cstddef>
 #include <mutex>
 #include <new>
+#include <optional>
 #include <utility>
 
 #include "Config/BuildConfig.h"
@@ -100,6 +101,21 @@ public:
 		--count;
 
 		return EPopResult::Element;
+	}
+
+	[[nodiscard]] std::optional<T> Pop()
+	{
+		const std::lock_guard lockGuard(guard);
+		returnValueIf(std::nullopt, count == 0);
+
+		T* element = PayloadAt(head);
+		T item{std::move(*element)};
+		element->~T();
+
+		head = (head + 1) & IndexMask;
+		--count;
+
+		return item;
 	}
 
 	[[nodiscard]] bool IsEmpty() const

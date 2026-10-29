@@ -5,8 +5,11 @@
 #ifdef TEST_ENABLED
 #include <atomic>
 #include <cstdint>
+#include <optional>
 #include <thread>
 #include <vector>
+
+#include "Core/Batch.h"
 
 namespace hbe
 {
@@ -97,6 +100,47 @@ void AtomicFixedRingMPSCTest::Prepare()
 
 				return;
 			}
+		}
+	});
+
+	AddTest("Value Pop Move-Constructs Const-Member Items", [this](auto& ls)
+	{
+		using Queue = AtomicFixedRingMPSC<pipeline::Batch, 4>;
+
+		Queue queue;
+		if (queue.Pop().has_value())
+		{
+			ls << "An empty queue answered the value-returning pop with an item." << lferr;
+
+			return;
+		}
+
+		for (std::uint32_t value = 0; value < 3; ++value)
+		{
+			const pipeline::Batch batch{.typeID = value + 1, .requestID = value, .data = nullptr, .count = value};
+			if (queue.Push(batch) != EPushResult::Pushed)
+			{
+				ls << "Push refused batch " << value << "." << lferr;
+
+				return;
+			}
+		}
+
+		for (std::uint32_t value = 0; value < 3; ++value)
+		{
+			std::optional<pipeline::Batch> popped = queue.Pop();
+			if (!popped || popped->typeID != value + 1 || popped->requestID != value)
+			{
+				ls << "Value pop returned " << (popped ? "a mismatched batch" : "nothing") << " for batch " << value
+				   << "." << lferr;
+
+				return;
+			}
+		}
+
+		if (queue.Pop().has_value())
+		{
+			ls << "A drained queue answered the value-returning pop with an item." << lferr;
 		}
 	});
 

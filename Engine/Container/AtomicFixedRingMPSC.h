@@ -5,6 +5,7 @@
 #include <atomic>
 #include <cstddef>
 #include <new>
+#include <optional>
 #include <thread>
 #include <utility>
 
@@ -97,6 +98,20 @@ public:
 		++readIndex;
 
 		return EPopResult::Element;
+	}
+
+	[[nodiscard]] std::optional<T> Pop() noexcept
+	{
+		returnValueIf(std::nullopt, !IsDataReady(readIndex));
+
+		T* element = PayloadAt(readIndex);
+		T item{std::move(*element)};
+		element->~T();
+
+		ReleaseSlot(readIndex);
+		++readIndex;
+
+		return item;
 	}
 
 	[[nodiscard]] bool IsEmpty() const noexcept

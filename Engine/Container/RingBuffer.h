@@ -8,6 +8,7 @@
 #include <cstdint>
 #include <mutex>
 #include <new>
+#include <optional>
 #include <type_traits>
 #include <utility>
 #include <vector>
@@ -235,6 +236,39 @@ public:
 
 			Block* next = block->next.load(std::memory_order_acquire);
 			returnValueIf(EPopResult::Empty, next == nullptr);
+
+			head = next;
+			RetireBlock(block, next);
+			block = next;
+		}
+	}
+
+	[[nodiscard]] std::optional<T> Pop() noexcept
+	{
+		if (head == nullptr)
+		{
+			head = chainRoot.load(std::memory_order_acquire);
+			returnValueIf(std::nullopt, head == nullptr);
+		}
+
+		Block* block = head;
+		while (true)
+		{
+			if (std::optional<T> item = block->ring.Pop())
+			{
+				return item;
+			}
+
+			const bool reservedAhead = block->claim.load(std::memory_order_acquire) > block->ring.GetSlotVersion();
+			if (reservedAhead || !block->ring.IsEmpty())
+			{
+				blockedCount.fetch_add(1, std::memory_order_relaxed);
+
+				return std::nullopt;
+			}
+
+			Block* next = block->next.load(std::memory_order_acquire);
+			returnValueIf(std::nullopt, next == nullptr);
 
 			head = next;
 			RetireBlock(block, next);
