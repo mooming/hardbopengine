@@ -159,7 +159,7 @@ public:
 	[[nodiscard]] EPushResult Push(const T& inItem) noexcept
 	{
 		const size_t token = AcquireProducerToken();
-		returnValueIf(EPushResult::TooManyProducers, unlikely(token == InvalidProducerToken));
+		returnValueIf(EPushResult::TooManyProducers, token == InvalidProducerToken);
 
 		Block* block = nullptr;
 

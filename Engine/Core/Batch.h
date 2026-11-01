@@ -2,22 +2,21 @@
 
 #pragma once
 
-#include <cstddef>
-#include <cstdint>
+#include "PipelineTypes.h"
 
 
 namespace hbe::pipeline
 {
-using TypeID = std::uintptr_t;
-using RequestID = uint64_t;
-
 class Batch final
 {
 public:
 	const TypeID typeID = 0;
 	const RequestID requestID = 0;
-	void* data = nullptr;
-	std::size_t count = 0;
+	void* const data = nullptr;
+	const TSize count = 0;
+
+public:
+	[[nodiscard]] bool IsValid() const noexcept { return data != nullptr;}
 };
 } // namespace hbe::pipeline
 

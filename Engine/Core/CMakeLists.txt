@@ -41,8 +41,10 @@ add_library (Core STATIC
  ComponentSystem.cpp
  Debug.cpp
  MainThreadTaskQueue.cpp
+ PipelineDefinition.cpp
  ResultPacket.cpp
  ScopedLock.cpp
+ StageChannel.cpp
  StreamDrainPolicy.cpp
  SystemStatistics.cpp
  Task.cpp
@@ -65,10 +67,13 @@ add_library (Core STATIC
  Debug.h
  Exception.h
  MainThreadTaskQueue.h
+ PipelineDefinition.h
+ PipelineTypes.h
  ResultPacket.h
  Runnable.h
  ScopedLock.h
  ScopedTime.h
+ StageChannel.h
  StreamDrainPolicy.h
  SystemStatistics.h
  Task.h

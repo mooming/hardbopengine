@@ -10,6 +10,7 @@ enum class EPushResult : unsigned char
 {
 	Pushed,
 	Full,
-	TooManyProducers
+	TooManyProducers,
+	Closed
 };
 } // namespace hbe
