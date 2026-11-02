@@ -50,6 +50,190 @@ Release-only build, `Tools/bin/` target — already covered by the root `.gitign
 usage (exit 0). The .bat is untested here — no Windows host — its structure mirrors the verified
 .sh and the house's own build.bat idioms.
 
+## 2026-11-01 22:36 — the pipeline's first slice compiles in the real build; six owner decisions applied
+
+**Cause.** The owner ruled on the six open items: keep Push without the outResult (the deferred-
+decision loop contract stands); Pop returns `BatchView<T>` with the D16 type-id assert at the
+conversion; never `const_cast` — drop the pointee const from `Batch::data` instead (`void* const`
+— I2 is now enforced at the view level, consumers read through `span<const T>`); choose the ctor
+capacity mechanism from options; never hand-edit CMake — regenerate via MakeBuild; keep the cpp,
+renamed to `StageChannel.cpp`.
+
+**Closed in this round.** `./generate_cmake_files.sh` twice — the second pass changed nothing (the
+house rule held, and it deleted the hand edits, including the dangling `StageLink.cpp` reference).
+The pipeline sources compiled in a real build for the first time; gates cleaned (includes/blank
+lines at 0); EngineTest 67 collections / 431 testlets passed. Committed as 3fe9aa27: Batch,
+PipelineTypes, StageChannel, the PipelineDefinition stub, the regenerated CMake, plus the owner's
+`EPushResult::Closed` and the `unlikely` removal in RingBuffer.
+
+**Open.** ~~The StageChannel ctor capacity (I5) — options presented to the owner.~~ **Resolved
+(owner, 2026-11-01): the hybrid** — `PipelineStageConfig.capacity` (0 = auto), auto resolves to
+**four batches in flight** (double buffer + slack; unit corrected — capacity counts batches, not
+items, so it is a small constant, not batchSize-derived). The channel maps capacity to facade
+blocks (`RingBuffer(maxBlocks)` — the facade's `maxBlocks` is its runtime bound; block capacity
+is the compile-time `TBlockCapacity = 8` template) and reports the resolved `Capacity()`, which
+is what I5's arena sizing will read. Committed as 6256267. Next: `Release`, `PipelineDefinition`
+completion, `PipelineInstance`.
+
+## 2026-10-29 23:40 — execution shape settled: the pipeline rides the streams, and is not a provider
+
+**Cause.** The owner weighed riding TaskSystem's stream queues versus replacing them, weighting
+simplicity, then asked whether option A makes the pipeline a special `TaskProvider` draining stage
+items from the lanes.
+
+**Decided (owner, 2026-10-29).** Ride the streams (option A): the only regime where riding loses —
+sub-microsecond batches — is edge fusion's territory. Process-until-empty is the contract that makes
+the per-batch cost ring-ops only. And the pipeline is **not** a `TaskProvider`: streams drain worker
+tasks, workers drain channels — the provider variant would pull per-batch `WorkItem`s through the
+lane queues (data crossing the scheduler, 80 B copies, Produce under the stream lock) and
+`WorkItem`'s range-slice model carries no batch handle. Provider = engine-owned work producer;
+worker task = data-consuming loop; data never enters a lane queue.
+
+**Status.** Recorded in plan §3 (S3 sketch + execution decision). Next: Pop's consumer-facing shape,
+`Release`, the Push outResult (a)/(b) decision, ctor capacity, CMove common-list move,
+`StageLink.cpp` removal.
+
+## 2026-10-29 22:36 — every ring class gained a move-constructing Pop; StageChannel compiles at last
+
+**Cause.** The owner asked for the move-construction fix and confirmed the other FixedRings need it
+too — the move-assign `Pop(T& outItem)` was a five-class common problem, not one site.
+
+**Closed in this round.** `std::optional<T> Pop()` added to `AtomicFixedRingMPSC`,
+`AtomicFixedRingMPMC`, `FixedRingMPSC`, `FixedRingMPMC` and the `RingBuffer` facade — all using
+move **construction** (`T item{std::move(*element)}`), which const members permit, where move
+**assignment** is deleted. The facade variant delegates to the inner rings and collapses Empty and
+Blocked into `nullopt` (`blockedCount` keeps the count); its walk mirrors the reference Pop. A
+testlet drives const-member `pipeline::Batch` through the MPSC value Pop (empty, three batches,
+drained). `StageChannel::Pop` now compiles for the first time — proven by forced instantiation.
+
+**Verification.** Forced instantiation clean (`-Wall -Wextra`); includes/comments gates 0;
+EngineTest 67 collections / 431 testlets all passed (+1); Release Container and Core both link.
+Committed as 31d7bba — containers and the test only; the owner's pipeline files untouched.
+
+**Next.** StageChannel's remaining decisions: Pop's consumer-facing shape (Batch vs
+`std::optional<Batch>` vs `BatchView<T>`), the D16 typeID assert inside Pop, `Release` (one
+const_cast), the Push outResult (a)/(b) decision, ctor capacity (I5), CMake common-list move,
+`StageLink.cpp` removal.
+
+## 2026-10-28 — StageChannel's Push reaches its final shape; three compiler-proven fixes
+
+**Cause.** Review rounds on the owner's `Push` surfaced three real defects, each proven by forcing
+template instantiation: a `BatchSlot<T>&&` return that dangles (returning a reference to a parameter
+temporary — clang's `-Wreturn-stack-address` caught one of two sites), the `EPushResult` returned
+where the slot type was expected, and an off-by-one `Assert(itemCount < slot.size())` that would
+reject full-slot publishes — the normal case for 1:1 transform stages.
+
+**Decided (owner, rounds 13–15).** `Push` returns the lease **by value**: empty span = Pushed
+(guaranteed elision), the filled slot back on Full/Closed (retry reuses the written slot — no
+rewrite under back-pressure). The out-param stays: the failure reason must be delivered atomically
+with the failure — querying `IsClosed()` afterwards races with shutdown's `Close()` (TOCTOU,
+owner caught it). Assembly-verified vs `std::optional`: span return rides registers (x0/x1),
+optional goes through sret memory — the out-param is the ABI-optimal and race-free endgame.
+Name settled back to StageChannel; plan updated to the final contract.
+
+**Status.** Remaining: the `<=` assert fix, Debug.h include, ctor capacity (I5), include/blank
+gates, CMake common-list move, `StageLink.cpp` removal; then `TryPop`/`Release` and the
+value-returning ring `Pop` variant.
+
+## 2026-10-27 09:03 — StageLink confirmed ring-based; fusion deferred as a Build-time optimization
+
+**Cause.** The owner challenged the ring twice — "hand the output straight to the next stage" and
+"one stage implements the whole chain" — then settled: StageLink's internals are a bounded house
+ring, and the no-queue models are absorbed as special cases rather than alternatives.
+
+**Decided (owner, D18).** `AtomicFixedRingMPMC<Batch>` is the base candidate (placement-new Push,
+lock-free MPMC at worker level). Direct hand-off = capacity 1; frame double-buffer = capacity 2;
+edge fusion (same-stream consecutive stages walk inline, rings removed) = a deferred Build-time
+optimization, recorded in §6 — possible precisely because the definition is a lazy blueprint (D1).
+Stage-parallel tuning, stream mixing and back-pressure all require the ring.
+
+**Status.** BatchSlot/BatchView resolved to span alias templates (D16, round 12) — the wrapper
+structs dissolved once `view.data()` became the whole slot identity; Push gains a debug
+slot-ownership check and `TypedView<T>(const Batch&)` carries the D16 assert. Batch is all-const
+(`data` pointee-const question was left at `void* const` vs `const void* const` — unsettled).
+One blocker left before the StageLink spec freezes: whether Batch's `data`/`count` are
+const (typeID/requestID already are).
+
+## 2026-10-26 17:46 — BatchTest lands: the aggregate-construction idiom gets its first proof
+
+**Cause.** The owner asked for a unit test in `Batch.cpp` exercising the construction forms the
+POD idiom settled today — default, ordered aggregate, designated (C++20), partial, copy — plus the
+type traits the channels will rely on.
+
+**Closed in this round.** `BatchTest` declared in the `TEST_ENABLED` block of `Batch.h`, implemented
+in `Batch.cpp` (static asserts: aggregate, trivially copyable, trivially destructible, copy-
+constructible; runtime checks: all construction forms agree, partial init falls back to member
+initializers, 32 B on a 64-bit pointer platform). Along the way: the header's banned comment and
+mislabelled closing brace fixed, `std::size_t` qualified, `Batch.{h,cpp}` moved out of the
+non-Apple platform list into the common Core sources (they were excluded from Apple builds),
+registered in `UnitTestCollection.cpp` as `pipeline::BatchTest`. The live lesson: designated
+initializers enforce declaration order — the first ordered-init draft did not compile because the
+header's member order is `typeID, requestID, data, count`, not the plan's order. Member order
+remains the owner's call before call sites accumulate.
+
+**Verification.** comments/blank-lines/includes gates at 0; EngineTest Dev 67 collections /
+430 testlets all passed; Release `Core` builds (the `TEST_ENABLED` guard is clean). Committed as
+a49a8525 — the owner's `PipelineDefinition` lines in `CMakeLists.txt` were lifted out for the
+commit and restored to the worktree untouched.
+
+## 2026-10-26 17:25 — Task's default ctor now initializes id (the survey's bonus finding, fixed alone)
+
+**Cause.** The POD-constructor survey (44 trivial-ctor types listed for the owner) flagged that
+`Task::Task()` zeroed every member except `id`, leaving the registry handle indeterminate. The owner
+ordered: fix this one defect, keep the 42 trivial constructors as they are — no NSDMI migration sweep.
+
+**Closed in this round.** `id{}` prepended to the default constructor's member-init list —
+`TaskID`'s own member initializers make it the null ID (`NullIndex`, generation 0). One line,
+no behavioural surface beyond removing the indeterminate value.
+
+**Verification.** EngineTest Dev build clean; all 66 collections passed (429 testlets).
+Committed as 4cad80d7, `Task.cpp` only — the owner's in-progress pipeline files untouched.
+
+## 2026-10-26 15:05 — pipeline vocabulary settled: Batch is a handle, JobInstance is an execution, requestID survives the pipeline
+
+**Cause.** Owner walked the runtime model down: rejected `AddParallelJob` in favour of one
+`AddJob(stage, job, numConcurrency = 1)`; named the executor `PipelineInstance` with the definition
+as a const blueprint; fixed one allocator per instance plus invariants I1–I5; absorbed "one big
+task" into streaming (finite source + Close + Wait); settled `Batch{data, count, requestID}` —
+requestID, not JobID, because the surviving identity across stages is the originating request.
+
+**Decided (owner, rounds 3–6).** D11 allocator per instance; D12 single-outcome invariant;
+D13 no separate batch mode — sink outputs instance-held; D14 `JobInstance` = fixed-size AoS
+banked records with derived identity (SoA rejected: N is small, access is per-record, no scans);
+D15 Batch fields = item-array start, item count, requestID. Vocabulary: job = logic,
+instance = execution, batch = data handle (waybill/box/goods).
+
+**Status.** Owner implements; assistant reviews and keeps the plan current.
+Open: `JobContext` vs `PipelineContext` for the invocation context — filed in plan §6.
+Round 7: type binding settled (D16) — `BatchView<T>` sole access path, one runtime assert at
+erased boundaries, no constexpr requirement. Round 8 (D17): the owner cut both the central type
+list and `hash_code()` (RTTI is absent on some target platforms) — `typeID` is a constexpr
+FNV-1a hash of the `__PRETTY_FUNCTION__`/`__FUNCSIG__` signature: decentralized, no list,
+no RTTI; collisions surface as false-positive asserts (fail-safe). Round 9–10: the owner dropped
+the compile-time-integer requirement entirely, so the typeID became the signature literal's
+address — formally unique, exact assert. Round 11: fixed-width integers cut (pointer-width
+dependence) and `void*` cut (can flow into pointer parameters) — the address is stored as
+`std::uintptr_t`, which the codebase already uses; Batch is 32 B on 64-bit, 24 B on 32-bit.
+Plan: [`.Plans/PLAN_pipeline.md`](.Plans/PLAN_pipeline.md).
+
+## 2026-10-26 11:35 — Pipeline layer designed: Definition/Executor, member-fn stages, zero-copy Batch edges
+
+**Cause.** Owner asked for a pipeline object with per-stage parallelism and copy-free stage-to-stage
+result delivery, then chose inheritance-based definition over a builder and deferred runtime dynamic
+graphs to a future separate class.
+
+**Decided (owner, 2026-10-26).** `PipelineDefinition` (subclassed, stages are member function
+pointers so `this` captures state — no `void* userData`) / `Pipeline` (final executor).
+Edges move only a 16 B `Batch{ptr, count}`; streaming (ring + Close EOF + back-pressure) and frame
+(flush + Recycle swap) are one mechanism differing only in close/recycle timing. Streaming workers
+never block a stream thread — empty TryPop re-adds via the existing re-add path. Parallelism reuses
+`Task::numSubTasks`; channels replace `ResultPacket` for pipelines. Second round: a stage may also
+be a **job set** (`AddJob`, workers pop jobs — task-parallel) and the graph gains **join nodes**
+that move no data, only a `std::span<const Batch>` of 16 B handles — both owner-confirmed.
+Plan: [`.Plans/PLAN_pipeline.md`](.Plans/PLAN_pipeline.md), stages S1–S5, each ending in a commit.
+
+**Status.** Plan written, awaiting owner approval before implementation.
+
 ## 2026-10-26 00:10 — the guard halved by decision, and the exclusivity written into the contract
 
 **Cause.** The owner read the two-guard design and cut it: there is no reason to detect the unwatched
