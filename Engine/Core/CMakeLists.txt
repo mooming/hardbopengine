@@ -68,6 +68,7 @@ add_library (Core STATIC
  Exception.h
  MainThreadTaskQueue.h
  PipelineDefinition.h
+ PipelineStageConfig.h
  PipelineTypes.h
  ResultPacket.h
  Runnable.h

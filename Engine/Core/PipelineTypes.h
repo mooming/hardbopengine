@@ -16,6 +16,9 @@ using TypeID = std::uintptr_t;
 using RequestID = uint64_t;
 using TSize = std::size_t;
 
+static constexpr TSize DefaultBlockCapacity = 8;
+static constexpr TSize DefaultCapacityBatches = 4;
+
 template <typename T>
 using BatchSlot = std::span<T>;
 

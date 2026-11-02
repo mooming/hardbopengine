@@ -8,12 +8,13 @@
 #include "Container/RingBuffer.h"
 #include "Memory/AllocatorID.h"
 #include "Memory/MemoryManager.h"
+#include "PipelineStageConfig.h"
 #include "PipelineTypes.h"
 
 
 namespace hbe::pipeline
 {
-template <typename T>
+template <typename T, size_t TBlockCapacity = DefaultBlockCapacity>
 class StageChannel final
 {
 public:
@@ -21,6 +22,7 @@ public:
 	const TStageID toStageID;
 	const TypeID typeID;
 	const TAllocatorID allocatorID;
+	const TSize capacity;
 
 private:
 	std::atomic<bool> isClosed;
@@ -29,9 +31,20 @@ private:
 	RingBuffer<Batch, AtomicFixedRingMPSC<Batch>> queue;
 
 public:
-	StageChannel(TStageID from, TStageID to, TAllocatorID allocID)
-		: fromStageID(from), toStageID(to), typeID(GetTypeID<T>()), allocatorID(allocID), isClosed(false)
+	StageChannel(TStageID from, TStageID to, TAllocatorID allocID, TSize inCapacity = PipelineStageConfig::AutoCapacity)
+		: fromStageID(from)
+		, toStageID(to)
+		, typeID(GetTypeID<T>())
+		, allocatorID(allocID)
+		, capacity(inCapacity == PipelineStageConfig::AutoCapacity ? DefaultCapacityBatches : inCapacity)
+		, isClosed(false)
+		, queue((capacity + TBlockCapacity - 1) / TBlockCapacity)
 	{
+	}
+
+	[[nodiscard]] TSize Capacity() const noexcept
+	{
+		return capacity;
 	}
 
 	void Close() noexcept
