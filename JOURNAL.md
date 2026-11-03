@@ -1,5 +1,19 @@
 # Journal
 
+## 2026-11-03 15:39 — the wip branch rebased onto the pushed tooling fixes
+
+**Cause.** The owner approved the push of master and directed this branch to rebase onto it.
+Old master tip 6256267 → 7e95eb9 (three chore(tools) commits, pushed to origin).
+
+**What the rebase did.** 77f3136 is dead — its successor is **b956118**. The commit's hand-added
+`AlignedStorage.h` registration deduplicated away (master carries it canonically since 0e1c55d),
+so the replayed commit is plan + journal only; the JOURNAL conflict at the top insertion point was
+resolved newest-first (the 11-03 tooling entries stay above the 11-01 pipeline entries), one blank
+seam restored at the splice, and the message amended — "Memory header registration" no longer
+describes the commit's content. The delta against master is docs only; nothing compilable changed,
+so no build was run for the rebase itself. origin/wip still points at 77f3136 — updating it needs
+`--force-with-lease` and the owner's approval.
+
 ## 2026-11-03 15:30 — generate_cmake_files.bat: the windows twin
 
 **Cause.** Parity follow-up to the 15:23 fix: the owner asked for a .bat version of
