@@ -1,5 +1,24 @@
 # Journal
 
+## 2026-11-03 15:23 — generate_cmake_files.sh now uses the Tools/bin convention
+
+**Cause.** The owner asked for a review of the script's use of makebuild. It pointed at
+`Tools/MakeBuild/build/Application/MakeBuild/Debug/makebuild` — a configuration that was never
+built (the Debug/ directory is empty), so the script exited 1 as of today — and its failure
+message named `install_sdk_*` scripts that exist nowhere in the repo.
+
+**Closed in this round.** The binary path is `Tools/bin/makebuild` now, the failure message points
+at `Tools/build_all_tools.sh`, and `exec` passes the script-resolved project root instead of `.`
+(which resolves against the caller's CWD — run from a subdirectory it would have regenerated that
+subtree as a project root); the comment's promised argument forwarding actually happens now. The
+verification pass also closed a latent registration gap: makebuild's canonical pass added
+`AlignedStorage.h` to the Memory module list — the file has been tracked since 5bfab87 but was
+registered only by the unmerged wip commit 77f3136's hand edit, which the house rule forbids. The
+generated position matches the hand edit's exactly, so that line becomes redundant at merge time.
+
+**Verification.** Root run: regeneration exit 0, one module corrected; second run: no changes
+(idempotent); run from `Engine/`: no changes — the project root was targeted, not the subtree.
+
 ## 2026-11-03 15:15 — build_all_tools: the script that built nothing now builds from any cwd
 
 **Cause.** `Tools/BuildAllTools.sh` resolved `TOOLS_ROOT="Tools"` and `bin/` against the caller's

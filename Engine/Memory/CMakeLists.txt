@@ -51,6 +51,7 @@ add_library (Memory STATIC
  StackAllocator.cpp
  SystemAllocator.cpp
  ThreadSafeMultiPoolAllocator.cpp
+ AlignedStorage.h
  AllocStats.h
  AllocatorID.h
  AllocatorProxy.h
