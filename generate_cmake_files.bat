@@ -1,16 +1,17 @@
 @echo off
-rem generate_cmake_files.bat - Run MakeBuild to generate CMake files for the whole project
+setlocal
 
-rem Resolve the project root (directory of this script)
+:: generate_cmake_files.bat - Run MakeBuild to generate CMake files for the whole project.
+
 set "PROJECT_ROOT=%~dp0"
+if "%PROJECT_ROOT:~-1%"=="\" set "PROJECT_ROOT=%PROJECT_ROOT:~0,-1%"
 
-rem Path to the MakeBuild executable (built in Debug configuration)
-set "MAKEBUILD_BIN=%PROJECT_ROOT%Tools\MakeBuild\build\Application\MakeBuild\Debug\makebuild.exe"
+set "MAKEBUILD_BIN=%PROJECT_ROOT%\Tools\bin\makebuild.exe"
 
 if not exist "%MAKEBUILD_BIN%" (
-    echo MakeBuild not built – run install_sdk_*.bat first.
+    echo MakeBuild not built - run Tools\build_all_tools.bat first.
     exit /b 1
 )
 
-rem Forward all arguments to MakeBuild
-"%MAKEBUILD_BIN%" .
+:: Run MakeBuild on the project root, forwarding any extra arguments
+"%MAKEBUILD_BIN%" "%PROJECT_ROOT%" %*

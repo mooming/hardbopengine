@@ -1,5 +1,15 @@
 # Journal
 
+## 2026-11-03 15:30 — generate_cmake_files.bat: the windows twin
+
+**Cause.** Parity follow-up to the 15:23 fix: the owner asked for a .bat version of
+generate_cmake_files.sh. One batch-specific trap handled: `%~dp0` ends with a backslash, and a
+trailing `\"` inside a quoted argument parses as an escaped quote under Windows argv rules — the
+root path is stripped before it is quoted and passed to makebuild. Otherwise it mirrors the .sh:
+`Tools\bin\makebuild.exe`, the failure message points at `Tools\build_all_tools.bat`, extra
+arguments forwarded with `%*`, LF endings per the house .bat convention. Untested here — no
+Windows host — one run on a Windows box closes it.
+
 ## 2026-11-03 15:23 — generate_cmake_files.sh now uses the Tools/bin convention
 
 **Cause.** The owner asked for a review of the script's use of makebuild. It pointed at
