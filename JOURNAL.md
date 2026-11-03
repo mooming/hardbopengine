@@ -1,5 +1,26 @@
 # Journal
 
+## 2026-11-03 15:15 — build_all_tools: the script that built nothing now builds from any cwd
+
+**Cause.** `Tools/BuildAllTools.sh` resolved `TOOLS_ROOT="Tools"` and `bin/` against the caller's
+working directory — run from `Tools/`, it searched for `Tools/Tools`, found nothing, and exited 0
+(the empty `Tools/bin/` it left behind was the symptom). The owner directed a rename to
+`build_all_tools.sh` plus a Windows twin.
+
+**Closed in this round.** Every path is anchored to the script's own directory (`BASH_SOURCE` /
+`%~dp0`); the "not submodules" heuristic is dropped — `MakeBuild` *is* a submodule and the only
+tool; executable discovery now scopes to `*/Release/*`, requires the exec bit, excludes
+`CMakeFiles`, and confirms `Mach-O|ELF executable` via `file` instead of the name-shape
+`! -name "*.*"`; `build_all_tools.bat` mirrors the flow with the house generator
+(`Ninja Multi-Config`) and LF endings matching the repo's other .bat files. Both scripts agree:
+Release-only build, `Tools/bin/` target — already covered by the root `.gitignore`'s level-less
+`bin` pattern, so the copies never appear in `git status`.
+
+**Verification.** From the repo root: 13/13 targets built, `makebuild` copied; from inside
+`Tools/`: incremental no-work rebuild, copy idempotent; `Tools/bin/makebuild` runs and prints its
+usage (exit 0). The .bat is untested here — no Windows host — its structure mirrors the verified
+.sh and the house's own build.bat idioms.
+
 ## 2026-10-26 00:10 — the guard halved by decision, and the exclusivity written into the contract
 
 **Cause.** The owner read the two-guard design and cut it: there is no reason to detect the unwatched
