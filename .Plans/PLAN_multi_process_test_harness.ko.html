@@ -1,0 +1,716 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>계획 — 다중 프로세스 테스트 하니스</title>
+<style>
+	:root {
+		--ink: #1a1a2e;
+		--paper: #fdfdfb;
+		--accent: #0f5aa8;
+		--accent-soft: #e8f0fa;
+		--border: #d8d8d2;
+		--warn: #b45309;
+		--warn-soft: #fef3e2;
+		--ok: #15803d;
+		--ok-soft: #ecfdf3;
+		--code-bg: #f4f4ef;
+	}
+	* { box-sizing: border-box; }
+	body {
+		font-family: "Apple SD Gothic Neo", "Malgun Gothic", "Noto Sans KR", sans-serif;
+		color: var(--ink);
+		background: var(--paper);
+		max-width: 960px;
+		margin: 0 auto;
+		padding: 2.5rem 1.5rem 4rem;
+		line-height: 1.75;
+	}
+	h1 {
+		font-size: 1.7rem;
+		border-bottom: 3px solid var(--accent);
+		padding-bottom: 0.6rem;
+		margin-bottom: 0.3rem;
+	}
+	h2 {
+		font-size: 1.25rem;
+		color: var(--accent);
+		margin-top: 2.4rem;
+		border-left: 5px solid var(--accent);
+		padding-left: 0.7rem;
+	}
+	h3 { font-size: 1.05rem; margin-top: 1.6rem; }
+	.status {
+		display: inline-block;
+		background: var(--warn-soft);
+		color: var(--warn);
+		border: 1px solid var(--warn);
+		border-radius: 4px;
+		padding: 0.15rem 0.7rem;
+		font-size: 0.85rem;
+		font-weight: 600;
+		margin-bottom: 1.5rem;
+	}
+	table {
+		border-collapse: collapse;
+		width: 100%;
+		margin: 1rem 0;
+		font-size: 0.93rem;
+	}
+	th, td {
+		border: 1px solid var(--border);
+		padding: 0.5rem 0.8rem;
+		text-align: left;
+		vertical-align: top;
+	}
+	th { background: var(--accent-soft); }
+	tbody tr:nth-child(even) { background: #fafaf7; }
+	code {
+		font-family: "SF Mono", Menlo, Consolas, monospace;
+		font-size: 0.87em;
+		background: var(--code-bg);
+		padding: 0.1em 0.35em;
+		border-radius: 3px;
+	}
+	pre {
+		background: var(--code-bg);
+		border: 1px solid var(--border);
+		border-radius: 6px;
+		padding: 1rem 1.2rem;
+		overflow-x: auto;
+		font-family: "SF Mono", Menlo, Consolas, monospace;
+		font-size: 0.85rem;
+		line-height: 1.6;
+	}
+	pre code { background: none; padding: 0; }
+	.diagram { text-align: center; margin: 1.4rem 0; }
+	.diagram .box {
+		display: inline-block;
+		border: 2px solid var(--accent);
+		border-radius: 8px;
+		padding: 0.8rem 1.4rem;
+		margin: 0.3rem;
+		background: var(--accent-soft);
+		font-weight: 600;
+	}
+	.diagram .box.child { border-color: var(--ok); background: var(--ok-soft); }
+	.diagram .box.kill { border-color: var(--warn); background: var(--warn-soft); color: var(--warn); }
+	.diagram .arrow { font-size: 1.3rem; color: var(--accent); margin: 0 0.4rem; }
+	.diagram .lane { margin: 0.9rem 0; }
+	.note {
+		background: var(--warn-soft);
+		border-left: 4px solid var(--warn);
+		padding: 0.7rem 1rem;
+		margin: 1rem 0;
+		font-size: 0.93rem;
+	}
+	ul { padding-left: 1.4rem; }
+	li { margin: 0.25rem 0; }
+	footer {
+		margin-top: 3rem;
+		padding-top: 1rem;
+		border-top: 1px solid var(--border);
+		font-size: 0.85rem;
+		color: #666;
+	}
+</style>
+</head>
+<body>
+
+<h1>계획 — 다중 프로세스 테스트 하니스</h1>
+<p><span class="status">상태: 초안 — 소유자 승인 대기</span></p>
+
+<h2>1. 목표</h2>
+<p>
+단일 프로세스·태스크 체인 방식의 테스트 스위트를 다중 프로세스 하니스로 교체한다.
+러너가 테스트렛(testlet) 하나당 자식 <code>EngineTest</code> 프로세스를 하나씩 생성하고,
+타임아웃(기본 16초, 테스트렛별 재정의 가능)을 강제하며, 멈춘 자식을 kill 하고,
+결과를 취합한다. 엔진은 프로세스 관리 기능을 OSAL 역량(<code>OSProcess</code>)으로
+획득하고, 테스트 하니스는 그 첫 번째 소비자가 된다.
+</p>
+
+<h2>2. 확정된 결정 사항</h2>
+<table>
+	<thead>
+		<tr><th style="width:3rem">#</th><th>결정 항목</th><th>선택</th></tr>
+	</thead>
+	<tbody>
+		<tr><td>D1</td><td>격리 단위</td><td>테스트렛별 (약 429개의 수명이 짧은 프로세스)</td></tr>
+		<tr><td>D2</td><td>생성 방식</td><td>같은 바이너리를 argv 선택자와 함께 재실행(re-exec)</td></tr>
+		<tr><td>D3</td><td>러너 위치</td><td><code>EngineTest</code> 내부의 러너 모드 (새 타깃 없음)</td></tr>
+		<tr><td>D4</td><td>플랫폼</td><td>Linux + macOS + Windows, 전부 검증</td></tr>
+		<tr><td>D5</td><td>기존 단일 프로세스 모드</td><td>삭제 — 다중 프로세스 전용</td></tr>
+		<tr><td>D6</td><td>타임아웃</td><td>기본 16초, 테스트렛별 재정의 가능</td></tr>
+		<tr><td>D7</td><td>자식 출력</td><td>파이프 우선: 러너가 배수 (<code>File</code> 모드는 선택 옵션으로 유지)</td></tr>
+	</tbody>
+</table>
+
+<div class="note">
+<strong>위험 (D4 관련):</strong> 이번 세션에서는 Windows 호스트를 사용할 수 없었다
+(저널의 기존 선례). <code>WindowsProcess.cpp</code>는 동일한 계약에 맞춰 작성하고
+가능한 범위에서 컴파일 검증을 진행한다. 실제 Windows 실행은 소유자가 수행하는 것으로
+마무리된다. 조용히 통과 처리하지 않고 열린 게이트로 기록한다.
+</div>
+
+<h2>3. 아키텍처</h2>
+
+<div class="diagram">
+	<div class="lane">
+		<span class="box">EngineTest (플래그 없음) = 러너</span>
+		<span class="arrow">→</span>
+		<span class="box child">자식: EngineTest --testlet N</span>
+		<span class="arrow">→</span>
+		<span class="box kill">타임아웃 시 kill</span>
+	</div>
+</div>
+
+<pre><code>EngineTest (플래그 없음)  =  러너
+  PrepareTestlets()            (엔진 불필요: 라벨 + 개수)
+  각 테스트렛 N마다:
+      자식 생성: EngineTest --testlet N (stdout/stderr는 파이프)
+      루프: 자식 파이프 배수 -&gt; WaitForProcess(50ms 슬라이스)
+      데드라인(기본 16초, 테스트렛별 재정의) 초과 시:
+          자식 kill, 마지막 배수, "TIMEOUT"으로 기록
+  종료 코드 취합 -&gt; 보고서 (pass=/fail=/invalid= 형식 유지)
+
+EngineTest --testlet N  =  자식
+  Engine::Initialize
+  베이스 스트림에 [RunTestlet N, ReportAndShutDown] 예약 (2-태스크 체인)
+  Engine::Run
+  exit 0 / 1
+</code></pre>
+
+<h2>4. 작업 항목</h2>
+
+<h3>4.1 OSProcess (신규 OSAL 역량)</h3>
+<ul>
+	<li><code>Engine/OSAL/OSProcess.h</code> — <code>OSThread</code> 패턴을 따르는
+		<code>OS</code> 네임스페이스의 자유 함수들. <code>OSProcessTest</code>
+		컬렉션을 헤더에 선언.</li>
+	<li><code>Engine/OSAL/OSProcess.cpp</code> — 공통 코드 + <code>OSProcessTest::Prepare</code>.</li>
+	<li><code>LinuxProcess.cpp</code> (posix_spawn 계열), <code>OSXProcess.cpp</code>,
+		<code>WindowsProcess.cpp</code> (<code>CreateProcess</code> /
+		<code>WaitForSingleObject</code> / <code>TerminateProcess</code> /
+		<code>GetExitCodeProcess</code>).</li>
+	<li>API 표면(정확한 시그니처는 구현 중 확정, 계약은 문서화): 생성(경로, 인자,
+		스트림별 리디렉션: 상속/파일/파이프), 상태 + 종료 코드를 반환하는
+		슬라이스 대기, kill, 핸들 닫기(Windows HANDLE 위생 관리).</li>
+	<li>문서: 함수마다 한 페이지, 테스트 컬렉션의 클래스 페이지, 설계 문서
+		<code>docs/design/OSProcess_Design.html</code> (플랫폼 매핑, 핸들 수명주기,
+		좀비/HANDLE 누수 방지, 타임아웃 의미론).</li>
+	<li><strong>API 설계 (파이프 우선, 제안):</strong></li>
+</ul>
+
+<p><strong>타입</strong></p>
+<table>
+	<thead>
+		<tr><th>타입</th><th>계약</th></tr>
+	</thead>
+	<tbody>
+		<tr>
+			<td><code>EProcessStream</code></td>
+			<td><code>StdOut</code> / <code>StdErr</code> — 연산이 다루는 자식 스트림 선택.</td>
+		</tr>
+		<tr>
+			<td><code>EStreamMode</code></td>
+			<td><code>Inherit</code> / <code>File</code> / <code>Pipe</code> — <code>ProcessSpawnDesc</code>의 스트림별 리디렉션 모드.</td>
+		</tr>
+		<tr>
+			<td><code>ProcessSpawnDesc</code></td>
+			<td><code>executablePath</code>, <code>arguments</code>, 스트림별 <code>EStreamMode</code>, <code>File</code> 모드용 파일 경로.</td>
+		</tr>
+		<tr>
+			<td><code>ProcessPipe</code></td>
+			<td>파이프 한 개: 비블로킹 <code>Read(buffer, maxBytes)</code> — <code>&gt;0</code> 읽은 바이트,
+				<code>0</code> 지금은 없음, <code>-1</code> EOF(자식이 끝을 닫음). <code>CloseReadEnd()</code>.</td>
+		</tr>
+		<tr>
+			<td><code>ProcessHandle</code></td>
+			<td>네이티브 핸들(<code>pid_t</code> / <code>HANDLE</code>) + stdout/stderr 읽기 끝의
+				<code>ProcessPipe</code> (<code>Pipe</code> 모드에서만 유효). <code>IsValid()</code>,
+				<code>GetStdoutPipe()</code>, <code>GetStderrPipe()</code>.</td>
+		</tr>
+		<tr>
+			<td><code>EProcessWaitResult</code></td>
+			<td><code>Exited</code> / <code>TimedOut</code> / <code>Failed</code>.</td>
+		</tr>
+	</tbody>
+</table>
+
+<p><strong>함수</strong></p>
+<table>
+	<thead>
+		<tr><th>함수</th><th>계약</th></tr>
+	</thead>
+	<tbody>
+		<tr>
+			<td><code>ProcessHandle SpawnProcess(const ProcessSpawnDesc&amp; desc) noexcept</code></td>
+			<td><code>desc</code>대로 자식을 생성한다. <code>Pipe</code> 모드에서 자식이 쓰기 끝을 받고
+				<strong>부모의 쓰기 끝 복사본은 spawn 내부에서 닫힌다</strong> — 열어 두면 EOF가 영원히 오지 않는다.
+				<code>File</code> 모드에서는 해당 스트림이 지정 경로로 리디렉션된다. 실패 시 유효하지 않은 핸들.</td>
+		</tr>
+		<tr>
+			<td><code>EProcessWaitResult WaitForProcess(ProcessHandle&amp; handle, uint32_t timeoutMilliSecs, int&amp; exitCode) noexcept</code></td>
+			<td><strong>블로킹 대기가 아니라 타임 슬라이스</strong>: 최대 <code>timeoutMilliSecs</code>만큼 기다린 뒤
+				<code>Exited</code>(종료 코드 기록) / <code>TimedOut</code>(자식 생존) / <code>Failed</code>를 답한다.
+				슬라이스인 이유는 호출자가 대기 사이에 파이프를 배수하기 위해서다.</td>
+		</tr>
+		<tr>
+			<td><code>void KillProcess(ProcessHandle&amp; handle) noexcept</code></td>
+			<td>강제 종료 (<code>SIGKILL</code> / <code>TerminateProcess</code>). 뒤에는 회수하는
+				<code>WaitForProcess</code>(좀비)와 마지막 배수가 따라야 한다.</td>
+		</tr>
+		<tr>
+			<td><code>void CloseProcessHandle(ProcessHandle&amp; handle) noexcept</code></td>
+			<td>파이프와 네이티브 핸들을 닫는다 (Windows <code>CloseHandle</code>; POSIX에서 회수는
+				<code>WaitForProcess</code>의 몫이고 나머지를 여기서 해제).</td>
+		</tr>
+	</tbody>
+</table>
+
+<div class="note">
+<strong>배수 루프가 설계의 이유다.</strong> 파이프의 커널 버퍼(POSIX 약 64KB)는 아무도 읽지 않으면
+차고, 자식의 쓰기가 블록되고, 러너는 "파이프가 막혀 멈춘" 자식을 멈춘 것으로 오해해 kill 한다 —
+거짓 타임아웃. 그래서 <code>WaitForProcess</code>는 슬라이스다. 러너의 루프: 파이프 배수 →
+<code>WaitForProcess(50ms)</code> → <code>Exited</code>까지 반복, 데드라인 도달 시
+<code>KillProcess</code> → 마지막 배수.
+</div>
+
+<p><strong>예제</strong> (설명용; 정확한 시그니처는 구현 중 확정)</p>
+
+<p>러너의 전체 주기 — 파이프로 생성, 대기하며 배수, 데드라인 kill, 정리:</p>
+<pre><code>OS::ProcessSpawnDesc desc;
+desc.executablePath = engineTestPath;
+desc.arguments = {"EngineTest", "--testlet", "37"};
+desc.stdoutMode = OS::EStreamMode::Pipe;
+desc.stderrMode = OS::EStreamMode::Pipe;
+
+OS::ProcessHandle child = OS::SpawnProcess(desc);
+if (!child.IsValid())
+{
+	RecordSpawnFailure(testletIndex);
+	return;
+}
+
+int exitCode = 0;
+const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(16);
+OS::EProcessWaitResult result = OS::EProcessWaitResult::Failed;
+
+while (true)
+{
+	AppendToLog(testletIndex, DrainToString(child.GetStdoutPipe()), DrainToString(child.GetStderrPipe()));
+
+	result = OS::WaitForProcess(child, 50, exitCode);
+	if (result != OS::EProcessWaitResult::TimedOut)
+	{
+		break;
+	}
+
+	if (std::chrono::steady_clock::now() &gt;= deadline)
+	{
+		OS::KillProcess(child);                    // SIGKILL / TerminateProcess
+		OS::WaitForProcess(child, 1000, exitCode); // 좀비 회수
+		AppendToLog(testletIndex, DrainToString(child.GetStdoutPipe()), DrainToString(child.GetStderrPipe()));
+		break;
+	}
+}
+
+OS::CloseProcessHandle(child);
+</code></pre>
+
+<p>배수 헬퍼 — <code>ProcessPipe::Read</code>의 세 갈래 답변의 사용:</p>
+<pre><code>std::string DrainToString(OS::ProcessPipe&amp; pipe)
+{
+	std::string out;
+	char buffer[4096];
+	while (true)
+	{
+		const int bytes = pipe.Read(buffer, sizeof(buffer));
+		if (bytes &lt;= 0)
+		{
+			break; // 0 = 지금은 없음, -1 = EOF
+		}
+		out.append(buffer, static_cast&lt;std::size_t&gt;(bytes));
+	}
+	return out;
+}
+</code></pre>
+
+<p>파일 모드 — 같은 생성, 출력만 테스트렛별 로그로 리디렉션:</p>
+<pre><code>OS::ProcessSpawnDesc desc;
+desc.executablePath = engineTestPath;
+desc.arguments = {"EngineTest", "--testlet", "37"};
+desc.stdoutMode = OS::EStreamMode::File;
+desc.stderrMode = OS::EStreamMode::File;
+desc.stdoutFilePath = "build/Applications/EngineTest/Dev/testlet-logs/037.log";
+desc.stderrFilePath = "build/Applications/EngineTest/Dev/testlet-logs/037.log";
+</code></pre>
+
+<ul>
+	<li>핸들 타입은 하나, 별도의 id 타입은 없다: POSIX에서 <code>pid_t</code>는 id이자 핸들이고,
+		Windows에서도 생성 시 얻은 <code>HANDLE</code>이 이 API의 모든 호출에 답한다
+		(숫자 id는 구현 세부로 남고, 진단이 필요해지면 <code>GetProcessId</code>로 얻을 수 있다).
+		러너는 날 id를 소비할 일이 없으므로 API도 노출하지 않는다.</li>
+	<li>함께 선언되는 보조 타입: <code>ProcessHandle</code>, <code>ProcessPipe</code>,
+		<code>ProcessSpawnDesc</code>, <code>EProcessStream</code>, <code>EStreamMode</code>,
+		<code>EProcessWaitResult</code> — 위 표의 계약 참조.</li>
+</ul>
+
+<h3>4.2 EngineTest 모드</h3>
+<ul>
+	<li><code>TestMain.cpp</code>: argv 분기 — 플래그 없음 → 러너,
+		<code>--testlet N</code> → 자식.</li>
+	<li><code>UnitTestCollection.cpp</code>: 전체 스위트 태스크 체인 삭제
+		(<code>PostSuiteTask</code>, <code>RunTestletTask</code>,
+		<code>ReportAndShutDownTask</code>, <code>ScheduleSuiteOnBaseStream</code>);
+		최소 2-태스크 자식 스케줄 추가.</li>
+	<li><code>TestEnv</code>: <code>testletRunCounts</code>,
+		<code>NoteTestletRepeated</code>, <code>suiteDrivenByShutdownPump</code>,
+		<code>NoteSuiteDrivenByShutdownPump</code> 삭제 (체인 전용 장치).
+		러너는 자식의 종료 코드에서 취합한다.</li>
+</ul>
+
+<h3>4.3 게이트 스크립트</h3>
+<ul>
+	<li><code>check.sh</code> 테스트 계층: 러너를 실행(플래그 없음).
+		<code>pass=/fail=/invalid=</code> 파싱은 유지하고, 이제 중복이 된
+		300초 외부 타임아웃은 제거한다 (러너가 테스트렛당 16초를 자체 강제).</li>
+</ul>
+
+<h3>4.4 문서 &amp; 표준</h3>
+<ul>
+	<li>모든 신규 항목: <code>/// API reference</code> 포인터 + 페이지, 시그니처 그대로(verbatim).</li>
+	<li>새 코드는 처음부터 주석 없이, 레이아웃 깨끗하게 작성.</li>
+</ul>
+
+<h2>5. 검증</h2>
+<table>
+	<thead>
+		<tr><th>검증 항목</th><th>증명 방법</th></tr>
+	</thead>
+	<tbody>
+		<tr>
+			<td>빌드</td>
+			<td><code>./build.sh Applications/EngineTest -dev -debug -release -test</code>
+				— 3개 구성 모두 클린</td>
+		</tr>
+		<tr>
+			<td>스위트</td>
+			<td>Dev, Debug, Release에서 러너 모드 실행: 66 컬렉션 / 429 테스트렛, exit 0</td>
+		</tr>
+		<tr>
+			<td>타임아웃 kill (red-first)</td>
+			<td>sleep 하는 테스트렛 주입 → 러너가 마감시한에 kill, TIMEOUT 보고, 계속 진행, exit 1</td>
+		</tr>
+		<tr>
+			<td>크래시 격리 (red-first)</td>
+			<td>abort 하는 테스트렛 주입 → 스위트 계속 진행, 자식 크래시 기록, exit 1</td>
+		</tr>
+		<tr>
+			<td>커버리지 게이트</td>
+			<td>수정 파일 대상 <code>docs_coverage.py</code>, <code>docs_methods.py</code>,
+				<code>htmlcheck.py</code>, <code>comments.py</code>, <code>layout.py</code>,
+				<code>blank_lines.py</code>, <code>includes.py</code></td>
+		</tr>
+		<tr>
+			<td>Windows</td>
+			<td>소유자 호스트 실행 대기 중 (위험 항목, D4 참조)</td>
+		</tr>
+	</tbody>
+</table>
+
+<h2>6. 커밋</h2>
+<table>
+	<thead>
+		<tr><th style="width:4rem">순서</th><th>메시지</th><th>내용</th></tr>
+	</thead>
+	<tbody>
+		<tr><td>1</td><td><code>feat(osal)</code></td><td>OSProcess API + 플랫폼 구현 + 문서 + 설계 문서</td></tr>
+		<tr><td>2</td><td><code>feat(test)</code></td><td>러너/자식 모드, 태스크 체인 삭제, TestEnv 정리</td></tr>
+		<tr><td>3</td><td><code>chore(scripts)</code></td><td>러너 모드 기반의 check.sh 테스트 계층</td></tr>
+		<tr><td>4</td><td><code>docs(test)</code></td><td>하니스 설계 기록, JOURNAL 항목</td></tr>
+	</tbody>
+</table>
+
+<h2>7. 소유자에게 남은 항목</h2>
+<ul>
+	<li>테스트렛별 타임아웃 재정의 문법: 제안 — 기본값은 <code>--timeout &lt;초&gt;</code>,
+		반복 가능한 <code>--timeout-for &lt;테스트렛 인덱스&gt;=&lt;초&gt;</code>. 확정 또는 수정 필요.</li>
+	<li>재정의를 적용할 느린 테스트렛 목록 (TC13/TC17이 부하에 민감했었음).</li>
+</ul>
+
+<h2>8. 부록 — OS별 프로세스 API (참고자료)</h2>
+<p>
+<code>OSProcess</code> 구현을 위한 참고 자료. 매핑 표가 실제 작업 계약이고,
+플랫폼별 표는 그 뒤에 있는 원자료다.
+</p>
+
+<h3>8.1 계약 → 플랫폼 매핑</h3>
+<table>
+	<thead>
+		<tr><th><code>OSProcess</code> 호출</th><th>Linux / macOS (POSIX)</th><th>Windows (Win32)</th></tr>
+	</thead>
+	<tbody>
+		<tr>
+			<td><code>SpawnProcess</code></td>
+			<td><code>posix_spawn</code> + 리디렉션용 <code>posix_spawn_file_actions_adddup2</code>/<code>addopen</code></td>
+			<td><code>STARTUPINFOW</code>에 <code>STARTF_USESTDHANDLES</code>를 설정한 <code>CreateProcessW</code></td>
+		</tr>
+		<tr>
+			<td><code>WaitForProcess</code> (마감시한 있음)</td>
+			<td>마감시한 루프 안의 <code>waitpid(pid, &amp;status, WNOHANG)</code> (블로킹 <code>waitpid</code>는 타임아웃을 못 지킴)</td>
+			<td><code>WaitForSingleObject(hProcess, ms)</code> — 한 번의 호출이 타임아웃을 지킴</td>
+		</tr>
+		<tr>
+			<td>종료 코드 추출</td>
+			<td>status에 대한 <code>WIFEXITED</code>/<code>WEXITSTATUS</code>, <code>WIFSIGNALED</code>/<code>WTERMSIG</code></td>
+			<td><code>GetExitCodeProcess</code></td>
+		</tr>
+		<tr>
+			<td><code>TimedOut</code> 감지</td>
+			<td><code>WNOHANG</code>에서의 <code>waitpid</code> 반환값 <code>0</code></td>
+			<td><code>WaitForSingleObject</code> 반환값 <code>WAIT_TIMEOUT</code></td>
+		</tr>
+		<tr>
+			<td><code>KillProcess</code></td>
+			<td><code>kill(pid, SIGKILL)</code></td>
+			<td><code>TerminateProcess(hProcess, exitCode)</code></td>
+		</tr>
+		<tr>
+			<td><code>CloseProcessHandle</code></td>
+			<td>no-op — 회수(reap)는 <code>waitpid</code>의 몫</td>
+			<td><code>CloseHandle(hProcess)</code></td>
+		</tr>
+		<tr>
+			<td>파이프 생성 (<code>Pipe</code> 모드)</td>
+			<td><code>pipe(fds)</code></td>
+			<td><code>CreatePipe</code></td>
+		</tr>
+		<tr>
+			<td>비블로킹 파이프 읽기</td>
+			<td><code>fcntl(fd, F_SETFL, O_NONBLOCK)</code> 후 <code>read</code> (<code>EAGAIN</code> = 없음)</td>
+			<td><code>PeekNamedPipe</code> (가용 바이트) 후 <code>ReadFile</code></td>
+		</tr>
+		<tr>
+			<td>EOF 감지</td>
+			<td><code>read()</code>가 <code>0</code> 반환</td>
+			<td><code>ReadFile</code> 실패, <code>ERROR_BROKEN_PIPE</code></td>
+		</tr>
+		<tr>
+			<td>부모 쓰기 끝 정리</td>
+			<td>spawn 직후 <code>close(writeFd)</code></td>
+			<td>spawn 후 부모의 쓰기 핸들 복사본 <code>CloseHandle</code></td>
+		</tr>
+	</tbody>
+</table>
+
+<h3>8.2 POSIX (Linux / macOS)</h3>
+
+<p><strong>함수</strong></p>
+<table>
+	<thead>
+		<tr><th>함수</th><th>역할</th></tr>
+	</thead>
+	<tbody>
+		<tr><td><code>fork()</code></td><td>호출 프로세스를 복제; 두 번 반환 (자식에선 0, 부모에선 pid).</td></tr>
+		<tr><td><code>execve</code> / <code>execvp</code> 계열</td><td>프로세스 이미지를 교체; 실패 시에만 반환.</td></tr>
+		<tr><td><code>posix_spawn(pid, path, actions, attr, argv, envp)</code></td><td>fork+exec의 결합; macOS에서 권장되는 생성 방식, Linux는 glibc ≥ 2.24.</td></tr>
+		<tr><td><code>posix_spawn_file_actions_init/addopen/adddup2/addclose/destroy</code></td><td>자식 측 fd 연산 선언 (stdout/stderr 리디렉션).</td></tr>
+		<tr><td><code>posix_spawnattr_init/destroy</code></td><td>생성 속성 (시그널 마스크, 스케줄링, 플래그).</td></tr>
+		<tr><td><code>pipe(int fds[2])</code></td><td>익명 파이프; <code>fds[0]</code> 읽기 끝, <code>fds[1]</code> 쓰기 끝 — 자식이 쓰기 끝을 상속.</td></tr>
+		<tr><td><code>fcntl(fd, F_SETFL, O_NONBLOCK)</code></td><td>파이프 fd를 비블로킹으로 만들어 <code>read</code>가 막히지 않고 답하게 함.</td></tr>
+		<tr><td><code>waitpid(pid, &amp;status, options)</code></td><td>대기 및 회수(reap); <code>WNOHANG</code>이면 비블로킹 (실행 중엔 0 반환).</td></tr>
+		<tr><td><code>waitid</code> / <code>wait</code></td><td>대체 대기 형태.</td></tr>
+		<tr><td><code>kill(pid, sig)</code></td><td>시그널 전송; <code>SIGKILL</code>은 잡거나 무시할 수 없음.</td></tr>
+		<tr><td><code>getpid</code> / <code>getppid</code></td><td>자기 / 부모 id.</td></tr>
+		<tr><td><code>_exit()</code></td><td>atexit 핸들러와 stdio 플러시를 건너뛰는 자식 측 종료.</td></tr>
+		<tr><td><code>popen(command, mode)</code> / <code>pclose</code></td><td>편의 래퍼: pipe + fork + <strong>셸</strong>(<code>sh -c</code>) 실행, stdio <code>FILE*</code> 반환.
+			pid를 돌려주지 않아 kill·타임아웃·stderr 분리가 모두 불가 — 이 하니스가 쓰지 않는 이유.
+			내부는 <code>posix_spawn</code>이 조립하는 것과 같은 pipe/fork/exec/wait 순서다.</td></tr>
+	</tbody>
+</table>
+
+<p><strong>타입과 객체</strong>: <code>pid_t</code> (프로세스 id이자 유일한 핸들),
+<code>sigset_t</code>, <code>posix_spawn_file_actions_t</code>,
+<code>posix_spawnattr_t</code>, <code>W*</code> 매크로로 해석하는 대기 상태 <code>int</code>,
+파이프 fd 쌍.</p>
+
+<div class="note">
+<strong>주의사항</strong>
+<ul>
+	<li><code>fork()</code>와 <code>exec()</code> 사이에서는 async-signal-safe 호출만 합법 —
+		멀티스레드 부모에서 그 외의 것은 정의되지 않음. 러너가 엔진 없이 생성하고
+		<code>posix_spawn</code>을 선호하는 이유가 바로 이것.</li>
+	<li>kill된 자식은 <code>waitpid</code>로 회수될 때까지 좀비 — <code>KillProcess</code> 뒤에는
+		타임아웃 경로를 포함해 항상 회수하는 <code>WaitForProcess</code>가 따라야 함.</li>
+	<li><code>SIGKILL</code>로 종료된 자식은 종료 코드가 아니라 <code>WIFSIGNALED</code>로 나타남.</li>
+</ul>
+</div>
+
+<p><strong>예제 — 파이프로 연결된 stdout으로 생성, 배수, 대기, kill (C, POSIX):</strong></p>
+<p>
+이 예제의 컴파일·실행까지 검증된 완결판은 <code>Examples/OSProcessPipeExample/posix_pipe_spawn.c</code>에
+있다(독립 실행형, 엔진 무의존; 이 호스트에서 <code>run.sh</code>로 빌드·실행: 정상 종료·데드라인 kill
+실행 모두 검증). Windows 쌍둥이는 <code>Examples/OSProcessPipeExample/win32_pipe_spawn.cpp</code>와
+<code>run.bat</code>(Windows 호스트에서의 컴파일·실행은 대기 중).
+</p>
+<pre><code>int fds[2];
+pipe(fds);
+
+posix_spawn_file_actions_t actions;
+posix_spawn_file_actions_init(&amp;actions);
+posix_spawn_file_actions_adddup2(&amp;actions, fds[1], STDOUT_FILENO); // 자식 stdout -&gt; 파이프
+posix_spawn_file_actions_addclose(&amp;actions, fds[0]);               // 자식은 읽기 끝 불필요
+
+posix_spawnattr_t attr;
+posix_spawnattr_init(&amp;attr);
+
+pid_t pid;
+const char* argv[] = {"EngineTest", "--testlet", "37", NULL};
+posix_spawn(&amp;pid, "/path/EngineTest", &amp;actions, &amp;attr, (char* const*)argv, environ);
+posix_spawn_file_actions_destroy(&amp;actions);
+posix_spawnattr_destroy(&amp;attr);
+
+close(fds[1]);                       // 부모의 쓰기 끝을 지금 닫는다, 아니면 EOF가 영원히 안 온다
+fcntl(fds[0], F_SETFL, O_NONBLOCK);  // 비블로킹 배수
+
+char buffer[4096];
+const ssize_t bytes = read(fds[0], buffer, sizeof(buffer)); // &gt;0 데이터, -1+EAGAIN 없음, 0 EOF
+
+int status = 0;
+const pid_t done = waitpid(pid, &amp;status, WNOHANG); // 0 = 아직 실행 중
+if (done == pid &amp;&amp; WIFEXITED(status))
+{
+	const int exitCode = WEXITSTATUS(status);
+}
+
+kill(pid, SIGKILL);        // 데드라인 도달 시
+waitpid(pid, &amp;status, 0);  // 좀비 회수
+</code></pre>
+
+<h3>8.3 Windows (Win32)</h3>
+
+<p><strong>함수</strong></p>
+<table>
+	<thead>
+		<tr><th>함수</th><th>역할</th></tr>
+	</thead>
+	<tbody>
+		<tr><td><code>CreateProcessW</code></td><td>프로세스와 기본 스레드를 생성; <code>PROCESS_INFORMATION</code>을 채움 (<code>hProcess</code>, <code>hThread</code>, <code>dwProcessId</code>).</td></tr>
+		<tr><td><code>WaitForSingleObject(hProcess, ms)</code></td><td>마감시한 대기; <code>WAIT_OBJECT_0</code> / <code>WAIT_TIMEOUT</code> / <code>WAIT_FAILED</code> 반환.</td></tr>
+		<tr><td><code>GetExitCodeProcess(hProcess, &amp;code)</code></td><td>종료 코드를 읽음; <code>STILL_ACTIVE</code> (259)는 아직 종료되지 않았다는 뜻.</td></tr>
+		<tr><td><code>TerminateProcess(hProcess, code)</code></td><td>강제 종료; 비동기 — 호출자가 여전히 대기하고 닫아야 함.</td></tr>
+		<tr><td><code>OpenProcess</code></td><td>숫자 id로 핸들을 엶 (이 API에는 불필요; id는 내부에만 존재).</td></tr>
+		<tr><td><code>GetProcessId(hProcess)</code></td><td>핸들에서 숫자 id (진단이 필요해질 때).</td></tr>
+		<tr><td><code>CloseHandle</code></td><td>프로세스(및 스레드) 핸들을 해제.</td></tr>
+		<tr><td><code>SetHandleInformation</code> / <code>SECURITY_ATTRIBUTES</code></td><td>리디렉션 파일 핸들을 상속 가능하게 만듦.</td></tr>
+		<tr><td><code>CreatePipe</code></td><td>익명 파이프; 읽기/쓰기 <code>HANDLE</code>을 반환 — 자식이 쓰기 끝을 상속.</td></tr>
+		<tr><td><code>PeekNamedPipe</code> / <code>ReadFile</code></td><td>비블로킹 배수: 가용 바이트를 확인한 뒤 읽음; <code>ERROR_BROKEN_PIPE</code>는 EOF.</td></tr>
+		<tr><td><code>ExitProcess</code></td><td>자기 자신 측 종료.</td></tr>
+		<tr><td><code>_popen</code> / <code>_pclose</code></td><td><code>popen</code>의 CRT 쌍둥이 — <code>cmd.exe /c</code>로 명령 실행; 같은 한계
+			(핸들 없음, kill 불가, 타임아웃 불가, stderr 분리 불가).</td></tr>
+	</tbody>
+</table>
+
+<p><strong>타입과 객체</strong>: <code>HANDLE</code> (객체별 커널 핸들; 이 API가 저장하는 것은
+프로세스 핸들), <code>DWORD</code> (id와 종료 코드), <code>STARTUPINFOW</code>,
+<code>PROCESS_INFORMATION</code>, <code>SECURITY_ATTRIBUTES</code>, 파이프 <code>HANDLE</code> 쌍.</p>
+
+<div class="note">
+<strong>주의사항</strong>
+<ul>
+	<li><code>STILL_ACTIVE</code> (259)는 자식이 합법적으로 반환할 수 있는 종료 코드이기도 하므로,
+		"종료했는가?"는 종료 코드가 아니라 대기 결과로 판단해야 함.</li>
+	<li><code>TerminateProcess</code>는 정리 핸들러 없이 프로세스를 죽임; <code>PROCESS_INFORMATION</code>의
+		<code>hThread</code>도 닫지 않으면 누수됨.</li>
+	<li>출력 리디렉션에는 세 가지가 모두 필요: 파일 핸들을 상속 가능하게 생성
+		(<code>bInheritHandle = TRUE</code> 또는 <code>SetHandleInformation</code>),
+		<code>STARTF_USESTDHANDLES</code> 설정, <code>CreateProcessW</code>에
+		<code>bInheritHandles = TRUE</code>.</li>
+</ul>
+</div>
+
+<p><strong>예제 — 완전한 리디렉션 배관을 갖춘 파이프 stdout (C++, Win32):</strong></p>
+<pre><code>SECURITY_ATTRIBUTES sa{sizeof(SECURITY_ATTRIBUTES), nullptr, TRUE};
+HANDLE readEnd = nullptr;
+HANDLE writeEnd = nullptr;
+CreatePipe(&amp;readEnd, &amp;writeEnd, &amp;sa, 0);
+SetHandleInformation(readEnd, HANDLE_FLAG_INHERIT, 0); // 읽기 끝은 부모에 남긴다
+
+STARTUPINFOW si{};
+si.cb = sizeof(si);
+si.dwFlags = STARTF_USESTDHANDLES;
+si.hStdOutput = writeEnd; // 자식 stdout -&gt; 파이프 쓰기 끝
+si.hStdError = writeEnd;
+
+PROCESS_INFORMATION pi{};
+CreateProcessW(L"...\\EngineTest.exe", commandLine, nullptr, nullptr, TRUE,
+	0, nullptr, nullptr, &amp;si, &amp;pi);
+CloseHandle(writeEnd); // 부모의 쓰기 끝을 지금 닫는다, 아니면 EOF가 영원히 안 온다
+
+DWORD available = 0;
+DWORD bytesRead = 0;
+char buffer[4096];
+if (PeekNamedPipe(readEnd, nullptr, 0, nullptr, &amp;available, nullptr) &amp;&amp; available &gt; 0)
+{
+	ReadFile(readEnd, buffer, sizeof(buffer), &amp;bytesRead, nullptr); // ERROR_BROKEN_PIPE = EOF
+}
+
+const DWORD wait = WaitForSingleObject(pi.hProcess, 50); // WAIT_OBJECT_0 / WAIT_TIMEOUT
+if (wait == WAIT_OBJECT_0)
+{
+	DWORD exitCode = 0;
+	GetExitCodeProcess(pi.hProcess, &amp;exitCode);
+}
+
+TerminateProcess(pi.hProcess, 1);               // 데드라인 도달 시
+WaitForSingleObject(pi.hProcess, 1000);
+CloseHandle(pi.hProcess);
+CloseHandle(pi.hThread);
+CloseHandle(readEnd);
+</code></pre>
+
+<h2>9. 부록 — IPC 기법 (참고자료)</h2>
+<p>
+하니스가 정확히 하나의 IPC 기법을 쓰는 이유, 그리고 대안들이 사들였을 것이다.
+출처: 기법 분류(Wikipedia, POSIX), 커널 개입 분석(opencsf IPC 모델),
+지연 시간 서열(UDS 약 5–10µs, TCP 루프백 약 15–30µs).
+</p>
+
+<h3>9.1 기법 비교</h3>
+<table>
+	<thead>
+		<tr><th>기법</th><th>POSIX</th><th>Windows</th><th>방향</th><th>교환마다 커널</th><th>지연(서열)</th><th>하니스 적합성</th></tr>
+	</thead>
+	<tbody>
+		<tr><td>익명 파이프</td><td><code>pipe(2)</code></td><td><code>CreatePipe</code></td><td>단방향</td><td>데이터 복사</td><td>µs</td><td>✅ <strong>선택됨</strong></td></tr>
+		<tr><td>명명 파이프 / FIFO</td><td><code>mkfifo</code></td><td>명명 파이프(다른 API)</td><td>단방향</td><td>데이터 복사</td><td>µs</td><td>✖ 무관 프로세스 필요 없음</td></tr>
+		<tr><td>유닉스 도메인 소켓</td><td>✅</td><td>최근 Windows만</td><td>양방향</td><td>데이터 복사</td><td>약 5–10µs</td><td>✖ 양방향 불필요</td></tr>
+		<tr><td>TCP (루프백)</td><td>✅</td><td>✅</td><td>양방향</td><td>전체 네트워크 스택</td><td>약 15–30µs</td><td>✖</td></tr>
+		<tr><td>메시지 큐</td><td>System V / POSIX mq</td><td>⚠️ 부분</td><td>이산 메시지</td><td>메시지마다</td><td>µs</td><td>✖</td></tr>
+		<tr><td>공유 메모리</td><td><code>shm</code> / <code>memfd</code></td><td>파일 매핑</td><td>바이트 버퍼</td><td><strong>매핑 후 없음</strong></td><td>가장 빠름</td><td>✖ 공유할 대량 데이터 없음</td></tr>
+		<tr><td>메모리 매핑 파일</td><td><code>mmap</code></td><td><code>MapViewOfFile</code></td><td>바이트 버퍼</td><td>페이지 폴트만</td><td>—</td><td>✖</td></tr>
+		<tr><td>시그널</td><td><code>kill</code></td><td>✖ 직접 대응 없음</td><td>제어만</td><td>최소</td><td>가장 싼 제어 평면</td><td><code>KillProcess</code>의 <code>SIGKILL</code>뿐</td></tr>
+	</tbody>
+</table>
+
+<h3>9.2 하니스 결정의 근거</h3>
+<ul>
+	<li>메시지 전달 계열(파이프, 소켓, 메시지 큐)은 교환마다 커널이 개입 — 데이터가 커널 메모리를
+		거쳐 복사된다. 공유 메모리는 매핑 후 시스템 콜이 없다. 하니스는 대량 데이터를 교환하지
+		않으므로 공유 메모리의 이점은 여기서 무의미하다.</li>
+	<li>익명 파이프는 관련 프로세스(부모/자식) 사이에서만 쓸 수 있다 — 정확히 러너/자식 위상이다.
+		명명 파이프는 무관한 프로세스를 위한 것이다.</li>
+	<li>하니스의 IPC 요구 전체는: 단방향 바이트 스트림(자식 출력), 종료 코드(대기의 답),
+		강제 종료(kill 시그널). 셋 모두 파이프 + <code>waitpid</code>/<code>GetExitCodeProcess</code> +
+		<code>SIGKILL</code>/<code>TerminateProcess</code> 집합이 답하므로, 양방향 기법(UDS, 소켓),
+		무복사 기법(공유 메모리), 결합 없는 큐(메시지 큐)는 이식성과 코드 비용을 치르고 얻는 것이 없다.</li>
+</ul>
+
+<footer>
+	계획 문서 — 다중 프로세스 테스트 하니스 · 영어 원본: <code>.Plans/PLAN_multi_process_test_harness.md</code>
+</footer>
+
+</body>
+</html>
