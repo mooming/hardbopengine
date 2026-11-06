@@ -31,6 +31,7 @@ include_directories ( ${CMAKE_SOURCE_DIR}
  ${CMAKE_SOURCE_DIR}/Engine
  ${CMAKE_SOURCE_DIR}/Engine/Renderer
  )
+add_subdirectory (OSProcessPipeExample)
 add_subdirectory (RingBufferBenchmark)
 add_subdirectory (WindowExample)
 

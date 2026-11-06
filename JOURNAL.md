@@ -1,5 +1,19 @@
 # Journal
 
+## 2026-11-06 12:40 — OSProcess placeholder pair
+
+**Cause.** Owner asked for placeholder OSProcess .h/.cpp ahead of the multi-process
+harness work (PLAN_multi_process_test_harness.md §4.1). Shell only, no API invented:
+`OSProcessTest` collection following the OSThread pattern; empty `Prepare()` in the
+cpp; not yet registered in UnitTestCollection.cpp, so no test runs yet.
+
+**Verification.** Files registered by the canonical generator (generate_cmake_files.sh),
+not hand-edited; its diff adds exactly the two sorted lines. blank_lines/includes/comments
+scripts: 0 findings. Three-config build rc=0 (Debug/Dev/Release EngineTest binaries
+fresh); full suite: 67 collections / 431 testlets passed. Generator side effect, bundled:
+Examples/OSProcessPipeExample CMakeLists created + add_subdirectory line — the canonical
+registration commit 37e84f3 should have shipped with.
+
 ## 2026-11-06 12:23 — six stale remote branches deleted (owner-confirmed)
 
 **Cause.** Owner asked to remove inactive remote branches with confirmation first.
