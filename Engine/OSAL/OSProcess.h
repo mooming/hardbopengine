@@ -5,7 +5,7 @@
 #include <cstdint>
 
 #include "OSProcessHandle.h"
-#include "ProcessWaitResult.h"
+#include "OSProcessWaitResult.h"
 
 
 namespace OS

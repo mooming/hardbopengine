@@ -1,5 +1,20 @@
 # Journal
 
+## 2026-11-06 13:38 — OSProcess naming aligned with house pattern
+
+**Cause.** Two owner-confirmed alignments. (1) Common ProcessHandle methods
+(ctor, noexcept move — identical on every platform) moved to new
+OSProcessHandle.cpp, matching the OSDebug.cpp + LinuxDebug.cpp pattern;
+IsValid/Invalidate stay platform-side because the sentinels differ
+(pid>0/pid=0 vs data!=nullptr/data=nullptr). (2) ProcessWaitResult.h renamed
+OSProcessWaitResult.h, pairing with OSFileOpenMode.h etc.; class EProcessWaitResult
+unchanged (OS prefix belongs to the file and the namespace, not the type).
+
+**Verification.** Generator registered OSProcessHandle.cpp, swapped the renamed
+header. Scripts 0 findings. Three-config build rc=0; suite 67/431 passed.
+OSAL process family now: OSProcessHandle.{h,cpp} + POSIXProcess.cpp +
+WindowsProcess.cpp + OSProcess.h with EProcessWaitResult in OSProcessWaitResult.h.
+
 ## 2026-11-06 13:26 — ProcessHandle.h renamed to OSProcessHandle.h
 
 **Cause.** Owner asked the file to pair with OSFileHandle.h. House convention is
