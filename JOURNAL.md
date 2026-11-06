@@ -1,5 +1,21 @@
 # Journal
 
+## 2026-11-06 12:23 — six stale remote branches deleted (owner-confirmed)
+
+**Cause.** Owner asked to remove inactive remote branches with confirmation first.
+All eight non-master remote branches were unmerged; age (owner picked option 2:
+delete-all-6 ≥ borderline) decided. Tips recorded below — recoverable by SHA on
+GitHub for ~90 days after deletion.
+
+**Deleted.** task_system 3661c6c · feature/linker-group-resolution 35f5547 ·
+feature/software-renderer-fix ce2b330 · vulkan_rendering 13eddc6 ·
+container-review-and-defect-fixes 8523707 ·
+chore/remove-rapidjson-and-glfw-submodules f9ef171.
+
+**Kept.** master, mp-testlet (current), wip/pipeline-2026-11-01 (3 d old),
+lock-free-mpsc-queue (18 d old). Verified: push output lists all six as deleted;
+`git branch -r` shows only the four keepers; tracking refs pruned.
+
 ## 2026-11-03 15:30 — generate_cmake_files.bat: the windows twin
 
 **Cause.** Parity follow-up to the 15:23 fix: the owner asked for a .bat version of
