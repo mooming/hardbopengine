@@ -22,16 +22,16 @@ else()
 endif()
 
 if (MSVC)
-	add_compile_options (/W3 /WX /EHsc /DWIN32 /DNOMINMAX /utf-8)
+	add_compile_options (/W3 /WX)
 else (MSVC)
 	add_compile_options (-Wall -Werror)
 endif (MSVC)
 
 include_directories ( ${CMAKE_SOURCE_DIR}
  ${CMAKE_SOURCE_DIR}/include
+ ${CMAKE_SOURCE_DIR}/External
  ${CMAKE_SOURCE_DIR}/Engine
  ${CMAKE_SOURCE_DIR}/Engine/Renderer
- ${CMAKE_SOURCE_DIR}/External
  )
 
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/lib)
@@ -64,17 +64,15 @@ add_library (OSAL STATIC
  OSXMemory.cpp
  OSXProtectionMode.cpp
  OSXThread.cpp
+ POSIXProcess.cpp
  Win32Application.cpp
  Win32Window.cpp
  Window.cpp
  WindowsAbstractLayer.cpp
  WindowsDebug.cpp
- WindowsFileHandle.cpp
- WindowsFileOpenMode.cpp
  WindowsInputOutput.cpp
- WindowsMapSyncMode.cpp
  WindowsMemory.cpp
- WindowsProtectionMode.cpp
+ WindowsProcess.cpp
  WindowsThread.cpp
  Application.h
  Directory.h
@@ -92,6 +90,7 @@ add_library (OSAL STATIC
  OSProtectionMode.h
  OSThread.h
  OSXIntrinsic.h
+ ProcessHandle.h
  ProcessWaitResult.h
  SourceLocation.h
  Window.h
@@ -113,11 +112,4 @@ endif ()
 install (TARGETS OSAL DESTINATION ${CMAKE_SOURCE_DIR}/lib)
 
 
-
-if (WIN32)
-	target_link_libraries (OSAL winmm)
-endif (WIN32)
-if (UNIX AND NOT APPLE)
-	target_link_libraries (OSAL X11)
-endif (UNIX AND NOT APPLE)
 

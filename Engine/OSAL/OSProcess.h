@@ -4,16 +4,17 @@
 
 #include <cstdint>
 
+#include "ProcessHandle.h"
 #include "ProcessWaitResult.h"
 
 
 namespace OS
 {
-using ProcessHandle = void*;
 struct ProcessSpawnDesc;
+
 ProcessHandle SpawnProcess(const ProcessSpawnDesc& desc) noexcept;
-void KillProcess(ProcessHandle& handle) noexcept;
 EProcessWaitResult WaitForProcess(ProcessHandle& handle, uint32_t timeoutMilliSecs, int& exitCode) noexcept;
+void KillProcess(ProcessHandle& handle) noexcept;
 } // namespace OS
 
 #ifdef TEST_ENABLED
