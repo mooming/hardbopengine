@@ -1,5 +1,19 @@
 # Journal
 
+## 2026-11-06 12:47 — EProcessWaitResult header; owner's OSProcess API sketch repaired
+
+**Cause.** Owner asked for ProcessWaitResult.h holding EProcessWaitResult
+(Exited/TimedOut/Failed, plan line 72), namespace OS, unsigned char underlying
+per the EPopResult.h shape. Concurrent owner edit had sketched the OSProcess API
+into OSProcess.h (ProcessHandle=void*, ProcessSpawnDesc fwd, Spawn/Kill/WaitFor)
+with two build-breakers: missing ';' after WaitForProcess, missing include of
+ProcessWaitResult.h. Both repaired as mechanical, disclosed to owner.
+
+**Verification.** Generator registered ProcessWaitResult.h (one sorted line).
+blank_lines/includes/comments: 0 findings. Three-config build rc=0, fresh binaries;
+suite: 67 collections / 431 testlets passed. Spawn/Kill/WaitFor are declared but
+undefined — fine until a caller exists; definitions belong to the plan's slice 1.
+
 ## 2026-11-06 12:40 — OSProcess placeholder pair
 
 **Cause.** Owner asked for placeholder OSProcess .h/.cpp ahead of the multi-process

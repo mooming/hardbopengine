@@ -2,6 +2,20 @@
 
 #pragma once
 
+#include <cstdint>
+
+#include "ProcessWaitResult.h"
+
+
+namespace OS
+{
+using ProcessHandle = void*;
+struct ProcessSpawnDesc;
+ProcessHandle SpawnProcess(const ProcessSpawnDesc& desc) noexcept;
+void KillProcess(ProcessHandle& handle) noexcept;
+EProcessWaitResult WaitForProcess(ProcessHandle& handle, uint32_t timeoutMilliSecs, int& exitCode) noexcept;
+} // namespace OS
+
 #ifdef TEST_ENABLED
 #include "Test/TestCollection.h"
 
