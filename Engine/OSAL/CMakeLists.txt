@@ -89,10 +89,10 @@ add_library (OSAL STATIC
  OSMemory.h
  OSProcess.h
  OSProcessHandle.h
+ OSProcessWaitResult.h
  OSProtectionMode.h
  OSThread.h
  OSXIntrinsic.h
- ProcessWaitResult.h
  SourceLocation.h
  Window.h
  WindowsIntrinsic.h
