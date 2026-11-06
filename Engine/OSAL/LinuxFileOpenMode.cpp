@@ -3,7 +3,7 @@
 #include "Config/BuildConfig.h"
 #include "OSFileOpenMode.h"
 
-#ifdef PLATFORM_LINUX
+#if PLATFORM_LINUX
 #include <fcntl.h>
 
 void OS::FileOpenMode::SetReadOnly() noexcept

@@ -2,7 +2,7 @@
 
 #include "Vulkan/VulkanRenderer.h"
 
-#if defined(PLATFORM_OSX)
+#if PLATFORM_OSX
 
 #include "Core/CommonMacros.h"
 #include "Log/Logger.h"

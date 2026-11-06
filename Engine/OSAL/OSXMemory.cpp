@@ -2,7 +2,7 @@
 
 #include "OSMemory.h"
 
-#ifdef PLATFORM_OSX
+#if PLATFORM_OSX
 #include <cerrno>
 #include <iostream>
 #include <malloc/malloc.h>

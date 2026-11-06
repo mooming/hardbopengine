@@ -4,7 +4,7 @@
 #include "Core/CommonMacros.h"
 #include "Config/BuildConfig.h"
 
-#ifdef PLATFORM_OSX
+#if PLATFORM_OSX
 
 #import <Cocoa/Cocoa.h>
 

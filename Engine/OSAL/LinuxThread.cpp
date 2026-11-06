@@ -4,7 +4,7 @@
 #include "Log/Logger.h"
 #include "OSThread.h"
 
-#ifdef PLATFORM_LINUX
+#if PLATFORM_LINUX
 #include <ctime>
 #include <sched.h>
 #include <sys/resource.h>

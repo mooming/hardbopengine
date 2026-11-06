@@ -3,7 +3,7 @@
 #include "Core/CommonMacros.h"
 #include "Window.h"
 
-#ifdef PLATFORM_LINUX
+#if PLATFORM_LINUX
 
 namespace OS
 {

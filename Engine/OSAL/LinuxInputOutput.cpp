@@ -8,7 +8,7 @@
 #include "OSProtectionMode.h"
 #include "String/StringUtil.h"
 
-#ifdef PLATFORM_LINUX
+#if PLATFORM_LINUX
 #include <cerrno>
 #include <cstdio>
 #include <cstring>

@@ -2,7 +2,7 @@
 
 #include "OSDebug.h"
 
-#ifdef PLATFORM_LINUX
+#if PLATFORM_LINUX
 #include <cstdio>
 #include <cstring>
 #include <cxxabi.h>

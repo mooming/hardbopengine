@@ -3,7 +3,7 @@
 #include "Config/BuildConfig.h"
 #include "OSMapSyncMode.h"
 
-#ifdef PLATFORM_OSX
+#if PLATFORM_OSX
 #include <sys/mman.h>
 
 namespace OS

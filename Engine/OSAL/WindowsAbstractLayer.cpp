@@ -3,7 +3,7 @@
 #include "Core/CommonMacros.h"
 #include "OSAbstractLayer.h"
 
-#ifdef PLATFORM_WINDOWS
+#if PLATFORM_WINDOWS
 #include <cstdio>
 #include <cstdlib>
 

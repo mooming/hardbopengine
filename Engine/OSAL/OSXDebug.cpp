@@ -2,7 +2,7 @@
 
 #include "OSDebug.h"
 
-#ifdef PLATFORM_OSX
+#if PLATFORM_OSX
 #include <cstdio>
 #include <cstring>
 #include <cxxabi.h>

@@ -11,7 +11,7 @@
 #include "ShadersSpv.h"
 #include "VulkanCapabilities.h"
 
-#if defined(PLATFORM_WINDOWS) && defined(VK_USE_PLATFORM_WIN32_KHR)
+#if PLATFORM_WINDOWS && defined(VK_USE_PLATFORM_WIN32_KHR)
 #include <vulkan/vulkan_win32.h>
 #endif
 
@@ -25,9 +25,9 @@ namespace
 constexpr const char* kInstanceExtensions[] = {
 		VK_KHR_SURFACE_EXTENSION_NAME,
 		VK_KHR_PORTABILITY_ENUMERATION_EXTENSION_NAME,
-#if defined(PLATFORM_OSX)
+#if PLATFORM_OSX
 		VK_EXT_METAL_SURFACE_EXTENSION_NAME,
-#elif defined(PLATFORM_WINDOWS) && defined(VK_USE_PLATFORM_WIN32_KHR)
+#elif PLATFORM_WINDOWS && defined(VK_USE_PLATFORM_WIN32_KHR)
 		VK_KHR_WIN32_SURFACE_EXTENSION_NAME,
 #endif
 };
@@ -212,9 +212,9 @@ bool VulkanRenderer::CreateInstance() noexcept
 
 bool VulkanRenderer::CreateSurface() noexcept
 {
-#if defined(PLATFORM_OSX)
+#if PLATFORM_OSX
 	return CreateMetalSurface();
-#elif defined(PLATFORM_WINDOWS) && defined(VK_USE_PLATFORM_WIN32_KHR)
+#elif PLATFORM_WINDOWS && defined(VK_USE_PLATFORM_WIN32_KHR)
 	VkWin32SurfaceCreateInfoKHR info{};
 	info.sType = VK_STRUCTURE_TYPE_WIN32_SURFACE_CREATE_INFO_KHR;
 	info.hwnd = reinterpret_cast<HWND>(window->GetNativeHandle());
@@ -225,7 +225,7 @@ bool VulkanRenderer::CreateSurface() noexcept
 #endif
 }
 
-#if !defined(PLATFORM_OSX)
+#if !PLATFORM_OSX
 bool VulkanRenderer::CreateMetalSurface() noexcept
 {
 	return false;

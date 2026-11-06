@@ -3,7 +3,7 @@
 #include "Core/CommonMacros.h"
 #include "OSAbstractLayer.h"
 
-#ifdef PLATFORM_OSX
+#if PLATFORM_OSX
 #include <cstdio>
 #include <cstdlib>
 

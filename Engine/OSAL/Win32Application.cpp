@@ -2,7 +2,7 @@
 
 #include "Application.h"
 
-#ifdef PLATFORM_WINDOWS
+#if PLATFORM_WINDOWS
 
 namespace OS
 {
