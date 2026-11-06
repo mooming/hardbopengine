@@ -1,5 +1,19 @@
 # Journal
 
+## 2026-11-06 13:26 — ProcessHandle.h renamed to OSProcessHandle.h
+
+**Cause.** Owner asked the file to pair with OSFileHandle.h. House convention is
+OS-prefixed files with unprefixed types (OS::FileHandle in OSFileHandle.h), so only
+the file changed: OSProcessHandle.h keeps class OS::ProcessHandle — renaming the
+class too would yield OS::OSProcessHandle, a double prefix no house type carries.
+Includes updated in OSProcess.h, POSIXProcess.cpp, WindowsProcess.cpp; generator
+swapped the CMake line.
+
+**Open consistency question (raised, not done):** ProcessWaitResult.h now also
+deviates — sibling EProcessWaitResult may want OSProcessWaitResult.h. Owner to decide.
+
+**Verification.** Scripts 0 findings; three-config build rc=0; suite 67/431 passed.
+
 ## 2026-11-06 13:16 — ProcessHandle placeholder; FileHandle pattern alignment
 
 **Cause.** Owner decision after the type consultation: ProcessHandle follows the
