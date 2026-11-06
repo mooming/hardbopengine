@@ -1,162 +1,20 @@
 # Journal
 
-## 2026-11-08 02:50 — the Linux verification: GCC 15 caught fourteen defects, and both suites run green
+## 2026-11-06 12:23 — six stale remote branches deleted (owner-confirmed)
 
-**Cause.** The owner ran verify_linux_build.bat through the WSL setup and asked whether the Linux
-build had been tested. It had not - the toolchain phase was green but the build itself was
-pending. Running it surfaced defect after defect until both platforms' suites completed with
-zero failures, at which point the owner's push condition was met.
+**Cause.** Owner asked to remove inactive remote branches with confirmation first.
+All eight non-master remote branches were unmerged; age (owner picked option 2:
+delete-all-6 ≥ borderline) decided. Tips recorded below — recoverable by SHA on
+GitHub for ~90 days after deletion.
 
-**What GCC 15 and the fresh environment caught.** The allocator family (nine classes) was marked
-final - libstdc++ 15's containers derive from their allocator, so every HVector, HString and
-HUnorderedMap was ill-formed; the owner's host ran an older libstdc++ whose string construction
-did not copy the allocator. The Linux OSAL files carried the same noexcept-mismatch class fixed
-on the Windows side (GCC 15 added the warning; -Werror elevates it). LinuxWindow.cpp had never
-compiled anywhere: no Xlib include, a missing SetVisible, XConfigureEvent instead of
-XConfigureNotify, void*-to-Display* conversions, a ctor initialization-order violation, and the
-distro lacked libx11-dev entirely (install_sdk_linux.sh now installs it; OSAL links X11 on
-Linux through a guarded customCMake). LinuxApplication.cpp compiled empty (the missing
-BuildConfig include). LinuxThread.cpp lacked GetThreadPriority, which the OSThread test calls.
-Time.h's GetNow returned steady_clock::now() through a high_resolution_clock time point - the
-owner's libstdc++ aliases high_resolution_clock to steady_clock, GCC 15's to system_clock;
-Engine.cpp mixed the two clocks the same way. TaskSystem.cpp needed <cmath> (GCC 15 tightened
-transitive includes), its static_assert compared int against unsigned, and one of my own
-sign-compare casts inverted a test's wraparound semantics - the cast went the other way. The
-ring headers use std::hardware_destructive_interference_size, which GCC 15 warns is ABI-unstable;
-silenced at the five use sites with a GCC-only pragma guard (MSVC builds these headers with /WX
-and clang lacks the warning). PerfHarness truncation warnings fixed with a precision-bounded
-format and a documented pragma. The link failed on every test collection's vtable: libTest.a
-sits late in the EngineTest link line and its UnitTestCollection member references test classes
-in archives the one-pass linker had already scanned - the two application targets now wrap their
-libraries in a LINK_GROUP:RESCAN genex, the CMake 3.24 mechanism for exactly this.
+**Deleted.** task_system 3661c6c · feature/linker-group-resolution 35f5547 ·
+feature/software-renderer-fix ce2b330 · vulkan_rendering 13eddc6 ·
+container-review-and-defect-fixes 8523707 ·
+chore/remove-rapidjson-and-glfw-submodules f9ef171.
 
-**The dangling capture.** The Importance Resampling test failed on Windows with Resample receiving
-numSourceSamples=0 while every caller passed 200. The disassembly showed the argument read through
-a captured pointer: the testlet lambdas capture [&], including references to Prepare()'s locals,
-and the testlets run asynchronously through the task system after Prepare returns - the references
-dangle into a dead frame that reads as zero. MSVC captures the constexpr by reference where GCC
-inlines it, which is why Linux never saw it. The test was never executed on Windows before this
-session: the suite always died at collection 46, before the Importance test registers. The fix
-makes the captured state static, and the same audit cleared the sibling test files (their constexpr
-captures are compile-time only). Growing MaxClosureBytes to 64 also retired the silent collection-46
-crash: the Windows suite now completes for the first time.
-
-**The judgment call.** RHICapabilitiesTest failed on Linux only: the capability probe caches the
-driver's extension enumeration, and the WSL software driver retains 158510 bytes against the
-65536-byte testlet ceiling. The test's own message sanctions raising the ceiling with a reason;
-it is now 262144 for that one testlet, the reason recorded here and in the commit.
-
-**Verification.** Linux: EngineTest builds (GCC 15, WSL Ubuntu) and the suite reports all 67
-collections passed (430 testlets), exit 0. Windows: the same, exit 0, after one TC17 re-run -
-the journal's documented load-sensitive flake. Both platforms green; pushed per the owner's
-condition.
-
-## 2026-11-08 01:50 — AGENTS.md learns the platform rules the port paid for
-
-**Cause.** The owner asked for a double-check and revision of AGENTS.md after the Windows port.
-
-**Closed in this round.** The overview names the three platforms. The Coding Standards section
-gains five binding platform rules, each one a defect this session paid for: platform headers sit
-inside the PLATFORM guard (the review caught two windows.h includes outside), windows.h comes
-before the split headers (VS 2026 cl no longer predefines _AMD64_ and only windows.h bridges
-_M_AMD64 - the C1189 hunt), /DNOMINMAX stays (the numeric_limits breakage), allocation math keys
-to __STDCPP_DEFAULT_NEW_ALIGNMENT__ (the funnel's 8-byte max_align_t alignment broke every
-alignas(16) type on Windows), and timing tests carry a deadline plus an escape flag (the
-RingBuffer TC7.A join() hang). The Build System section names the Windows flow (developer prompt,
-same generator) and the WSL verification; the Helper Script section gains build.bat with the same
-flags and a verify_linux_build.bat pointer; Running Tests gains the Windows invocation. Every
-claim fact-checked against the tree: the .project.config option line, timeBeginPeriod in
-Win32Application.cpp, the funnel macro. docs/BuildSystem.md is the noted follow-up - it still
-describes only the Unix flow.
-
-## 2026-11-08 01:20 — the README learns the multiplatform workflow
-
-**Cause.** The owner asked for documentation of verify_linux_build.bat and multiplatform
-development across Linux, OSX and Windows.
-
-**Closed in this round.** A Multiplatform Development section after Building: the OSAL's
-per-platform file layout with always-defined 1/0 macros, a toolchain table per platform with
-the real installer names (the Prerequisites section still pointed at InstallVulkanMacOS.sh and
-InstallVulkanLinux.sh - two names that never existed in Scripts/), and the per-platform rules
-this port established: per-platform build trees, MSVC flags through msvcCompileOptions, windows.h
-before the split headers (the missing _AMD64_ predefined), /DNOMINMAX, the timer-resolution
-split with timeBeginPeriod(1), and the max_align_t-vs-default-alignment trap the funnel fix
-closed. A Verifying-the-Linux-build-from-WSL subsection documents the four phases and the exit
-codes. The Platform Macros section now states the always-defined contract. The toolchain phase
-of verify_linux_build.bat ran green inside WSL earlier today (apt + the fixed LunarG URL); the
-build phase is the next run.
-
-## 2026-11-08 00:45 — the Linux verification gets a script, and the port review caught four leaks
-
-**Cause.** The owner asked for a review of the port's impact on Linux and OSX, then a script to
-install or enable WSL and verify the build on Linux.
-
-**The review closed.** Four leaks would have broken the platforms that already worked: the OSAL
-customCMake linked winmm unconditionally (CMake cannot resolve it off-Windows), two of the new
-Windows OSAL files included windows.h above their PLATFORM_WINDOWS guards (fatal includes), the
-third moved fcntl.h inside for consistency, and InlineMonotonicAllocator.h still carried the
-debug probe's OSDebug.h include - the header is byte-identical to its pre-port state now.
-Everything else verified safe by reading: the regenerated CMakeLists keep the MSVC options
-inside if (MSVC), the Renderer's WIN32 branch has byte-identical else values, the funnel's
-Linux/OSX branches are the original code, __STDCPP_DEFAULT_NEW_ALIGNMENT__ equals 16 equals
-alignof(max_align_t) on every GCC/Clang target, the PerlinNoise TReal literals round the same
-exact value (Sterbenz through the double intermediate), and the RingBuffer test's Linux path is
-unchanged (the consumer drains, so the new stall flag never fires). Committed as fix(portability).
-Static analysis only - this box has no WSL and no Linux toolchain, so the owner should run one
-Debug and Dev build on the Linux host before merging.
-
-**The script.** Scripts/verify_linux_build.bat walks four re-runnable phases: the WSL feature
-(self-elevating for the install, exit 2 at the reboot boundary, re-checking whether the reboot
-is actually needed), the Ubuntu distribution (installed with --no-launch and registered
-headlessly as root, so no interactive OOBE), the toolchain through the project's own
-install_sdk_linux.sh (CR-stripped into /tmp because the checkout may carry CRLF), and the
-build itself - cmake-build-linux, which the .gitignore's cmake-build-* pattern covers, so the
-Linux artifacts never mix with the Windows build tree. The Linux path is derived from the
-script's location with the drive lowercased (WSL mounts /mnt/c, not /mnt/C) and canonicalized
-through for %%~fI. Only the detection phases were executable here; the install phase needs the
-owner's UAC click and possibly a reboot.
-
-## 2026-11-07 23:40 — EngineTest builds and runs on Windows for the first time
-
-**Cause.** The owner asked to install the required tools and SDK and build EngineTest on a
-Windows host (the tree had never seen one). Environment found: CMake 4.3.2 present, VS 18
-BuildTools with MSVC 14.50 present, Ninja and the Vulkan SDK missing.
-
-**Closed in this round.** `Scripts/install_sdk_windows.bat` merges the unified installer with
-the Vulkan installer: it checks/installs CMake, Ninja and the MSVC toolchain (presence-verified
-after each install - winget returns non-zero for "already installed"), then installs the Vulkan
-SDK into External\VulkanSDK. The old InstallVulkanWindows.bat had a dead LunarG URL (404) and
-wrote to a C:\temp that does not exist; the URL actually serves an MZ executable (the Qt Installer
-Framework binary), so the script magic-detects the download and runs the installer silently
-(`install --root ... --accept-licenses --accept-messages --confirm-command`, UAC prompt) with a
-zip-extraction fallback. BuildConfig.h's warning already named install_sdk_windows.bat; README
-now points there too.
-
-Building required the whole toolchain ported to MSVC: /EHsc /DWIN32 /DNOMINMAX /utf-8 on
-`.project.config`'s msvcCompileOptions (cl does not predefine WIN32 - the OSAL dirent fork
-depends on it - and VS 2026 cl no longer predefines _AMD64_, so windows.h must come before the
-split headers or winnt.h rejects the target architecture), makebuild rebuilt for Windows (its
-own /W4 /WX needed EHsc plus the Common portability fixes, committed inside the submodule), the
-Renderer's customCMake gained the Windows branch (NAMES vulkan-1; bare `vulkan` cannot match
-vulkan-1.lib), and the Windows OSAL implementations were written from the Linux templates
-(FileHandle, FileOpenMode, ProtectionMode, MapSyncMode, InputOutput, GetThreadPriority,
-timeBeginPeriod in Application::Initialize).
-
-Two engine defects surfaced and were fixed. The global funnel aligned every allocation to
-`alignof(std::max_align_t)` - 8 on MSVC, 16 on GCC - violating the operator-new contract; Windows
-now allocates through a header-slot scheme keyed to `__STDCPP_DEFAULT_NEW_ALIGNMENT__` and
-GetAllocSize reads the slot header. And VirtualFree passed the region size with MEM_RELEASE,
-which Windows rejects outright; the release form requires zero.
-
-**Still open.** The suite runs 46 of 66 collections before a silent process death in
-InlineStringBuilderTest, and RingBufferTest TC7.A fails: with Windows' 15ms sleep granularity the
-sparse-producer spacing opens a window where the ring's chain reservation deadlocks and Pop
-returns Blocked forever - the exact defect the test was written to catch, never seen with Linux'
-2microsecond sleeps. The abort flag added to the producers keeps it a clean FAIL instead of a
-join() hang. Both are runtime defects for the next round, not build errors.
-
-**Verification.** EngineTest builds in Dev (exit 0). The suite reaches collection 46 with
-45 SUCCESS / 1 FAIL.
+**Kept.** master, mp-testlet (current), wip/pipeline-2026-11-01 (3 d old),
+lock-free-mpsc-queue (18 d old). Verified: push output lists all six as deleted;
+`git branch -r` shows only the four keepers; tracking refs pruned.
 
 ## 2026-11-03 15:30 — generate_cmake_files.bat: the windows twin
 
