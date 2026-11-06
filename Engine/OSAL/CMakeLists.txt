@@ -64,6 +64,7 @@ add_library (OSAL STATIC
  OSXMemory.cpp
  OSXProtectionMode.cpp
  OSXThread.cpp
+ POSIXProcess.cpp
  Win32Application.cpp
  Win32Window.cpp
  Window.cpp
@@ -71,6 +72,7 @@ add_library (OSAL STATIC
  WindowsDebug.cpp
  WindowsInputOutput.cpp
  WindowsMemory.cpp
+ WindowsProcess.cpp
  WindowsThread.cpp
  Application.h
  Directory.h
@@ -88,6 +90,7 @@ add_library (OSAL STATIC
  OSProtectionMode.h
  OSThread.h
  OSXIntrinsic.h
+ ProcessHandle.h
  ProcessWaitResult.h
  SourceLocation.h
  Window.h

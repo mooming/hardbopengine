@@ -1,5 +1,23 @@
 # Journal
 
+## 2026-11-06 13:16 — ProcessHandle placeholder; FileHandle pattern alignment
+
+**Cause.** Owner decision after the type consultation: ProcessHandle follows the
+FileHandle example (union void*/int, no casts in platform impls); platform work
+splits POSIXProcess.cpp (Linux + macOS in one file — plan §4.1 updated from the
+Linux/OSX split) and WindowsProcess.cpp. Initial values mandatory: ctor calls
+Invalidate() — pid=0 (pid>0 is valid) on POSIX, data=nullptr on Windows.
+
+**Concurrent owner edit completed.** Owner added `void* data{};` default init and
+noexcept move to FileHandle (OSFileHandle.h + OSXFileHandle.cpp) but missed
+LinuxFileHandle.cpp — declaration/definition exception-spec mismatch is a C++17
+error that the Linux build would catch; noexcept added there. ProcessHandle.h
+mirrors the data{} pattern.
+
+**Verification.** Generator registered 3 files. Scripts: 0 findings (A16 fixed:
+no double blank before #if). Three-config build rc=0; suite 67/431 passed.
+Spawn/Kill/WaitFor still declarations only — slice 1 work.
+
 ## 2026-11-06 12:47 — EProcessWaitResult header; owner's OSProcess API sketch repaired
 
 **Cause.** Owner asked for ProcessWaitResult.h holding EProcessWaitResult
