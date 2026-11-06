@@ -92,6 +92,7 @@ add_library (OSAL STATIC
  OSProtectionMode.h
  OSThread.h
  OSXIntrinsic.h
+ ProcessWaitResult.h
  SourceLocation.h
  Window.h
  WindowsIntrinsic.h
