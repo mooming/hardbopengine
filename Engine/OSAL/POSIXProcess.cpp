@@ -1,7 +1,7 @@
 // Copyright (c) 2026 Hansol Park (mooming.go@gmail.com). All rights reserved.
 
 #include "Config/BuildConfig.h"
-#include "ProcessHandle.h"
+#include "OSProcessHandle.h"
 
 #if defined(PLATFORM_LINUX) || defined(PLATFORM_OSX)
 

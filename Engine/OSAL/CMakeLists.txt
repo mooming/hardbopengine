@@ -87,10 +87,10 @@ add_library (OSAL STATIC
  OSMapSyncMode.h
  OSMemory.h
  OSProcess.h
+ OSProcessHandle.h
  OSProtectionMode.h
  OSThread.h
  OSXIntrinsic.h
- ProcessHandle.h
  ProcessWaitResult.h
  SourceLocation.h
  Window.h

@@ -4,7 +4,7 @@
 
 #include <cstdint>
 
-#include "ProcessHandle.h"
+#include "OSProcessHandle.h"
 #include "ProcessWaitResult.h"
 
 
