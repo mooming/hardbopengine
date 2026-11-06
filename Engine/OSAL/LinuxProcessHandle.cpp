@@ -4,4 +4,26 @@
 #include "OSProcessHandle.h"
 
 #ifdef PLATFORM_LINUX
+namespace OS
+{
+ProcessHandle::ProcessHandle() noexcept : pid(0)
+{
+}
+
+ProcessHandle::ProcessHandle(ProcessHandle&& rhs) noexcept
+{
+	pid = rhs.pid;
+	rhs.Invalidate();
+}
+
+[[nodiscard]] bool ProcessHandle::IsValid() const noexcept
+{
+	return pid > 0;
+}
+
+void ProcessHandle::Invalidate() noexcept
+{
+	pid = 0;
+}
+} // namespace OS
 #endif // PLATFORM_LINUX
