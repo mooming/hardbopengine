@@ -1,5 +1,16 @@
 # Journal
 
+## 2026-11-06 14:01 — ProcessHandle method files per platform
+
+**Cause.** Owner completed the FileHandle-pattern symmetry: LinuxProcessHandle.cpp,
+OSXProcessHandle.cpp, WindowsProcessHandle.cpp added as copyright-only stubs —
+the future homes of ProcessHandle method definitions (IsValid/Invalidate/ctor/move),
+parallel to LinuxFileHandle.cpp/OSXFileHandle.cpp under OSFileHandle.h. The
+LinuxProcess.cpp family stays reserved for the OSProcess free functions.
+
+**Verification.** Generator +3 sorted lines. Scripts 0 findings. Three-config
+build rc=0; suite 67/431 passed.
+
 ## 2026-11-06 13:52 — platform files as copyright-only stubs, Linux/OSX split
 
 **Cause.** Owner reversed course twice, settling on full house convention:
