@@ -1,5 +1,19 @@
 # Journal
 
+## 2026-11-06 13:52 — platform files as copyright-only stubs, Linux/OSX split
+
+**Cause.** Owner reversed course twice, settling on full house convention:
+OSProcessHandle.cpp (common methods) deleted; POSIXProcess.cpp deleted and split
+into LinuxProcess.cpp + OSXProcess.cpp to match Linux*/OSX*/*Windows* naming;
+all three platform files are copyright-only stubs — the WindowsInputOutput.cpp
+precedent for "platform not yet implemented". IsValid/Invalidate definitions
+(50fbde7) removed with the content; every ProcessHandle method plus the four
+free functions are declared, undefined — definitions belong to slice 1.
+
+**Verification.** Generator: -OSProcessHandle.cpp -POSIXProcess.cpp +LinuxProcess.cpp
++OSXProcess.cpp. Scripts 0 findings. Three-config build rc=0; suite 67/431 passed.
+Plan §4.1 restored to the original Linux/OSX/Windows naming.
+
 ## 2026-11-06 13:38 — OSProcess naming aligned with house pattern
 
 **Cause.** Two owner-confirmed alignments. (1) Common ProcessHandle methods
