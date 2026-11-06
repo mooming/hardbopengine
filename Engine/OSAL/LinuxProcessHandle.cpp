@@ -3,7 +3,7 @@
 #include "Config/BuildConfig.h"
 #include "OSProcessHandle.h"
 
-#ifdef PLATFORM_LINUX
+#if PLATFORM_LINUX
 namespace OS
 {
 ProcessHandle::ProcessHandle() noexcept : pid(0)
