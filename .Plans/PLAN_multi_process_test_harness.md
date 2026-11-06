@@ -52,7 +52,7 @@ EngineTest --testlet N  =  CHILD
 - `Engine/OSAL/OSProcess.h` — free functions in `OS` namespace, following the
   `OSThread` pattern; `OSProcessTest` collection declared in the header.
 - `Engine/OSAL/OSProcess.cpp` — common code + `OSProcessTest::Prepare`.
-- `POSIXProcess.cpp` (posix_spawn family, Linux + macOS), `WindowsProcess.cpp`
+- `LinuxProcess.cpp` (posix_spawn family), `OSXProcess.cpp`, `WindowsProcess.cpp`
   (`CreateProcess`/`WaitForSingleObject`/`TerminateProcess`/`GetExitCodeProcess`).
 - API surface (exact signatures fixed during implementation, contract in docs):
   spawn (path, args, per-stream redirection: inherit / file / pipe), a

@@ -46,6 +46,7 @@ add_library (OSAL STATIC
  LinuxInputOutput.cpp
  LinuxMapSyncMode.cpp
  LinuxMemory.cpp
+ LinuxProcess.cpp
  LinuxProtectionMode.cpp
  LinuxThread.cpp
  LinuxWindow.cpp
@@ -54,7 +55,6 @@ add_library (OSAL STATIC
  OSInputOutput.cpp
  OSMemory.cpp
  OSProcess.cpp
- OSProcessHandle.cpp
  OSThread.cpp
  OSXAbstractLayer.cpp
  OSXDebug.cpp
@@ -63,9 +63,9 @@ add_library (OSAL STATIC
  OSXInputOutput.cpp
  OSXMapSyncMode.cpp
  OSXMemory.cpp
+ OSXProcess.cpp
  OSXProtectionMode.cpp
  OSXThread.cpp
- POSIXProcess.cpp
  Win32Application.cpp
  Win32Window.cpp
  Window.cpp
