@@ -3,7 +3,7 @@
 #include "Core/CommonMacros.h"
 #include "Window.h"
 
-#ifdef PLATFORM_WINDOWS
+#if PLATFORM_WINDOWS
 #include <windows.h>
 
 namespace OS

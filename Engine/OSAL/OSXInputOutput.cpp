@@ -8,7 +8,7 @@
 #include "OSProtectionMode.h"
 #include "String/StringUtil.h"
 
-#ifdef PLATFORM_OSX
+#if PLATFORM_OSX
 #include <cerrno>
 #include <cstdio>
 #include <cstring>

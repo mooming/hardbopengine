@@ -19,13 +19,13 @@ private:
 	bool visibleFlag;
 	bool closedFlag;
 
-#if defined(PLATFORM_LINUX)
+#if PLATFORM_LINUX
 	void* display;
 	intptr_t window;
-#elif defined(PLATFORM_WINDOWS)
+#elif PLATFORM_WINDOWS
 	void* hwnd;
 	bool shouldCloseFlag;
-#elif defined(PLATFORM_OSX)
+#elif PLATFORM_OSX
 	void* osHandle;
 	void* osDelegate;
 #endif

@@ -83,14 +83,14 @@ BufferOutputStream& BufferOutputStream::operator<<(uint64_t value) noexcept
 	return *this;
 }
 
-#ifndef PLATFORM_LINUX
+#if !PLATFORM_LINUX
 BufferOutputStream& BufferOutputStream::operator<<(size_t value) noexcept
 {
 	Put<size_t>(value);
 
 	return *this;
 }
-#endif // PLATFORM_LINUX
+#endif // !PLATFORM_LINUX
 
 BufferOutputStream& BufferOutputStream::operator<<(float value) noexcept
 {

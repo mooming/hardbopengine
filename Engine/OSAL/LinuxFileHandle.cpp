@@ -6,7 +6,7 @@
 #include "OSFileHandle.h"
 #include "OSInputOutput.h"
 
-#ifdef PLATFORM_LINUX
+#if PLATFORM_LINUX
 #include <sys/stat.h>
 
 namespace OS

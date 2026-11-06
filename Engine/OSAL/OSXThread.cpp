@@ -2,7 +2,7 @@
 
 #include "OSThread.h"
 
-#ifdef PLATFORM_OSX
+#if PLATFORM_OSX
 
 #define _GNU_SOURCE
 

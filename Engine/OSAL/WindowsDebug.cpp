@@ -2,7 +2,7 @@
 
 #include "OSDebug.h"
 
-#ifdef PLATFORM_WINDOWS
+#if PLATFORM_WINDOWS
 #include <DbgHelp.h>
 #include <Windows.h>
 #include <cstdlib>

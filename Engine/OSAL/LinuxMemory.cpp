@@ -2,7 +2,7 @@
 
 #include "OSMemory.h"
 
-#ifdef PLATFORM_LINUX
+#if PLATFORM_LINUX
 #include <cerrno>
 #include <cstdlib>
 #include <cstring>

@@ -77,14 +77,14 @@ This& BufferInputStream::operator>>(uint64_t& value) noexcept
 	return *this;
 }
 
-#ifndef PLATFORM_LINUX
+#if !PLATFORM_LINUX
 This& BufferInputStream::operator>>(size_t& value) noexcept
 {
 	Get<size_t>(value, 0);
 
 	return *this;
 }
-#endif // PLATFORM_LINUX
+#endif // !PLATFORM_LINUX
 
 This& BufferInputStream::operator>>(float& value) noexcept
 {

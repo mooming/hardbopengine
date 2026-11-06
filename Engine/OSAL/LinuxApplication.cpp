@@ -2,7 +2,7 @@
 
 #include "Application.h"
 
-#ifdef PLATFORM_LINUX
+#if PLATFORM_LINUX
 
 namespace OS
 {

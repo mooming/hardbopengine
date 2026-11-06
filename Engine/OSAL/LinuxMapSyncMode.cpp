@@ -3,7 +3,7 @@
 #include "Config/BuildConfig.h"
 #include "OSMapSyncMode.h"
 
-#ifdef PLATFORM_LINUX
+#if PLATFORM_LINUX
 #include <sys/mman.h>
 
 namespace OS

@@ -3,7 +3,7 @@
 #include "Config/BuildConfig.h"
 #include "OSFileOpenMode.h"
 
-#ifdef PLATFORM_OSX
+#if PLATFORM_OSX
 #include <fcntl.h>
 
 namespace OS

@@ -2,7 +2,7 @@
 
 #include "OSMemory.h"
 
-#ifdef PLATFORM_WINDOWS
+#if PLATFORM_WINDOWS
 #include <errhandlingapi.h>
 #include <malloc.h>
 #include <memoryapi.h>

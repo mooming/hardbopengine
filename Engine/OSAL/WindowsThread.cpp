@@ -2,7 +2,7 @@
 
 #include "OSThread.h"
 
-#ifdef PLATFORM_WINDOWS
+#if PLATFORM_WINDOWS
 #include <Windows.h>
 
 int OS::GetCPUIndex() noexcept
