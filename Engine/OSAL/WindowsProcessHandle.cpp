@@ -3,7 +3,7 @@
 #include "Config/BuildConfig.h"
 #include "OSProcessHandle.h"
 
-#ifdef PLATFORM_WINDOWS
+#if PLATFORM_WINDOWS
 namespace OS
 {
 ProcessHandle::ProcessHandle() noexcept : data(nullptr)

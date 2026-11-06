@@ -3,7 +3,7 @@
 #include "Config/BuildConfig.h"
 #include "OSProcessHandle.h"
 
-#ifdef PLATFORM_OSX
+#if PLATFORM_OSX
 namespace OS
 {
 ProcessHandle::ProcessHandle() noexcept : pid(0)

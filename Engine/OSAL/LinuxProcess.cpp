@@ -3,5 +3,5 @@
 #include "Config/BuildConfig.h"
 #include "OSProcess.h"
 
-#ifdef PLATFORM_LINUX
+#if PLATFORM_LINUX
 #endif // PLATFORM_LINUX

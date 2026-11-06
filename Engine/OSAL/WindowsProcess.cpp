@@ -3,5 +3,5 @@
 #include "Config/BuildConfig.h"
 #include "OSProcess.h"
 
-#ifdef PLATFORM_WINDOWS
+#if PLATFORM_WINDOWS
 #endif // PLATFORM_WINDOWS

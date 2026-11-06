@@ -3,5 +3,5 @@
 #include "Config/BuildConfig.h"
 #include "OSProcess.h"
 
-#ifdef PLATFORM_OSX
+#if PLATFORM_OSX
 #endif // PLATFORM_OSX
