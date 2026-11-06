@@ -54,6 +54,7 @@ add_library (OSAL STATIC
  OSInputOutput.cpp
  OSMemory.cpp
  OSProcess.cpp
+ OSProcessHandle.cpp
  OSThread.cpp
  OSXAbstractLayer.cpp
  OSXDebug.cpp

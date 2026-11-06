@@ -7,17 +7,6 @@
 
 namespace OS
 {
-ProcessHandle::ProcessHandle() noexcept
-{
-	Invalidate();
-}
-
-ProcessHandle::ProcessHandle(ProcessHandle&& rhs) noexcept
-	: data(rhs.data)
-{
-	rhs.Invalidate();
-}
-
 bool ProcessHandle::IsValid() const noexcept
 {
 	return data != nullptr;
