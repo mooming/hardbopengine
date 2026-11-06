@@ -1,5 +1,16 @@
 # Journal
 
+## 2026-11-06 14:08 — process stubs grown to guarded skeletons
+
+**Cause.** Owner asked the six process stubs to carry the full skeleton: copyright,
+project includes, platform #if/#endif guard — the LinuxThread.cpp shape (project
+includes outside the guard; system includes arrive with slice 1 inside it). Subject
+include per file: OSProcessHandle.h for the three *ProcessHandle.cpp, OSProcess.h
+for the three *Process.cpp. Guards are empty — definitions still deferred to slice 1.
+
+**Verification.** Scripts 0 findings (blank lines, includes, comments). Three-config
+build rc=0; suite 67/431 passed. No CMake change — file list unchanged.
+
 ## 2026-11-06 14:01 — ProcessHandle method files per platform
 
 **Cause.** Owner completed the FileHandle-pattern symmetry: LinuxProcessHandle.cpp,
