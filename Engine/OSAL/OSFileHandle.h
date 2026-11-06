@@ -13,14 +13,14 @@ class FileHandle final
 public:
 	union
 	{
-		void* data;
+		void* data{};
 		int fd;
 	};
 
 	FileHandle();
 
 	FileHandle(const FileHandle&) = delete;
-	FileHandle(FileHandle&& rhs);
+	FileHandle(FileHandle&& rhs) noexcept;
 	~FileHandle();
 
 	[[nodiscard]] size_t GetFileSize() const noexcept;

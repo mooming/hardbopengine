@@ -32,7 +32,7 @@ FileHandle::FileHandle()
 	Invalidate();
 }
 
-FileHandle::FileHandle(FileHandle&& rhs)
+FileHandle::FileHandle(FileHandle&& rhs) noexcept
 	: data(rhs.data)
 {
 	rhs.Invalidate();
