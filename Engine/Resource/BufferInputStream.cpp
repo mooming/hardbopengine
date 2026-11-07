@@ -77,7 +77,7 @@ This& BufferInputStream::operator>>(uint64_t& value) noexcept
 	return *this;
 }
 
-#if !PLATFORM_LINUX
+#if !PLATFORM_LINUX && !PLATFORM_WINDOWS
 This& BufferInputStream::operator>>(size_t& value) noexcept
 {
 	Get<size_t>(value, 0);
@@ -190,7 +190,7 @@ void BufferInputStreamTest::Prepare()
 			auto intBuffer = mmgr.NewArray<int>(TestCount);
 			for (size_t i = 0; i < TestCount; ++i)
 			{
-				intBuffer[i] = i;
+				intBuffer[i] = static_cast<int>(i);
 			}
 
 			data = reinterpret_cast<Buffer::TBufferData>(intBuffer);

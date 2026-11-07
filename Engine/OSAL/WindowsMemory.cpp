@@ -3,17 +3,20 @@
 #include "OSMemory.h"
 
 #if PLATFORM_WINDOWS
+#include <windows.h>
 #include <errhandlingapi.h>
+#include <iostream>
 #include <malloc.h>
 #include <memoryapi.h>
 #include <sysinfoapi.h>
-#include <windows.h>
 
 #include "Core/CommonMacros.h"
 
 size_t OS::GetAllocSize(void* ptr) noexcept
 {
-	const auto allocSize = _msize(ptr);
+	void* raw = *(reinterpret_cast<void**>(reinterpret_cast<uintptr_t>(ptr) - sizeof(void*)));
+
+	const auto allocSize = _msize(raw);
 
 	return allocSize;
 }
@@ -40,7 +43,7 @@ void* OS::VirtualAlloc(size_t size)
 
 void OS::VirtualFree(void* address, std::size_t n) noexcept
 {
-	auto result = ::VirtualFree(address, n, MEM_RELEASE);
+	auto result = ::VirtualFree(address, 0, MEM_RELEASE);
 	if (unlikely(!result))
 	{
 		hbe::Assert(false);
@@ -62,9 +65,7 @@ void OS::ProtectMemory(void* address, size_t n) noexcept
 	using namespace std;
 	auto errorId = GetLastError();
 
-	auto& engine = hbe::Engine::Get();
-	engine.LogError([address, n, errorId](auto& log)
-	{ log << "[OS::ProtectMemory] address = " << address << ", n = " << n << " : error code = " << errorId << endl; });
+	cerr << "[OS::ProtectMemory] address = " << address << ", n = " << n << " : error code = " << errorId << endl;
 
 	hbe::Assert(false);
 }

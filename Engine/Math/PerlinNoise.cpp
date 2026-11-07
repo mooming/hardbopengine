@@ -50,13 +50,13 @@ TReal PerlinNoise::Noise(TReal x, TReal y, TReal z) const noexcept
 	const TReal w = Fade(fz);
 
 	const TReal n000 = Grad(At(X, Y, Z), fx, fy, fz);
-	const TReal n100 = Grad(At(X + 1, Y, Z), fx - 1.0, fy, fz);
-	const TReal n010 = Grad(At(X, Y + 1, Z), fx, fy - 1.0, fz);
-	const TReal n110 = Grad(At(X + 1, Y + 1, Z), fx - 1.0, fy - 1.0, fz);
-	const TReal n001 = Grad(At(X, Y, Z + 1), fx, fy, fz - 1.0);
-	const TReal n101 = Grad(At(X + 1, Y, Z + 1), fx - 1.0, fy, fz - 1.0);
-	const TReal n011 = Grad(At(X, Y + 1, Z + 1), fx, fy - 1.0, fz - 1.0);
-	const TReal n111 = Grad(At(X + 1, Y + 1, Z + 1), fx - 1.0, fy - 1.0, fz - 1.0);
+	const TReal n100 = Grad(At(X + 1, Y, Z), fx - TReal(1.0), fy, fz);
+	const TReal n010 = Grad(At(X, Y + 1, Z), fx, fy - TReal(1.0), fz);
+	const TReal n110 = Grad(At(X + 1, Y + 1, Z), fx - TReal(1.0), fy - TReal(1.0), fz);
+	const TReal n001 = Grad(At(X, Y, Z + 1), fx, fy, fz - TReal(1.0));
+	const TReal n101 = Grad(At(X + 1, Y, Z + 1), fx - TReal(1.0), fy, fz - TReal(1.0));
+	const TReal n011 = Grad(At(X, Y + 1, Z + 1), fx, fy - TReal(1.0), fz - TReal(1.0));
+	const TReal n111 = Grad(At(X + 1, Y + 1, Z + 1), fx - TReal(1.0), fy - TReal(1.0), fz - TReal(1.0));
 
 	const TReal y0z0 = Lerp(u, n000, n100);
 	const TReal y1z0 = Lerp(u, n010, n110);

@@ -97,13 +97,41 @@ void ReportAllocationFailure(size_t size, std::align_val_t alignment) noexcept
 	std::abort();
 }
 
+#if PLATFORM_WINDOWS
+void* AllocateSlot(size_t size, size_t alignment) noexcept
+{
+	const size_t slotSize = size + alignment + sizeof(void*);
+	void* raw = std::malloc(slotSize);
+
+	if (raw == nullptr)
+	{
+		return nullptr;
+	}
+
+	const uintptr_t slotAddress = (reinterpret_cast<uintptr_t>(raw) + sizeof(void*) + (alignment - 1)) & ~(alignment - 1);
+	void* slot = reinterpret_cast<void*>(slotAddress);
+	*(reinterpret_cast<void**>(slotAddress - sizeof(void*))) = raw;
+
+	return slot;
+}
+
+void* GetSlotBase(void* ptr) noexcept
+{
+	return *(reinterpret_cast<void**>(reinterpret_cast<uintptr_t>(ptr) - sizeof(void*)));
+}
+#endif // PLATFORM_WINDOWS
+
 void* AllocateAccounted(size_t size, void* caller)
 {
 	const size_t requestSize = size == 0 ? 1 : size;
 
 	while (true)
 	{
+#if PLATFORM_WINDOWS
+		void* ptr = AllocateSlot(requestSize, __STDCPP_DEFAULT_NEW_ALIGNMENT__);
+#else // PLATFORM_WINDOWS
 		void* ptr = std::malloc(requestSize);
+#endif // PLATFORM_WINDOWS
 		if (ptr != nullptr)
 		{
 			RecordAllocation(size, caller);
@@ -114,7 +142,7 @@ void* AllocateAccounted(size_t size, void* caller)
 		auto* handler = std::get_new_handler();
 		if (handler == nullptr)
 		{
-			ReportAllocationFailure(size, static_cast<std::align_val_t>(alignof(std::max_align_t)));
+			ReportAllocationFailure(size, static_cast<std::align_val_t>(__STDCPP_DEFAULT_NEW_ALIGNMENT__));
 		}
 
 		handler();
@@ -128,7 +156,10 @@ void* AllocateAccountedAligned(size_t size, std::align_val_t alignment, void* ca
 
 	void* ptr = nullptr;
 
-	if (requestAlignment <= alignof(std::max_align_t))
+#if PLATFORM_WINDOWS
+	ptr = AllocateSlot(requestSize, requestAlignment);
+#else // PLATFORM_WINDOWS
+	if (requestAlignment <= __STDCPP_DEFAULT_NEW_ALIGNMENT__)
 	{
 		ptr = std::malloc(requestSize);
 	}
@@ -141,6 +172,7 @@ void* AllocateAccountedAligned(size_t size, std::align_val_t alignment, void* ca
 			ptr = nullptr;
 		}
 	}
+#endif // PLATFORM_WINDOWS
 
 	if (ptr != nullptr)
 	{
@@ -156,7 +188,11 @@ void* AllocateAccountedAligned(size_t size, std::align_val_t alignment, void* ca
 
 void* TryAllocateAccounted(size_t size, void* caller) noexcept
 {
+#if PLATFORM_WINDOWS
+	void* ptr = AllocateSlot(size == 0 ? 1 : size, __STDCPP_DEFAULT_NEW_ALIGNMENT__);
+#else // PLATFORM_WINDOWS
 	void* ptr = std::malloc(size == 0 ? 1 : size);
+#endif // PLATFORM_WINDOWS
 	if (ptr != nullptr)
 	{
 		RecordAllocation(size, caller);
@@ -170,11 +206,21 @@ void* TryAllocateAccountedAligned(size_t size, std::align_val_t alignment, void*
 	const size_t requestSize = size == 0 ? 1 : size;
 	const size_t requestAlignment = static_cast<size_t>(alignment);
 
-	if (requestAlignment <= alignof(std::max_align_t))
+	if (requestAlignment <= __STDCPP_DEFAULT_NEW_ALIGNMENT__)
 	{
 		return TryAllocateAccounted(size, caller);
 	}
 
+#if PLATFORM_WINDOWS
+	void* ptr = AllocateSlot(requestSize, requestAlignment);
+
+	if (ptr != nullptr)
+	{
+		RecordAllocation(size, caller);
+	}
+
+	return ptr;
+#else // PLATFORM_WINDOWS
 	void* ptr = nullptr;
 	const size_t alignedSize = (requestSize + requestAlignment - 1) & ~(requestAlignment - 1);
 
@@ -186,6 +232,7 @@ void* TryAllocateAccountedAligned(size_t size, std::align_val_t alignment, void*
 	RecordAllocation(size, caller);
 
 	return ptr;
+#endif // PLATFORM_WINDOWS
 }
 
 void Deallocate(void* ptr, size_t size, void* caller) noexcept
@@ -193,7 +240,12 @@ void Deallocate(void* ptr, size_t size, void* caller) noexcept
 	if (ptr != nullptr)
 	{
 		RecordDeallocation(size != 0 ? size : OS::GetAllocSize(ptr), caller);
+
+#if PLATFORM_WINDOWS
+		std::free(GetSlotBase(ptr));
+#else // PLATFORM_WINDOWS
 		std::free(ptr);
+#endif // PLATFORM_WINDOWS
 	}
 }
 } // namespace

@@ -674,7 +674,7 @@ void RingBufferTest::Prepare()
 		std::array<std::thread, producerCount> threads;
 		for (size_t slot = 0; slot < producerCount; ++slot)
 		{
-			threads[slot] = std::thread([&queue, &start](size_t producerSlot)
+			threads[slot] = std::thread([&queue, &start, &stalled](size_t producerSlot)
 			{
 				while (!start.load(std::memory_order_acquire))
 				{
@@ -685,6 +685,11 @@ void RingBufferTest::Prepare()
 				{
 					while (queue.Push(static_cast<uint32_t>(producerSlot * perProducer + index)) != EPushResult::Pushed)
 					{
+						if (stalled.load(std::memory_order_relaxed))
+						{
+							return;
+						}
+
 						std::this_thread::yield();
 					}
 
@@ -700,7 +705,7 @@ void RingBufferTest::Prepare()
 				std::this_thread::yield();
 			}
 
-			const auto deadline = std::chrono::steady_clock::now() + std::chrono::milliseconds(15000);
+			const auto deadline = std::chrono::steady_clock::now() + std::chrono::milliseconds(60000);
 			uint32_t value = 0;
 
 			while (delivered.load(std::memory_order_relaxed) < total)

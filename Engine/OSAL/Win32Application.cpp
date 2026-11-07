@@ -2,7 +2,11 @@
 
 #include "Application.h"
 
+#include "Config/BuildConfig.h"
+
 #if PLATFORM_WINDOWS
+#include <windows.h>
+#include <timeapi.h>
 
 namespace OS
 {
@@ -13,10 +17,12 @@ Application::Application() noexcept
 
 Application::~Application()
 {
+	timeEndPeriod(1);
 }
 
 void Application::Initialize()
 {
+	timeBeginPeriod(1);
 }
 
 void Application::PollEvents()

@@ -20,16 +20,16 @@ else()
 endif()
 
 if (MSVC)
-	add_compile_options (/W3 /WX)
+	add_compile_options (/W3 /WX /EHsc /DWIN32 /DNOMINMAX /utf-8)
 else (MSVC)
 	add_compile_options (-Wall -Werror)
 endif (MSVC)
 
 include_directories ( ${CMAKE_SOURCE_DIR}
  ${CMAKE_SOURCE_DIR}/include
- ${CMAKE_SOURCE_DIR}/External
  ${CMAKE_SOURCE_DIR}/Engine
  ${CMAKE_SOURCE_DIR}/Engine/Renderer
+ ${CMAKE_SOURCE_DIR}/External
  )
 
 add_library (External INTERFACE)

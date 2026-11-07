@@ -1,5 +1,6 @@
 // Copyright (c) 2026 Hansol Park (mooming.go@gmail.com). All rights reserved.
 
+#include "Log/Logger.h"
 #include "OSThread.h"
 
 #if PLATFORM_WINDOWS
@@ -12,6 +13,11 @@ int OS::GetCPUIndex() noexcept
 	return static_cast<int>(index);
 }
 
+int OS::GetThreadPriority(std::thread& thread) noexcept
+{
+	return ::GetThreadPriority(thread.native_handle());
+}
+
 void OS::SetThreadAffinity(std::thread& thread, uint64_t mask) noexcept
 {
 	::SetThreadAffinityMask(thread.native_handle(), mask);
@@ -22,8 +28,8 @@ void OS::SetThreadPriority(std::thread& thread, int priority) noexcept
 	auto result = ::SetThreadPriority(thread.native_handle(), priority);
 	if (result == false)
 	{
-		auto& engine = hbe::Engine::Get();
-		engine.LogError([](auto& ls) { ls << "SetThreadPriority failed."; });
+		const auto log = hbe::Logger::Get("OS::Thread");
+		log.OutError([](auto& ls) { ls << "SetThreadPriority failed."; });
 	}
 }
 

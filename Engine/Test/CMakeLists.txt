@@ -20,7 +20,7 @@ else()
 endif()
 
 if (MSVC)
-	add_compile_options (/W3 /WX)
+	add_compile_options (/W3 /WX /EHsc /DWIN32 /DNOMINMAX /utf-8)
 else (MSVC)
 	add_compile_options (-Wall -Werror)
 endif (MSVC)
@@ -28,9 +28,9 @@ endif (MSVC)
 add_compile_definitions (TEST_ENABLED )
 include_directories ( ${CMAKE_SOURCE_DIR}
  ${CMAKE_SOURCE_DIR}/include
- ${CMAKE_SOURCE_DIR}/External
  ${CMAKE_SOURCE_DIR}/Engine
  ${CMAKE_SOURCE_DIR}/Engine/Renderer
+ ${CMAKE_SOURCE_DIR}/External
  )
 
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/lib)

@@ -13,8 +13,21 @@ target_sources (Renderer PRIVATE Vulkan/VulkanRenderer.cpp)
 # Same ignoreSubdirectories reason as above.
 target_sources (Renderer PRIVATE Vulkan/VulkanCapabilities.cpp)
 
-# Locate the Vulkan headers via common macOS / homebrew / standard locations.
-find_path (VULKAN_INCLUDE_DIR vulkan/vulkan.h PATHS /opt/homebrew/include /usr/local/include /usr/include $ENV{VULKAN_SDK}/include)
+# Locate the Vulkan headers and loader. Windows resolves the SDK from the
+# project's own External\VulkanSDK install or the VULKAN_SDK environment
+# variable, and names the loader import library vulkan-1.lib, which a bare
+# NAMES vulkan cannot match.
+if (WIN32)
+	set (VULKAN_HEADER_PATHS ${CMAKE_SOURCE_DIR}/External/VulkanSDK/include $ENV{VULKAN_SDK}/include)
+	set (VULKAN_LOADER_PATHS ${CMAKE_SOURCE_DIR}/External/VulkanSDK/lib $ENV{VULKAN_SDK}/lib)
+	set (VULKAN_LOADER_NAMES vulkan-1 vulkan)
+else (WIN32)
+	set (VULKAN_HEADER_PATHS /opt/homebrew/include /usr/local/include /usr/include $ENV{VULKAN_SDK}/include)
+	set (VULKAN_LOADER_PATHS /opt/homebrew/lib /usr/local/lib /usr/lib $ENV{VULKAN_SDK}/lib)
+	set (VULKAN_LOADER_NAMES vulkan)
+endif (WIN32)
+
+find_path (VULKAN_INCLUDE_DIR vulkan/vulkan.h PATHS ${VULKAN_HEADER_PATHS})
 if (NOT VULKAN_INCLUDE_DIR)
     message (FATAL_ERROR "vulkan/vulkan.h not found. Install the Vulkan headers, or set VULKAN_SDK.")
 endif () # vulkan headers
@@ -23,7 +36,7 @@ target_include_directories (Renderer PUBLIC ${VULKAN_INCLUDE_DIR})
 # The engine is Vulkan-only, so a missing loader is a hard error, not a silent skip.
 # NOTE: plain (non-keyword) signature throughout - MakeBuild emits the plain form for
 # module dependencies, and CMake forbids mixing the two for one target.
-find_library (VULKAN_LOADER_LIB NAMES vulkan PATHS /opt/homebrew/lib /usr/local/lib /usr/lib $ENV{VULKAN_SDK}/lib)
+find_library (VULKAN_LOADER_LIB NAMES ${VULKAN_LOADER_NAMES} PATHS ${VULKAN_LOADER_PATHS})
 if (NOT VULKAN_LOADER_LIB)
     message (FATAL_ERROR "Vulkan loader (libvulkan) not found. Install it, or set VULKAN_SDK.")
 endif () # vulkan loader

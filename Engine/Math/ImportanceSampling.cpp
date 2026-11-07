@@ -63,7 +63,7 @@ void hbe::ImportanceResamplingTest::Prepare() noexcept
 
 		double average = 0;
 		double results[numRepeat];
-		const uint32_t numSamples = samples.size();
+		const uint32_t numSamples = static_cast<uint32_t>(samples.size());
 
 		auto& normalizedWeights = integrator.GetNormalizedWeights();
 		const double halfStep = 0.5 / numSamples;
@@ -141,7 +141,7 @@ void hbe::ImportanceResamplingTest::Prepare() noexcept
 
 		double average = 0;
 		double results[numRepeat];
-		const uint32_t numSamples = samples.size();
+		const uint32_t numSamples = static_cast<uint32_t>(samples.size());
 
 		auto& normalizedWeights = integrator.GetNormalizedWeights();
 		const double halfStep = 0.5 / numSamples;
@@ -210,7 +210,7 @@ void hbe::ImportanceResamplingTest::Prepare() noexcept
 
 		auto& weights = integrator.GetWeights();
 		auto& samples = integrator.GetSamples();
-		uint32_t numSamples = samples.size();
+		uint32_t numSamples = static_cast<uint32_t>(samples.size());
 
 		if (weights.size() != samples.size())
 		{
@@ -258,7 +258,7 @@ void hbe::ImportanceResamplingTest::Prepare() noexcept
 				return;
 			}
 
-			numSamples = samples.size();
+			numSamples = static_cast<uint32_t>(samples.size());
 
 			average /= numRepeat;
 			double variance = 0;
@@ -310,7 +310,7 @@ void hbe::ImportanceResamplingTest::Prepare() noexcept
 
 		auto& weights = integrator.GetWeights();
 		auto& samples = integrator.GetSamples();
-		uint32_t numSamples = samples.size();
+		uint32_t numSamples = static_cast<uint32_t>(samples.size());
 
 		if (weights.size() != samples.size())
 		{
@@ -360,7 +360,7 @@ void hbe::ImportanceResamplingTest::Prepare() noexcept
 				return;
 			}
 
-			numSamples = samples.size();
+			numSamples = static_cast<uint32_t>(samples.size());
 
 			average /= numRepeat;
 			double variance = 0;

@@ -7,6 +7,10 @@
 #include "Config/BuildConfig.h"
 #include "HSTL/HString.h"
 
+#if PLATFORM_WINDOWS
+struct HWND__;
+#endif
+
 
 namespace OS
 {
@@ -25,6 +29,8 @@ private:
 #elif PLATFORM_WINDOWS
 	void* hwnd;
 	bool shouldCloseFlag;
+
+	static long long __stdcall WindowProc(HWND__* hwnd, unsigned int uMsg, unsigned long long wParam, long long lParam);
 #elif PLATFORM_OSX
 	void* osHandle;
 	void* osDelegate;

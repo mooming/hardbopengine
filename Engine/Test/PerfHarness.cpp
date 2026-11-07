@@ -38,8 +38,7 @@ void WriteRatioField(char* const ioField, const std::size_t inRatioPercent)
 	char text[LineCapacity];
 
 	std::snprintf(text, sizeof(text), "%zu.%02zux", inRatioPercent / 100, inRatioPercent % 100);
-	std::strncpy(ioField, text, FieldWidth - 1);
-	ioField[FieldWidth - 1] = '\0';
+	std::snprintf(ioField, FieldWidth, "%s", text);
 }
 
 [[nodiscard]] const char* GradeName(const EPerfGrade inGrade) noexcept

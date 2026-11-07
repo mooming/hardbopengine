@@ -3,8 +3,8 @@
 #include "OSDebug.h"
 
 #if PLATFORM_WINDOWS
-#include <DbgHelp.h>
 #include <Windows.h>
+#include <DbgHelp.h>
 #include <cstdlib>
 
 #include "String/InlineStringBuilder.h"

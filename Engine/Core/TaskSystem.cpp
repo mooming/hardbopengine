@@ -1704,7 +1704,7 @@ void TaskSystemTest::Prepare()
 			++workerIndex;
 		}
 
-		if (workerIndex <= TaskSystem::GetIOTaskStreamIndex())
+		if (workerIndex <= static_cast<unsigned>(TaskSystem::GetIOTaskStreamIndex()))
 		{
 			ls << "No separate worker stream to throttle, so the throttle could not be observed." << lferr;
 
@@ -1830,9 +1830,9 @@ void TaskSystemTest::Prepare()
 			++firstIndex;
 		}
 
-		const unsigned secondIndex = firstIndex > TaskSystem::GetIOTaskStreamIndex() + 1 ? firstIndex - 1 : 0;
+		const unsigned secondIndex = firstIndex > static_cast<unsigned>(TaskSystem::GetIOTaskStreamIndex() + 1) ? firstIndex - 1 : 0;
 
-		if (secondIndex <= TaskSystem::GetIOTaskStreamIndex())
+		if (secondIndex <= static_cast<unsigned>(TaskSystem::GetIOTaskStreamIndex()))
 		{
 			ls << "Two worker streams are needed to observe isolation and the tree has fewer." << lferr;
 
@@ -1967,7 +1967,7 @@ void TaskSystemTest::Prepare()
 			++workerIndex;
 		}
 
-		if (workerIndex <= TaskSystem::GetIOTaskStreamIndex())
+		if (workerIndex <= static_cast<unsigned>(TaskSystem::GetIOTaskStreamIndex()))
 		{
 			ls << "No worker stream of its own to observe, so this could not be measured." << lferr;
 
@@ -2209,7 +2209,7 @@ void TaskSystemTest::Prepare()
 			ls << "A thread that has no stream claimed to be the IO thread." << lferr;
 		}
 
-		if (foreignIndex.load() < TaskStreamAffinity::GetNumBits())
+		if (foreignIndex.load() < static_cast<TaskSystem::TIndex>(TaskStreamAffinity::GetNumBits()))
 		{
 			ls << "The no-stream index " << foreignIndex.load() << " is inside the " << TaskStreamAffinity::GetNumBits()
 			   << "-bit affinity mask, so a thread that is not a stream would be recorded as one - and the general"

@@ -61,9 +61,9 @@ public:
 	This& operator>>(uint32_t& value) noexcept;
 	This& operator>>(int64_t& value) noexcept;
 	This& operator>>(uint64_t& value) noexcept;
-#if !PLATFORM_LINUX
+#if !PLATFORM_LINUX && !PLATFORM_WINDOWS
 	This& operator>>(size_t& value) noexcept;
-#endif // !PLATFORM_LINUX
+#endif // !PLATFORM_LINUX && !PLATFORM_WINDOWS
 	This& operator>>(float& value) noexcept;
 	This& operator>>(double& value) noexcept;
 	This& operator>>(long double& value) noexcept;

@@ -6,9 +6,13 @@
 #if PLATFORM_WINDOWS
 #include <windows.h>
 
+#ifdef CreateWindow
+#undef CreateWindow
+#endif // CreateWindow
+
 namespace OS
 {
-Window::Window()
+Window::Window() noexcept
 	: hwnd(nullptr)
 	, width(0)
 	, height(0)
@@ -30,14 +34,18 @@ bool Window::CreateWindow(const hbe::HString& title, int width, int height)
 
 	HINSTANCE hInstance = GetModuleHandle(nullptr);
 	WNDCLASS wc = {};
-	wc.lpfnWndProc = WindowProc;
+	wc.lpfnWndProc = &Window::WindowProc;
 	wc.hInstance = hInstance;
 	wc.lpszClassName = "HardbopEngineWindowClass";
 
 	RegisterClass(&wc);
 
+	RECT windowRect{0, 0, static_cast<LONG>(width), static_cast<LONG>(height)};
+	AdjustWindowRect(&windowRect, WS_OVERLAPPEDWINDOW, FALSE);
+
 	hwnd = CreateWindowEx(0, "HardbopEngineWindowClass", title.c_str(), WS_OVERLAPPEDWINDOW, CW_USEDEFAULT,
-						  CW_USEDEFAULT, width, height, nullptr, nullptr, hInstance, this);
+						  CW_USEDEFAULT, static_cast<int>(windowRect.right - windowRect.left),
+						  static_cast<int>(windowRect.bottom - windowRect.top), nullptr, nullptr, hInstance, this);
 
 	returnValueIf(false, hwnd == nullptr);
 
@@ -61,7 +69,11 @@ void Window::SetSize(int width, int height)
 	{
 		Window::width = width;
 		Window::height = height;
-		SetWindowPos(static_cast<HWND>(hwnd), nullptr, 0, 0, width, height, SWP_NOMOVE | SWP_NOZORDER);
+
+		RECT windowRect{0, 0, static_cast<LONG>(width), static_cast<LONG>(height)};
+		AdjustWindowRect(&windowRect, WS_OVERLAPPEDWINDOW, FALSE);
+		SetWindowPos(static_cast<HWND>(hwnd), nullptr, 0, 0, static_cast<int>(windowRect.right - windowRect.left),
+			static_cast<int>(windowRect.bottom - windowRect.top), SWP_NOMOVE | SWP_NOZORDER);
 	}
 }
 
@@ -126,7 +138,7 @@ bool Window::IsClosed() const
 	return closedFlag;
 }
 
-long Window::WindowProc(void* hwnd, unsigned int uMsg, unsigned long long wParam, long lParam)
+long long __stdcall Window::WindowProc(HWND__* hwnd, unsigned int uMsg, unsigned long long wParam, long long lParam)
 {
 	Window* pThis = nullptr;
 
@@ -134,11 +146,11 @@ long Window::WindowProc(void* hwnd, unsigned int uMsg, unsigned long long wParam
 	{
 		CREATESTRUCT* pCreate = reinterpret_cast<CREATESTRUCT*>(lParam);
 		pThis = reinterpret_cast<Window*>(pCreate->lpCreateParams);
-		SetWindowLongPtr(static_cast<HWND>(hwnd), GWLP_DLPTR, reinterpret_cast<LONG_PTR>(pThis));
+		SetWindowLongPtr(static_cast<HWND>(hwnd), GWLP_USERDATA, reinterpret_cast<LONG_PTR>(pThis));
 	}
 	else
 	{
-		pThis = reinterpret_cast<Window*>(GetWindowLongPtr(static_cast<HWND>(hwnd), GWLP_DLPTR));
+		pThis = reinterpret_cast<Window*>(GetWindowLongPtr(static_cast<HWND>(hwnd), GWLP_USERDATA));
 	}
 
 	if (pThis)
