@@ -90,9 +90,8 @@ if [ -f "$VULKAN_DIR/include/vulkan/vulkan.h" ]; then
 else
     echo "Vulkan headers not found – attempting fallback download..."
     VULKAN_VERSION="1.4.341.0"
-    LINUX_VERSION="linux"
-    FILENAME="vulkan-sdk-${VULKAN_VERSION}.${LINUX_VERSION}"
-    DOWNLOAD_URL="https://sdk.lunarg.com/sdk/download/${VULKAN_VERSION}/${FILENAME}.tar.gz?u="
+    FILENAME="vulkan-sdk-${VULKAN_VERSION}"
+    DOWNLOAD_URL="https://sdk.lunarg.com/sdk/download/${VULKAN_VERSION}/linux/vulkan-sdk.tar.gz?u="
     TMP_TAR="/tmp/${FILENAME}.tar.gz"
     rm -f "$TMP_TAR"
     if command -v curl &> /dev/null; then
@@ -103,7 +102,7 @@ else
     if [ -f "$TMP_TAR" ] && [ -s "$TMP_TAR" ]; then
         echo "Extracting SDK..."
         rm -rf "$VULKAN_DIR/include"/* "$VULKAN_DIR/lib"/*
-        tar -xzf "$TMP_TAR" -C "$VULKAN_DIR" --strip-components=1
+        tar -xf "$TMP_TAR" -C "$VULKAN_DIR" --strip-components=2
         rm -f "$TMP_TAR"
         echo "Vulkan SDK installed successfully via fallback!"
     else

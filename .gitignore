@@ -5,6 +5,7 @@
 *.cmake
 
 bin
+lib
 cmakebuild
 build
 hengine
