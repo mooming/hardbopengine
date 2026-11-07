@@ -1,5 +1,47 @@
 # Journal
 
+## 2026-11-07 23:40 — EngineTest builds and runs on Windows for the first time
+
+**Cause.** The owner asked to install the required tools and SDK and build EngineTest on a
+Windows host (the tree had never seen one). Environment found: CMake 4.3.2 present, VS 18
+BuildTools with MSVC 14.50 present, Ninja and the Vulkan SDK missing.
+
+**Closed in this round.** `Scripts/install_sdk_windows.bat` merges the unified installer with
+the Vulkan installer: it checks/installs CMake, Ninja and the MSVC toolchain (presence-verified
+after each install - winget returns non-zero for "already installed"), then installs the Vulkan
+SDK into External\VulkanSDK. The old InstallVulkanWindows.bat had a dead LunarG URL (404) and
+wrote to a C:\temp that does not exist; the URL actually serves an MZ executable (the Qt Installer
+Framework binary), so the script magic-detects the download and runs the installer silently
+(`install --root ... --accept-licenses --accept-messages --confirm-command`, UAC prompt) with a
+zip-extraction fallback. BuildConfig.h's warning already named install_sdk_windows.bat; README
+now points there too.
+
+Building required the whole toolchain ported to MSVC: /EHsc /DWIN32 /DNOMINMAX /utf-8 on
+`.project.config`'s msvcCompileOptions (cl does not predefine WIN32 - the OSAL dirent fork
+depends on it - and VS 2026 cl no longer predefines _AMD64_, so windows.h must come before the
+split headers or winnt.h rejects the target architecture), makebuild rebuilt for Windows (its
+own /W4 /WX needed EHsc plus the Common portability fixes, committed inside the submodule), the
+Renderer's customCMake gained the Windows branch (NAMES vulkan-1; bare `vulkan` cannot match
+vulkan-1.lib), and the Windows OSAL implementations were written from the Linux templates
+(FileHandle, FileOpenMode, ProtectionMode, MapSyncMode, InputOutput, GetThreadPriority,
+timeBeginPeriod in Application::Initialize).
+
+Two engine defects surfaced and were fixed. The global funnel aligned every allocation to
+`alignof(std::max_align_t)` - 8 on MSVC, 16 on GCC - violating the operator-new contract; Windows
+now allocates through a header-slot scheme keyed to `__STDCPP_DEFAULT_NEW_ALIGNMENT__` and
+GetAllocSize reads the slot header. And VirtualFree passed the region size with MEM_RELEASE,
+which Windows rejects outright; the release form requires zero.
+
+**Still open.** The suite runs 46 of 66 collections before a silent process death in
+InlineStringBuilderTest, and RingBufferTest TC7.A fails: with Windows' 15ms sleep granularity the
+sparse-producer spacing opens a window where the ring's chain reservation deadlocks and Pop
+returns Blocked forever - the exact defect the test was written to catch, never seen with Linux'
+2microsecond sleeps. The abort flag added to the producers keeps it a clean FAIL instead of a
+join() hang. Both are runtime defects for the next round, not build errors.
+
+**Verification.** EngineTest builds in Dev (exit 0). The suite reaches collection 46 with
+45 SUCCESS / 1 FAIL.
+
 ## 2026-11-03 15:30 — generate_cmake_files.bat: the windows twin
 
 **Cause.** Parity follow-up to the 15:23 fix: the owner asked for a .bat version of

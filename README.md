@@ -25,7 +25,7 @@ If Vulkan SDK is not installed, tests will still run but Vulkan-related features
 ./Scripts/InstallVulkanLinux.sh
 
 # Windows
-Scripts\InstallVulkanWindows.bat
+Scripts\install_sdk_windows.bat
 ```
 
 ## Building
