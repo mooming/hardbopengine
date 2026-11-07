@@ -2,13 +2,12 @@
 
 #include "OSFileHandle.h"
 
-#include <windows.h>
-
 #include "Config/BuildConfig.h"
 #include "Core/CommonMacros.h"
 #include "OSInputOutput.h"
 
 #if PLATFORM_WINDOWS
+#include <windows.h>
 
 namespace OS
 {

@@ -1,1 +1,3 @@
-target_link_libraries (OSAL winmm)
+if (WIN32)
+	target_link_libraries (OSAL winmm)
+endif (WIN32)

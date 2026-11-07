@@ -2,9 +2,6 @@
 
 #include "OSInputOutput.h"
 
-#include <fcntl.h>
-#include <windows.h>
-
 #include "Core/CommonMacros.h"
 #include "Log/Logger.h"
 #include "OSFileHandle.h"
@@ -15,6 +12,8 @@
 #include "WindowsIntrinsic.h"
 
 #if PLATFORM_WINDOWS
+#include <fcntl.h>
+#include <windows.h>
 
 namespace OS
 {

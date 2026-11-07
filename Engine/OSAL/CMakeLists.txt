@@ -111,5 +111,7 @@ install (TARGETS OSAL DESTINATION ${CMAKE_SOURCE_DIR}/lib)
 
 
 
-target_link_libraries (OSAL winmm)
+if (WIN32)
+	target_link_libraries (OSAL winmm)
+endif (WIN32)
 

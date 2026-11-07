@@ -2,11 +2,10 @@
 
 #include "OSFileOpenMode.h"
 
-#include <fcntl.h>
-
 #include "Config/BuildConfig.h"
 
 #if PLATFORM_WINDOWS
+#include <fcntl.h>
 
 namespace OS
 {
