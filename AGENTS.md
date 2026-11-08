@@ -3,7 +3,7 @@
 **Mandatory for all AI agents.** All rules are binding; if you cannot follow a rule, explain why and ask for guidance.
 
 ## Project Overview
-HardBop Engine: high‑performance C++23 engine with custom memory, task system, and OSAL for cross‑platform use.
+HardBop Engine: high‑performance C++23 engine with custom memory, task system, and OSAL, targeting Linux, macOS, and Windows from one source tree.
 
 ## Self Documented Code and API Reference Documents
 The engine codebase carries no comments at all — not in `.cpp`, and not in `.h` either. Names,
@@ -129,6 +129,24 @@ whose own reference is finished.
   B (B1-B7) carries the details; `scripts/includes.py` checks B1-B5 and prints B6 candidates as advice for a
   human to confirm.
 
+- **Platform rules (Linux, macOS, Windows).** `BuildConfig.h` defines all three `PLATFORM_*`
+  macros on every platform, as 1 or 0. Platform files under `Engine/OSAL/` self-guard with them,
+  and platform headers (`windows.h`, `timeapi.h`, ...) sit *inside* the guard so Linux and OSX
+  compiles never see them.
+- **`windows.h` comes before the split headers.** In a Windows-only file, include `windows.h`
+  first: VS 2026's `cl` no longer predefines `_AMD64_`, and only `windows.h` bridges `_M_AMD64`,
+  so `errhandlingapi.h` or a sibling reaching `winnt.h` first fails with `#error "No Target
+  Architecture"`.
+- **`/DNOMINMAX` stays.** It is part of `msvcCompileOptions` in `.project.config`, which MakeBuild
+  emits inside `if (MSVC)`; removing it lets `windows.h`'s `min`/`max` macros break
+  `std::numeric_limits<T>::max()` everywhere.
+- **Alignment keys to `__STDCPP_DEFAULT_NEW_ALIGNMENT__`.** `alignof(std::max_align_t)` is 8 on
+  MSVC and 16 on GCC/Clang - the allocation funnel and any allocator math use the macro, or
+  over-aligned types break on Windows only.
+- **Timing tests need an escape hatch.** `Application::Initialize` raises the Windows timer
+  resolution to 1 ms; Linux and macOS honor sub-millisecond sleeps natively. A deadline plus a
+  flag the spinning threads check fails a slow platform's testlet instead of hanging `join()`.
+
 ## Work Policy (must be strictly followed)
 
 **All agents must adhere to the following policies without exception.**
@@ -150,7 +168,9 @@ whose own reference is finished.
 See [docs/WorkPolicy.md](docs/WorkPolicy.md) for the same content.
 
 ## Build System
-See [docs/BuildSystem.md](docs/BuildSystem.md).
+See [docs/BuildSystem.md](docs/BuildSystem.md). Windows builds with the same generator from a
+Visual Studio developer prompt (`vcvarsall.bat x64`); the Linux verification runs inside WSL
+through `Scripts/verify_linux_build.bat`.
 
 ## Helper Script
 `build.sh` builds specific targets with optional flags (default Dev):
@@ -165,9 +185,23 @@ so the unit-test sources compile at all. Targets that are not an application
 directory cannot be reached through this script (the basename becomes the target
 name); build those with `cmake --build build --config <Config> --target <Name>`.
 
+`build.bat` is the Windows twin with the same flags; it requires the MSVC developer
+environment in the calling prompt:
+```text
+build.bat <target> [-dev] [-debug] [-release] [-clean] [-test]
+```
+
+`Scripts/verify_linux_build.bat` installs or enables WSL and verifies the Linux build inside
+Ubuntu; see the README's Multiplatform Development section for the phases and exit codes.
+
 ## Running Tests
 Tests in `Engine/Test/UnitTestCollection.cpp`:
 ```bash
 ./build/Applications/EngineTest/<Config>/EngineTest
 # <Config> = Debug|Dev|Release
+```
+
+Windows, from a developer prompt:
+```text
+build\Applications\EngineTest\<Config>\EngineTest.exe
 ```

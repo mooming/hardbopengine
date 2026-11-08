@@ -1,5 +1,23 @@
 # Journal
 
+## 2026-11-08 01:50 — AGENTS.md learns the platform rules the port paid for
+
+**Cause.** The owner asked for a double-check and revision of AGENTS.md after the Windows port.
+
+**Closed in this round.** The overview names the three platforms. The Coding Standards section
+gains five binding platform rules, each one a defect this session paid for: platform headers sit
+inside the PLATFORM guard (the review caught two windows.h includes outside), windows.h comes
+before the split headers (VS 2026 cl no longer predefines _AMD64_ and only windows.h bridges
+_M_AMD64 - the C1189 hunt), /DNOMINMAX stays (the numeric_limits breakage), allocation math keys
+to __STDCPP_DEFAULT_NEW_ALIGNMENT__ (the funnel's 8-byte max_align_t alignment broke every
+alignas(16) type on Windows), and timing tests carry a deadline plus an escape flag (the
+RingBuffer TC7.A join() hang). The Build System section names the Windows flow (developer prompt,
+same generator) and the WSL verification; the Helper Script section gains build.bat with the same
+flags and a verify_linux_build.bat pointer; Running Tests gains the Windows invocation. Every
+claim fact-checked against the tree: the .project.config option line, timeBeginPeriod in
+Win32Application.cpp, the funnel macro. docs/BuildSystem.md is the noted follow-up - it still
+describes only the Unix flow.
+
 ## 2026-11-08 01:20 — the README learns the multiplatform workflow
 
 **Cause.** The owner asked for documentation of verify_linux_build.bat and multiplatform
