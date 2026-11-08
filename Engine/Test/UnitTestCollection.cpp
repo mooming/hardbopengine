@@ -16,6 +16,7 @@
 #include "Container/FixedRingBuffer.h"
 #include "Container/FixedRingMPMC.h"
 #include "Container/FixedRingMPSC.h"
+#include "Container/HInlineFunction.h"
 #include "Container/HashMap.h"
 #include "Container/LinkedList.h"
 #include "Container/Map.h"
@@ -184,6 +185,7 @@ void RegisterSuite()
 	testEnv.AddTestCollection<VectorTest>();
 	testEnv.AddTestCollection<MapTest>();
 	testEnv.AddTestCollection<HashMapTest>();
+	testEnv.AddTestCollection<HInlineFunctionTest>();
 	testEnv.AddTestCollection<DequeTest>();
 	testEnv.AddTestCollection<QueueTest>();
 	testEnv.AddTestCollection<FixedRingBufferTest>();

@@ -18,7 +18,6 @@
 #include "OSAL/Intrinsic.h"
 #include "String/StringUtil.h"
 
-
 namespace hbe
 {
 namespace
@@ -385,7 +384,7 @@ void Logger::AddLog(StaticString category, ELogLevel level, const TLogFunction& 
 
 	AllocatorScope scope(InvalidAllocatorID);
 
-	if (unlikely(logFunc == nullptr))
+	if (unlikely(!logFunc.IsValid()))
 	{
 		AddLog(GetName(), ELogLevel::Warning, [](auto& ls) { ls << "Null log function!"; });
 
@@ -405,7 +404,7 @@ void Logger::AddLog(StaticString category, ELogLevel level, const TLogFunction& 
 		if (found != filters.end())
 		{
 			auto& filter = found->second;
-			if (filter != nullptr && !filter(level))
+			if (filter.IsValid() && !filter(level))
 				return;
 		}
 	}
@@ -641,7 +640,7 @@ void Logger::FlushBuffer(const TTextBuffer& buffer) const noexcept
 {
 	for (auto& func : flushFuncs)
 	{
-		Assert(func != nullptr);
+		Assert(func.IsValid());
 		func(buffer);
 	}
 }
