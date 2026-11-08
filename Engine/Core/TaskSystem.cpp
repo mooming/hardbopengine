@@ -5,6 +5,7 @@
 #include <array>
 #include <atomic>
 #include <chrono>
+#include <cmath>
 #include <exception>
 #include <future>
 #include <thread>
@@ -2172,7 +2173,7 @@ void TaskSystemTest::Prepare()
 
 	AddTest("A thread that was never given a stream does not claim to have one", [this](TLogOut& ls)
 	{
-		static_assert(TaskSystem::NonStreamIndex >= TaskStreamAffinity::GetNumBits());
+		static_assert(static_cast<unsigned>(TaskSystem::NonStreamIndex) >= TaskStreamAffinity::GetNumBits());
 
 		std::atomic<TaskSystem::TIndex> foreignIndex{0};
 		std::atomic<bool> foreignClaimsBase{true};
@@ -2209,7 +2210,7 @@ void TaskSystemTest::Prepare()
 			ls << "A thread that has no stream claimed to be the IO thread." << lferr;
 		}
 
-		if (foreignIndex.load() < static_cast<TaskSystem::TIndex>(TaskStreamAffinity::GetNumBits()))
+		if (static_cast<unsigned>(foreignIndex.load()) < TaskStreamAffinity::GetNumBits())
 		{
 			ls << "The no-stream index " << foreignIndex.load() << " is inside the " << TaskStreamAffinity::GetNumBits()
 			   << "-bit affinity mask, so a thread that is not a stream would be recorded as one - and the general"

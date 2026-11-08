@@ -18,7 +18,7 @@ using TMilliSecs = std::chrono::milliseconds;
 
 [[nodiscard]] inline TTime GetNow() noexcept
 {
-	return std::chrono::steady_clock::now();
+	return TStopWatch::now();
 }
 
 [[nodiscard]] inline float ToFloat(TStopWatch::duration duration) noexcept

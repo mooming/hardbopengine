@@ -53,7 +53,7 @@ public:
 		~LogFlush() = default;
 	};
 
-	static constexpr size_t MaxClosureBytes = 48;
+	static constexpr size_t MaxClosureBytes = 64;
 	using TTestlet = Testlet<MaxClosureBytes>; // hb-standards:ignore
 	static constexpr std::size_t MaxRetainedGlobalBytes = 64 * 1024;
 

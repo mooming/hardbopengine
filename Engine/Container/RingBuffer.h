@@ -48,7 +48,14 @@ private:
 	using DeferredAllocator = typename TAllocator::template rebind<Block*>::other;
 	using DeferredList = std::vector<Block*, DeferredAllocator>;
 
+#if defined(__GNUC__) && !defined(__clang__)
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Winterference-size"
+#endif
 	static constexpr size_t LineSpacing = std::hardware_destructive_interference_size;
+#if defined(__GNUC__) && !defined(__clang__)
+#pragma GCC diagnostic pop
+#endif
 	static constexpr size_t BlockCapacity = U::GetCapacity();
 
 	struct alignas(LineSpacing) Block final // hb-standards:ignore

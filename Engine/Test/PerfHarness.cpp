@@ -30,7 +30,14 @@ constexpr std::size_t LineCapacity = 256;
 
 void WriteNsField(char* const ioField, const std::size_t inTenths) noexcept
 {
+#if defined(__GNUC__) && !defined(__clang__)
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wformat-truncation"
+#endif
 	std::snprintf(ioField, FieldWidth, "%zu.%zu", inTenths / 10, inTenths % 10);
+#if defined(__GNUC__) && !defined(__clang__)
+#pragma GCC diagnostic pop
+#endif
 }
 
 void WriteRatioField(char* const ioField, const std::size_t inRatioPercent)
@@ -38,7 +45,7 @@ void WriteRatioField(char* const ioField, const std::size_t inRatioPercent)
 	char text[LineCapacity];
 
 	std::snprintf(text, sizeof(text), "%zu.%02zux", inRatioPercent / 100, inRatioPercent % 100);
-	std::snprintf(ioField, FieldWidth, "%s", text);
+	std::snprintf(ioField, FieldWidth, "%.*s", static_cast<int>(FieldWidth - 1), text);
 }
 
 [[nodiscard]] const char* GradeName(const EPerfGrade inGrade) noexcept

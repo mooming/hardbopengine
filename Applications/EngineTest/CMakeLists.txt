@@ -67,3 +67,7 @@ add_dependencies (EngineTest Test)
 add_dependencies (EngineTest External)
 
 
+if (UNIX AND NOT APPLE)
+	target_link_libraries (EngineTest "$<LINK_GROUP:RESCAN,HEngine,Config,Container,HSTL,Log,Math,Memory,OSAL,Renderer,Resource,String,Core,Test>")
+endif (UNIX AND NOT APPLE)
+

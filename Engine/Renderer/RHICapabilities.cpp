@@ -59,7 +59,7 @@ void RHICapabilitiesTest::Prepare()
 		Assert(caps.deviceType == Renderer::DeviceType::Unknown, "Unqueried device type must be Unknown");
 	});
 
-	AddTest("GetCapabilities reports what the device supports", [](auto& ls)
+	AddTest("GetCapabilities reports what the device supports", 262144, [](auto& ls)
 	{
 		const Renderer::RenderCapabilities caps = Renderer::RHICapabilities::GetCapabilities();
 

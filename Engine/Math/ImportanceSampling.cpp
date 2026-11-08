@@ -10,12 +10,12 @@
 
 void hbe::ImportanceResamplingTest::Prepare() noexcept
 {
-	constexpr uint32_t numSrcSamples = 200;
-	constexpr uint32_t numResamplingIterations = 50;
-	constexpr uint32_t numSubGroups = 10;
-	constexpr uint32_t numRepeat = 5;
+	static constexpr uint32_t numSrcSamples = 200;
+	[[maybe_unused]] static constexpr uint32_t numResamplingIterations = 50;
+	[[maybe_unused]] static constexpr uint32_t numSubGroups = 10;
+	static constexpr uint32_t numRepeat = 5;
 
-	auto func = [](const double& x) -> double
+	[[maybe_unused]] static constexpr auto func = [](const double& x) -> double
 	{
 		if (x < 0 || x > 1)
 		{
@@ -25,7 +25,7 @@ void hbe::ImportanceResamplingTest::Prepare() noexcept
 		return std::sqrt(1 - (x * x)) * 4.0f;
 	};
 
-	auto pdf = [](const double&) -> double { return 1.0; };
+	[[maybe_unused]] static constexpr auto pdf = [](const double&) -> double { return 1.0; };
 
 	static std::random_device rd;
 	static std::mt19937 gen(rd());

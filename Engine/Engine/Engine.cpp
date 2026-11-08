@@ -199,7 +199,7 @@ void Engine::Log(ELogLevel level, const TLogFunc& func)
 
 	using namespace std;
 
-	const auto diff = chrono::steady_clock::now() - statistics.GetStartTime();
+	const auto diff = hbe::time::GetNow() - statistics.GetStartTime();
 	auto hours = chrono::duration_cast<chrono::hours>(diff);
 	auto minutes = chrono::duration_cast<chrono::minutes>(diff);
 	auto seconds = chrono::duration_cast<chrono::seconds>(diff);

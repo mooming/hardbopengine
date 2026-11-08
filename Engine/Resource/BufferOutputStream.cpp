@@ -161,7 +161,7 @@ void BufferOutputStreamTest::Prepare()
 		auto buffer = GetMemoryBuffer<int>(TestCount, -1);
 		BufferOutputStream bos(buffer);
 
-		for (int i = 0; i < TestCount; ++i)
+		for (int i = 0; i < static_cast<int>(TestCount); ++i)
 		{
 			bos << i;
 		}

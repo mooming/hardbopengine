@@ -67,3 +67,7 @@ add_dependencies (RingBufferBenchmark Test)
 add_dependencies (RingBufferBenchmark External)
 
 
+if (UNIX AND NOT APPLE)
+	target_link_libraries (RingBufferBenchmark "$<LINK_GROUP:RESCAN,HEngine,Config,Container,HSTL,Log,Math,Memory,OSAL,Renderer,Resource,String,Core,Test>")
+endif (UNIX AND NOT APPLE)
+

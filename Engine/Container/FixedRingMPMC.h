@@ -30,7 +30,14 @@ private:
 	static_assert(sizeof(T) % alignof(T) == 0,
 				  "sizeof(T) must be a multiple of alignof(T), so a stride of sizeof(T) keeps every slot aligned.");
 
+#if defined(__GNUC__) && !defined(__clang__)
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Winterference-size"
+#endif
 	static constexpr size_t LineSpacing = std::hardware_destructive_interference_size;
+#if defined(__GNUC__) && !defined(__clang__)
+#pragma GCC diagnostic pop
+#endif
 	static constexpr size_t PayloadAlignment = alignof(T);
 	static constexpr size_t IndexMask = Capacity - 1;
 
