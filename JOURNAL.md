@@ -1,5 +1,56 @@
 # Journal
 
+## 2026-11-08 02:50 — the Linux verification: GCC 15 caught fourteen defects, and both suites run green
+
+**Cause.** The owner ran verify_linux_build.bat through the WSL setup and asked whether the Linux
+build had been tested. It had not - the toolchain phase was green but the build itself was
+pending. Running it surfaced defect after defect until both platforms' suites completed with
+zero failures, at which point the owner's push condition was met.
+
+**What GCC 15 and the fresh environment caught.** The allocator family (nine classes) was marked
+final - libstdc++ 15's containers derive from their allocator, so every HVector, HString and
+HUnorderedMap was ill-formed; the owner's host ran an older libstdc++ whose string construction
+did not copy the allocator. The Linux OSAL files carried the same noexcept-mismatch class fixed
+on the Windows side (GCC 15 added the warning; -Werror elevates it). LinuxWindow.cpp had never
+compiled anywhere: no Xlib include, a missing SetVisible, XConfigureEvent instead of
+XConfigureNotify, void*-to-Display* conversions, a ctor initialization-order violation, and the
+distro lacked libx11-dev entirely (install_sdk_linux.sh now installs it; OSAL links X11 on
+Linux through a guarded customCMake). LinuxApplication.cpp compiled empty (the missing
+BuildConfig include). LinuxThread.cpp lacked GetThreadPriority, which the OSThread test calls.
+Time.h's GetNow returned steady_clock::now() through a high_resolution_clock time point - the
+owner's libstdc++ aliases high_resolution_clock to steady_clock, GCC 15's to system_clock;
+Engine.cpp mixed the two clocks the same way. TaskSystem.cpp needed <cmath> (GCC 15 tightened
+transitive includes), its static_assert compared int against unsigned, and one of my own
+sign-compare casts inverted a test's wraparound semantics - the cast went the other way. The
+ring headers use std::hardware_destructive_interference_size, which GCC 15 warns is ABI-unstable;
+silenced at the five use sites with a GCC-only pragma guard (MSVC builds these headers with /WX
+and clang lacks the warning). PerfHarness truncation warnings fixed with a precision-bounded
+format and a documented pragma. The link failed on every test collection's vtable: libTest.a
+sits late in the EngineTest link line and its UnitTestCollection member references test classes
+in archives the one-pass linker had already scanned - the two application targets now wrap their
+libraries in a LINK_GROUP:RESCAN genex, the CMake 3.24 mechanism for exactly this.
+
+**The dangling capture.** The Importance Resampling test failed on Windows with Resample receiving
+numSourceSamples=0 while every caller passed 200. The disassembly showed the argument read through
+a captured pointer: the testlet lambdas capture [&], including references to Prepare()'s locals,
+and the testlets run asynchronously through the task system after Prepare returns - the references
+dangle into a dead frame that reads as zero. MSVC captures the constexpr by reference where GCC
+inlines it, which is why Linux never saw it. The test was never executed on Windows before this
+session: the suite always died at collection 46, before the Importance test registers. The fix
+makes the captured state static, and the same audit cleared the sibling test files (their constexpr
+captures are compile-time only). Growing MaxClosureBytes to 64 also retired the silent collection-46
+crash: the Windows suite now completes for the first time.
+
+**The judgment call.** RHICapabilitiesTest failed on Linux only: the capability probe caches the
+driver's extension enumeration, and the WSL software driver retains 158510 bytes against the
+65536-byte testlet ceiling. The test's own message sanctions raising the ceiling with a reason;
+it is now 262144 for that one testlet, the reason recorded here and in the commit.
+
+**Verification.** Linux: EngineTest builds (GCC 15, WSL Ubuntu) and the suite reports all 67
+collections passed (430 testlets), exit 0. Windows: the same, exit 0, after one TC17 re-run -
+the journal's documented load-sensitive flake. Both platforms green; pushed per the owner's
+condition.
+
 ## 2026-11-08 01:50 — AGENTS.md learns the platform rules the port paid for
 
 **Cause.** The owner asked for a double-check and revision of AGENTS.md after the Windows port.
