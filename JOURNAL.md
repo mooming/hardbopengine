@@ -1,5 +1,35 @@
 # Journal
 
+## 2026-11-08 00:45 — the Linux verification gets a script, and the port review caught four leaks
+
+**Cause.** The owner asked for a review of the port's impact on Linux and OSX, then a script to
+install or enable WSL and verify the build on Linux.
+
+**The review closed.** Four leaks would have broken the platforms that already worked: the OSAL
+customCMake linked winmm unconditionally (CMake cannot resolve it off-Windows), two of the new
+Windows OSAL files included windows.h above their PLATFORM_WINDOWS guards (fatal includes), the
+third moved fcntl.h inside for consistency, and InlineMonotonicAllocator.h still carried the
+debug probe's OSDebug.h include - the header is byte-identical to its pre-port state now.
+Everything else verified safe by reading: the regenerated CMakeLists keep the MSVC options
+inside if (MSVC), the Renderer's WIN32 branch has byte-identical else values, the funnel's
+Linux/OSX branches are the original code, __STDCPP_DEFAULT_NEW_ALIGNMENT__ equals 16 equals
+alignof(max_align_t) on every GCC/Clang target, the PerlinNoise TReal literals round the same
+exact value (Sterbenz through the double intermediate), and the RingBuffer test's Linux path is
+unchanged (the consumer drains, so the new stall flag never fires). Committed as fix(portability).
+Static analysis only - this box has no WSL and no Linux toolchain, so the owner should run one
+Debug and Dev build on the Linux host before merging.
+
+**The script.** Scripts/verify_linux_build.bat walks four re-runnable phases: the WSL feature
+(self-elevating for the install, exit 2 at the reboot boundary, re-checking whether the reboot
+is actually needed), the Ubuntu distribution (installed with --no-launch and registered
+headlessly as root, so no interactive OOBE), the toolchain through the project's own
+install_sdk_linux.sh (CR-stripped into /tmp because the checkout may carry CRLF), and the
+build itself - cmake-build-linux, which the .gitignore's cmake-build-* pattern covers, so the
+Linux artifacts never mix with the Windows build tree. The Linux path is derived from the
+script's location with the drive lowercased (WSL mounts /mnt/c, not /mnt/C) and canonicalized
+through for %%~fI. Only the detection phases were executable here; the install phase needs the
+owner's UAC click and possibly a reboot.
+
 ## 2026-11-07 23:40 — EngineTest builds and runs on Windows for the first time
 
 **Cause.** The owner asked to install the required tools and SDK and build EngineTest on a
