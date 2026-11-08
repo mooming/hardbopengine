@@ -1,5 +1,22 @@
 # Journal
 
+## 2026-11-08 01:20 — the README learns the multiplatform workflow
+
+**Cause.** The owner asked for documentation of verify_linux_build.bat and multiplatform
+development across Linux, OSX and Windows.
+
+**Closed in this round.** A Multiplatform Development section after Building: the OSAL's
+per-platform file layout with always-defined 1/0 macros, a toolchain table per platform with
+the real installer names (the Prerequisites section still pointed at InstallVulkanMacOS.sh and
+InstallVulkanLinux.sh - two names that never existed in Scripts/), and the per-platform rules
+this port established: per-platform build trees, MSVC flags through msvcCompileOptions, windows.h
+before the split headers (the missing _AMD64_ predefined), /DNOMINMAX, the timer-resolution
+split with timeBeginPeriod(1), and the max_align_t-vs-default-alignment trap the funnel fix
+closed. A Verifying-the-Linux-build-from-WSL subsection documents the four phases and the exit
+codes. The Platform Macros section now states the always-defined contract. The toolchain phase
+of verify_linux_build.bat ran green inside WSL earlier today (apt + the fixed LunarG URL); the
+build phase is the next run.
+
 ## 2026-11-08 00:45 — the Linux verification gets a script, and the port review caught four leaks
 
 **Cause.** The owner asked for a review of the port's impact on Linux and OSX, then a script to

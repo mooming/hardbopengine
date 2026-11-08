@@ -19,14 +19,17 @@ If Vulkan SDK is not installed, tests will still run but Vulkan-related features
 
 ```bash
 # macOS
-./Scripts/InstallVulkanMacOS.sh
+./Scripts/install_sdk_macos.sh
 
 # Linux
-./Scripts/InstallVulkanLinux.sh
+./Scripts/install_sdk_linux.sh
 
 # Windows
 Scripts\install_sdk_windows.bat
 ```
+
+To verify the Linux build from a Windows machine without a Linux box, see
+[Verifying the Linux build from Windows (WSL)](#verifying-the-linux-build-from-windows-wsl).
 
 ## Building
 
@@ -75,6 +78,65 @@ cmake --build . --target EngineTest
 ./Applications/EngineTest/EngineTest
 ```
 
+## Multiplatform Development
+
+The engine targets Linux, macOS, and Windows from one source tree. Each platform's OS layer
+lives in its own files under `Engine/OSAL/` (`Linux*`, `OSX*`, `Win32*`/`Windows*`); every file
+self-guards with its platform macro, and `Engine/Config/BuildConfig.h` defines all three macros
+on every platform (as 1 or 0), so `#if PLATFORM_WINDOWS` compiles empty elsewhere and a missing
+platform implementation fails loudly at configure or link time, not silently.
+
+| Platform | Compiler | Install script | Notes |
+|----------|----------|----------------|-------|
+| Linux | GCC 13+ | `Scripts/install_sdk_linux.sh` | cmake, ninja, gcc, and the Vulkan dev packages via the system package manager |
+| macOS | Clang 16+ | `Scripts/install_sdk_macos.sh` | cmake, ninja, and the Vulkan loader via Homebrew |
+| Windows | MSVC 2022+ | `Scripts/install_sdk_windows.bat` | CMake, Ninja, the MSVC toolchain check, and the Vulkan SDK into `External/VulkanSDK` |
+
+Per-platform rules the codebase relies on:
+
+- **Build trees are per platform.** Windows builds into `build/`; the WSL Linux verification
+  builds into `cmake-build-linux/`. Never point two platforms at one tree.
+- **MSVC-only flags** come from `msvcCompileOptions` in `.project.config` and are emitted inside
+  `if (MSVC)` by MakeBuild, so GCC/Clang never see them. Build from a Visual Studio developer
+  prompt (`vcvarsall.bat x64`) so `cl` and `ninja` resolve.
+- **Include `windows.h` before the split headers** (`errhandlingapi.h`, `memoryapi.h`, ...) in
+  Windows-only files: VS 2026's `cl` no longer predefines `_AMD64_`, and only `windows.h` bridges
+  `_M_AMD64` to `_AMD64_`. Reaching `winnt.h` through a split header fails with
+  `#error "No Target Architecture"`.
+- **`/DNOMINMAX` is part of the MSVC options** because `windows.h` defines `min`/`max` macros
+  that break `std::numeric_limits<T>::max()`.
+- **Timer resolution differs.** `Application::Initialize` calls `timeBeginPeriod(1)` on Windows;
+  Linux and macOS honor sub-millisecond sleeps natively. Timing-sensitive tests must not assume
+  either granularity, and tests that wait on a deadline need an escape hatch so a slow platform
+  fails the test instead of hanging a `join()`.
+- **`alignof(std::max_align_t)` is 8 on MSVC and 16 on GCC/Clang.** The allocation funnel keys
+  to `__STDCPP_DEFAULT_NEW_ALIGNMENT__`, never to `max_align_t`, or over-aligned types break on
+  Windows only.
+
+### Verifying the Linux build from Windows (WSL)
+
+`Scripts/verify_linux_build.bat` installs or enables WSL and then builds EngineTest with GCC
+inside the Ubuntu distribution:
+
+```text
+Scripts\verify_linux_build.bat
+```
+
+Four re-runnable phases; each run continues where the last stopped:
+
+1. **WSL feature** - self-elevates for the install, then reports the reboot boundary (exit code
+   2). Recent Windows versions often need no reboot; the script re-checks before demanding one.
+2. **Distribution** - installs Ubuntu with `--no-launch` and registers it headlessly as root, so
+   no interactive first-run setup blocks the flow.
+3. **Toolchain** - runs the project's own `Scripts/install_sdk_linux.sh` inside the distribution
+   (CR-stripped into `/tmp` first, because a Windows checkout may carry CRLF that bash rejects).
+4. **Build** - `cmake -B cmake-build-linux -G "Ninja Multi-Config"` and the EngineTest (Dev)
+   target. The first build on `/mnt/c` is slow; artifacts live in `cmake-build-linux/`, never in
+   the Windows `build/` tree.
+
+Exit codes: `0` verified, `1` a phase failed (the reason is printed), `2` the reboot boundary was
+reached - reboot and run again.
+
 ## Configuration
 
 The engine can be configured via `Engine/Config/BuildConfig.h`. Most settings work out of the box with defaults.
@@ -100,10 +162,13 @@ The engine can be configured via `Engine/Config/BuildConfig.h`. Most settings wo
 | Math | `__RIGHT_HANDED__` | - | Coordinate system (default right-handed) |
 
 ### Platform Macros
-Automatically defined based on compiler:
+Automatically defined on every platform, as 1 or 0, by `Engine/Config/BuildConfig.h`:
 - `PLATFORM_LINUX` - Linux
 - `PLATFORM_OSX` - macOS  
 - `PLATFORM_WINDOWS` - Windows
+
+All three are always defined, so `#if PLATFORM_WINDOWS` guards compile empty on the other
+platforms instead of disappearing, and every platform keeps the same macro vocabulary.
 
 ### Vulkan SDK
 Auto-detected at compile time using `__has_include`. If not found:
