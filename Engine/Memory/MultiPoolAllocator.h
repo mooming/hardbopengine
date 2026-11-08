@@ -16,7 +16,7 @@ namespace hbe
 class MemoryManager;
 
 /// API reference: docs/Memory/MultiPoolAllocator/index.html
-class MultiPoolAllocator final
+class MultiPoolAllocator
 {
 public:
 	using This = MultiPoolAllocator;

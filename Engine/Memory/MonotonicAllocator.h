@@ -11,7 +11,7 @@
 namespace hbe
 {
 /// API reference: docs/Memory/MonotonicAllocator/index.html
-class MonotonicAllocator final
+class MonotonicAllocator
 {
 public:
 	using TSize = size_t;

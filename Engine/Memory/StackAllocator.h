@@ -11,7 +11,7 @@
 namespace hbe
 {
 /// API reference: docs/Memory/StackAllocator/index.html
-class StackAllocator final
+class StackAllocator
 {
 public:
 	using This = StackAllocator;

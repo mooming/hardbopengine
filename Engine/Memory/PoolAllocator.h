@@ -11,7 +11,7 @@
 namespace hbe
 {
 /// API reference: docs/Memory/PoolAllocator/index.html
-class PoolAllocator final
+class PoolAllocator
 {
 	using TSize = size_t;
 

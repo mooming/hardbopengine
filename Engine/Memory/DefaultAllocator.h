@@ -14,7 +14,7 @@ namespace hbe
 {
 /// API reference: docs/Memory/DefaultAllocator/index.html
 template <typename T>
-class DefaultAllocator final
+class DefaultAllocator
 {
 public:
 	using value_type = T;

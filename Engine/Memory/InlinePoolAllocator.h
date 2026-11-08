@@ -87,7 +87,6 @@ public:
 	InlinePoolAllocator(const InlinePoolAllocator&)
 		: InlinePoolAllocator()
 	{
-		Assert(false);
 	}
 
 	virtual ~InlinePoolAllocator()

@@ -15,7 +15,7 @@
 namespace hbe
 {
 /// API reference: docs/Memory/ThreadSafeMultiPoolAllocator/index.html
-class ThreadSafeMultiPoolAllocator final
+class ThreadSafeMultiPoolAllocator
 {
 public:
 	using This = ThreadSafeMultiPoolAllocator;

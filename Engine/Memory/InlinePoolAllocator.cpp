@@ -26,18 +26,15 @@ public:
 		{
 			time::ScopedTime measure(inlineTime);
 
-			std::vector<int, InlinePoolAllocator<int, BufferSize, 8>> v;
-
 			for (int j = 0; j < testIterations; ++j)
 			{
+				std::vector<int, InlinePoolAllocator<int, BufferSize, 8>> v;
+
 				v.reserve(vectorSize);
 				for (int i = 0; i < vectorSize; ++i)
 				{
 					v.push_back(i);
 				}
-
-				v.clear();
-				v.shrink_to_fit();
 			}
 		}
 		{
