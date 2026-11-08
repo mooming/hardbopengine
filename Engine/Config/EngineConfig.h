@@ -7,7 +7,6 @@
 
 #include "BuildConfig.h"
 
-
 namespace hbe
 {
 namespace Config
@@ -34,6 +33,7 @@ static constexpr int LogOutputBuffer = LogLineLength * 128;
 static constexpr int LogMemoryBlockSize = LogLineLength * 256;
 static constexpr int LogNumMemoryBlocks = 1024 * 12;
 static constexpr int LogForceFlushThreshold = 1024 * 8;
+static constexpr int LogInlineFunctionCapacity = 128;
 
 static constexpr int MaxConcurrentTasks = 32;
 

@@ -4,9 +4,10 @@
 
 #include <chrono>
 #include <fstream>
-#include <functional>
 #include <thread>
 
+#include "Config/EngineConfig.h"
+#include "Container/HInlineFunction.h"
 #include "Core/TaskID.h"
 #include "HSTL/HString.h"
 #include "HSTL/HUnorderedMap.h"
@@ -17,7 +18,6 @@
 #include "Memory/ThreadSafeMultiPoolAllocator.h"
 #include "String/InlineStringBuilder.h"
 #include "String/StaticString.h"
-
 
 namespace hbe
 {
@@ -35,10 +35,10 @@ public:
 	using TTextBuffer = hbe::HVector<TString>;
 	using TTimePoint = std::chrono::time_point<std::chrono::steady_clock>;
 	using TLogStream = InlineStringBuilder<Config::LogOutputBuffer>;
-	using TLogFunction = std::function<void(TLogStream&)>;
-	using TOutputFunc = std::function<void(const TTextBuffer&)>;
+	using TLogFunction = HInlineFunction<void(TLogStream&), Config::LogInlineFunctionCapacity>;
+	using TOutputFunc = HInlineFunction<void(const TTextBuffer&), Config::LogInlineFunctionCapacity>;
 	using TOutputFuncs = hbe::HVector<TOutputFunc>;
-	using TLogFilter = std::function<bool(ELogLevel)>;
+	using TLogFilter = HInlineFunction<bool(ELogLevel), Config::LogInlineFunctionCapacity>;
 	using TFilters = hbe::HUnorderedMap<StaticString, TLogFilter>;
 
 public:

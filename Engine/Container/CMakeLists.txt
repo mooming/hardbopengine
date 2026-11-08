@@ -43,6 +43,7 @@ add_library (Container STATIC
  FixedRingBuffer.cpp
  FixedRingMPMC.cpp
  FixedRingMPSC.cpp
+ HInlineFunction.cpp
  HashMap.cpp
  LinkedList.cpp
  Map.cpp
@@ -60,6 +61,7 @@ add_library (Container STATIC
  FixedRingBuffer.h
  FixedRingMPMC.h
  FixedRingMPSC.h
+ HInlineFunction.h
  HashMap.h
  LinkedList.h
  Map.h
