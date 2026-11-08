@@ -4,16 +4,17 @@
 #include "Window.h"
 
 #if PLATFORM_LINUX
+#include <X11/Xlib.h>
 
 namespace OS
 {
-Window::Window()
-	: display(nullptr)
-	, window(0)
-	, width(0)
+Window::Window() noexcept
+	: width(0)
 	, height(0)
 	, visibleFlag(true)
 	, closedFlag(false)
+	, display(nullptr)
+	, window(0)
 {
 }
 
@@ -28,17 +29,17 @@ bool Window::CreateWindow(const hbe::HString& title, int width, int height)
 
 	returnValueIf(false, !display);
 
-	window = XCreateSimpleWindow(display, DefaultRootWindow(display), 0, 0, width, height, 1,
-								 BlackPixel(display, DefaultScreen(display)),
-								 WhitePixel(display, DefaultScreen(display)));
+	window = XCreateSimpleWindow(static_cast<Display*>(display), DefaultRootWindow(static_cast<Display*>(display)), 0, 0, width, height, 1,
+								 BlackPixel(static_cast<Display*>(display), DefaultScreen(static_cast<Display*>(display))),
+								 WhitePixel(static_cast<Display*>(display), DefaultScreen(static_cast<Display*>(display))));
 
 	returnValueIf(false, !window);
 
 	Window::width = width;
 	Window::height = height;
 
-	XStoreName(display, window, title.c_str());
-	XMapWindow(display, window);
+	XStoreName(static_cast<Display*>(display), window, title.c_str());
+	XMapWindow(static_cast<Display*>(display), window);
 
 	return true;
 }
@@ -47,7 +48,7 @@ void Window::SetTitle(const hbe::HString& title)
 {
 	if (display && window)
 	{
-		XStoreName(display, window, title.c_str());
+		XStoreName(static_cast<Display*>(display), window, title.c_str());
 	}
 }
 
@@ -57,7 +58,7 @@ void Window::SetSize(int width, int height)
 	{
 		Window::width = width;
 		Window::height = height;
-		XResizeWindow(display, window, width, height);
+		XResizeWindow(static_cast<Display*>(display), window, width, height);
 	}
 }
 
@@ -76,6 +77,23 @@ bool Window::IsVisible() const
 	return visibleFlag;
 }
 
+void Window::SetVisible(bool visible)
+{
+	if (display != nullptr && window != 0)
+	{
+		if (visible)
+		{
+			XMapWindow(static_cast<Display*>(display), window);
+		}
+		else
+		{
+			XUnmapWindow(static_cast<Display*>(display), window);
+		}
+	}
+
+	visibleFlag = visible;
+}
+
 intptr_t Window::GetNativeHandle() const
 {
 	return reinterpret_cast<intptr_t>(window);
@@ -85,15 +103,15 @@ void Window::PollEvents()
 {
 	returnIf(!display);
 
-	while (XPending(display))
+	while (XPending(static_cast<Display*>(display)))
 	{
 		XEvent event;
-		XNextEvent(display, &event);
+		XNextEvent(static_cast<Display*>(display), &event);
 
 		if (event.type == ClientMessage)
 		{
 		}
-		else if (event.type == ConfigureEvent)
+		else if (event.type == ConfigureNotify)
 		{
 			width = event.xconfigure.width;
 			height = event.xconfigure.height;
@@ -105,8 +123,8 @@ void Window::Close()
 {
 	if (display && window)
 	{
-		XDestroyWindow(display, window);
-		XCloseDisplay(display);
+		XDestroyWindow(static_cast<Display*>(display), window);
+		XCloseDisplay(static_cast<Display*>(display));
 		display = nullptr;
 		window = 0;
 	}

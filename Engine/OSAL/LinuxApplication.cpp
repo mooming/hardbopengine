@@ -2,6 +2,8 @@
 
 #include "Application.h"
 
+#include "Config/BuildConfig.h"
+
 #if PLATFORM_LINUX
 
 namespace OS

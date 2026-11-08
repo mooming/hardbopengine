@@ -29,7 +29,7 @@ FileHandle::~FileHandle()
 	Close(std::move(*this));
 }
 
-size_t FileHandle::GetFileSize() const
+size_t FileHandle::GetFileSize() const noexcept
 {
 	if (unlikely(fd < 0))
 		return 0;
@@ -45,12 +45,12 @@ size_t FileHandle::GetFileSize() const
 	return statValue.st_size;
 }
 
-bool FileHandle::IsValid() const
+bool FileHandle::IsValid() const noexcept
 {
 	return fd >= 0;
 }
 
-void FileHandle::Invalidate()
+void FileHandle::Invalidate() noexcept
 {
 	fd = -1;
 }

@@ -33,6 +33,11 @@ void OS::SetThreadAffinity(std::thread& thread, uint64_t mask) noexcept
 	}
 }
 
+int OS::GetThreadPriority(std::thread& thread) noexcept
+{
+	return getpriority(PRIO_PROCESS, thread.native_handle());
+}
+
 void OS::SetThreadPriority(std::thread& thread, int priority) noexcept
 {
 	if (setpriority(PRIO_PROCESS, thread.native_handle(), priority) != 0)

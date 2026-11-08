@@ -223,7 +223,7 @@ void OSMemoryTest::Prepare()
 
 		int* intPtr = static_cast<int*>(ptr);
 		*intPtr = 0xDEADBEEF;
-		Assert(*intPtr == 0xDEADBEEF && "Memory write verification failed");
+		Assert(*intPtr == static_cast<int>(0xDEADBEEF) && "Memory write verification failed");
 
 		OS::VirtualFree(ptr, allocSize);
 		ls << "VirtualFree on valid memory succeeded without false assert" << lf;
