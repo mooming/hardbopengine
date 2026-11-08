@@ -10,11 +10,31 @@
 
 namespace OS
 {
-struct ProcessSpawnDesc;
+class FileHandle;
 
-ProcessHandle SpawnProcess(const ProcessSpawnDesc& desc) noexcept;
-EProcessWaitResult WaitForProcess(ProcessHandle& handle, uint32_t timeoutMilliSecs, int& exitCode) noexcept;
-void KillProcess(ProcessHandle& handle) noexcept;
+struct ProcessSpawnDesc
+{
+};
+
+class Process final
+{
+private:
+	union
+	{
+		void* data = nullptr;
+		int pid;
+	};
+
+public:
+	Process();
+	void Kill() noexcept;
+
+	[[nodiscard]] bool Spawn(const ProcessSpawnDesc& desc);
+	[[nodiscard]] const FileHandle& GetStdIn() const noexcept;
+	[[nodiscard]] const FileHandle& GetStdOut() const noexcept;
+	[[nodiscard]] const FileHandle& GetStdErr() const noexcept;
+	[[nodiscard]] EProcessWaitResult Wait(uint32_t timeoutMilliSecs, int& exitCode) noexcept;
+};
 } // namespace OS
 
 #ifdef TEST_ENABLED
