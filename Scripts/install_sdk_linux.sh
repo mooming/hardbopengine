@@ -33,13 +33,13 @@ echo "Detected package manager: $PKG_MGR"
 echo "Installing required build tools (cmake, ninja, gcc, g++)..."
 if [ "$PKG_MGR" = "apt" ]; then
     $UPDATE_CMD
-    $INSTALL_CMD cmake ninja-build gcc g++
+    $INSTALL_CMD cmake ninja-build gcc g++ libx11-dev
 elif [ "$PKG_MGR" = "dnf" ]; then
     $UPDATE_CMD
-    $INSTALL_CMD cmake ninja-build gcc g++
+    $INSTALL_CMD cmake ninja-build gcc g++ libX11-devel
 elif [ "$PKG_MGR" = "pacman" ]; then
     $UPDATE_CMD
-    $INSTALL_CMD cmake ninja gcc g++
+    $INSTALL_CMD cmake ninja gcc g++ libx11
 fi
 
 # gcc and g++ were installed via the package manager
