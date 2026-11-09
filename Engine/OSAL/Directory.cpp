@@ -20,7 +20,7 @@ Directory::Directory(const char* path)
 	{
 		const char* name = element.c_str();
 
-		continueIf(name[0] == '.');
+		ContinueIf(name[0] == '.');
 
 		string childPath(path);
 		childPath.append("/");

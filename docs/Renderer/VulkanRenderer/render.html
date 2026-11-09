@@ -78,7 +78,7 @@
 <h2 id="description">Function description</h2>
 
 <p>
-  One guard, then one private call: <code>returnIf(!(initialized &amp;&amp; frameActive)); RecordFrame();</code>. Despite the
+  One guard, then one private call: <code>ReturnIf(!(initialized &amp;&amp; frameActive)); RecordFrame();</code>. Despite the
   name, nothing is executed by this function — it fills
   <code>commandBuffers[currentFrame]</code>, and <a href="end-frame.html"><code>EndFrame</code></a> is what submits and
   presents it.

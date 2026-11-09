@@ -236,7 +236,7 @@ void AtomicFixedRingMPMCTest::Prepare()
 		for (int attempt = 0; attempt < 2000 && !delivered; ++attempt)
 		{
 			delivered = queue.Pop(recovered) == EPopResult::Element;
-			continueIf(delivered);
+			ContinueIf(delivered);
 			std::this_thread::yield();
 		}
 

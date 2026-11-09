@@ -49,7 +49,7 @@ Window::~Window()
 
 bool Window::CreateWindow(const hbe::HString& title, int width, int height)
 {
-	returnValueIf(false, osHandle != nullptr);
+	ReturnValueIf(false, osHandle != nullptr);
 
 	NSRect frame = NSMakeRect(100, 100, width, height);
 	NSUInteger styleMask = NSWindowStyleMaskTitled | NSWindowStyleMaskClosable | NSWindowStyleMaskMiniaturizable;
@@ -59,7 +59,7 @@ bool Window::CreateWindow(const hbe::HString& title, int width, int height)
 													backing:NSBackingStoreBuffered
 													  defer:NO];
 
-	returnValueIf(false, window == nullptr);
+	ReturnValueIf(false, window == nullptr);
 
 	[window setReleasedWhenClosed:NO];
 	[window setTitle:[NSString stringWithUTF8String:title.c_str()]];
@@ -82,7 +82,7 @@ bool Window::CreateWindow(const hbe::HString& title, int width, int height)
 
 void Window::SetTitle(const hbe::HString& title)
 {
-	returnIf(osHandle == nullptr);
+	ReturnIf(osHandle == nullptr);
 
 	auto window = static_cast<NSWindow*>(osHandle);
 	[window setTitle:[NSString stringWithUTF8String:title.c_str()]];
@@ -90,7 +90,7 @@ void Window::SetTitle(const hbe::HString& title)
 
 void Window::SetSize(int width, int height)
 {
-	returnIf(osHandle == nullptr);
+	ReturnIf(osHandle == nullptr);
 
 	auto window = static_cast<NSWindow*>(osHandle);
 	NSRect frame = [window frame];

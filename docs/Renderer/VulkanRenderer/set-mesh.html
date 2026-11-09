@@ -78,7 +78,7 @@
 <h2 id="description">Function description</h2>
 
 <p>
-  Guarded by <code>returnIf(!initialized)</code>, then one private call, <code>CreateVertexBuffers(mesh)</code>. The
+  Guarded by <code>ReturnIf(!initialized)</code>, then one private call, <code>CreateVertexBuffers(mesh)</code>. The
   first thing that call does is <code>ReleaseVertexBuffers()</code>: destroy and free the previous index buffer, its
   memory, the previous vertex buffer and its memory, and zero both counts. Then it stores the new counts, creates a
   vertex buffer and an index buffer, binds memory to each, maps each, <code>memcpy</code>s

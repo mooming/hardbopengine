@@ -178,7 +178,7 @@ bool VulkanRenderer::Initialize(OS::Window* inWindow) noexcept
 
 void VulkanRenderer::Shutdown() noexcept
 {
-	returnIf(!initialized);
+	ReturnIf(!initialized);
 
 	Destroy();
 	initialized = false;
@@ -272,8 +272,8 @@ bool VulkanRenderer::PickDevice() noexcept
 				continue;
 
 			VkBool32 presents = VK_FALSE;
-			continueIf(vkGetPhysicalDeviceSurfaceSupportKHR(devices[i], q, surface, &presents) != VK_SUCCESS);
-			continueIf(presents != VK_TRUE);
+			ContinueIf(vkGetPhysicalDeviceSurfaceSupportKHR(devices[i], q, surface, &presents) != VK_SUCCESS);
+			ContinueIf(presents != VK_TRUE);
 
 			physicalDevice = devices[i];
 			queueFamilyIndex = q;
@@ -1012,7 +1012,7 @@ void VulkanRenderer::RecordFrame() noexcept
 
 void VulkanRenderer::BeginFrame() noexcept
 {
-	returnIf(!initialized);
+	ReturnIf(!initialized);
 
 	vkWaitForFences(device, 1, &fences[currentFrame], VK_TRUE, UINT64_MAX);
 	vkResetFences(device, 1, &fences[currentFrame]);
@@ -1031,14 +1031,14 @@ void VulkanRenderer::BeginFrame() noexcept
 
 void VulkanRenderer::Render(float) noexcept
 {
-	returnIf(!(initialized && frameActive));
+	ReturnIf(!(initialized && frameActive));
 
 	RecordFrame();
 }
 
 void VulkanRenderer::EndFrame() noexcept
 {
-	returnIf(!initialized);
+	ReturnIf(!initialized);
 
 	if (frameActive)
 	{
@@ -1106,7 +1106,7 @@ void VulkanRenderer::EndFrame() noexcept
 
 void VulkanRenderer::SetMesh(const Mesh& mesh) noexcept
 {
-	returnIf(!initialized);
+	ReturnIf(!initialized);
 
 	if (!CreateVertexBuffers(mesh))
 	{

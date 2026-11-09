@@ -24,7 +24,7 @@ FileHandle::FileHandle(FileHandle&& rhs)
 
 FileHandle::~FileHandle()
 {
-	returnIf(fd < 0);
+	ReturnIf(fd < 0);
 
 	Close(std::move(*this));
 }

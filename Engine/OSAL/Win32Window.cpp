@@ -47,7 +47,7 @@ bool Window::CreateWindow(const hbe::HString& title, int width, int height)
 						  CW_USEDEFAULT, static_cast<int>(windowRect.right - windowRect.left),
 						  static_cast<int>(windowRect.bottom - windowRect.top), nullptr, nullptr, hInstance, this);
 
-	returnValueIf(false, hwnd == nullptr);
+	ReturnValueIf(false, hwnd == nullptr);
 
 	ShowWindow(static_cast<HWND>(hwnd), SW_SHOW);
 	UpdateWindow(static_cast<HWND>(hwnd));
@@ -73,7 +73,7 @@ void Window::SetSize(int width, int height)
 		RECT windowRect{0, 0, static_cast<LONG>(width), static_cast<LONG>(height)};
 		AdjustWindowRect(&windowRect, WS_OVERLAPPEDWINDOW, FALSE);
 		SetWindowPos(static_cast<HWND>(hwnd), nullptr, 0, 0, static_cast<int>(windowRect.right - windowRect.left),
-			static_cast<int>(windowRect.bottom - windowRect.top), SWP_NOMOVE | SWP_NOZORDER);
+					 static_cast<int>(windowRect.bottom - windowRect.top), SWP_NOMOVE | SWP_NOZORDER);
 	}
 }
 

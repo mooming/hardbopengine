@@ -157,7 +157,7 @@ void OS::ProtectMemory(void* address, size_t n) noexcept
 	DWORD oldProtect = 0;
 	auto result = VirtualProtect(address, n, PAGE_NOACCESS, &oldProtect);
 
-	returnIf(likely(result));
+	ReturnIf(likely(result));
 
 	using namespace std;
 	auto errorId = GetLastError();

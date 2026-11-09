@@ -399,7 +399,7 @@ public:
 
 	void Release() noexcept
 	{
-		returnIf(entries == nullptr);
+		ReturnIf(entries == nullptr);
 
 		for (TIndex i = 0; i < count; ++i)
 		{

@@ -100,7 +100,7 @@
 <pre><code>BufferInputStream is(<span class="kw">buffer</span>);
 <span class="kw">int32_t</span> v = 0;
 is &gt;&gt; v;            <span class="cm">// refused: v is 0 anyway</span>
-returnIfB(is.<span class="fn">HasError</span>());   <span class="cm">// the only signal that it was not read</span></code></pre>
+ReturnIfB(is.<span class="fn">HasError</span>());   <span class="cm">// the only signal that it was not read</span></code></pre>
 
 <p class="meta">Shape used by BufferInputStreamTest</p>
 

@@ -80,9 +80,9 @@
 	{
 		while (struct dirent* element = readdir(dir))
 		{
-			continueIf(strcmp(element-&gt;d_name, ".") == 0);
-			continueIf(strcmp(element-&gt;d_name, "..") == 0);
-			continueIf(element-&gt;d_name[0] == '.' || element-&gt;d_name[0] == '\0');
+			ContinueIf(strcmp(element-&gt;d_name, ".") == 0);
+			ContinueIf(strcmp(element-&gt;d_name, "..") == 0);
+			ContinueIf(element-&gt;d_name[0] == '.' || element-&gt;d_name[0] == '\0');
 
 			fileList.push_back(HString(element-&gt;d_name));
 		}

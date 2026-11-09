@@ -3,16 +3,16 @@
 #pragma once
 
 /// API reference: docs/Core/index.html#commonmacros
-#define returnIf(...)                                                                                                  \
+#define ReturnIf(...)                                                                                                  \
 	if (static_cast<bool>(__VA_ARGS__))                                                                                \
 	return
-#define returnValueIf(returnValue, ...)                                                                                \
+#define ReturnValueIf(returnValue, ...)                                                                                \
 	if (static_cast<bool>(__VA_ARGS__))                                                                                \
 	return returnValue
-#define breakIf(...)                                                                                                   \
+#define BreakIf(...)                                                                                                   \
 	if (static_cast<bool>(__VA_ARGS__))                                                                                \
 	break
-#define continueIf(...)                                                                                                \
+#define ContinueIf(...)                                                                                                \
 	if (static_cast<bool>(__VA_ARGS__))                                                                                \
 	continue
 #define ONCE() while (false)

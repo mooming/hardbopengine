@@ -328,10 +328,10 @@
 
 <table>
   <tr><th>Macro</th><th>Expansion</th><th>Use it for</th></tr>
-  <tr><td><code>returnIf(cond)</code></td><td><code>if (static_cast&lt;bool&gt;(cond)) return</code></td><td>An early exit that returns nothing</td></tr>
-  <tr><td><code>returnValueIf(ret, cond)</code></td><td><code>if (static_cast&lt;bool&gt;(cond)) return ret</code></td><td>An early exit with a value</td></tr>
-  <tr><td><code>breakIf(cond)</code></td><td><code>if (static_cast&lt;bool&gt;(cond)) break</code></td><td>Leaving a loop on a condition, without the brace noise</td></tr>
-  <tr><td><code>continueIf(cond)</code></td><td><code>if (static_cast&lt;bool&gt;(cond)) continue</code></td><td>Skipping one iteration</td></tr>
+  <tr><td><code>ReturnIf(cond)</code></td><td><code>if (static_cast&lt;bool&gt;(cond)) return</code></td><td>An early exit that returns nothing</td></tr>
+  <tr><td><code>ReturnValueIf(ret, cond)</code></td><td><code>if (static_cast&lt;bool&gt;(cond)) return ret</code></td><td>An early exit with a value</td></tr>
+  <tr><td><code>BreakIf(cond)</code></td><td><code>if (static_cast&lt;bool&gt;(cond)) break</code></td><td>Leaving a loop on a condition, without the brace noise</td></tr>
+  <tr><td><code>ContinueIf(cond)</code></td><td><code>if (static_cast&lt;bool&gt;(cond)) continue</code></td><td>Skipping one iteration</td></tr>
 </table>
 
 <div class="note">

@@ -419,7 +419,7 @@ public:
 
 	void Reserve(TIndex newCapacity)
 	{
-		returnIf(newCapacity <= cap);
+		ReturnIf(newCapacity <= cap);
 
 		auto newCap = std::max(MinCapacity, cap);
 		while (newCap < newCapacity)
@@ -603,7 +603,7 @@ public:
 
 	void Release() noexcept
 	{
-		returnIf(entries == nullptr);
+		ReturnIf(entries == nullptr);
 
 		for (TIndex i = 0; i < cap; ++i)
 		{

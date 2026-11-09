@@ -69,7 +69,7 @@
 
 <pre><code>FileHandle::~FileHandle()
 {
-	returnIf(fd &lt; 0);
+	ReturnIf(fd &lt; 0);
 
 	Close(std::move(*this));
 }</code></pre>

@@ -44,7 +44,7 @@ Buffer::Buffer(const TGenerateBuffer& genFunc, const TReleaseBuffer& releaseFunc
 
 Buffer::~Buffer()
 {
-	returnIf(data == nullptr);
+	ReturnIf(data == nullptr);
 
 	if (unlikely(releaser == nullptr))
 	{

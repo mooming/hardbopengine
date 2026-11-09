@@ -148,11 +148,11 @@ void PerfBenchmark::Control(const char* const inArmName) noexcept
 
 std::size_t PerfBenchmark::IndexOf(const char* const inName) const noexcept
 {
-	returnValueIf(MaxArms, inName == nullptr);
+	ReturnValueIf(MaxArms, inName == nullptr);
 
 	for (std::size_t index = 0; index < armCount; ++index)
 	{
-		continueIf(arms[index].name != inName && std::strcmp(arms[index].name, inName) != 0);
+		ContinueIf(arms[index].name != inName && std::strcmp(arms[index].name, inName) != 0);
 
 		return index;
 	}
@@ -166,7 +166,7 @@ std::size_t PerfBenchmark::BestOf(const PerfArm& inArm) const noexcept
 
 	for (std::size_t round = 0; round < rounds; ++round)
 	{
-		continueIf(inArm.tenths[round] >= best);
+		ContinueIf(inArm.tenths[round] >= best);
 
 		best = inArm.tenths[round];
 	}
@@ -180,7 +180,7 @@ std::size_t PerfBenchmark::WorstOf(const PerfArm& inArm) const noexcept
 
 	for (std::size_t round = 0; round < rounds; ++round)
 	{
-		continueIf(inArm.tenths[round] <= worst);
+		ContinueIf(inArm.tenths[round] <= worst);
 
 		worst = inArm.tenths[round];
 	}
@@ -223,11 +223,11 @@ std::size_t PerfBenchmark::ControlSpreadPercent() const noexcept
 
 	for (std::size_t index = 0; index < armCount; ++index)
 	{
-		continueIf(index == winner);
+		ContinueIf(index == winner);
 
 		const std::size_t armSpread = SpreadPercent(arms[index]);
 
-		continueIf(armSpread <= spread);
+		ContinueIf(armSpread <= spread);
 
 		spread = armSpread;
 	}

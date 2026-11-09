@@ -137,11 +137,11 @@ public:
 		, deferredBlockCount(0)
 	{
 		deferredBlocks.reserve(inMaxBlocks);
-		returnIf(inMaxProducers == 0);
+		ReturnIf(inMaxProducers == 0);
 
 		StorageAllocator storageAllocator{allocator};
 		slotAllocation = AlignedStorage<ProducerSlot>::Allocate(storageAllocator, inMaxProducers);
-		returnIf(unlikely(slotAllocation.raw == nullptr));
+		ReturnIf(unlikely(slotAllocation.raw == nullptr));
 
 		producerSlots = new (slotAllocation.aligned) ProducerSlot[inMaxProducers];
 		producerSlotCount = inMaxProducers;
@@ -157,7 +157,7 @@ public:
 	{
 		DestroyAll();
 
-		returnIf(producerSlots == nullptr);
+		ReturnIf(producerSlots == nullptr);
 
 		StorageAllocator storageAllocator{allocator};
 		slotAllocation.Free(storageAllocator);
@@ -166,7 +166,7 @@ public:
 	[[nodiscard]] EPushResult Push(const T& inItem) noexcept
 	{
 		const size_t token = AcquireProducerToken();
-		returnValueIf(EPushResult::TooManyProducers, token == InvalidProducerToken);
+		ReturnValueIf(EPushResult::TooManyProducers, token == InvalidProducerToken);
 
 		Block* block = nullptr;
 
@@ -175,13 +175,13 @@ public:
 			block = tail.load(std::memory_order_seq_cst);
 			if (block == nullptr)
 			{
-				breakIf(AcquireBlock(nullptr) == nullptr);
+				BreakIf(AcquireBlock(nullptr) == nullptr);
 
 				continue;
 			}
 
 			producerSlots[token].block.store(block, std::memory_order_seq_cst);
-			continueIf(tail.load(std::memory_order_seq_cst) != block);
+			ContinueIf(tail.load(std::memory_order_seq_cst) != block);
 
 			size_t claimIndex = block->claim.load(std::memory_order_relaxed);
 			if (claimIndex >= BlockCapacity)
@@ -189,7 +189,7 @@ public:
 				Block* next = block->next.load(std::memory_order_acquire);
 				if (next == nullptr)
 				{
-					breakIf(AcquireBlock(block) == nullptr);
+					BreakIf(AcquireBlock(block) == nullptr);
 
 					continue;
 				}
@@ -210,7 +210,7 @@ public:
 
 			Assert(unlikely(ringResult != EPushResult::Full),
 				   "RingBuffer: the block answered Full although its claim had room, so one lap is not enforced.");
-			returnValueIf(EPushResult::Full, ringResult == EPushResult::Full);
+			ReturnValueIf(EPushResult::Full, ringResult == EPushResult::Full);
 
 			return EPushResult::Pushed;
 		}
@@ -225,13 +225,13 @@ public:
 		if (head == nullptr)
 		{
 			head = chainRoot.load(std::memory_order_acquire);
-			returnValueIf(EPopResult::Empty, head == nullptr);
+			ReturnValueIf(EPopResult::Empty, head == nullptr);
 		}
 
 		Block* block = head;
 		while (true)
 		{
-			returnValueIf(EPopResult::Element, block->ring.Pop(outItem) == EPopResult::Element);
+			ReturnValueIf(EPopResult::Element, block->ring.Pop(outItem) == EPopResult::Element);
 
 			const bool reservedAhead = block->claim.load(std::memory_order_acquire) > block->ring.GetSlotVersion();
 			if (reservedAhead || !block->ring.IsEmpty())
@@ -242,7 +242,7 @@ public:
 			}
 
 			Block* next = block->next.load(std::memory_order_acquire);
-			returnValueIf(EPopResult::Empty, next == nullptr);
+			ReturnValueIf(EPopResult::Empty, next == nullptr);
 
 			head = next;
 			RetireBlock(block, next);
@@ -255,7 +255,7 @@ public:
 		if (head == nullptr)
 		{
 			head = chainRoot.load(std::memory_order_acquire);
-			returnValueIf(std::nullopt, head == nullptr);
+			ReturnValueIf(std::nullopt, head == nullptr);
 		}
 
 		Block* block = head;
@@ -275,7 +275,7 @@ public:
 			}
 
 			Block* next = block->next.load(std::memory_order_acquire);
-			returnValueIf(std::nullopt, next == nullptr);
+			ReturnValueIf(std::nullopt, next == nullptr);
 
 			head = next;
 			RetireBlock(block, next);
@@ -289,7 +289,7 @@ public:
 		if (block == nullptr)
 		{
 			block = chainRoot.load(std::memory_order_acquire);
-			returnValueIf(true, block == nullptr);
+			ReturnValueIf(true, block == nullptr);
 		}
 
 		return block->ring.IsEmpty() && block->next.load(std::memory_order_acquire) == nullptr;
@@ -325,7 +325,7 @@ private:
 	{
 		StorageAllocator storageAllocator{allocator};
 		auto allocation = AlignedStorage<Block>::Allocate(storageAllocator, 1);
-		returnValueIf(nullptr, unlikely(allocation.raw == nullptr));
+		ReturnValueIf(nullptr, unlikely(allocation.raw == nullptr));
 
 		auto* block = new (allocation.aligned) Block();
 
@@ -345,7 +345,7 @@ private:
 		if (inFullBlock != nullptr)
 		{
 			Block* installed = inFullBlock->next.load(std::memory_order_acquire);
-			returnValueIf(installed, installed != nullptr);
+			ReturnValueIf(installed, installed != nullptr);
 		}
 
 		if (blockCount.load(std::memory_order_relaxed) >= maxBlocks)
@@ -356,7 +356,7 @@ private:
 		}
 
 		Block* block = AllocateBlock();
-		returnValueIf(nullptr, unlikely(block == nullptr));
+		ReturnValueIf(nullptr, unlikely(block == nullptr));
 
 		blockCount.fetch_add(1, std::memory_order_relaxed);
 		growCount.fetch_add(1, std::memory_order_relaxed);
@@ -436,7 +436,7 @@ private:
 	{
 		for (size_t index = 0; index < producerSlotCount; ++index)
 		{
-			returnValueIf(true, producerSlots[index].block.load(std::memory_order_seq_cst) == inBlock);
+			ReturnValueIf(true, producerSlots[index].block.load(std::memory_order_seq_cst) == inBlock);
 		}
 
 		return false;
@@ -444,12 +444,12 @@ private:
 
 	void RetryDeferredBlocks() noexcept
 	{
-		returnIf(deferredBlocks.empty());
+		ReturnIf(deferredBlocks.empty());
 
 		size_t freed = 0;
 		for (Block* block : deferredBlocks)
 		{
-			continueIf(IsBlockShadowed(block));
+			ContinueIf(IsBlockShadowed(block));
 
 			FreeBlock(block);
 			blockCount.fetch_sub(1, std::memory_order_relaxed);
@@ -459,7 +459,7 @@ private:
 		size_t kept = 0;
 		for (Block* block : deferredBlocks)
 		{
-			continueIf(!IsBlockShadowed(block));
+			ContinueIf(!IsBlockShadowed(block));
 			deferredBlocks[kept++] = block;
 		}
 

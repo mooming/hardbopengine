@@ -15,23 +15,23 @@ public:
 
 	[[nodiscard]] static bool IsLowerCase(TChar letter)
 	{
-		returnValueIf(false, letter < 'a');
-		returnValueIf(false, letter > 'z');
+		ReturnValueIf(false, letter < 'a');
+		ReturnValueIf(false, letter > 'z');
 
 		return true;
 	}
 
 	[[nodiscard]] static bool IsUpperCase(TChar letter)
 	{
-		returnValueIf(false, letter < 'A');
-		returnValueIf(false, letter > 'Z');
+		ReturnValueIf(false, letter < 'A');
+		ReturnValueIf(false, letter > 'Z');
 
 		return true;
 	}
 
 	[[nodiscard]] static bool IsNotWhiteSpace(TChar letter)
 	{
-		returnValueIf(false, letter == ' ' || letter == '\t' || letter == '\n' || letter == '\r');
+		ReturnValueIf(false, letter == ' ' || letter == '\t' || letter == '\n' || letter == '\r');
 
 		return true;
 	}

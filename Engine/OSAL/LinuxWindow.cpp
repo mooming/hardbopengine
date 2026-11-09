@@ -27,13 +27,14 @@ bool Window::CreateWindow(const hbe::HString& title, int width, int height)
 {
 	display = XOpenDisplay(nullptr);
 
-	returnValueIf(false, !display);
+	ReturnValueIf(false, !display);
 
-	window = XCreateSimpleWindow(static_cast<Display*>(display), DefaultRootWindow(static_cast<Display*>(display)), 0, 0, width, height, 1,
-								 BlackPixel(static_cast<Display*>(display), DefaultScreen(static_cast<Display*>(display))),
-								 WhitePixel(static_cast<Display*>(display), DefaultScreen(static_cast<Display*>(display))));
+	window = XCreateSimpleWindow(
+			static_cast<Display*>(display), DefaultRootWindow(static_cast<Display*>(display)), 0, 0, width, height, 1,
+			BlackPixel(static_cast<Display*>(display), DefaultScreen(static_cast<Display*>(display))),
+			WhitePixel(static_cast<Display*>(display), DefaultScreen(static_cast<Display*>(display))));
 
-	returnValueIf(false, !window);
+	ReturnValueIf(false, !window);
 
 	Window::width = width;
 	Window::height = height;
@@ -101,7 +102,7 @@ intptr_t Window::GetNativeHandle() const
 
 void Window::PollEvents()
 {
-	returnIf(!display);
+	ReturnIf(!display);
 
 	while (XPending(static_cast<Display*>(display)))
 	{

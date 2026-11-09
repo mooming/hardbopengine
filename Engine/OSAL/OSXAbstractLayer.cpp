@@ -52,9 +52,9 @@ HVector<HString> ListFilesInDirectory(const char* path)
 	{
 		while (struct dirent* element = readdir(dir))
 		{
-			continueIf(strcmp(element->d_name, ".") == 0);
-			continueIf(strcmp(element->d_name, "..") == 0);
-			continueIf(element->d_name[0] == '.' || element->d_name[0] == '\0');
+			ContinueIf(strcmp(element->d_name, ".") == 0);
+			ContinueIf(strcmp(element->d_name, "..") == 0);
+			ContinueIf(element->d_name[0] == '.' || element->d_name[0] == '\0');
 
 			fileList.push_back(HString(element->d_name));
 		}

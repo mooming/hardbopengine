@@ -74,7 +74,7 @@ public:
 	[[nodiscard]] EPushResult Push(const T& inItem) noexcept
 	{
 		size_t claim = 0;
-		returnValueIf(EPushResult::Full, !TryReserveSlot(claim));
+		ReturnValueIf(EPushResult::Full, !TryReserveSlot(claim));
 
 		new (PayloadAt(claim)) T(inItem);
 		MarkDataReady(claim);
@@ -85,7 +85,7 @@ public:
 	[[nodiscard]] EPushResult Push(T&& inItem) noexcept
 	{
 		size_t claim = 0;
-		returnValueIf(EPushResult::Full, !TryReserveSlot(claim));
+		ReturnValueIf(EPushResult::Full, !TryReserveSlot(claim));
 
 		new (PayloadAt(claim)) T(std::move(inItem));
 		MarkDataReady(claim);
@@ -96,7 +96,7 @@ public:
 	[[nodiscard]] EPopResult Pop(T& outItem) noexcept
 	{
 		size_t taken = 0;
-		returnValueIf(EPopResult::Empty, !TryTakeReadyElement(taken));
+		ReturnValueIf(EPopResult::Empty, !TryTakeReadyElement(taken));
 
 		T* element = PayloadAt(taken);
 		outItem = std::move(*element);
@@ -110,7 +110,7 @@ public:
 	[[nodiscard]] std::optional<T> Pop() noexcept
 	{
 		size_t taken = 0;
-		returnValueIf(std::nullopt, !TryTakeReadyElement(taken));
+		ReturnValueIf(std::nullopt, !TryTakeReadyElement(taken));
 
 		T* element = PayloadAt(taken);
 		T item{std::move(*element)};
@@ -227,7 +227,7 @@ private:
 
 		for (size_t index = head; index < tail; ++index)
 		{
-			continueIf(!IsDataReady(index));
+			ContinueIf(!IsDataReady(index));
 
 			PayloadAt(index)->~T();
 		}

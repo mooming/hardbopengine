@@ -37,7 +37,7 @@ public:
 {
 	for (int i = 0; i < row; ++i)
 	{
-		returnValueIf(false, rows[i] != rhs.rows[i]);
+		ReturnValueIf(false, rows[i] != rhs.rows[i]);
 	}
 
 	return true;

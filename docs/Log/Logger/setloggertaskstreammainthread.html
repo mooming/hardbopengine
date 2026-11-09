@@ -110,7 +110,7 @@ another thread is running them.</p>
 
 <p>Withdrawing also withdraws the drain task that lived on the stream, and the flag goes with it:</p>
 
-<pre><code><span class="fn">returnIf</span>(stream != <span class="kw">nullptr</span>);
+<pre><code><span class="fn">ReturnIf</span>(stream != <span class="kw">nullptr</span>);
 
     isRunning.<span class="fn">store</span>(<span class="kw">false</span>, <span class="ty">std</span>::memory_order_release);</code></pre>
 
