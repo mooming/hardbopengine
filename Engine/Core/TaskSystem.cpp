@@ -11,6 +11,7 @@
 #include <thread>
 
 #include "Config/ConfigParam.h"
+#include "Config/EngineConfig.h"
 #include "Constants.h"
 #include "Log/Logger.h"
 #include "TaskProvider.h"
@@ -756,7 +757,7 @@ const TaskStream& TaskSystem::GetIOTaskStream() const noexcept
 void TaskSystem::BuildStreams()
 {
 	Assert(IsMainThread());
-	FatalAssert(numHardwareThreads >= ENGINE_MIN_HARDWARE_THREADS,
+	FatalAssert(numHardwareThreads >= Config::EngineMinHardwareThreads,
 				"Number of hardware threads are less than the minimum requirement");
 
 	SetThreadName(TaskSystem::MainThreadName);
@@ -1831,7 +1832,8 @@ void TaskSystemTest::Prepare()
 			++firstIndex;
 		}
 
-		const unsigned secondIndex = firstIndex > static_cast<unsigned>(TaskSystem::GetIOTaskStreamIndex() + 1) ? firstIndex - 1 : 0;
+		const unsigned secondIndex =
+				firstIndex > static_cast<unsigned>(TaskSystem::GetIOTaskStreamIndex() + 1) ? firstIndex - 1 : 0;
 
 		if (secondIndex <= static_cast<unsigned>(TaskSystem::GetIOTaskStreamIndex()))
 		{

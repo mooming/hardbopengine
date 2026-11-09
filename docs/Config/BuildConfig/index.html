@@ -104,25 +104,6 @@
     </td>
   </tr>
   <tr>
-    <td><code>MAX_NUM_TASK_STREAMS</code></td>
-    <td><code>#define MAX_NUM_TASK_STREAMS 64</code></td>
-    <td>
-      <span class="badge">define</span> Header comment: "Maximum number of task streams in TaskSystem". Nothing
-      in <code>Engine/</code> or <code>Applications/</code> reads it today, so treat the number as intent rather
-      than as an enforced ceiling — see <a href="#coverage">Coverage</a>
-    </td>
-  </tr>
-  <tr>
-    <td><code>ENGINE_MIN_HARDWARE_THREADS</code></td>
-    <td><code>#define ENGINE_MIN_HARDWARE_THREADS 4</code></td>
-    <td>
-      <span class="badge">define</span> Minimum recommended CPU cores, and the number
-      <code>TaskSystem::BuildStreams</code> tests against with <code>FatalAssert</code> — a machine below it aborts at
-      startup rather than running degraded. See
-      <a href="../../Core/index.html#tasksystem">Core: TaskSystem</a>
-    </td>
-  </tr>
-  <tr>
     <td><code>ENGINE_LOG_ENABLED</code></td>
     <td><code>#define ENGINE_LOG_ENABLED 1</code></td>
     <td>
@@ -181,15 +162,6 @@
       <span class="badge">define</span> Routes <code>MemoryManager</code> to the system allocator instead of the
       custom ones — the switch to flip when reproducing a suspect under
       <code>MallocStackLogging</code> or <code>asan</code>
-    </td>
-  </tr>
-  <tr>
-    <td><code>MULTIPOOL_ALLOC_LOG</code></td>
-    <td><code>#define MULTIPOOL_ALLOC_LOG ".multiPoolConfig.dat"</code></td>
-    <td>
-      <span class="badge">define</span> A <code>const char*</code> literal, not a number: the cache file name the
-      multi-pool writes its observed block sizes to. <code>MemoryManager</code> interns it into a
-      <code>StaticString</code>, so it is resolved against the process working directory
     </td>
   </tr>
   <tr>
@@ -324,8 +296,7 @@
     <td>The table names the subsystems that branch on a define; what each branch actually does is that
         subsystem's subject and is documented on its own module page — <a href="../../Memory/index.html">Memory</a>
         for the six memory macros, <a href="../../Log/index.html">Log</a> for the four logging macros,
-        <a href="../../Core/index.html">Core</a> for <code>PROFILE_ENABLED</code> and
-        <code>ENGINE_MIN_HARDWARE_THREADS</code></td>
+        <a href="../../Core/index.html">Core</a> for <code>PROFILE_ENABLED</code></td>
   </tr>
   <tr>
     <td>How to set any of it per build</td>
@@ -353,20 +324,6 @@
         <code>./build.sh Applications/EngineTest -dev</code> then
         <code>./build/Applications/EngineTest/Dev/EngineTest</code>. Defining a build macro in this header is not an
         option — every configuration would carry it, which is the opposite of what is wanted</td>
-  </tr>
-  <tr>
-    <td><code>MAX_NUM_TASK_STREAMS</code> has no reader</td>
-    <td>No file under <code>Engine/</code> or <code>Applications/</code> uses it, so nothing states what enforces
-        64 and this page cannot invent an answer. The live stream count limit, if any, lives in
-        <a href="../../Core/index.html#tasksystem">TaskSystem</a></td>
-  </tr>
-  <tr>
-    <td>Related defect, outside this page</td>
-    <td>The configuration table in <a href="../../../README.md">README.md</a> still prints
-        <code>__MEMORY_VERIFICATION__</code>, <code>__MEMORY_LOGGING__</code>,
-        <code>__FORCE_USE_SYSTEM_MALLOC__</code>, <code>__MEMORY_DANGLING_POINTER_CHECK__</code> and
-        <code>__RIGHT_HANDED__</code>. No such define exists; the live names are in the table
-        <a href="#properties">above</a></td>
   </tr>
 </table>
 

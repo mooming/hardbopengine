@@ -3,6 +3,7 @@
 #include "MemoryManager.h"
 
 #include "Config/ConfigParam.h"
+#include "Config/EngineConfig.h"
 #include "Core/Debug.h"
 #include "Engine/Engine.h"
 #include "MultiPoolConfigCache.h"
@@ -25,7 +26,7 @@ static MemoryManager* mmgrInstance = nullptr;
 
 StaticStringID MemoryManager::GetMultiPoolConfigCacheFilePath()
 {
-	static const StaticString path(MULTIPOOL_ALLOC_LOG);
+	static const StaticString path(Config::MultiPoolAllocLogPath);
 
 	return path.GetID();
 }

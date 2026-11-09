@@ -7,6 +7,7 @@
 
 #include "BuildConfig.h"
 
+
 namespace hbe
 {
 namespace Config
@@ -19,6 +20,8 @@ static_assert(EngineLogLevel <= EngineLogLevelPrint,
 			  "EngineLogLevelPrint should be greater than or equal to EngineLogLevel");
 
 static constexpr size_t MemCapacity = (5ULL * 1024 * 1024 * 1024);
+
+static constexpr const char* MultiPoolAllocLogPath = ".multiPoolConfig.dat";
 
 static constexpr uint8_t MemLogLevel = 1;
 
@@ -36,6 +39,8 @@ static constexpr int LogForceFlushThreshold = 1024 * 8;
 static constexpr int LogInlineFunctionCapacity = 128;
 
 static constexpr int MaxConcurrentTasks = 32;
+
+static constexpr int EngineMinHardwareThreads = 4;
 
 static constexpr float DebugTimeOutMultiplier = 2.0f;
 

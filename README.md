@@ -139,27 +139,30 @@ reached - reboot and run again.
 
 ## Configuration
 
-The engine can be configured via `Engine/Config/BuildConfig.h`. Most settings work out of the box with defaults.
+Compile-time configuration lives in two headers, each with one job: `Engine/Config/BuildConfig.h` decides **what gets compiled** (platform, build type, feature switches), and `Engine/Config/EngineConfig.h` decides **how big things are** (capacities, sizes, thresholds). Most settings work out of the box with defaults.
 
 ### Key Configuration Options
 
 | Category | Setting | Default | Description |
 |----------|---------|---------|-------------|
-| Engine | `MAX_NUM_TASK_STREAMS` | 64 | Maximum task streams |
+| Build | `DEBUG_BUILD` | 0 | Set to 1 by the build system on the Debug configuration's flag line |
+| Build | `DEV_BUILD` | 0 | Set to 1 on the Dev configuration's flag line |
+| Build | `RELEASE_BUILD` | 0 | Set to 1 on the Release configuration's flag line; source asks for not-the-shipping-build with `#if !RELEASE_BUILD` |
 | Engine | `ENGINE_LOG_ENABLED` | 1 | Enable logging system |
 | Engine | `ENGINE_PARAM_DESC_ENABLED` | 1 | Enable parameter descriptions |
-| Engine | `ENGINE_MIN_HARDWARE_THREADS` | 4 | Minimum recommended CPU cores |
-| Memory | `__MEMORY_VERIFICATION__` | 0 | Verify memory integrity |
-| Memory | `__FORCE_USE_SYSTEM_MALLOC__` | 0 | Use system malloc instead |
-| Memory | `__MEMORY_LOGGING__` | 0 | Log memory operations |
-| Memory | `__MEMORY_DANGLING_POINTER_CHECK__` | 0 | Detect dangling pointers |
-| Memory | `MULTIPOOL_ALLOC_LOG` | ".multiPoolConfig.dat" | MultiPool config cache file |
+| Memory | `MEMORY_VERIFICATION_ENABLED` | 0 | Verify memory integrity |
+| Memory | `MEMORY_LOGGING_ENABLED` | 0 | Log memory operations |
+| Memory | `MEMORY_INVESTIGATION_ENABLED` | 0 | Enable memory investigation tooling |
+| Memory | `MEMORY_DANGLING_POINTER_CHECK_ENABLED` | 0 | Detect dangling pointers |
+| Memory | `MEMORY_BUFFER_UNDERRUN_CHECK_ENABLED` | 0 | Detect buffer underruns |
+| Memory | `MEMORY_INVESTIGATOR_TEST_ENABLED` | 0 | Memory investigator test switch |
+| Memory | `FORCE_USE_SYSTEM_MALLOC` | 0 | Use system malloc instead |
 | Log | `LOG_ENABLED` | 1 | Master log switch |
 | Log | `LOG_BREAK_IF_WARNING` | 0 | Break on warnings |
 | Log | `LOG_BREAK_IF_ERROR` | 0 | Break on errors |
 | Log | `LOG_FORCE_PRINT_IMMEDIATELY` | 0 | Print immediately (no async) |
 | Profile | `PROFILE_ENABLED` | 0 | Enable performance profiling |
-| Math | `__RIGHT_HANDED__` | - | Coordinate system (default right-handed) |
+| Math | `RIGHT_HANDED_COORDINATE` | defined | Coordinate system handedness (right-handed) |
 
 ### Platform Macros
 Automatically defined on every platform, as 1 or 0, by `Engine/Config/BuildConfig.h`:
@@ -177,6 +180,33 @@ Auto-detected at compile time using `__has_include`. If not found:
 - Code still compiles without Vulkan support
 
 For full Vulkan support, run the installation scripts in `Scripts/`.
+
+
+### Runtime Constants (`Engine/Config/EngineConfig.h`)
+
+Tuning constants, grouped by the subsystem they size. These are C++ `constexpr` values — they
+participate in constant expressions (template arguments, sizing) rather than preprocessor guards.
+
+| Group | Constant | Value | Description |
+|-------|----------|-------|-------------|
+| Log | `LogLineLength` | 1024 | Maximum characters per log line; longer output takes the long-text path |
+| Log | `LogOutputBuffer` | 131072 | Per-call log stream builder capacity (`LogLineLength` × 128) |
+| Log | `LogMemoryBlockSize` | 262144 | Log memory pool block size (`LogLineLength` × 256) |
+| Log | `LogNumMemoryBlocks` | 12288 | Log memory pool block count |
+| Log | `LogForceFlushThreshold` | 8192 | Queued entries that force a flush |
+| Log | `LogInlineFunctionCapacity` | 128 | Inline buffer capacity of the Logger's call-site lambdas (`HInlineFunction`); an oversized lambda fails to compile |
+| Log | `EngineLogLevel` | derived | Derived from `MEMORY_LOGGING_ENABLED` — the engine's internal log level |
+| Log | `EngineLogLevelPrint` | derived | Derived; print level, asserted ≥ `EngineLogLevel` |
+| Memory | `MemCapacity` | 5 GiB | Memory manager reporting ceiling |
+| Memory | `MemLogLevel` | 1 | Memory subsystem log level |
+| Memory | `MultiPoolAllocLogPath` | ".multiPoolConfig.dat" | Multi-pool config cache file path |
+| Memory | `DefaultAlign` | 16 | Default allocation alignment |
+| String | `MaxPathLength` | 512 | Maximum path length |
+| String | `StaticStringBufferSize` | 8 MiB | Static string pool buffer size |
+| String | `StaticStringNumHashBuckets` | 256 | Static string pool hash buckets |
+| Tasks | `MaxConcurrentTasks` | 32 | Maximum concurrent tasks |
+| Tasks | `EngineMinHardwareThreads` | 4 | Minimum recommended CPU cores (`FatalAssert` in `TaskSystem::BuildStreams`) |
+| Debug | `DebugTimeOutMultiplier` | 2.0 | Timeout multiplier applied in debug builds |
 
 ## Directory Structure
 

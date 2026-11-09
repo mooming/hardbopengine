@@ -138,6 +138,15 @@
     </td>
   </tr>
   <tr>
+    <td><code>MultiPoolAllocLogPath</code></td>
+    <td><code>static constexpr const char* MultiPoolAllocLogPath = ".multiPoolConfig.dat";</code></td>
+    <td>
+      <span class="badge">constexpr</span> A <code>const char*</code> literal: the cache file name the
+      multi-pool writes its observed block sizes to. <code>MemoryManager</code> interns it into a
+      <code>StaticString</code>, so it is resolved against the process working directory
+    </td>
+  </tr>
+  <tr>
     <td><code>MemLogLevel</code></td>
     <td><code>static constexpr uint8_t MemLogLevel = 1;</code></td>
     <td>
@@ -236,6 +245,15 @@
       reads it, so there is no concurrency ceiling in the engine that this number enforces — the task system's
       actual limits are its own. See <a href="../../Core/index.html#tasksystem">Core: TaskSystem</a> and
       <a href="#coverage">Coverage</a>
+    </td>
+  </tr>
+  <tr>
+    <td><code>EngineMinHardwareThreads</code></td>
+    <td><code>static constexpr int EngineMinHardwareThreads = 4;</code></td>
+    <td>
+      <span class="badge">constexpr</span> Minimum recommended CPU cores, and the number
+      <code>TaskSystem::BuildStreams</code> tests against with <code>FatalAssert</code> — a machine below it aborts at
+      startup rather than running degraded. See <a href="../../Core/index.html#tasksystem">Core: TaskSystem</a>
     </td>
   </tr>
   <tr>
