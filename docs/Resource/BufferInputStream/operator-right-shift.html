@@ -164,7 +164,7 @@ there.</p>
 <span class="kw">size_t</span> count = 0;
 StaticString name;
 is &gt;&gt; version &gt;&gt; count &gt;&gt; name;
-returnIfB(is.<span class="fn">HasError</span>());
+ReturnIfB(is.<span class="fn">HasError</span>());
 <span class="kw">while</span> (!is.<span class="fn">IsDone</span>()) {
 	PoolConfig config;
 	is &gt;&gt; config.a &gt;&gt; config.b;

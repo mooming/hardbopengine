@@ -522,7 +522,7 @@ void RingBufferTest::Prepare()
 		int accepted = 0;
 		for (int value = 0; value < capacity * 4; ++value)
 		{
-			breakIf(queue.Push(value) != EPushResult::Pushed);
+			BreakIf(queue.Push(value) != EPushResult::Pushed);
 
 			++accepted;
 		}

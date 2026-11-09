@@ -71,7 +71,7 @@
 
 <pre><code>Application::~Application()
 {
-	returnIf(platformHandle == nullptr);
+	ReturnIf(platformHandle == nullptr);
 
 	auto app = static_cast&lt;NSApplication*&gt;(platformHandle);
 	[app stop:nil];

@@ -74,7 +74,7 @@ public:
 	[[nodiscard]] EPushResult Push(const T& inItem)
 	{
 		const std::lock_guard lockGuard(guard);
-		returnValueIf(EPushResult::Full, count == Capacity);
+		ReturnValueIf(EPushResult::Full, count == Capacity);
 
 		new (PayloadAt(head + count)) T(inItem);
 		++count;
@@ -86,7 +86,7 @@ public:
 	[[nodiscard]] EPushResult Push(T&& inItem)
 	{
 		const std::lock_guard lockGuard(guard);
-		returnValueIf(EPushResult::Full, count == Capacity);
+		ReturnValueIf(EPushResult::Full, count == Capacity);
 
 		new (PayloadAt(head + count)) T(std::move(inItem));
 		++count;
@@ -98,7 +98,7 @@ public:
 	[[nodiscard]] EPopResult Pop(T& outItem)
 	{
 		const std::lock_guard lockGuard(guard);
-		returnValueIf(EPopResult::Empty, count == 0);
+		ReturnValueIf(EPopResult::Empty, count == 0);
 
 		T* element = PayloadAt(head);
 		outItem = std::move(*element);
@@ -113,7 +113,7 @@ public:
 	[[nodiscard]] std::optional<T> Pop()
 	{
 		const std::lock_guard lockGuard(guard);
-		returnValueIf(std::nullopt, count == 0);
+		ReturnValueIf(std::nullopt, count == 0);
 
 		T* element = PayloadAt(head);
 		T item{std::move(*element)};

@@ -128,7 +128,7 @@ have <a href="shutdown.html"><code>Shutdown</code></a> mark uninitialized and th
 
 <p class="meta">From Engine/Renderer/Vulkan/VulkanRenderer.cpp, VulkanRenderer::Shutdown()</p>
 
-<pre><code>	returnIf(!initialized);
+<pre><code>	ReturnIf(!initialized);
 
 	Destroy();
 	initialized = false;</code></pre>

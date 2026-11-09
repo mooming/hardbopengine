@@ -1,9 +1,8 @@
 // Copyright (c) 2026 Hansol Park (mooming.go@gmail.com). All rights reserved.
 
-#include "OSFileHandle.h"
-
 #include "Config/BuildConfig.h"
 #include "Core/CommonMacros.h"
+#include "OSFileHandle.h"
 #include "OSInputOutput.h"
 
 #if PLATFORM_WINDOWS
@@ -24,7 +23,7 @@ FileHandle::FileHandle(FileHandle&& rhs)
 
 FileHandle::~FileHandle()
 {
-	returnIf(data == nullptr);
+	ReturnIf(data == nullptr);
 
 	Close(std::move(*this));
 }

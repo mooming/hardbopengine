@@ -28,7 +28,7 @@ Application::Application() noexcept
 
 Application::~Application()
 {
-	returnIf(platformHandle == nullptr);
+	ReturnIf(platformHandle == nullptr);
 
 	auto app = static_cast<NSApplication*>(platformHandle);
 	[app stop:nil];

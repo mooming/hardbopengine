@@ -148,7 +148,7 @@ BufferOutputStream bos(buffer);
 bos &lt;&lt; MultiPoolConfigCache::Version
    &lt;&lt; static_cast&lt;<span class="kw">size_t</span>&gt;(numConfigs);
 <span class="cm">// ... one line per pool configuration ...</span>
-returnIfBos.<span class="fn">HasError</span>();   <span class="cm">// the size probe overflowed the dummy</span></code></pre>
+ReturnIfBos.<span class="fn">HasError</span>();   <span class="cm">// the size probe overflowed the dummy</span></code></pre>
 
 <p class="meta">From Engine/Memory/MemoryManager.cpp, abbreviated</p>
 

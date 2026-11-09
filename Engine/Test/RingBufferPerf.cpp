@@ -122,7 +122,7 @@ public:
 
 		for (std::size_t index = readIndex; index < tail; ++index)
 		{
-			continueIf(readyIndex[index & IndexMask].load(std::memory_order_relaxed) != index + 1);
+			ContinueIf(readyIndex[index & IndexMask].load(std::memory_order_relaxed) != index + 1);
 
 			PayloadAt(index)->~T();
 		}
@@ -145,7 +145,7 @@ public:
 
 	[[nodiscard]] EPopResult Pop(T& outItem) noexcept
 	{
-		returnValueIf(EPopResult::Empty,
+		ReturnValueIf(EPopResult::Empty,
 					  readyIndex[readIndex & IndexMask].load(std::memory_order_acquire) != readIndex + 1);
 
 		T* element = PayloadAt(readIndex);
@@ -205,7 +205,7 @@ constexpr std::size_t DeadlineCheckInterval = 4096;
 
 void WaitForArrivalGap(const std::size_t inNanoseconds)
 {
-	returnIf(inNanoseconds == 0);
+	ReturnIf(inNanoseconds == 0);
 
 	const auto deadline = std::chrono::steady_clock::now() + std::chrono::nanoseconds(inNanoseconds);
 
@@ -332,7 +332,7 @@ PerfSample RunPerfCell(const void* inUserData)
 
 	for (const std::atomic<unsigned char>& mark : marks)
 	{
-		continueIf(mark.load(std::memory_order_relaxed) != 0);
+		ContinueIf(mark.load(std::memory_order_relaxed) != 0);
 
 		++missing;
 	}

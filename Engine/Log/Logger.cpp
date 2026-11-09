@@ -18,6 +18,7 @@
 #include "OSAL/Intrinsic.h"
 #include "String/StringUtil.h"
 
+
 namespace hbe
 {
 namespace
@@ -251,7 +252,7 @@ void Logger::SetLoggerTaskStream_MainThread(TaskStream* stream) noexcept
 	std::lock_guard lock(driverLock);
 	loggerStream = stream;
 
-	returnIf(stream != nullptr);
+	ReturnIf(stream != nullptr);
 
 	isRunning.store(false, std::memory_order_release);
 }

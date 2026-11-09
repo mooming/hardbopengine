@@ -64,7 +64,7 @@ public:
 	[[nodiscard]] bool Resample(const TFunction& f, const TPDF& p, const TRandomSampler& sampler,
 								const TOutputNorm& norm, const TInteger numSourceSamples) noexcept
 	{
-		returnValueIf(false, numSourceSamples <= 0);
+		ReturnValueIf(false, numSourceSamples <= 0);
 
 		weights.reserve(weights.size() + numSourceSamples);
 		samples.reserve(samples.size() + numSourceSamples);
@@ -74,13 +74,13 @@ public:
 		{
 			const TInput x = sampler();
 			const TReal p_x = p(x);
-			returnValueIf(false, p_x <= 0);
+			ReturnValueIf(false, p_x <= 0);
 
 			const TOutput f_x = f(x);
 			const TOutput fx_over_px = f_x / p_x;
 			const TReal weight = norm(fx_over_px);
 
-			continueIf(weight <= 0);
+			ContinueIf(weight <= 0);
 
 			sumWeights += weight;
 			weights.emplace_back(weight);
@@ -112,8 +112,8 @@ public:
 	{
 		result = 0;
 
-		returnValueIf(false, numIterations <= 0 || f == nullptr);
-		returnValueIf(false, samples.empty() || weights.empty());
+		ReturnValueIf(false, numIterations <= 0 || f == nullptr);
+		ReturnValueIf(false, samples.empty() || weights.empty());
 
 		for (TInteger i = 0; i < numIterations; ++i)
 		{

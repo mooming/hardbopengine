@@ -138,7 +138,7 @@ Array(Array&amp;&amp; rhs) noexcept
 
 <div class="note">
   <strong>A negative <code>size</code> is accepted by every sized path.</strong> The two-argument form's
-  <code>returnIf(length &lt;= 0)</code> means no memory is taken, which is the documented "capacity not yet given"
+  <code>ReturnIf(length &lt;= 0)</code> means no memory is taken, which is the documented "capacity not yet given"
   state; the one-argument form has no such guard, so the negative value reaches
   <code>allocate</code>, is converted to an enormous <code>size_t</code>, and the array ends up with a negative
   length — a corrupt state no later call diagnoses.

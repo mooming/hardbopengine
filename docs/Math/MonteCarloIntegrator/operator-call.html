@@ -61,7 +61,7 @@
 
 <h2 id="description">Function description</h2>
 
-<p>Defined in <code>Engine/Math/MonteCarloIntegrator.h</code> as <code>MonteCarloIntegrator::operator()</code>. Zeros <code>result</code> first, then returns <code>false</code> through <code>returnValueIf</code> when <code>numIterations</code> is not positive. Each iteration draws <code>x = sample()</code>, checks the density — <code>p_x &lt;= 0</code> returns <code>false</code>, with <code>result</code> already zeroed — and accumulates <code>f(x) / p_x</code>. Finally <code>result /= numIterations</code> and the member returns <code>true</code>: the mean of the importance-sampled values, which estimates the integral of <code>f</code> under the density <code>p</code>. The "Calculate Pi" test integrates the unit-disk indicator under a uniform density this way and averages repeated runs.</p>
+<p>Defined in <code>Engine/Math/MonteCarloIntegrator.h</code> as <code>MonteCarloIntegrator::operator()</code>. Zeros <code>result</code> first, then returns <code>false</code> through <code>ReturnValueIf</code> when <code>numIterations</code> is not positive. Each iteration draws <code>x = sample()</code>, checks the density — <code>p_x &lt;= 0</code> returns <code>false</code>, with <code>result</code> already zeroed — and accumulates <code>f(x) / p_x</code>. Finally <code>result /= numIterations</code> and the member returns <code>true</code>: the mean of the importance-sampled values, which estimates the integral of <code>f</code> under the density <code>p</code>. The "Calculate Pi" test integrates the unit-disk indicator under a uniform density this way and averages repeated runs.</p>
 
 <h2 id="parameters">Parameters</h2>
 

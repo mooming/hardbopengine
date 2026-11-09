@@ -27,7 +27,7 @@ struct AlignedStorage final
 		AlignedStorage storage;
 		storage.bytes = sizeof(TObject) * inCount + alignof(TObject);
 		storage.raw = reinterpret_cast<std::byte*>(inAllocator.allocate(storage.bytes));
-		returnValueIf(storage, unlikely(storage.raw == nullptr));
+		ReturnValueIf(storage, unlikely(storage.raw == nullptr));
 
 		const auto address = reinterpret_cast<uintptr_t>(storage.raw);
 		const uintptr_t aligned = (address + alignof(TObject) - 1) & ~static_cast<uintptr_t>(alignof(TObject) - 1);
@@ -39,7 +39,7 @@ struct AlignedStorage final
 	template <typename TAllocator>
 	void Free(TAllocator& inAllocator) const noexcept
 	{
-		returnIf(raw == nullptr);
+		ReturnIf(raw == nullptr);
 
 		using BytePointer = std::remove_pointer_t<decltype(std::declval<TAllocator&>().allocate(1))>;
 		inAllocator.deallocate(reinterpret_cast<BytePointer*>(raw), bytes);

@@ -145,7 +145,7 @@ public:
 
 	~Deque()
 	{
-		returnIf(data == nullptr);
+		ReturnIf(data == nullptr);
 
 		DestroyAll();
 		allocator.deallocate(data, Capacity());

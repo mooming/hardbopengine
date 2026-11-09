@@ -26,9 +26,9 @@ HString GetFullPath(const HString& path)
 
 bool IsDirectory(const char* path)
 {
-	returnValueIf(false, GetFileAttributesA(path) == INVALID_FILE_ATTRIBUTES);
+	ReturnValueIf(false, GetFileAttributesA(path) == INVALID_FILE_ATTRIBUTES);
 
-	returnValueIf(false, (GetFileAttributesA(path) & FILE_ATTRIBUTE_DIRECTORY) == 0);
+	ReturnValueIf(false, (GetFileAttributesA(path) & FILE_ATTRIBUTE_DIRECTORY) == 0);
 
 	return true;
 }

@@ -157,7 +157,7 @@
 
 <pre><code><span class="ty">StorageAllocator</span> storageAllocator{allocator};
 <span class="kw">auto</span> allocation = <span class="ty">AlignedStorage</span>&lt;<span class="ty">Block</span>&gt;::<span class="fn">Allocate</span>(storageAllocator, 1);
-<span class="fn">returnValueIf</span>(<span class="kw">nullptr</span>, <span class="fn">unlikely</span>(allocation.raw == <span class="kw">nullptr</span>));
+<span class="fn">ReturnValueIf</span>(<span class="kw">nullptr</span>, <span class="fn">unlikely</span>(allocation.raw == <span class="kw">nullptr</span>));
 
 <span class="kw">auto</span>* block = <span class="kw">new</span> (allocation.aligned) <span class="ty">Block</span>();   <span class="cm">// placement: the handle never constructs</span>
 block-&gt;allocation = allocation;                  <span class="cm">// the block carries the handle to its own free</span></code></pre>
@@ -165,7 +165,7 @@ block-&gt;allocation = allocation;                  <span class="cm">// the bloc
 <p>An array whose element type is not the queue's element type:</p>
 
 <pre><code>slotAllocation = <span class="ty">AlignedStorage</span>&lt;<span class="ty">ProducerSlot</span>&gt;::<span class="fn">Allocate</span>(storageAllocator, inMaxProducers);
-<span class="fn">returnIf</span>(<span class="fn">unlikely</span>(slotAllocation.raw == <span class="kw">nullptr</span>));
+<span class="fn">ReturnIf</span>(<span class="fn">unlikely</span>(slotAllocation.raw == <span class="kw">nullptr</span>));
 
 producerSlots = <span class="kw">new</span> (slotAllocation.aligned) <span class="ty">ProducerSlot</span>[inMaxProducers];  <span class="cm">// the array the queue indexes from now on</span></code></pre>
 

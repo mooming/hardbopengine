@@ -82,8 +82,8 @@
 				continue;
 
 			VkBool32 presents = VK_FALSE;
-			continueIf(vkGetPhysicalDeviceSurfaceSupportKHR(devices[i], q, surface, &amp;presents) != VK_SUCCESS);
-			continueIf(presents != VK_TRUE);
+			ContinueIf(vkGetPhysicalDeviceSurfaceSupportKHR(devices[i], q, surface, &amp;presents) != VK_SUCCESS);
+			ContinueIf(presents != VK_TRUE);
 
 			physicalDevice = devices[i];
 			queueFamilyIndex = q;

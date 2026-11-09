@@ -82,7 +82,7 @@
 
 <ol>
   <li>
-    <code>returnIf(data == nullptr)</code> — a buffer holding no block exits immediately, releaser or not. This is
+    <code>ReturnIf(data == nullptr)</code> — a buffer holding no block exits immediately, releaser or not. This is
     the exit a default-constructed buffer, a generator that failed, and every moved-from buffer all take, which is
     what makes a move safe to destroy.
   </li>

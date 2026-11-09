@@ -73,7 +73,7 @@ public:
 
 	~Vector()
 	{
-		returnIf(data == nullptr);
+		ReturnIf(data == nullptr);
 
 		DestroyAll();
 		allocator.deallocate(data, capacity);
@@ -231,7 +231,7 @@ public:
 
 	void Reserve(TIndex newCapacity) noexcept
 	{
-		returnIf(newCapacity <= capacity);
+		ReturnIf(newCapacity <= capacity);
 
 		auto* newData = allocator.allocate(newCapacity);
 

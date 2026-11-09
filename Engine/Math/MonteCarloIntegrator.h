@@ -28,13 +28,13 @@ public:
 	{
 		result = 0;
 
-		returnValueIf(false, numIterations <= 0);
+		ReturnValueIf(false, numIterations <= 0);
 
 		for (TInteger i = 0; i < numIterations; ++i)
 		{
 			const TInput x = sample();
 			const TReal p_x = p(x);
-			returnValueIf(false, p_x <= 0);
+			ReturnValueIf(false, p_x <= 0);
 
 			const TOutput f_x = f(x);
 			const TOutput fx_over_px = f_x / p_x;

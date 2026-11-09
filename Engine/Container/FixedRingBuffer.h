@@ -59,7 +59,7 @@ public:
 
 	~FixedRingBuffer()
 	{
-		returnIf(data == nullptr);
+		ReturnIf(data == nullptr);
 
 		DestroyAll();
 		TAllocator alloc;

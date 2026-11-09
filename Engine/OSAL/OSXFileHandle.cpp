@@ -40,7 +40,7 @@ FileHandle::FileHandle(FileHandle&& rhs)
 
 FileHandle::~FileHandle()
 {
-	returnIf(GetHandle(*this) < 0);
+	ReturnIf(GetHandle(*this) < 0);
 
 	Close(std::move(*this));
 }
