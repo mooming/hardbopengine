@@ -474,8 +474,8 @@ desc.stderrFilePath = "build/Applications/EngineTest/Dev/testlet-logs/037.log";
 		</tr>
 		<tr>
 			<td><code>KillProcess</code></td>
-			<td><code>kill(pid, SIGKILL)</code></td>
-			<td><code>TerminateProcess(hProcess, exitCode)</code></td>
+			<td><code>kill(pid_t pid, int sig)</code> — <code>SIGKILL</code> 전송</td>
+			<td><code>TerminateProcess(HANDLE hProcess, UINT uExitCode)</code></td>
 		</tr>
 		<tr>
 			<td><code>CloseProcessHandle</code></td>
@@ -510,22 +510,22 @@ desc.stderrFilePath = "build/Applications/EngineTest/Dev/testlet-logs/037.log";
 <p><strong>함수</strong></p>
 <table>
 	<thead>
-		<tr><th>함수</th><th>역할</th></tr>
+		<tr><th>함수</th><th>파라미터</th><th>반환값</th><th>역할</th></tr>
 	</thead>
 	<tbody>
-		<tr><td><code>fork()</code></td><td>호출 프로세스를 복제; 두 번 반환 (자식에선 0, 부모에선 pid).</td></tr>
-		<tr><td><code>execve</code> / <code>execvp</code> 계열</td><td>프로세스 이미지를 교체; 실패 시에만 반환.</td></tr>
-		<tr><td><code>posix_spawn(pid, path, actions, attr, argv, envp)</code></td><td>fork+exec의 결합; macOS에서 권장되는 생성 방식, Linux는 glibc ≥ 2.24.</td></tr>
-		<tr><td><code>posix_spawn_file_actions_init/addopen/adddup2/addclose/destroy</code></td><td>자식 측 fd 연산 선언 (stdout/stderr 리디렉션).</td></tr>
-		<tr><td><code>posix_spawnattr_init/destroy</code></td><td>생성 속성 (시그널 마스크, 스케줄링, 플래그).</td></tr>
-		<tr><td><code>pipe(int fds[2])</code></td><td>익명 파이프; <code>fds[0]</code> 읽기 끝, <code>fds[1]</code> 쓰기 끝 — 자식이 쓰기 끝을 상속.</td></tr>
-		<tr><td><code>fcntl(fd, F_SETFL, O_NONBLOCK)</code></td><td>파이프 fd를 비블로킹으로 만들어 <code>read</code>가 막히지 않고 답하게 함.</td></tr>
-		<tr><td><code>waitpid(pid, &amp;status, options)</code></td><td>대기 및 회수(reap); <code>WNOHANG</code>이면 비블로킹 (실행 중엔 0 반환).</td></tr>
-		<tr><td><code>waitid</code> / <code>wait</code></td><td>대체 대기 형태.</td></tr>
-		<tr><td><code>kill(pid, sig)</code></td><td>시그널 전송; <code>SIGKILL</code>은 잡거나 무시할 수 없음.</td></tr>
-		<tr><td><code>getpid</code> / <code>getppid</code></td><td>자기 / 부모 id.</td></tr>
-		<tr><td><code>_exit()</code></td><td>atexit 핸들러와 stdio 플러시를 건너뛰는 자식 측 종료.</td></tr>
-		<tr><td><code>popen(command, mode)</code> / <code>pclose</code></td><td>편의 래퍼: pipe + fork + <strong>셸</strong>(<code>sh -c</code>) 실행, stdio <code>FILE*</code> 반환.
+		<tr><td><code>fork()</code></td><td>없음</td><td>두 번 반환: 자식에선 <code>0</code>, 부모에선 자식 pid; 실패 시 <code>-1</code>.</td><td>호출 프로세스를 복제.</td></tr>
+		<tr><td><code>execve</code> / <code>execvp</code> 계열</td><td><code>path</code>/<code>file</code> — 실행할 프로그램<br><code>argv[]</code> — 인자 벡터, <code>argv[0]</code>은 프로그램 이름<br><code>envp[]</code> — 환경 문자열</td><td>실패 시에만 반환: <code>-1</code>, <code>errno</code> 설정됨.</td><td>프로세스 이미지를 교체.</td></tr>
+		<tr><td><code>posix_spawn(pid, path, actions, attr, argv, envp)</code></td><td><code>pid</code> — 출력용, 자식 pid<br><code>path</code> — 실행 파일 경로<br><code>actions</code> — 자식 측 fd 연산<br><code>attr</code> — 생성 속성<br><code>argv</code> — 자식에게 전달되는 인자 벡터<br><code>envp</code> — 환경</td><td>성공 시 <code>0</code>; 실패 시 오류 번호, 이때 <code>pid</code> 출력은 미정의.</td><td>fork+exec의 결합; macOS에서 권장되는 생성 방식, Linux는 glibc ≥ 2.24.</td></tr>
+		<tr><td><code>posix_spawn_file_actions_init/addopen/adddup2/addclose/destroy</code></td><td><code>actions</code> — 초기화/소멸 대상 객체<br><code>addopen</code>/<code>adddup2</code>/<code>addclose</code> — 선언하는 fd 인자도 함께 받음</td><td>성공 시 <code>0</code>, 실패 시 오류 번호.</td><td>자식 측 fd 연산 선언 (stdout/stderr 리디렉션).</td></tr>
+		<tr><td><code>posix_spawnattr_init/destroy</code></td><td><code>attr</code> — 초기화/소멸 대상 객체</td><td>성공 시 <code>0</code>, 실패 시 오류 번호.</td><td>생성 속성 (시그널 마스크, 스케줄링, 플래그).</td></tr>
+		<tr><td><code>pipe(int fds[2])</code></td><td><code>fds[2]</code> — 출력용; <code>fds[0]</code> 읽기 끝, <code>fds[1]</code> 쓰기 끝</td><td>성공 시 <code>0</code>, 실패 시 <code>-1</code>.</td><td>익명 파이프 — 자식이 쓰기 끝을 상속.</td></tr>
+		<tr><td><code>fcntl(fd, F_SETFL, O_NONBLOCK)</code></td><td><code>fd</code> — 대상 디스크립터<br><code>F_SETFL</code> — 상태 플래그 설정 명령<br><code>O_NONBLOCK</code> — 추가할 플래그</td><td>새 플래그, 실패 시 <code>-1</code>.</td><td>파이프 fd를 비블로킹으로 만들어 <code>read</code>가 막히지 않고 답하게 함.</td></tr>
+		<tr><td><code>waitpid(pid, &amp;status, options)</code></td><td><code>pid</code> — 기다릴 자식 (특수값: <code>0</code> 같은 그룹, <code>-1</code> 임의 자식, <code>≤ -1</code> 그룹)<br><code>status</code> — 출력용 대기 상태<br><code>options</code> — <code>WNOHANG</code>이면 비블로킹</td><td>종료 시 자식 pid; <code>WNOHANG</code> + 실행 중이면 <code>0</code>; 오류 시 <code>-1</code>.</td><td>대기 및 회수(reap).</td></tr>
+		<tr><td><code>waitid</code> / <code>wait</code></td><td>변형 형태</td><td>변형 형태</td><td>대체 대기 형태.</td></tr>
+		<tr><td><code>kill(pid, sig)</code></td><td><code>pid</code> — <code>pid_t</code> (int), 대상 (특수값: <code>0</code> 자기 그룹, <code>-1</code> 전체, <code>≤ -2</code> 그룹)<br><code>sig</code> — <code>int</code>, 시그널 번호 (<code>SIGKILL</code> = 9)</td><td>성공 시 <code>0</code>, 실패 시 <code>-1</code>.</td><td>시그널 전송; <code>SIGKILL</code>은 잡거나 무시할 수 없음.</td></tr>
+		<tr><td><code>getpid</code> / <code>getppid</code></td><td>없음</td><td>id; 실패 없음.</td><td>자기 / 부모 id.</td></tr>
+		<tr><td><code>_exit()</code></td><td><code>status</code> — 부모의 wait가 보는 종료 상태</td><td>반환하지 않음.</td><td>atexit 핸들러와 stdio 플러시를 건너뛰는 자식 측 종료.</td></tr>
+		<tr><td><code>popen(command, mode)</code> / <code>pclose</code></td><td><code>command</code> — 셸 명령행<br><code>mode</code> — <code>r</code> 또는 <code>w</code></td><td>stdio <code>FILE*</code>; <code>pclose</code>는 대기 상태.</td><td>편의 래퍼: pipe + fork + <strong>셸</strong>(<code>sh -c</code>) 실행.
 			pid를 돌려주지 않아 kill·타임아웃·stderr 분리가 모두 불가 — 이 하니스가 쓰지 않는 이유.
 			내부는 <code>posix_spawn</code>이 조립하는 것과 같은 pipe/fork/exec/wait 순서다.</td></tr>
 	</tbody>
@@ -535,6 +535,40 @@ desc.stderrFilePath = "build/Applications/EngineTest/Dev/testlet-logs/037.log";
 <code>sigset_t</code>, <code>posix_spawn_file_actions_t</code>,
 <code>posix_spawnattr_t</code>, <code>W*</code> 매크로로 해석하는 대기 상태 <code>int</code>,
 파이프 fd 쌍.</p>
+
+<p><strong><code>pid_t</code> 값 범위</strong> — <code>pid_t</code>는 Linux(glibc)와
+macOS(<code>__darwin_pid_t</code>) 양쪽 모두 부호 있는 32비트 <code>int</code>이므로
+<code>ProcessHandle</code>의 <code>int pid</code> 유니언 멤버가 정확히 대응한다.</p>
+<table>
+	<thead>
+		<tr><th>값</th><th>의미</th></tr>
+	</thead>
+	<tbody>
+		<tr><td><code>1</code> ~ <code>pid_max</code></td><td>실제 프로세스. Linux: 기본 32768, 64비트에서 최대 4194304 (2²²); macOS: 100000 아래에서 순환.</td></tr>
+		<tr><td><code>0</code></td><td>실제 프로세스가 아님 — <code>kill</code>/<code>waitpid</code>에서 "호출자의 프로세스 그룹". 무효 센티널; <code>kill(0, …)</code>은 호출자 자신의 그룹을 시그널하므로 <code>IsValid()</code> (<code>pid &gt; 0</code>)가 <code>KillProcess</code>를 게이트해야 함.</td></tr>
+		<tr><td><code>-1</code></td><td><code>kill</code>/<code>waitpid</code>에서 "모든 프로세스" — 핸들에 저장하지 않음.</td></tr>
+		<tr><td><code>≤ -2</code></td><td><code>kill</code>에서 프로세스 그룹 id — 핸들에 저장하지 않음.</td></tr>
+	</tbody>
+</table>
+<p>성공한 생성은 <code>0</code>이나 음수 pid를 절대 내놓지 않는다; <code>posix_spawn</code> 실패 시
+<code>pid</code> 출력은 미정의(unspecified)이므로 실패 경로는 센티널을 명시적으로 써야 한다.</p>
+
+<p><strong>헤더</strong> — 위 함수들은 아래 여섯 헤더에서 선언된다; macOS SDK에서
+직접 검증했고 Linux glibc도 같은 POSIX 헤더를 쓴다.</p>
+<table>
+	<thead>
+		<tr><th>헤더</th><th>선언</th></tr>
+	</thead>
+	<tbody>
+		<tr><td><code>&lt;unistd.h&gt;</code></td><td><code>fork</code>, <code>execve</code>/<code>execvp</code>, <code>pipe</code>, <code>getpid</code>/<code>getppid</code>, <code>_exit</code></td></tr>
+		<tr><td><code>&lt;signal.h&gt;</code></td><td><code>kill</code>, <code>SIGKILL</code>, <code>sigset_t</code></td></tr>
+		<tr><td><code>&lt;sys/wait.h&gt;</code></td><td><code>waitpid</code>/<code>waitid</code>/<code>wait</code>, <code>WNOHANG</code>, <code>WIFEXITED</code>/<code>WEXITSTATUS</code>, <code>WIFSIGNALED</code>/<code>WTERMSIG</code></td></tr>
+		<tr><td><code>&lt;fcntl.h&gt;</code></td><td><code>fcntl</code>, <code>O_NONBLOCK</code> (<code>&lt;sys/fcntl.h&gt;</code>의 우산 헤더)</td></tr>
+		<tr><td><code>&lt;spawn.h&gt;</code></td><td><code>posix_spawn</code>, <code>posix_spawn_file_actions_*</code>, <code>posix_spawnattr_*</code>와 그 타입들</td></tr>
+		<tr><td><code>&lt;stdio.h&gt;</code></td><td><code>popen</code>/<code>pclose</code> — 완전성을 위해 기록; 하니스는 사용하지 않음</td></tr>
+		<tr><td><code>&lt;sys/types.h&gt;</code></td><td><code>pid_t</code> (<code>&lt;unistd.h&gt;</code>를 통해 전이적으로도 도달)</td></tr>
+	</tbody>
+</table>
 
 <div class="note">
 <strong>주의사항</strong>
@@ -600,7 +634,7 @@ waitpid(pid, &amp;status, 0);  // 좀비 회수
 		<tr><td><code>CreateProcessW</code></td><td>프로세스와 기본 스레드를 생성; <code>PROCESS_INFORMATION</code>을 채움 (<code>hProcess</code>, <code>hThread</code>, <code>dwProcessId</code>).</td></tr>
 		<tr><td><code>WaitForSingleObject(hProcess, ms)</code></td><td>마감시한 대기; <code>WAIT_OBJECT_0</code> / <code>WAIT_TIMEOUT</code> / <code>WAIT_FAILED</code> 반환.</td></tr>
 		<tr><td><code>GetExitCodeProcess(hProcess, &amp;code)</code></td><td>종료 코드를 읽음; <code>STILL_ACTIVE</code> (259)는 아직 종료되지 않았다는 뜻.</td></tr>
-		<tr><td><code>TerminateProcess(hProcess, code)</code></td><td>강제 종료; 비동기 — 호출자가 여전히 대기하고 닫아야 함.</td></tr>
+		<tr><td><code>TerminateProcess(HANDLE hProcess, UINT uExitCode)</code></td><td><code>hProcess</code> — <code>HANDLE</code> (void*)<br><code>uExitCode</code> — <code>UINT</code> (부호 없는 32비트, <code>int</code> 아님), 대기자가 보는 종료 코드. 강제 종료; 비동기 — 호출자가 여전히 대기하고 닫아야 함.</td></tr>
 		<tr><td><code>OpenProcess</code></td><td>숫자 id로 핸들을 엶 (이 API에는 불필요; id는 내부에만 존재).</td></tr>
 		<tr><td><code>GetProcessId(hProcess)</code></td><td>핸들에서 숫자 id (진단이 필요해질 때).</td></tr>
 		<tr><td><code>CloseHandle</code></td><td>프로세스(및 스레드) 핸들을 해제.</td></tr>
@@ -616,6 +650,23 @@ waitpid(pid, &amp;status, 0);  // 좀비 회수
 <p><strong>타입과 객체</strong>: <code>HANDLE</code> (객체별 커널 핸들; 이 API가 저장하는 것은
 프로세스 핸들), <code>DWORD</code> (id와 종료 코드), <code>STARTUPINFOW</code>,
 <code>PROCESS_INFORMATION</code>, <code>SECURITY_ATTRIBUTES</code>, 파이프 <code>HANDLE</code> 쌍.</p>
+
+<p><strong>헤더</strong> — 포함 하나로 전부 해결: <code>&lt;windows.h&gt;</code>가 위 표의
+모든 API와 타입을 선언하는 SDK 파티션 헤더들을 끌어온다. 하니스 코드는
+<code>&lt;windows.h&gt;</code>만 포함한다.</p>
+<table>
+	<thead>
+		<tr><th>파티션 헤더 (<code>&lt;windows.h&gt;</code> 경유)</th><th>선언</th></tr>
+	</thead>
+	<tbody>
+		<tr><td>processthreadsapi.h</td><td><code>CreateProcessW</code>, <code>TerminateProcess</code>, <code>GetExitCodeProcess</code>, <code>OpenProcess</code>, <code>GetProcessId</code>, <code>ExitProcess</code>, <code>STARTUPINFOW</code>, <code>PROCESS_INFORMATION</code></td></tr>
+		<tr><td>synchapi.h</td><td><code>WaitForSingleObject</code>, <code>WAIT_TIMEOUT</code></td></tr>
+		<tr><td>namedpipeapi.h</td><td><code>CreatePipe</code>, <code>PeekNamedPipe</code></td></tr>
+		<tr><td>handleapi.h</td><td><code>CloseHandle</code>, <code>SetHandleInformation</code></td></tr>
+		<tr><td>fileapi.h</td><td><code>ReadFile</code></td></tr>
+		<tr><td>winbase.h / winerror.h</td><td><code>STARTF_USESTDHANDLES</code>, <code>SECURITY_ATTRIBUTES</code>, <code>ERROR_BROKEN_PIPE</code></td></tr>
+	</tbody>
+</table>
 
 <div class="note">
 <strong>주의사항</strong>

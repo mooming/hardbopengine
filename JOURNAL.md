@@ -1,5 +1,315 @@
 # Journal
 
+## 2026-11-09 23:16 — EngineConfig constants grouped by subsystem
+
+**Cause.** Owner: the blank lines between EngineConfig.h constants looked
+meaninglessly placed — single-constant orphan groups everywhere.
+
+**Done.** Committed a4d1a83 (4 blank-line deletions, zero reordering): the
+constants now read as six concern groups — engine log level (2 + the
+static_assert attached), memory (MemCapacity/MultiPoolAllocLogPath/
+MemLogLevel/DefaultAlign), string pool (3), log (6), tasks
+(MaxConcurrentTasks + EngineMinHardwareThreads), debug (1) — one blank at
+each seam, none inside a group. blank_lines.py 0 findings; lint clean;
+Config builds. The doc pages needed no change (no value or order moved).
+
+## 2026-11-09 23:07 — config boundary split: tuning constants to EngineConfig
+
+**Cause.** Owner asked whether EngineConfig and BuildConfig should exist
+separately. Analysis: the split is structurally right (zero-dependency
+universal include vs C++ constants header; build-system-authored switches vs
+hand-tuned values; preprocessor guards vs constant expressions) but the
+boundary was blurred — BuildConfig.h carried tuning constants, one of them
+(`MAX_NUM_TASK_STREAMS`) dead with zero readers (already noted LOW in
+ReviewNote.txt).
+
+**Done.** Committed 71c0872: `ENGINE_MIN_HARDWARE_THREADS` →
+`Config::EngineMinHardwareThreads` and `MULTIPOOL_ALLOC_LOG` →
+`Config::MultiPoolAllocLogPath` moved to EngineConfig.h (constexpr, house
+style); consumers TaskSystem.cpp/MemoryManager.cpp gained their own
+`Config/EngineConfig.h` includes (rule B — the macros had arrived
+transitively). Dead `MAX_NUM_TASK_STREAMS` deleted. README's Configuration
+section rewritten: stale macro names fixed (`__MEMORY_VERIFICATION__`-era →
+live names), the missing Build/Investigation/Underrun/Investigator-test and
+Vulkan-era items added, and a new Runtime Constants section documents every
+EngineConfig.h constant — including `LogInlineFunctionCapacity` (owner's
+original gap report). Doc pages: BuildConfig page lost the three rows and its
+now-fixed README-defect coverage entry; EngineConfig page gained the two rows.
+
+**Disclosed (pre-existing master debt, verified identical on master).**
+BuildConfig.h EOF A1 (the tool wants a blank after the last `#endif`; master
+has it identically) and the `SystemStatistics/getstarttime` stale doc quote.
+Gate: build PASS 12/12 (config task); lint clean except those two.
+
+## 2026-11-09 13:30 — mp-testlet rebased onto master (e3c260d); PR #25/#26 work dissolved
+
+**Cause.** Owner merged PR #26 (e3c260d) and asked for both branches to be
+fetched and rebased.
+
+**Done.** master fast-forwarded 7e95eb9 → e3c260d (was 16 behind; PR #26's
+merge verified tree-identical to 2aa3519 before the branch/worktree cleanup).
+mp-testlet rebased onto e3c260d: merge-base turned out to be e8f0845, so 17
+commits replayed (the plans/examples/OSProcess-line work from the 2026-11-06
+session plus the three stub commits), with d042109 DROPPED per the recorded
+plan — master owns HInlineFunction with fixed tests. Two conflicts:
+JOURNAL.md (resolved with the mp-testlet lineage — the living journal comes
+from the working tree via stash) and OSAL/CMakeLists.txt (theirs:
+WindowsProcess.cpp, the branch's purpose). The stash pop conflicted on
+Win32Window.cpp — the stash side proved to be the FORK-ERA file (GWLP_DLPTR,
+void* WindowProc — never Windows-compiled) while master's is the evolved
+correct one; resolved with ours; the stash's intended rename was already on
+master. **30 of the 36 swept working-tree files dissolved** — their changes
+are on master via PR #25/#26. Remaining: .Plans ×2, OSProcess.h (class
+redesign), OSXProcess.cpp (Kill completion), JOURNAL.md, and the
+Tools/MakeBuild submodule pointer (master's bump; `git submodule update`
+aligns it).
+
+**Verified.** EngineTest Dev build clean on the new base; suite EXIT=0 twice
+(one earlier transient failure consistent with the known RingBuffer TC8 flake
+family). **origin/mp-testlet now needs a force-push — awaiting owner's go**
+(the branch diverged: rebased history vs 9bd97b4). The .mm breakage on
+mp-testlet is gone: master's renamed .mm files + the renamed CommonMacros.h
+are consistent.
+
+## 2026-11-09 12:59 — *If macro family renamed; PR #26 opened
+
+**Scope.** Owner asked for the ReturnIf fixes as a separate PR. The working
+sweep had renamed FOUR macros in CommonMacros.h (returnIf→ReturnIf,
+returnValueIf→ReturnValueIf, breakIf→BreakIf, continueIf→ContinueIf) but left
+the .mm callers on the old names. PR branch `core/if-macro-rename` =
+origin/master (5712b69) + single commit 2aa3519: macro definitions transplanted
+byte-exact from the owner's working tree, 109 call sites across 35 source
+files renamed, 25 doc pages quoting them synchronized.
+
+**Gate journey.** First gate failed three ways: (1) `.inl` files were missing
+from the rename pathspec — MatrixCommonImpl.inl broke every target (lesson:
+git grep pathspecs must include *.inl); (2) the full-file clang-format pass
+collapsed include-preamble double blanks in 16 files — A3 wants 2 there, so
+the table was re-applied per the documented format-first-then-table order;
+(3) WindowsFileHandle.cpp include order (B2) — the checker wants a plain
+lexicographic block like OSXFileHandle.cpp, not own-header-first. Also folded
+in: 15 blank-line removals + 5 reflows = pre-existing formatter drift on
+master, surfaced because these files entered the gate's scope, disclosed in
+the commit message. Windows-guarded files proven by scratch -fsyntax-only
+(PLATFORM_WINDOWS=1): 4/4 compile. EngineTest suite passes (behavior-neutral
+rename). Build gate PASS 12/12.
+
+**Disclosed, not mine.** The full-gate quoted-blocks check surfaced 4
+PRE-EXISTING stale doc quotes on master (SystemStatistics/getstarttime,
+PerlinNoise/grad, FileHandle/get-file-size, VulkanRenderer/createsurface —
+the sources gained noexcept/platform-guard style changes that the quoted
+blocks predate). My rename's own 6 stale pages were fixed in this commit.
+**PR #26**: https://github.com/mooming/hardbopengine/pull/26 (token used
+again — rotation still pending).
+
+## 2026-11-09 01:12 — PR #25 merged; branch and worktree cleaned up
+
+**Merge verified.** origin/master is now 5712b69 (the Rebase-and-Merged PR
+commit). `git diff 6a5ee07 origin/master` is empty — master's tree is
+identical to the PR commit's tree, so the PR branch's gate evidence (lint
+clean, Debug/Dev/Release build PASS, EngineTest 68/68) transfers verbatim.
+GitHub auto-deleted the remote branch; local branch deleted with -D (forced:
+rebase-and-merge changed the hash; the tree-identity diff is the
+justification) after removing the `../hardbopengine-hif-pr` worktree.
+
+**Remaining watch items.** (1) mp-testlet's d042109 still carries the inverted
+HInlineFunctionTest conditions and the accidental returnIf→ReturnIf hunk —
+when rebasing mp-testlet onto master (blocked on the owner's in-flight
+sweep), d042109 should be DROPPED: master now owns the feature with fixed
+tests. (2) The API token pasted into this conversation should be
+rotated/revoked. (3) The Logger optimization candidates from the 2026-11-08
+review (filter fast path first) remain deferred until log volume grows.
+
+## 2026-11-08 23:31 — HInlineFunction design closed: 3-pointer kept, PR #25 opened
+
+**Decision.** Owner chose to keep the committed per-object 3-pointer design and
+defer the Light variant (per-type constexpr table). Measured evidence from this
+session: interleave bench — 0 delta at ≤256 distinct callables, +14.5% at 4096
+(640 KB working set); pollution bench — +5.33 ns/call under a 128 KB/call cache
+sweep, at ANY type count, because (b)'s tables are persistent dispatch state
+while the per-object pointers' state is born with each transient call. Light
+re-open trigger (recorded): ≥1K persistently-stored, rarely-invoked callables.
+
+**PR.** `log/hinline-function` = origin/master (d5c2064) + single commit
+6a5ee07: HInlineFunction (container), Logger swap (3 aliases,
+`<functional>` dropped, nullptr checks → `IsValid()`), EngineConfig capacity
+(`LogInlineFunctionCapacity`), fixed HInlineFunctionTest (owner-conditions
+inversion corrected — TC2/TC3 had declared failure on success). Gate: lint
+clean; Dev 68/68, Release 68/68; Debug flaked on the known
+`RingBufferTest TC8.A` once, passed on rerun. Branch pushed; **PR #25**
+created via API with the owner-provided token:
+https://github.com/mooming/hardbopengine/pull/25
+
+**Watch items.** (1) The API token was pasted into the conversation — owner
+should rotate/revoke it. (2) mp-testlet's d042109 still carries the inverted
+test conditions and the accidental `returnIf`→`ReturnIf` hunk; reconcile when
+rebasing mp-testlet after the PR merges. (3) The PR worktree
+(`../hardbopengine-hif-pr`) can be removed after merge
+(`git worktree remove ../hardbopengine-hif-pr`).
+
+## 2026-11-08 15:24 — HInlineFunction: inline-only functor; Logger swapped; Kill finished
+
+**Cause.** Owner finishing `Kill` in `OSXProcess.cpp` flagged the real
+constraint: the log lambda must not exceed `std::function`'s SSO — else it
+heap-allocates. Owner's design: a custom functor with a template argument for
+the inline buffer capacity, replacing `std::function` in Logger; then owner
+renamed it `HInlineFunction` to reveal the inline-only contract.
+
+**Done.** `Engine/Container/HInlineFunction.{h,cpp}`: type-erased callable,
+`template <typename TSignature, size_t InlineCapacity = 64>`, inline storage
+only — oversize/over-alignment callables are **compile errors** via
+`static_assert` at the bind site; move-only, `IsValid()` empty state,
+invoke/relocate/destroy erasers; copy deleted. `HInlineFunctionTest` (5
+testlets) + registration; CMake regenerated (idempotent ×2, only the two new
+lines). Logger: three aliases to `HInlineFunction`, `<functional>` dropped;
+the three `== nullptr` comparisons became `IsValid()`. Capacity decision:
+`TLogFunction` = 128 — the static_assert caught `TestCollection.cpp:163`'s
+10-capture lambda at 64; log functions are transient (AddLog stores formatted
+text, never the functor), so the bump costs nothing persistent.
+`TOutputFunc`/`TLogFilter` stay 64. Kill completed per the OSXInputOutput
+failure-log shape: pid, raw result, `strerror` — errno captured before the
+logger can clobber it; the 12-byte lambda provably fits the inline buffer.
+
+**Gate.** Lint layers 0 findings (member layout, comments, blank lines A3
+double-blank restored after clang-format folded it, include byte-order:
+`HInlineFunction` sorts BEFORE `HashMap` — uppercase I < lowercase a).
+Compiled: Container, Log, Test, OSXProcess.cpp against the final headers.
+Committed **d042109** — self-contained subset only (Container/HInlineFunction,
+Logger, UnitTestCollection, generated CMakeLists).
+
+**Pending.** Runtime suite blocked by owner's in-flight sweep: macro
+`returnIf` → `ReturnIf` renamed in CommonMacros.h but the .mm files (excluded
+from sweeps) still call the old name — OSXApplication.mm:31, OSXWindow.mm:85,
+OSXWindow.mm:93. Linux/Windows Process stubs still declare `Kill() noexcept`
+vs the header's `Kill() const` — compile error on those platforms once the
+header lands; IsValid also declared-but-undefined there. OSXProcess.cpp and
+OSProcess.h left uncommitted — owner's design still moving. HInlineFunction
+API reference page owed (no pointer until the page exists, Process precedent).
+
+## 2026-11-08 13:53 — kill/TerminateProcess parameter types added to the harness plan
+
+**Cause.** Owner asked whether POSIX `kill`'s `sig` and Windows
+`TerminateProcess`'s exit code are both `int`, and asked for the parameter
+types to be added to the plan document.
+
+**Answer.** No — POSIX `sig` is `int` (verified: `SIGKILL` = 9 in the
+Command Line Tools SDK's `sys/signal.h`; `pid_t` = `__int32_t` in
+`sys/_types.h`), but Windows `uExitCode` is `UINT` — unsigned 32-bit, not
+`int` — and the handle is `HANDLE` (void*). Windows signature cited from
+Microsoft Learn (no Windows SDK on this machine).
+
+**Done.** Six edits: platform-API table, syscall table, and Windows-API row —
+in both `.Plans/PLAN_multi_process_test_harness.ko.html` and the English
+`.md` twin. Each replacement asserted to match exactly once; htmlcheck: 0
+problems. Not committed — both plan files carry the owner's uncommitted
+in-progress edits from before this session; committing would sweep those in.
+
+**Design note.** The asymmetry is semantic, not just typed: POSIX `kill`
+sends a signal (a `SIGKILL`-killed child surfaces as `WIFSIGNALED`, never as
+an exit code), while Windows `TerminateProcess` lets the caller choose the
+exit code the waiter sees. If `Process::Kill()` ever takes a parameter, one
+`int` maps mechanically to both (`int sig` / `int`→`UINT`), but the doc's
+existing `WIFSIGNALED` note is the contract the portable API must keep.
+
+## 2026-11-08 13:38 — Process stubs moved into platform files
+
+**Cause.** Owner: method implementations belong in each platform `.cpp`;
+`OSProcess.cpp` is for testlets only — the `LinuxThread.cpp`/`LinuxFileHandle.cpp`
+architecture.
+
+**Done.** Committed 7ffe977: `OSProcess.cpp` restored to the testlet-only
+`HEAD~1` shape; the stub block (anonymous-namespace dummy + seven definitions)
+moved verbatim into `LinuxProcess.cpp`/`WindowsProcess.cpp`/`OSXProcess.cpp`,
+nested inside `namespace OS` and each platform `#if` guard; bodies proven
+byte-identical across the three files (guard lines stripped, diffed). First cut
+had the anonymous namespace at global scope where `FileHandle` does not resolve
+— the feature-macro layer caught it (`unknown type name 'FileHandle'; did you
+mean 'OS::FileHandle'?`) before any build was wasted; fixed by nesting it per
+the `TaskSystem.cpp` shape.
+
+**Gate.** Lint layers clean; feature macros 4/4; build 12/12
+(Debug/Dev/Release, all applications). `GATE_EXIT=1` is still only the
+pre-existing stale quote in `docs/OSAL/FileHandle/constructors.html:86`.
+Native machine compiles only the OSX guard, so the Linux and Windows guarded
+bodies were syntax-proved by scratch TUs (BuildConfig include swapped for the
+three PLATFORM defines, `-fsyntax-only`): both compile.
+
+**Watch item.** An uncommitted `OSProcess.h` edit appeared mid-task from outside
+this session (NSDMI `data = nullptr` removed, blank after the union removed).
+Not folded into 7ffe977. Tree still builds with it; if it stays, the stub ctor
+should initialize the union explicitly — owner to confirm.
+
+## 2026-11-08 13:28 — OS::Process class stubs in OSProcess.cpp
+
+**Cause.** Owner redesigned `OS::Process` into a class in the working tree
+(`Spawn`/`Kill`/`GetStdIn`/`GetStdOut`/`GetStdErr`/`Wait`, empty
+`ProcessSpawnDesc` for now — the pipe-first shape from the 2026-11-06 design
+discussion) and asked for stub definitions in `OSProcess.cpp` so the header
+links.
+
+**Done.** Stub bodies for all five members + ctor, mirroring header declaration
+order; unnamed parameters (`-Wall -Werror`, `VulkanRenderer::Render(float)`
+precedent); `Spawn` answers `false`, `Wait` answers `Failed`, the three `Get*`
+return one internal-linkage `FileHandle stubFileHandle` in an anonymous
+namespace (the class holds no `FileHandle` members yet — real pipe ends land
+with the platform implementations). Two gate-forced header touch-ups: deleted
+the owner's class-description comment (layer 3 comment ban) and the interior
+blank in the empty `ProcessSpawnDesc` (A4). The deleted sentence is preserved
+here as the seed for the future `docs/OSAL/Process` class page: "A class that
+represents a process itself with its process handle."
+
+**Gate.** Fast lint clean on both staged files; build gate 12/12
+(Debug/Dev/Release, all applications + CodingStandards). `GATE_EXIT=1` is
+pre-existing docs debt only: `docs/OSAL/FileHandle/constructors.html:86` quotes
+the move ctor without the `noexcept` the source later gained — hb-docs refresh,
+not this commit. Docs coverage backlog now lists Process, ProcessSpawnDesc,
+ProcessHandle, EProcessWaitResult as pages OSAL owes; authoring them is the
+natural next step before the platform implementations arrive.
+
+## 2026-11-06 16:20 — PLATFORM_* guards: #if style, PR branch cut
+
+**Cause.** Owner asked for #if PLATFORM_X guard style with the macros always
+defined (1 matching, 0 otherwise) — and then for the macro change to live on its
+own branch off origin/master as a single-commit PR.
+
+**Done.** BuildConfig.h defines all three macros on every platform (0/1) and the
+no-platform check became #error. 38 files swept: #ifdef → #if, defined() → value
+test, plus four #ifndef PLATFORM_LINUX sites in Resource/Buffer* (the size_t
+stream overloads) that would have dropped those overloads on every platform —
+caught only by the Dev-config build failing in Memory/MultiPoolConfigCache.cpp
+(ambiguous operator<< once size_t vanished); my first sweep grep missed #ifndef
+because the exclusion filter matched its "#if" prefix. Committed atomic as
+fcf55c3 on mp-testlet: splitting the redefinition from the sweep cannot build.
+
+**PR branch.** config/platform-macro-guards = origin/master + cherry-picked
+fcf55c3 (e2ae59f), six OSProcess guard hunks dropped (files exist only on this
+branch). Pushed. Owner created the PR and Rebase-and-Merged it themselves —
+master now carries the change as e8f0845 (with the #ifdef line-5 fix and the
+#error check kept, per the comment round). Both local and remote
+config/platform-macro-guards deleted after verifying tree-identical to
+origin/master; back on mp-testlet.
+
+**Owner commit comment addressed.** "You don't have to replace #ifdef with
+#if defined" — right: BuildConfig.h line 5 back to #ifdef __linux__, and the
+no-platform check back to the original static_assert(!defined…) form. Applied
+the same minimal-churn review to the rest of the commit: every other conversion
+was forced by the always-defined macros. Amended + force-pushed as 19d14f9;
+BuildConfig.h diff vs master is now the macro block only. Reply text handed to
+owner (no stored HTTPS credential; API posting not available from here).
+
+**mp-testlet rebased onto origin/master.** 15 commits replayed (the plan, the
+examples, and the OSProcess line); no conflicts — but the 3-way merge adopted
+fcf55c3's #if defined line-5 (ours had not touched that line), so the churned
+form survived the rebase. Amended into the macro commit, now 9bd97b4:
+BuildConfig.h is tree-identical to master again. Three-config build rc=0;
+suite 67/431 passed. History is rewritten — origin/mp-testlet needs a
+force-push when the owner says go.
+
+**Flaky suite finding (pre-existing).** Interleaved runs on a clean 7e95eb9
+worktree vs the PR branch: both flake under load — base failed AtomicFixedRingMPMC
+TC3, PR branch failed RingBuffer TC8.A; each testlet is a scheduling-sensitive
+stress test. Not attributable to the macro change; triage proposed as follow-up.
+
 ## 2026-11-06 14:08 — process stubs grown to guarded skeletons
 
 **Cause.** Owner asked the six process stubs to carry the full skeleton: copyright,

@@ -7,7 +7,6 @@
 #include "OSProcessHandle.h"
 #include "OSProcessWaitResult.h"
 
-
 namespace OS
 {
 class FileHandle;
@@ -21,14 +20,15 @@ class Process final
 private:
 	union
 	{
-		void* data = nullptr;
+		void* data;
 		int pid;
 	};
 
 public:
 	Process();
-	void Kill() noexcept;
+	void Kill() const;
 
+	[[nodiscard]] bool IsValid() const;
 	[[nodiscard]] bool Spawn(const ProcessSpawnDesc& desc);
 	[[nodiscard]] const FileHandle& GetStdIn() const noexcept;
 	[[nodiscard]] const FileHandle& GetStdOut() const noexcept;

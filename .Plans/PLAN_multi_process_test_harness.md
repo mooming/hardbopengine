@@ -227,7 +227,7 @@ working contract; the per-platform tables are the raw material behind it.
 | `WaitForProcess` (bounded) | `waitpid(pid, &status, WNOHANG)` in a deadline loop (blocking `waitpid` cannot honor a timeout) | `WaitForSingleObject(hProcess, ms)` — one call honors the timeout |
 | exit code extraction | `WIFEXITED`/`WEXITSTATUS`, `WIFSIGNALED`/`WTERMSIG` on the status | `GetExitCodeProcess` |
 | `TimedOut` detection | `waitpid` returns `0` with `WNOHANG` | `WaitForSingleObject` returns `WAIT_TIMEOUT` |
-| `KillProcess` | `kill(pid, SIGKILL)` | `TerminateProcess(hProcess, exitCode)` |
+| `KillProcess` | `kill(pid_t pid, int sig)` — sends `SIGKILL` | `TerminateProcess(HANDLE hProcess, UINT uExitCode)` |
 | `CloseProcessHandle` | no-op — reaping is `waitpid`'s job | `CloseHandle(hProcess)` |
 | pipe creation (`Pipe` mode) | `pipe(fds)` | `CreatePipe` |
 | non-blocking pipe read | `fcntl(fd, F_SETFL, O_NONBLOCK)` then `read` (`EAGAIN` = nothing available) | `PeekNamedPipe` (available bytes) then `ReadFile` |
@@ -238,25 +238,53 @@ working contract; the per-platform tables are the raw material behind it.
 
 **Functions**
 
-| Function | Role |
-| --- | --- |
-| `fork()` | Duplicates the calling process; returns twice (0 in child, pid in parent). |
-| `execve` / `execvp` / family | Replaces the process image; returns only on failure. |
-| `posix_spawn(pid, path, actions, attr, argv, envp)` | fork+exec combined; the preferred spawn on macOS, glibc ≥ 2.24 on Linux. |
-| `posix_spawn_file_actions_init/addopen/adddup2/addclose/destroy` | Declares the child-side fd operations (stdout/stderr redirection). |
-| `posix_spawnattr_init/destroy` | Spawn attributes (signal mask, sched, flags). |
-| `pipe(int fds[2])` | Anonymous pipe; `fds[0]` read end, `fds[1]` write end — the child inherits the write end. |
-| `fcntl(fd, F_SETFL, O_NONBLOCK)` | Makes a pipe fd non-blocking so `read` answers instead of hanging. |
-| `waitpid(pid, &status, options)` | Waits and reaps; `WNOHANG` makes it non-blocking (returns 0 while running). |
-| `waitid` / `wait` | Alternative wait forms. |
-| `kill(pid, sig)` | Sends a signal; `SIGKILL` cannot be caught or ignored. |
-| `getpid` / `getppid` | Self / parent id. |
-| `_exit()` | Child-side exit that skips atexit handlers and stdio flush. |
-| `popen(command, mode)` / `pclose` | Convenience wrapper: pipe + fork + exec of a **shell** (`sh -c`), returning a stdio `FILE*`. Returns no pid — no kill, no timeout, no stderr separation — which is why this harness does not use it; its internals are the same pipe/fork/exec/wait sequence `posix_spawn` composes. |
+| Function | Parameters | Return value | Role |
+| --- | --- | --- | --- |
+| `fork()` | none | returns twice: `0` in the child, the child's pid in the parent; `-1` on failure | Duplicates the calling process. |
+| `execve` / `execvp` / family | `path`/`file` — program to run<br>`argv[]` — argument vector, `argv[0]` is the program name<br>`envp[]` — environment strings | returns only on failure: `-1` with `errno` set | Replaces the process image. |
+| `posix_spawn(pid, path, actions, attr, argv, envp)` | `pid` — out, the child's pid<br>`path` — executable path<br>`actions` — child-side fd operations<br>`attr` — spawn attributes<br>`argv` — argument vector handed to the child<br>`envp` — environment | `0` on success; an error number on failure, with the `pid` output then unspecified | fork+exec combined; the preferred spawn on macOS, glibc ≥ 2.24 on Linux. |
+| `posix_spawn_file_actions_init/addopen/adddup2/addclose/destroy` | `actions` — the object initialized or destroyed<br>`addopen`/`adddup2`/`addclose` — also take the fd arguments they declare | `0` on success, an error number on failure | Declares the child-side fd operations (stdout/stderr redirection). |
+| `posix_spawnattr_init/destroy` | `attr` — the object initialized or destroyed | `0` on success, an error number on failure | Spawn attributes (signal mask, sched, flags). |
+| `pipe(int fds[2])` | `fds[2]` — out; `fds[0]` the read end, `fds[1]` the write end | `0` on success, `-1` on failure | Anonymous pipe; the child inherits the write end. |
+| `fcntl(fd, F_SETFL, O_NONBLOCK)` | `fd` — the descriptor<br>`F_SETFL` — set-status-flags command<br>`O_NONBLOCK` — the flag being added | the new flags, or `-1` on failure | Makes a pipe fd non-blocking so `read` answers instead of hanging. |
+| `waitpid(pid, &status, options)` | `pid` — which child to wait for (`0` same group, `-1` any child, `≤ -1` a group)<br>`status` — out, the wait status<br>`options` — `WNOHANG` makes the wait non-blocking | the child's pid once it exited; `0` when `WNOHANG` and still running; `-1` on error | Waits and reaps. |
+| `waitid` / `wait` | variant forms | variant forms | Alternative wait forms. |
+| `kill(pid, sig)` | `pid` — `pid_t` (int), the target (`0` own group, `-1` all, `≤ -2` a group)<br>`sig` — `int`, the signal number (`SIGKILL` = 9) | `0` on success, `-1` on failure | Sends a signal; `SIGKILL` cannot be caught or ignored. |
+| `getpid` / `getppid` | none | the id; cannot fail | Self / parent id. |
+| `_exit()` | `status` — the exit status the parent's wait sees | does not return | Child-side exit that skips atexit handlers and stdio flush. |
+| `popen(command, mode)` / `pclose` | `command` — the shell line<br>`mode` — `r` or `w` | a stdio `FILE*`; `pclose` returns the wait status | Convenience wrapper: pipe + fork + exec of a **shell** (`sh -c`). Returns no pid — no kill, no timeout, no stderr separation — which is why this harness does not use it; its internals are the same pipe/fork/exec/wait sequence `posix_spawn` composes. |
 
 **Types and objects**: `pid_t` (process id and the only handle), `sigset_t`,
 `posix_spawn_file_actions_t`, `posix_spawnattr_t`, wait status `int` decoded by
 the `W*` macros, pipe file-descriptor pairs.
+
+**`pid_t` value range** — `pid_t` is a signed 32-bit `int` on both Linux (glibc)
+and macOS (`__darwin_pid_t`), so the `int pid` union member in `ProcessHandle`
+is exact.
+
+| Value | Meaning |
+| --- | --- |
+| `1` ~ `pid_max` | Real processes. Linux: default 32768, up to 4194304 (2²²) on 64-bit; macOS: wraps below 100000. |
+| `0` | Never a real process — "the caller's process group" in `kill`/`waitpid`. The invalid sentinel; since `kill(0, …)` would signal the caller's own group, `IsValid()` (`pid > 0`) must gate `KillProcess`. |
+| `-1` | "all processes" in `kill`/`waitpid` — never stored in a handle. |
+| `≤ -2` | A process group id in `kill` — never stored in a handle. |
+
+A successful spawn never yields `0` or a negative pid; on `posix_spawn` failure
+the `pid` output is unspecified, so the failure path must write the sentinel
+explicitly.
+
+**Headers** — every function above comes from one of six headers; verified
+against the macOS SDK (Linux glibc uses the same POSIX headers):
+
+| Header | Declares |
+| --- | --- |
+| `<unistd.h>` | `fork`, `execve`/`execvp`, `pipe`, `getpid`/`getppid`, `_exit` |
+| `<signal.h>` | `kill`, `SIGKILL`, `sigset_t` |
+| `<sys/wait.h>` | `waitpid`/`waitid`/`wait`, `WNOHANG`, `WIFEXITED`/`WEXITSTATUS`, `WIFSIGNALED`/`WTERMSIG` |
+| `<fcntl.h>` | `fcntl`, `O_NONBLOCK` (umbrella for `<sys/fcntl.h>`) |
+| `<spawn.h>` | `posix_spawn`, `posix_spawn_file_actions_*`, `posix_spawnattr_*` and their types |
+| `<stdio.h>` | `popen`/`pclose` — listed for completeness; the harness does not use them |
+| `<sys/types.h>` | `pid_t` (also reached transitively through `<unistd.h>`) |
 
 **Caveats**
 
@@ -315,24 +343,47 @@ waitpid(pid, &status, 0);  // reap the zombie
 
 **Functions**
 
-| Function | Role |
-| --- | --- |
-| `CreateProcessW` | Creates a process and its primary thread; fills `PROCESS_INFORMATION` (`hProcess`, `hThread`, `dwProcessId`). |
-| `WaitForSingleObject(hProcess, ms)` | Bounded wait; returns `WAIT_OBJECT_0` / `WAIT_TIMEOUT` / `WAIT_FAILED`. |
-| `GetExitCodeProcess(hProcess, &code)` | Reads the exit code; `STILL_ACTIVE` (259) means not yet exited. |
-| `TerminateProcess(hProcess, code)` | Force-terminates; asynchronous — the caller still waits and closes. |
-| `OpenProcess` | Opens a handle from a numeric id (not needed by this API; id stays internal). |
-| `GetProcessId(hProcess)` | Numeric id from a handle, if a diagnostic ever needs it. |
-| `CloseHandle` | Releases the process (and thread) handles. |
-| `SetHandleInformation` / `SECURITY_ATTRIBUTES` | Makes the redirection file handles inheritable. |
-| `CreatePipe` | Anonymous pipe; returns a read and a write `HANDLE` — the child inherits the write end. |
-| `PeekNamedPipe` / `ReadFile` | Non-blocking drain: peek the available bytes, then read them; `ERROR_BROKEN_PIPE` means EOF. |
-| `ExitProcess` | Self-side exit. |
-| `_popen` / `_pclose` | CRT twin of `popen` — runs the command through `cmd.exe /c`; same limitations (no handle, no kill, no timeout, no stderr separation). |
+| Function | Parameters | Return value | Role |
+| --- | --- | --- | --- |
+| `CreateProcessW` | `lpApplicationName` — executable (or null, path taken from the command line)<br>`lpCommandLine` — the full command line<br>`lpProcessAttributes` / `lpThreadAttributes` — security descriptors, usually null<br>`bInheritHandles` — whether the child inherits handles<br>`dwCreationFlags` — creation flags<br>`lpEnvironment` — environment block, null inherits<br>`lpCurrentDirectory` — child working directory<br>`lpStartupInfo` — `STARTUPINFOW`, carries the stdio redirection<br>`lpProcessInformation` — out, filled with `hProcess`/`hThread`/`dwProcessId` | nonzero on success, `0` on failure (details via `GetLastError`) | Creates a process and its primary thread. |
+| `WaitForSingleObject(hProcess, ms)` | `hProcess` — the handle to wait on<br>`dwMilliseconds` — timeout in ms, `INFINITE` = unbounded | `WAIT_OBJECT_0` (exited) / `WAIT_TIMEOUT` / `WAIT_FAILED` | Bounded wait. |
+| `GetExitCodeProcess(hProcess, &code)` | `hProcess` — the handle<br>`lpExitCode` — out, the exit code (`STILL_ACTIVE` = 259 while running) | nonzero on success | Reads the exit code. |
+| `TerminateProcess(HANDLE hProcess, UINT uExitCode)` | `hProcess` — `HANDLE` (void*)<br>`uExitCode` — `UINT` (unsigned 32-bit, not `int`), the exit code the waiter sees | nonzero on success | Force-terminates; asynchronous — the caller still waits and closes. |
+| `OpenProcess` | `dwDesiredAccess` — access rights<br>`bInheritHandle` — inherit flag<br>`dwProcessId` — the numeric id | a handle, or `NULL` on failure | Opens a handle from a numeric id (not needed by this API; id stays internal). |
+| `GetProcessId(hProcess)` | `hProcess` — the handle | the id (`DWORD`), `0` on failure | Numeric id from a handle, if a diagnostic ever needs it. |
+| `CloseHandle` | `hObject` — the handle to release | nonzero on success, `0` on failure | Releases the process (and thread) handles. |
+| `SetHandleInformation` / `SECURITY_ATTRIBUTES` | `hObject` — the handle<br>`dwMask` / `dwFlags` — which flags change (e.g. drop `HANDLE_FLAG_INHERIT`)<br>the struct's `bInheritHandle` — inheritable at creation time | nonzero on success | Makes the redirection file handles inheritable. |
+| `CreatePipe` | `hReadPipe` / `hWritePipe` — out, the two ends<br>`lpPipeAttributes` — security attrs, `bInheritHandle = TRUE` lets the child take the write end<br>`nSize` — buffer size, `0` = default | nonzero on success | Anonymous pipe — the child inherits the write end. |
+| `PeekNamedPipe` / `ReadFile` | `hFile` — the pipe end<br>buffer / size / bytes-read — the usual read shape<br>peek also reports the bytes available | peek: nonzero plus the available count; read: nonzero, or `ERROR_BROKEN_PIPE` = EOF | Non-blocking drain: peek the available bytes, then read them. |
+| `ExitProcess` | `uExitCode` — the exit code | does not return | Self-side exit. |
+| `_popen` / `_pclose` | `command` — the shell line<br>`mode` — `r` or `w` | a `FILE*`; `pclose` gives the wait status | CRT twin of `popen` — runs the command through `cmd.exe /c`; same limitations (no handle, no kill, no timeout, no stderr separation). |
 
 **Types and objects**: `HANDLE` (per-object kernel handle; the process handle
 is what this API stores), `DWORD` (id and exit code), `STARTUPINFOW`,
 `PROCESS_INFORMATION`, `SECURITY_ATTRIBUTES`, pipe `HANDLE` pairs.
+
+**`HANDLE` value range** — unlike pid there is no positivity guarantee; the
+validity test is `data != nullptr`.
+
+| Value | Meaning |
+| --- | --- |
+| non-null kernel handle | A real handle. The low 32 bits are the significant part (WOW64 interop); kernel handles are multiples of 4. |
+| `nullptr` | Invalid — the sentinel `Invalidate()` writes. |
+| `(HANDLE)-1` | The `GetCurrentProcess()` pseudo-handle — never stored. |
+| `(HANDLE)-2` | The `GetCurrentThread()` pseudo-handle — never stored. |
+
+**Headers** — one include covers all of it: `<windows.h>` pulls in the SDK
+partition headers that declare every API and type above. The harness code
+includes `<windows.h>` and nothing else.
+
+| Partition header (via `<windows.h>`) | Declares |
+| --- | --- |
+| processthreadsapi.h | `CreateProcessW`, `TerminateProcess`, `GetExitCodeProcess`, `OpenProcess`, `GetProcessId`, `ExitProcess`, `STARTUPINFOW`, `PROCESS_INFORMATION` |
+| synchapi.h | `WaitForSingleObject`, `WAIT_TIMEOUT` |
+| namedpipeapi.h | `CreatePipe`, `PeekNamedPipe` |
+| handleapi.h | `CloseHandle`, `SetHandleInformation` |
+| fileapi.h | `ReadFile` |
+| winbase.h / winerror.h | `STARTF_USESTDHANDLES`, `SECURITY_ATTRIBUTES`, `ERROR_BROKEN_PIPE` |
 
 **Caveats**
 
