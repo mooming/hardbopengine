@@ -1,5 +1,105 @@
 # Journal
 
+## 2026-11-20 04:54 — the verification round regrouped into two commits and opened as a PR
+
+**Cause.** The owner asked for the six unpushed commits to be reviewed, compacted, and opened as
+a PR.
+
+**The regroup.** Four journal entries folded into one `docs(journal)` commit; the two OSAL fixes
+(the C1189 include order, the cycle-counter CPU clock with its reference page) folded into one
+`fix(osal)` commit. `git diff backup/pre-regroup-2026-11-20 HEAD` is empty, so the final tree is
+byte-identical to the pre-regroup state; origin/master was never touched, so no force-push is
+involved. Branch `fix/windows-verification` carries the pair and the PR targets master.
+
+## 2026-11-20 02:46 — the cycle counter lands: EngineTest 68/68 on Windows, three runs, first full green
+
+**Cause.** The owner approved the fix for the 23:04 root cause.
+
+**Closed in this round.** `OS::GetThreadCPUTime()` on Windows now reads `QueryThreadCycleTime` on
+the pseudo-handle and converts to nanoseconds through a rate calibrated once per process — a
+40 M-iteration busy spin measured against QPC (2.88 GHz on this box). The docs page's Windows
+prose and its tick-quantization note were rewritten to the new contract. The first cut divided
+cycles by the rate and cast the seconds straight into a nanoseconds count — every reading was
+zero, seven budget testlets went red, and the CPUBudget waits stretched to 56 s — caught by the
+suite on its first run; the conversion through `std::chrono::duration<double>` fixed it.
+
+**Verification.** EngineTest Dev: **exit 0, all 68 collections, 435/435 testlets — three
+consecutive runs**. The previously-red testlets read correctly now: the OSThread busy test
+charges 19951 us for 20 ms of work (was 0), TC17.A declines the general queue 19 times over its
+200 ms window and resumes at window 89 (was 0 refusals), and TC7.A's ring and every other
+collection pass. This is the first Windows run where both former flakes are green in the same
+run, and the first 68-collection suite on this platform. Full log: `build/EngineTest-Dev-full.log`.
+
+## 2026-11-19 23:04 — TC17.A root cause: GetThreadTimes tick quantization zeroes sub-15.6 ms CPU charges
+
+**Cause.** The owner asked for the failure investigation after the 22:41 A/B cleared the two
+unverified commits.
+
+**The mechanism, traced and proven.** TC17.A asks Worker1 to charge a 1 ms allowance by running a
+~4 ms CPU-burn task, then counts `GetGeneralQueueRefusalCount()` over a 200 ms window: refusals
+rise only when a pass finds its own lanes empty and `CPUBudget::CanTakeWork()` false, which needs
+`accumulated >= allowance`. On Windows, `OS::GetThreadCPUTime()` is `GetThreadTimes` — whose
+granularity is the 64 Hz timer tick. A bench proved the charge is **bimodal {0, 15.625 ms}**: a
+2.56 ms burn recorded 0.0 us in 10 of 12 trials. A zeroed charge means the allowance never reads
+as spent, so the refusal count stays 0 — the test's exact failure. Predicted failure rate ≈ 74%
+(quantization) + ~6% (a real window advance landing in the ~1 ms between burn start and the
+advance loop's exit, which resets the just-charged budget at the next pass start) ≈ 80% — matching
+the observed 5/6. Linux uses `CLOCK_THREAD_CPUTIME_ID` (ns precision), so only the ~6% race
+remains there, which is why the Linux suite has never sampled it.
+
+**The fix candidate, validated by bench.** `QueryThreadCycleTime` resolved a 0.129 ms spin
+12/12 times and measured the 2.56 ms burn at 2.58-2.69 ms, works with the pseudo-handle
+`GetCurrentThread()`, and calibrates cleanly against QPC (2.871 GHz measured). Plan: convert
+cycles to nanoseconds through a one-time busy-spin calibration. This also repairs the engine,
+not just the test — every sub-tick task on Windows charges 0 today, so the budget gate never
+engages for short work. Awaiting the owner's approval to implement.
+
+**Verification.** Bench outputs recorded in this session; the tick bench, the cycle bench and
+the pseudo-handle probe all reproduced the numbers above. No source changes in this round.
+
+## 2026-11-19 22:41 — the suite runs after SAC came off; TC17.A fails on the last-green tree too, so no regression
+
+**Cause.** The owner disabled Smart App Control; the pending EngineTest run from 22:23 went ahead.
+
+**Closed in this round.** The suite runs: Dev build 125/125, 434 of 435 testlets PASS across four
+runs. The only failure is TC17.A (spent allowance declines the general queue) — 3/3 at HEAD, and
+decisively 2/2 at `d5c2064`, the tree that was green on 11-08. The A/B rules out the two
+unverified commits (`*If` rename, HInlineFunction): the test's pass condition (refusal count
+rising inside a 200 ms window on an idle machine) no longer holds on this box at all, so the
+11-08 "one re-run" pass was the flake's lucky side, not a baseline. Hypothesis for the shift:
+Windows timer resolution / machine state, since the 2 µs producer spacing and the 200 ms window
+sit exactly on the granularity the OSAL platform rules warn about. TC7.A also fired once in four
+runs with the historical symptom — 39999/40000 delivered then Blocked forever, "a block kept a
+chain reservation its ring never learned about" — the latent ring defect the test was written to
+catch, which the 02:50 green run merely failed to sample. Neither fired on Linux.
+
+**Owner decisions.** (1) TC17.A: investigate why the stream's refusal count never moves — a test
+that fails 5/6 on an idle machine is red, whatever the journal once called it. (2) TC7.A: the
+chain-reservation deadlock is still latent in the ring; fix or accept as documented-unfixed.
+
+**Verification.** HEAD: 434/435 PASS, exit 1 (TC17.A only), reproduced after restore.
+`d5c2064`: 2 runs, same single failure.
+
+## 2026-11-19 22:23 — the Windows build is green again; the suite run waits on Smart App Control
+
+**Cause.** The owner asked to build and run EngineTest to verify the Windows build — the first
+run since the `*If` rename and HInlineFunction landed.
+
+**Closed in this round.** Two C1189 regressions fixed: `WindowsMemory.cpp` included the split
+headers (`errhandlingapi.h`, `memoryapi.h`, `sysinfoapi.h`) before `windows.h`, which VS 2026's
+cl rejects outright (`No Target Architecture`) — and `OSMemory.cpp` carried the same pattern in
+its `_WIN32` branch, passing only because a transitive include delivered `windows.h` first. Both
+now lead with `windows.h` per the platform rule; committed as `fix(osal)`.
+
+**Still open.** The suite cannot run: Smart App Control is ON
+(`VerifiedAndReputablePolicyState = 0x1`) and blocks every unsigned locally built executable —
+`EngineTest.exe` and `Tools/bin/makebuild.exe` alike, with no exclusion mechanism and no help
+from self-signing. The owner must turn SAC off in Windows Security (a one-way setting); the
+suite run is the next step after that.
+
+**Verification.** Dev configure + build 103/103, `EngineTest.exe` linked, exit 0. Run pending
+SAC.
+
 ## 2026-11-08 02:50 — the Linux verification: GCC 15 caught fourteen defects, and both suites run green
 
 **Cause.** The owner ran verify_linux_build.bat through the WSL setup and asked whether the Linux
