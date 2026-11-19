@@ -105,11 +105,11 @@ void OS::ProtectMemory(void* address, size_t n) noexcept
 }
 
 #elif defined _WIN32
+#include <windows.h>
 #include <errhandlingapi.h>
 #include <malloc.h>
 #include <memoryapi.h>
 #include <sysinfoapi.h>
-#include <windows.h>
 
 size_t OS::GetAllocSize(void* ptr) noexcept
 {

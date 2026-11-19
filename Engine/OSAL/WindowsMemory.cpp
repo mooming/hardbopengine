@@ -3,12 +3,12 @@
 #include "OSMemory.h"
 
 #if PLATFORM_WINDOWS
+#include <windows.h>
 #include <errhandlingapi.h>
 #include <iostream>
 #include <malloc.h>
 #include <memoryapi.h>
 #include <sysinfoapi.h>
-#include <windows.h>
 
 #include "Core/CommonMacros.h"
 

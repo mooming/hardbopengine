@@ -33,27 +33,52 @@ void OS::SetThreadPriority(std::thread& thread, int priority) noexcept
 	}
 }
 
+namespace
+{
+	double GetCycleRateHertz() noexcept
+	{
+		static const double rate = []
+		{
+			ULONGLONG startCycles = 0;
+			ULONGLONG endCycles = 0;
+			LARGE_INTEGER startCounter{};
+			LARGE_INTEGER endCounter{};
+			LARGE_INTEGER frequency{};
+
+			QueryPerformanceFrequency(&frequency);
+			QueryThreadCycleTime(GetCurrentThread(), &startCycles);
+			QueryPerformanceCounter(&startCounter);
+
+			volatile uint64_t sink = 0;
+			for (uint64_t counter = 0; counter < 40000000ULL; ++counter)
+			{
+				sink += counter % 7U;
+			}
+
+			QueryPerformanceCounter(&endCounter);
+			QueryThreadCycleTime(GetCurrentThread(), &endCycles);
+
+			const double seconds = static_cast<double>(endCounter.QuadPart - startCounter.QuadPart) /
+				static_cast<double>(frequency.QuadPart);
+
+			return seconds > 0.0 ? static_cast<double>(endCycles - startCycles) / seconds : 1.0;
+		}();
+
+		return rate;
+	}
+} // namespace
+
 std::chrono::nanoseconds OS::GetThreadCPUTime() noexcept
 {
-	FILETIME creationTime{};
-	FILETIME exitTime{};
-	FILETIME kernelTime{};
-	FILETIME userTime{};
-	if (GetThreadTimes(GetCurrentThread(), &creationTime, &exitTime, &kernelTime, &userTime) == 0)
+	ULONGLONG cycles = 0;
+	if (QueryThreadCycleTime(GetCurrentThread(), &cycles) == 0)
 	{
 		return std::chrono::nanoseconds::zero();
 	}
 
-	auto ToNanoseconds = [](const FILETIME& fileTime) noexcept -> uint64_t
-	{
-		ULARGE_INTEGER ticks{};
-		ticks.LowPart = fileTime.dwLowDateTime;
-		ticks.HighPart = fileTime.dwHighDateTime;
+	const std::chrono::duration<double> seconds{cycles / GetCycleRateHertz()};
 
-		return ticks.QuadPart * 100U;
-	};
-
-	return std::chrono::nanoseconds{ToNanoseconds(kernelTime) + ToNanoseconds(userTime)};
+	return std::chrono::duration_cast<std::chrono::nanoseconds>(seconds);
 }
 
 #endif // PLATFORM_WINDOWS

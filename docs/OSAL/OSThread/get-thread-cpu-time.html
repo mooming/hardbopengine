@@ -72,8 +72,9 @@
   It is the calling thread that is measured, which is what lets a stream budget itself without a handle on any
   other thread. Linux and macOS read <code>clock_gettime(CLOCK_THREAD_CPUTIME_ID)</code>
   (<code>Engine/OSAL/LinuxThread.cpp</code>, <code>Engine/OSAL/OSXThread.cpp</code>, identical definitions);
-  Windows reads <code>GetThreadTimes</code> on its own pseudo-handle and adds kernel and user time
-  (<code>Engine/OSAL/WindowsThread.cpp</code>).
+  Windows reads <code>QueryThreadCycleTime</code> on its own pseudo-handle and converts the thread's cycle count
+  to nanoseconds through a rate calibrated once per process — a ~20 ms busy spin measured against the
+  performance counter (<code>Engine/OSAL/WindowsThread.cpp</code>).
 </p>
 
 <pre><code>	struct timespec timeValue{};
@@ -88,9 +89,13 @@
 <div class="note">
   <strong>Zero means the platform call failed — and a budget then charges nothing.</strong> The failure mode is
   deliberately fail-open: a reader that returned garbage would bill work that never ran, so the zero answer
-  costs a budget nothing and lets the stream keep taking work. On Windows the reading is coarser than the
-  nanosecond type suggests: <code>GetThreadTimes</code> reports at the granularity of the system clock tick, so
-  budgets charged from it are quantised there in a way the POSIX clock readings are not.
+  costs a budget nothing and lets the stream keep taking work. On Windows the reading is a cycle count divided
+  by a rate calibrated once at first use, so a load change that shifts the processor's effective clock between
+  the calibration and a later measurement skews that measurement's charge by the same fraction; the POSIX
+  clocks read true time and do not drift this way. The predecessor implementation read
+  <code>GetThreadTimes</code>, whose granularity is the system timer tick — charges below one tick read as
+  zero, which silently exempted every short task from its budget on Windows until the cycle counter replaced
+  it.
 </div>
 
 <h2 id="parameters">Parameters</h2>
